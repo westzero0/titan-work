@@ -56,6 +56,11 @@
 
         <label style="margin-top:15px;">⏰ 작업시간</label>
         <div class="row"><input type="time" id="start" value="08:00"><span style="align-self:center;">~</span><input type="time" id="end" value="17:00"></div>
+<div class="row">
+    <input type="time" id="start" value="08:00" step="1800">
+    <span style="align-self:center;">~</span>
+    <input type="time" id="end" value="17:00" step="1800">
+</div>
         
         <div class="chip-header"><label>👥 작업인원 (필수)</label><span class="del-mode" onclick="toggleDelMode('member')">🗑️ 삭제모드</span></div>
         <div id="member-chips" class="chip-box"></div>
