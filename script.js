@@ -1,5 +1,55 @@
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyPao29x11IGt196CXBijsyxZQ4mxqHnbBc-e1WKDhTYL-x3Rc5zddu4BGPAK84OgXm/exec"; 
 
+
+
+/**
+ * 1. 초기 실행 (페이지 로드 시)
+ */
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('date').valueAsDate = new Date();
+    generateTimeOptions(); // 30분 단위 생성 (이건 내부 로직이라 즉시 실행됨)
+    
+    // ⚡ [최적화] 서버를 부르기 전에 저장된 데이터가 있는지 먼저 확인해서 즉시 그려줍니다.
+    const cached = localStorage.getItem('titan_client_map');
+    if (cached) {
+        clientSiteMap = JSON.parse(cached);
+        renderClientChips(); 
+        console.log("⚡ 캐시 데이터로 즉시 로딩 완료");
+    } else {
+        // 캐시가 없을 때만 화면에 '로딩 중' 표시
+        document.getElementById('client-chips').innerHTML = "<p style='font-size:0.8rem; color:#94a3b8;'>🔄 데이터를 불러오는 중...</p>";
+    }
+
+    // 화면은 띄워둔 채로, 배경에서 최신 데이터를 가져옵니다.
+    fetchClientMapping(); 
+    renderAllChips();
+});
+
+/**
+ * 2. 배경에서 몰래 데이터 가져오기
+ */
+async function fetchClientMapping() {
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: "getClientMapping" }) 
+        });
+        const newData = await res.json();
+        
+        // 데이터가 이전과 다를 때만 화면을 다시 그립니다.
+        if (JSON.stringify(newData) !== localStorage.getItem('titan_client_map')) {
+            localStorage.setItem('titan_client_map', JSON.stringify(newData));
+            clientSiteMap = newData;
+            renderClientChips();
+            console.log("✅ 최신 데이터 업데이트 완료");
+        }
+    } catch (e) { 
+        console.error("데이터 업데이트 실패 (오프라인 상태일 수 있음)"); 
+    }
+}
+
+
+
 let clientSiteMap = {}; 
 let currentClient = "";
 let lists = {
