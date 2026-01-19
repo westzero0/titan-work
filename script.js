@@ -1,13 +1,12 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzUTLQ6fm-aR5nyxFNCt5_s2X5gLMucmQLAPZF2h8p_4cGzECWqNab3FUsSXPcEYcVk/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxz5rnAO2riYxVgVdT7I9WTZdp_0R--egdkuqHu1PVXUKKnau_6Ffkf_kUUsRxMAGfh/exec"; 
 
-
-// 초기 리스트 (사용자 요약 기반)
 let lists = {
     member: ["기원", "창재", "비비", "서호"],
-    car: ["봉고", "포터", "스타렉스", "창재차"]
+    car: ["봉고", "포터", "스타렉스", "창재차"],
+    material: ["hfix2.5sq", "hfix4sq 전선", "22CD", "16CD", "전산볼트"]
 };
 
-let delMode = { member: false, car: false };
+let delMode = { member: false, car: false, material: false };
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('date').valueAsDate = new Date();
@@ -15,8 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function renderAllChips() {
-    renderChips('member');
-    renderChips('car');
+    renderChips('member'); renderChips('car'); renderChips('material');
 }
 
 function renderChips(type) {
@@ -26,20 +24,12 @@ function renderChips(type) {
         const div = document.createElement('div');
         div.className = `chip ${delMode[type] ? 'delete-target' : ''}`;
         div.innerText = name;
-        div.onclick = () => handleChipClick(type, name, div);
+        div.onclick = () => {
+            if (delMode[type]) { lists[type] = lists[type].filter(i => i !== name); renderChips(type); }
+            else { div.classList.toggle('active'); }
+        };
         box.appendChild(div);
     });
-}
-
-function handleChipClick(type, name, element) {
-    if (delMode[type]) {
-        // 삭제 모드일 때
-        lists[type] = lists[type].filter(i => i !== name);
-        renderChips(type);
-    } else {
-        // 선택 모드일 때
-        element.classList.toggle('active');
-    }
 }
 
 function toggleDelMode(type) {
@@ -52,19 +42,12 @@ function toggleDelMode(type) {
 function addItem(type) {
     const input = document.getElementById(`add-${type}-input`);
     const val = input.value.trim();
-    if (!val) return;
-    if (lists[type].includes(val)) return alert("이미 존재합니다.");
-    
-    lists[type].push(val);
-    renderChips(type);
-    input.value = "";
+    if (!val || lists[type].includes(val)) return;
+    lists[type].push(val); renderChips(type); input.value = "";
 }
 
-// 파일 변환 보조
-const fileTo64 = (f) => new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result.split(',')[1]);
-    r.readAsDataURL(f);
+const fileTo64 = (f) => new Promise((res) => {
+    const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
 });
 
 async function send() {
@@ -72,15 +55,20 @@ async function send() {
     const site = document.getElementById('site').value;
     if (!site) return alert("🏗️ 현장명을 입력해주세요!");
 
-    const selectedMembers = Array.from(document.querySelectorAll('#member-chips .chip.active')).map(c => c.innerText).join(', ');
-    const selectedCars = Array.from(document.querySelectorAll('#car-chips .chip.active')).map(c => c.innerText).join(', ');
+    const getSelected = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
 
-    btn.disabled = true;
-    btn.innerText = "⏳ 전송 중...";
-
-    const receiptFile = document.getElementById('receipt').files[0];
-    let fileData = null;
-    if (receiptFile) fileData = await fileTo64(receiptFile);
+    btn.disabled = true; btn.innerText = "⏳ 사진 처리 및 전송 중...";
+    
+    // 다중 파일 처리
+    const receiptFiles = document.getElementById('receipt').files;
+    let filesArray = [];
+    if (receiptFiles.length > 0) {
+        filesArray = await Promise.all(Array.from(receiptFiles).map(async (file) => ({
+            content: await fileTo64(file),
+            name: file.name,
+            type: file.type
+        })));
+    }
 
     const payload = {
         action: "saveLog",
@@ -89,37 +77,26 @@ async function send() {
             client: document.getElementById('client').value,
             site: site,
             work: document.getElementById('work').value,
+            materials: getSelected('#material-chips'),
             start: document.getElementById('start').value,
             end: document.getElementById('end').value,
-            members: selectedMembers,
-            car: selectedCars,
+            members: getSelected('#member-chips'),
+            car: getSelected('#car-chips'),
             dinner: document.getElementById('dinner').value,
             expAmount: document.getElementById('expAmount').value || "0",
             expDetail: document.getElementById('expDetail').value || "없음",
-            fileContent: fileData,
-            fileName: receiptFile ? receiptFile.name : null,
-            fileType: receiptFile ? receiptFile.type : null
+            files: filesArray
         }
     };
 
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
         if (await res.text() === "SUCCESS") {
-            alert("✅ 저장 완료!");
-            shareNative(payload.data);
+            alert(`✅ 저장 완료! (영수증 ${filesArray.length}장)`);
+            const msg = `[타이탄 일보]\n📅 ${payload.data.date}\n🏗️ 현장: ${payload.data.site}\n🛠️ 작업: ${payload.data.work}\n📦 자재: ${payload.data.materials}\n👥 인원: ${payload.data.members}\n🧾 영수증: ${filesArray.length}장 첨부`;
+            if (navigator.share) navigator.share({ title: '타이탄 일보', text: msg });
+            else alert("복사되었습니다:\n" + msg);
         }
     } catch (e) { alert("⚠️ 오류 발생!"); }
-    finally {
-        btn.disabled = false;
-        btn.innerText = "🚀 저장 및 카톡 공유";
-    }
-}
-
-function shareNative(d) {
-    const msg = `[타이탄 일보]\n📅 날짜: ${d.date}\n🏢 거래처: ${d.client}\n🏗️ 현장: ${d.site}\n🛠️ 작업: ${d.work}\n⏰ 시간: ${d.start}~${d.end}\n👥 인원: ${d.members}\n🚛 차량: ${d.car}\n💰 경비: ${d.expDetail}(${d.expAmount}원)`;
-    if (navigator.share) {
-        navigator.share({ title: '타이탄 일보', text: msg });
-    } else {
-        alert("복사되었습니다: \n" + msg);
-    }
+    finally { btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유"; }
 }
