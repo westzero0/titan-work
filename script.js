@@ -59,34 +59,17 @@ let lists = {
 };
 let delMode = { member: false, car: false, material: false };
 
-/**
- * 1. 초기 실행 (페이지 로드 시)
- */
-document.addEventListener('DOMContentLoaded', async () => {
-    // 날짜 초기화
-    document.getElementById('date').valueAsDate = new Date();
-    
-    // 🕒 30분 단위 시간 드롭다운 생성
-    generateTimeOptions();
-    
-    // ⚡ 로컬 저장소에서 데이터 즉시 로드 (로딩 속도 개선)
-    const cached = localStorage.getItem('titan_client_map');
-    if (cached) {
-        clientSiteMap = JSON.parse(cached);
-        renderClientChips();
-    }
-
-    // 배경에서 최신 데이터 업데이트
-    await fetchClientMapping(); 
-    renderAllChips();
-});
 
 /**
- * 2. 30분 단위 시간 옵션 생성
+ * 30분 단위 시간 옵션 생성 (중복 생성 방지 로직 추가)
  */
 function generateTimeOptions() {
     const startSelect = document.getElementById('start');
     const endSelect = document.getElementById('end');
+    
+    // ✅ 기존에 들어있던 옵션들을 모두 삭제하여 중복 방지
+    startSelect.innerHTML = "";
+    endSelect.innerHTML = "";
     
     for (let h = 0; h < 24; h++) {
         for (let m = 0; m < 60; m += 30) {
@@ -98,7 +81,8 @@ function generateTimeOptions() {
             endSelect.add(new Option(timeStr, timeStr));
         }
     }
-    // 기본 작업 시간 설정
+    
+    // 기본값 설정
     startSelect.value = "08:00";
     endSelect.value = "17:00";
 }
