@@ -30,6 +30,17 @@
         
         <label>🛠️ 작업내용</label>
         <input type="text" id="work" placeholder="예: 입선, 트레이">
+
+        <div style="display:flex; gap:10px;">
+            <div style="flex:2;">
+                <label>💰 경비 내역</label>
+                <input type="text" id="expDetail" placeholder="예: 자재비, 주차비">
+            </div>
+            <div style="flex:1;">
+                <label>💵 금액</label>
+                <input type="number" id="expAmount" placeholder="0">
+            </div>
+        </div>
         
         <label>⏰ 작업시간</label>
         <div style="display:flex; gap:10px;">
@@ -37,7 +48,7 @@
             <input type="time" id="end" value="17:00">
         </div>
         
-        <label>👥 작업인원 (클릭하여 선택)</label>
+        <label>👥 작업인원</label>
         <div id="member-chips" class="chip-box"></div>
         
         <label>🍱 석식 여부</label>
@@ -45,10 +56,12 @@
             <option value="X">석식 X</option>
             <option value="O">석식 O (17시~18시 공제)</option>
         </select>
+
+        <label>🧾 영수증 사진 (드라이브 저장)</label>
+        <input type="file" id="receipt" accept="image/*">
         
         <button class="submit-btn" id="sBtn" onclick="send()">🚀 저장 및 카톡 공유</button>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>

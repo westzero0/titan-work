@@ -1,10 +1,6 @@
-// 1. ✅ 구글 웹 앱 URL (사용자 제공 주소 유지)
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyg8uyAvpBZcBLVLYKzH_-5wvBlqjH5Cziz8LQR9zrLYD--mYFUgM0mC0fnNeh_c6dm/exec"; 
-
-// 2. 인원 명단
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzUTLQ6fm-aR5nyxFNCt5_s2X5gLMucmQLAPZF2h8p_4cGzECWqNab3FUsSXPcEYcVk/exec"; 
 const staff = ["기원", "창재", "비비", "서호"]; 
 
-// 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', () => {
     const box = document.getElementById('member-chips');
     staff.forEach(name => {
@@ -14,61 +10,53 @@ document.addEventListener('DOMContentLoaded', () => {
         div.onclick = () => div.classList.toggle('active');
         box.appendChild(div);
     });
-    // 오늘 날짜 기본 설정
     document.getElementById('date').valueAsDate = new Date();
 });
 
-// 📱 스마트폰 통합 공유 함수 (카톡 포함)
+// 파일을 Base64 문자열로 변환하는 함수
+const fileTo64 = (file) => new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result.split(',')[1]);
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+});
+
 async function shareContent(data) {
-    const message = `[타이탄 일보]\n📅 날짜: ${data.date}\n🏗️ 현장: ${data.site}\n🛠️ 작업: ${data.work}\n⏰ 시간: ${data.start} ~ ${data.end}\n👥 인원: ${data.members}\n🍱 석식: ${data.dinner}`;
+    // 카톡 메시지에 경비와 금액 추가
+    const message = `[타이탄 일보]\n📅 날짜: ${data.date}\n🏗️ 현장: ${data.site}\n🛠️ 작업: ${data.work}\n💰 경비: ${data.expDetail} (${data.expAmount}원)\n⏰ 시간: ${data.start} ~ ${data.end}\n👥 인원: ${data.members}\n🍱 석식: ${data.dinner}\n🧾 영수증: ${data.hasFile}`;
 
     if (navigator.share) {
-        try {
-            await navigator.share({
-                title: '타이탄 업무일보',
-                text: message,
-            });
-        } catch (err) {
-            console.log('공유 취소 또는 에러:', err);
-        }
+        try { await navigator.share({ title: '타이탄 업무일보', text: message }); } 
+        catch (err) { console.log('공유 취소'); }
     } else {
-        // PC 환경 등 Share API 미지원 시 클립보드 복사
-        copyToClipboard(message);
+        alert("내용이 복사되었습니다. 카톡에 붙여넣으세요!\n\n" + message);
     }
 }
 
-// 클립보드 복사 보조 함수
-function copyToClipboard(text) {
-    const t = document.createElement("textarea");
-    document.body.appendChild(t);
-    t.value = text;
-    t.select();
-    document.execCommand('copy');
-    document.body.removeChild(t);
-    alert("공유 기능이 지원되지 않는 환경입니다.\n내용이 복사되었습니다. 카톡에 붙여넣기 해주세요!");
-}
-
-// 🚀 데이터 전송 메인 함수
 async function send() {
     const btn = document.getElementById('sBtn');
     const site = document.getElementById('site').value;
     const work = document.getElementById('work').value || "내용 없음";
+    const expDetail = document.getElementById('expDetail').value || "없음";
+    const expAmount = document.getElementById('expAmount').value || "0";
     const start = document.getElementById('start').value;
     const end = document.getElementById('end').value;
     const dinner = document.getElementById('dinner').value;
     const date = document.getElementById('date').value;
+    const receiptFile = document.getElementById('receipt').files[0];
     
-    // 선택된 인원 추출
-    const selected = Array.from(document.querySelectorAll('.chip.active'))
-                          .map(c => c.innerText)
-                          .join(', ');
+    const selected = Array.from(document.querySelectorAll('.chip.active')).map(c => c.innerText).join(', ');
 
-    // 필수 항목 체크
     if (!site) return alert("🏗️ 현장명을 입력해주세요!");
     if (!selected) return alert("👥 작업 인원을 선택해주세요!");
 
     btn.disabled = true;
-    btn.innerText = "⏳ 시트 저장 중...";
+    btn.innerText = "⏳ 서버 전송 중...";
+
+    let fileData = null;
+    if (receiptFile) {
+        fileData = await fileTo64(receiptFile); // 사진 파일을 데이터로 변환
+    }
 
     const payload = {
         action: "saveLog",
@@ -76,15 +64,20 @@ async function send() {
             date: date,
             site: site,
             work: work,
+            expDetail: expDetail, // 경비 내역
+            expAmount: expAmount, // 금액
             start: start,
             end: end,
             members: selected,
-            dinner: dinner
+            dinner: dinner,
+            fileName: receiptFile ? receiptFile.name : null,
+            fileType: receiptFile ? receiptFile.type : null,
+            fileContent: fileData, // 사진 데이터
+            hasFile: receiptFile ? "첨부됨" : "없음"
         }
     };
 
     try {
-        // 1. 구글 시트로 전송 (POST)
         const response = await fetch(GAS_URL, {
             method: 'POST',
             body: JSON.stringify(payload)
@@ -93,18 +86,13 @@ async function send() {
         const result = await response.text();
         
         if (result === "SUCCESS") {
-            // 2. 저장 성공 시 공유창 띄우기
-            alert("✅ 시트 저장 완료!");
+            alert("✅ 저장 완료!");
             await shareContent(payload.data);
-            
-            // 전송 후 입력창 초기화 (선택사항)
-            // location.reload(); 
         } else {
-            alert("❌ 저장 실패 (GAS 오류): " + result);
+            alert("❌ 저장 실패: " + result);
         }
     } catch (e) {
-        console.error(e);
-        alert("⚠️ 연결 오류! 구글 웹앱 설정을 확인하세요.");
+        alert("⚠️ 전송 오류!");
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 저장 및 카톡 공유";
