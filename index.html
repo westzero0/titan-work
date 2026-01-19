@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>타이탄 현장관리</title>
+    <link rel="stylesheet" href="style.css">
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+</head>
+<body>
+    <div class="nav">
+        <div class="tab active" data-tab="form">📝 일보작성</div>
+        <div class="tab" data-tab="schedule">📅 일정표</div>
+    </div>
+
+    <div id="form" class="content active">
+        <div class="container">
+            <input type="date" id="date">
+            <input type="text" id="site" placeholder="현장명 (필수)">
+            <div class="time-row">
+                <input type="time" id="start" value="08:00">
+                <input type="time" id="end" value="17:00">
+            </div>
+            <div id="member-chips" class="chip-box"></div>
+            <select id="dinner">
+                <option value="X">석식 X</option>
+                <option value="O">석식 O (17~18시 공제)</option>
+            </select>
+            <div class="expense-box">
+                <input type="number" id="exp_amt" placeholder="경비 금액">
+                <input type="file" id="receipt" accept="image/*">
+            </div>
+            <button id="sBtn">🚀 저장 및 카톡 공유</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
