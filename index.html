@@ -3,35 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타이탄 현장관리</title>
-    <link rel="stylesheet" href="style.css">
-    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <title>타이탄 일보</title>
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; background: var(--card); border-radius: 20px; padding: 25px; box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
+        h2 { font-size: 1.5rem; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        label { display: block; font-size: 0.9rem; font-weight: bold; margin: 15px 0 8px; color: #475569; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; box-sizing: border-box; background: #f1f5f9; font-size: 1rem; }
+        .chip-box { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; }
+        .chip { padding: 8px 15px; background: #f1f5f9; border-radius: 12px; cursor: pointer; border: 1px solid #e2e8f0; font-weight: 600; color: #64748b; transition: 0.2s; }
+        .chip.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2); }
+        .submit-btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 1.1rem; margin-top: 30px; cursor: pointer; }
+        .submit-btn:disabled { background: #94a3b8; }
+    </style>
 </head>
 <body>
-    <div class="nav">
-        <div class="tab active" data-tab="form">📝 일보작성</div>
-        <div class="tab" data-tab="schedule">📅 일정표</div>
-    </div>
-
-    <div id="form" class="content active">
-        <div class="container">
-            <input type="date" id="date">
-            <input type="text" id="site" placeholder="현장명 (필수)">
-            <div class="time-row">
-                <input type="time" id="start" value="08:00">
-                <input type="time" id="end" value="17:00">
-            </div>
-            <div id="member-chips" class="chip-box"></div>
-            <select id="dinner">
-                <option value="X">석식 X</option>
-                <option value="O">석식 O (17~18시 공제)</option>
-            </select>
-            <div class="expense-box">
-                <input type="number" id="exp_amt" placeholder="경비 금액">
-                <input type="file" id="receipt" accept="image/*">
-            </div>
-            <button id="sBtn">🚀 저장 및 카톡 공유</button>
+    <div class="container">
+        <h2>⚡ 타이탄 일보</h2>
+        
+        <label>📅 날짜</label>
+        <input type="date" id="date">
+        
+        <label>🏗️ 현장명 (필수)</label>
+        <input type="text" id="site" placeholder="현장 이름을 입력하세요">
+        
+        <label>🛠️ 작업내용</label>
+        <input type="text" id="work" placeholder="예: 입선, 트레이">
+        
+        <label>⏰ 작업시간</label>
+        <div style="display:flex; gap:10px;">
+            <input type="time" id="start" value="08:00">
+            <input type="time" id="end" value="17:00">
         </div>
+        
+        <label>👥 작업인원 (클릭하여 선택)</label>
+        <div id="member-chips" class="chip-box"></div>
+        
+        <label>🍱 석식 여부</label>
+        <select id="dinner">
+            <option value="X">석식 X</option>
+            <option value="O">석식 O (17시~18시 공제)</option>
+        </select>
+        
+        <button class="submit-btn" id="sBtn" onclick="send()">🚀 저장 및 카톡 공유</button>
     </div>
 
     <script src="script.js"></script>

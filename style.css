@@ -1,0 +1,11 @@
+/* 선택 가능한 인원 칩 스타일 */
+.chip-box { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.chip { 
+    padding: 8px 15px; background: #eeeeee; border-radius: 20px; 
+    cursor: pointer; font-size: 0.9rem; transition: 0.3s;
+    border: 1px solid #ddd;
+}
+/* 클릭해서 선택되었을 때의 색상 (주황색/검정색 등) */
+.chip.active { 
+    background: #2c3e50 ! from; color: white; border-color: #2c3e50; 
+}
