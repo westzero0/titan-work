@@ -9,28 +9,58 @@ let lists = {
 };
 let delMode = { member: false, car: false, material: false };
 
-// ✅ 페이지 로드 시 실행 (async 필수)
+/**
+ * 1. 초기 실행 (페이지 로드 시)
+ */
 document.addEventListener('DOMContentLoaded', async () => {
+    // 날짜 초기화
     document.getElementById('date').valueAsDate = new Date();
     
-    // 1. 로컬 저장소에서 데이터 즉시 로드 (로딩 속도 개선)
+    // 🕒 30분 단위 시간 드롭다운 생성
+    generateTimeOptions();
+    
+    // ⚡ 로컬 저장소에서 데이터 즉시 로드 (로딩 속도 개선)
     const cached = localStorage.getItem('titan_client_map');
     if (cached) {
         clientSiteMap = JSON.parse(cached);
         renderClientChips();
     }
 
-    // 2. 서버에서 최신 데이터 가져와서 업데이트
+    // 배경에서 최신 데이터 업데이트
     await fetchClientMapping(); 
     renderAllChips();
 });
 
-// ✅ 서버 데이터 가져오기 (async 필수)
+/**
+ * 2. 30분 단위 시간 옵션 생성
+ */
+function generateTimeOptions() {
+    const startSelect = document.getElementById('start');
+    const endSelect = document.getElementById('end');
+    
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 30) {
+            const hh = String(h).padStart(2, '0');
+            const mm = String(m).padStart(2, '0');
+            const timeStr = `${hh}:${mm}`;
+            
+            startSelect.add(new Option(timeStr, timeStr));
+            endSelect.add(new Option(timeStr, timeStr));
+        }
+    }
+    // 기본 작업 시간 설정
+    startSelect.value = "08:00";
+    endSelect.value = "17:00";
+}
+
+/**
+ * 3. 데이터 로딩 및 칩 렌더링
+ */
 async function fetchClientMapping() {
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: "getClientMapping" }) });
         const newData = await res.json();
-        localStorage.setItem('titan_client_map', JSON.stringify(newData)); // 캐시 저장
+        localStorage.setItem('titan_client_map', JSON.stringify(newData));
         clientSiteMap = newData;
         renderClientChips();
     } catch (e) { console.error("데이터 로드 실패"); }
@@ -71,7 +101,7 @@ function renderSiteChips() {
         option.value = siteObj.name;
         dataList.appendChild(option);
 
-        // ✅ 완료 현장은 최대 5개까지만 노출
+        // 완료 현장은 최대 5개까지만 노출
         if (!isFinished || (showFinished && finishedCount < 5)) {
             const div = document.createElement('div');
             div.className = `chip ${isFinished ? 'finished' : ''}`;
@@ -94,6 +124,9 @@ function syncSiteSelection() {
     });
 }
 
+/**
+ * 4. 기타 항목 관리 (인원, 차량, 자재)
+ */
 function renderAllChips() {
     renderChips('member'); renderChips('car'); renderChips('material');
 }
@@ -132,11 +165,12 @@ const fileTo64 = (f) => new Promise((res) => {
     const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
 });
 
-// ✅ 저장 및 전송 (async 필수)
+/**
+ * 5. 최종 데이터 전송
+ */
 async function send() {
     const btn = document.getElementById('sBtn');
     
-    // 데이터 수집
     const selectedClient = document.querySelector('#client-chips .chip.active')?.innerText;
     const selectedSite = document.getElementById('siteSearch').value || 
                          document.querySelector('#site-chips .chip.active')?.innerText;
@@ -148,7 +182,7 @@ async function send() {
     const materialChips = getSelected('#material-chips');
     const materialText = document.getElementById('materialExtra').value.trim();
 
-    // 🚨 필수값 검증 강화
+    // 🚨 필수 항목 검증 강화
     if (!selectedClient || !selectedSite) return alert("🏢 거래처와 현장명을 모두 선택해 주세요!");
     if (!work) return alert("🛠️ 작업내용(필수)을 입력해 주세요!");
     if (!members) return alert("👥 작업 인원을 최소 한 명 이상 선택해야 합니다!");
@@ -158,7 +192,6 @@ async function send() {
     const receiptFiles = document.getElementById('receipt').files;
     let filesArray = [];
     if (receiptFiles.length > 0) {
-        // ✅ Promise.all 내부에서 await 사용 시 map 앞에도 async 필수
         filesArray = await Promise.all(Array.from(receiptFiles).map(async (f) => ({
             content: await fileTo64(f), name: f.name, type: f.type
         })));
@@ -185,14 +218,12 @@ async function send() {
 
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-        const result = await res.text();
-        if (result === "SUCCESS") {
+        if (await res.text() === "SUCCESS") {
             alert(`✅ 저장 완료!`);
-            const msg = `[타이탄 일보]\n📅 ${payload.data.date}\n🏢 ${payload.data.client}\n🏗️ ${payload.data.site}\n🛠️ ${payload.data.work}\n👥 ${payload.data.members}`;
+            const msg = `[타이탄 일보]\n📅 ${payload.data.date}\n🏗️ ${payload.data.site}\n🛠️ ${payload.data.work}\n👥 ${payload.data.members}`;
             if (navigator.share) navigator.share({ title: '타이탄 일보', text: msg });
-        } else {
-            alert("❌ 저장 실패: " + result);
         }
-    } catch (e) { alert("⚠️ 전송 오류가 발생했습니다."); }
+    } catch (e) { alert("⚠️ 전송 오류 발생"); }
     finally { btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유"; }
+}
 }
