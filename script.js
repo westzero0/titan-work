@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxpjI_HLXyvPkVkM6RlqALn35G7PF9XvgtA438j6HSwtDRzMSHWk4VdaurvZu7YdAJC/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyPao29x11IGt196CXBijsyxZQ4mxqHnbBc-e1WKDhTYL-x3Rc5zddu4BGPAK84OgXm/exec"; 
 
 
 let clientSiteMap = {}; 
