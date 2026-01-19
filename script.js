@@ -1,4 +1,98 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxz5rnAO2riYxVgVdT7I9WTZdp_0R--egdkuqHu1PVXUKKnau_6Ffkf_kUUsRxMAGfh/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyxRsSKc9OPvbQaZ9KqlF6fw6bd_UmR4ZQE70EBuYj0vkTPlMyv-0a84regiTpk6Her/exec"; 
+
+
+let currentSelectedClient = "";
+let clientSiteMap = {}; // { "거래처": [{name: "현장1", status: "진행중"}, ...] }
+
+// 페이지 로드 시 데이터 가져오기
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('date').valueAsDate = new Date();
+    await fetchClientMapping();
+});
+
+async function fetchClientMapping() {
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "getClientMapping" })
+        });
+        clientSiteMap = await res.json();
+        renderClientChips();
+    } catch (e) { console.error("데이터 로드 실패"); }
+}
+
+// 현장 칩 및 검색 목록 렌더링
+function renderSiteChips() {
+    const siteBox = document.getElementById('site-chips');
+    const dataList = document.getElementById('site-options');
+    const showFinished = document.getElementById('showFinished').checked;
+    
+    siteBox.innerHTML = "";
+    dataList.innerHTML = ""; // 검색 목록 초기화
+    
+    if (!currentSelectedClient) return;
+
+    const sites = clientSiteMap[currentSelectedClient] || [];
+    
+    sites.forEach(siteObj => {
+        const isFinished = siteObj.status === "완료";
+        
+        // 검색 목록(datalist)에는 모든 현장 추가
+        const option = document.createElement('option');
+        option.value = siteObj.name;
+        if (isFinished) option.label = "(완료)";
+        dataList.appendChild(option);
+
+        // 칩(Quick Select)은 조건에 따라 표시
+        if (showFinished || !isFinished) {
+            const div = document.createElement('div');
+            div.className = 'chip';
+            if (isFinished) {
+                div.style.backgroundColor = "#e2e8f0";
+                div.style.color = "#94a3b8";
+                div.innerText = "[AS] " + siteObj.name;
+            } else {
+                div.innerText = siteObj.name;
+            }
+
+            div.onclick = () => {
+                document.getElementById('site-input').value = siteObj.name;
+                updateActiveChip('#site-chips', div);
+            };
+            siteBox.appendChild(div);
+        }
+    });
+}
+
+// 입력창에 직접 타이핑할 때 칩 상태 동기화
+function syncSiteSelection() {
+    const val = document.getElementById('site-input').value;
+    const chips = document.querySelectorAll('#site-chips .chip');
+    chips.forEach(chip => {
+        if (chip.innerText.includes(val) && val !== "") {
+            chip.classList.add('active');
+        } else {
+            chip.classList.remove('active');
+        }
+    });
+}
+
+function updateActiveChip(containerId, target) {
+    document.querySelectorAll(`${containerId} .chip`).forEach(c => c.classList.remove('active'));
+    target.classList.add('active');
+}
+
+// 전송 함수에서 현장명 수집
+async function send() {
+    // ... 기존 코드 중략 ...
+    const selectedSite = document.getElementById('site-input').value;
+    
+    if (!selectedSite) return alert("🏗️ 현장명을 입력하거나 선택해 주세요!");
+    
+    // payload 구성 시 selectedSite 사용
+    // ... 나머지 전송 로직 동일
+}
+
 
 let lists = {
     member: ["기원", "창재", "비비", "서호"],

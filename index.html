@@ -47,8 +47,21 @@
             </div>
         </div>
         
-        <label>🏗️ 현장명</label>
-        <input type="text" id="site" placeholder="필수 입력" style="margin-bottom:15px;">
+       <div class="chip-header">
+    <label>🏗️ 현장명 (검색 또는 직접 입력)</label>
+    <div style="font-size: 0.8rem; color: #64748b;">
+        <input type="checkbox" id="showFinished" onchange="renderSiteChips()" style="width:auto; margin-right:5px;"> 
+        <span>완료 현장 포함 (AS)</span>
+    </div>
+</div>
+
+<div class="add-group">
+    <input type="text" id="site-input" list="site-options" placeholder="현장명을 검색하거나 입력하세요" oninput="syncSiteSelection()">
+    <datalist id="site-options"></datalist>
+</div>
+
+<div id="site-chips" class="chip-box"></div>
+
         
         <label>🛠️ 작업내용</label>
         <input type="text" id="work" placeholder="예: 입선, 트레이" style="margin-bottom:15px;">
