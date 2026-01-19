@@ -226,4 +226,3 @@ async function send() {
     } catch (e) { alert("⚠️ 전송 오류 발생"); }
     finally { btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유"; }
 }
-}
