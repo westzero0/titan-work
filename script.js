@@ -1,15 +1,22 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyxRsSKc9OPvbQaZ9KqlF6fw6bd_UmR4ZQE70EBuYj0vkTPlMyv-0a84regiTpk6Her/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwgiy5wVIcut1t7gFGkYZmC4GD3GmCuynz12pRzjkB2F1atSGlaFaz1plsHPRF6xmRV/exec"; 
 
+let clientSiteMap = {}; // 거래처-현장 매칭 데이터
+let currentClient = "";
+let lists = {
+    member: ["기원", "창재", "비비", "서호"],
+    car: ["봉고", "포터", "스타렉스", "창재차"],
+    material: ["2.5sq 전선", "4sq 전선", "CD관", "난연관", "복스"],
+    site: [] // 동적 생성
+};
+let delMode = { member: false, car: false, material: false };
 
-let currentSelectedClient = "";
-let clientSiteMap = {}; // { "거래처": [{name: "현장1", status: "진행중"}, ...] }
-
-// 페이지 로드 시 데이터 가져오기
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('date').valueAsDate = new Date();
-    await fetchClientMapping();
+    await fetchClientMapping(); // 시트에서 거래처 정보 로드
+    renderAllChips();
 });
 
+// 1. 거래처-현장 매칭 데이터 가져오기
 async function fetchClientMapping() {
     try {
         const res = await fetch(GAS_URL, {
@@ -18,95 +25,51 @@ async function fetchClientMapping() {
         });
         clientSiteMap = await res.json();
         renderClientChips();
-    } catch (e) { console.error("데이터 로드 실패"); }
+    } catch (e) { console.error("거래처 로드 실패"); }
 }
 
-// 현장 칩 및 검색 목록 렌더링
-function renderSiteChips() {
-    const siteBox = document.getElementById('site-chips');
-    const dataList = document.getElementById('site-options');
-    const showFinished = document.getElementById('showFinished').checked;
-    
-    siteBox.innerHTML = "";
-    dataList.innerHTML = ""; // 검색 목록 초기화
-    
-    if (!currentSelectedClient) return;
+function renderClientChips() {
+    const box = document.getElementById('client-chips');
+    box.innerHTML = "";
+    Object.keys(clientSiteMap).forEach(client => {
+        const div = document.createElement('div');
+        div.className = 'chip';
+        div.innerText = client;
+        div.onclick = () => selectClient(client, div);
+        box.appendChild(div);
+    });
+}
 
-    const sites = clientSiteMap[currentSelectedClient] || [];
-    
+function selectClient(client, element) {
+    document.querySelectorAll('#client-chips .chip').forEach(c => c.classList.remove('active'));
+    element.classList.add('active');
+    currentClient = client;
+    renderSiteChips(); // 선택된 거래처에 맞는 현장 칩 생성
+}
+
+function renderSiteChips() {
+    const box = document.getElementById('site-chips');
+    const showFinished = document.getElementById('showFinished').checked;
+    box.innerHTML = "";
+    if (!currentClient) return;
+
+    const sites = clientSiteMap[currentClient] || [];
     sites.forEach(siteObj => {
         const isFinished = siteObj.status === "완료";
-        
-        // 검색 목록(datalist)에는 모든 현장 추가
-        const option = document.createElement('option');
-        option.value = siteObj.name;
-        if (isFinished) option.label = "(완료)";
-        dataList.appendChild(option);
-
-        // 칩(Quick Select)은 조건에 따라 표시
         if (showFinished || !isFinished) {
             const div = document.createElement('div');
-            div.className = 'chip';
-            if (isFinished) {
-                div.style.backgroundColor = "#e2e8f0";
-                div.style.color = "#94a3b8";
-                div.innerText = "[AS] " + siteObj.name;
-            } else {
-                div.innerText = siteObj.name;
-            }
-
+            div.className = `chip ${isFinished ? 'finished' : ''}`;
+            div.innerText = isFinished ? `[AS] ${siteObj.name}` : siteObj.name;
             div.onclick = () => {
-                document.getElementById('site-input').value = siteObj.name;
-                updateActiveChip('#site-chips', div);
+                document.querySelectorAll('#site-chips .chip').forEach(c => c.classList.remove('active'));
+                div.classList.add('active');
             };
-            siteBox.appendChild(div);
+            box.appendChild(div);
         }
     });
 }
 
-// 입력창에 직접 타이핑할 때 칩 상태 동기화
-function syncSiteSelection() {
-    const val = document.getElementById('site-input').value;
-    const chips = document.querySelectorAll('#site-chips .chip');
-    chips.forEach(chip => {
-        if (chip.innerText.includes(val) && val !== "") {
-            chip.classList.add('active');
-        } else {
-            chip.classList.remove('active');
-        }
-    });
-}
-
-function updateActiveChip(containerId, target) {
-    document.querySelectorAll(`${containerId} .chip`).forEach(c => c.classList.remove('active'));
-    target.classList.add('active');
-}
-
-// 전송 함수에서 현장명 수집
-async function send() {
-    // ... 기존 코드 중략 ...
-    const selectedSite = document.getElementById('site-input').value;
-    
-    if (!selectedSite) return alert("🏗️ 현장명을 입력하거나 선택해 주세요!");
-    
-    // payload 구성 시 selectedSite 사용
-    // ... 나머지 전송 로직 동일
-}
-
-
-let lists = {
-    member: ["기원", "창재", "비비", "서호"],
-    car: ["봉고", "포터", "스타렉스", "창재차"],
-    material: ["hfix2.5sq", "hfix4sq 전선", "22CD", "16CD", "전산볼트"]
-};
-
-let delMode = { member: false, car: false, material: false };
-
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('date').valueAsDate = new Date();
-    renderAllChips();
-});
-
+// 2. 칩 관리 및 전송 로직
 function renderAllChips() {
     renderChips('member'); renderChips('car'); renderChips('material');
 }
@@ -126,18 +89,28 @@ function renderChips(type) {
     });
 }
 
+function addItem(type) {
+    const input = document.getElementById(`add-${type}-input`);
+    const val = input.value.trim();
+    if (!val) return;
+    if (type === 'site') {
+        const box = document.getElementById('site-chips');
+        const div = document.createElement('div');
+        div.className = 'chip active';
+        div.innerText = val;
+        div.onclick = () => div.classList.toggle('active');
+        box.appendChild(div);
+    } else {
+        if (!lists[type].includes(val)) { lists[type].push(val); renderChips(type); }
+    }
+    input.value = "";
+}
+
 function toggleDelMode(type) {
     delMode[type] = !delMode[type];
     const label = document.querySelector(`.chip-header span[onclick*="${type}"]`);
     label.innerText = delMode[type] ? "✅ 완료" : "🗑️ 삭제모드";
     renderChips(type);
-}
-
-function addItem(type) {
-    const input = document.getElementById(`add-${type}-input`);
-    const val = input.value.trim();
-    if (!val || lists[type].includes(val)) return;
-    lists[type].push(val); renderChips(type); input.value = "";
 }
 
 const fileTo64 = (f) => new Promise((res) => {
@@ -146,21 +119,19 @@ const fileTo64 = (f) => new Promise((res) => {
 
 async function send() {
     const btn = document.getElementById('sBtn');
-    const site = document.getElementById('site').value;
-    if (!site) return alert("🏗️ 현장명을 입력해주세요!");
+    const selectedClient = document.querySelector('#client-chips .chip.active')?.innerText;
+    const selectedSite = document.querySelector('#site-chips .chip.active')?.innerText || document.getElementById('add-site-input').value;
+
+    if (!selectedClient || !selectedSite) return alert("🏢 거래처와 현장명을 모두 선택해 주세요!");
 
     const getSelected = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
 
-    btn.disabled = true; btn.innerText = "⏳ 사진 처리 및 전송 중...";
-    
-    // 다중 파일 처리
+    btn.disabled = true; btn.innerText = "⏳ 처리 중...";
     const receiptFiles = document.getElementById('receipt').files;
     let filesArray = [];
     if (receiptFiles.length > 0) {
         filesArray = await Promise.all(Array.from(receiptFiles).map(async (file) => ({
-            content: await fileTo64(file),
-            name: file.name,
-            type: file.type
+            content: await fileTo64(file), name: file.name, type: file.type
         })));
     }
 
@@ -168,8 +139,8 @@ async function send() {
         action: "saveLog",
         data: {
             date: document.getElementById('date').value,
-            client: document.getElementById('client').value,
-            site: site,
+            client: selectedClient,
+            site: selectedSite,
             work: document.getElementById('work').value,
             materials: getSelected('#material-chips'),
             start: document.getElementById('start').value,
@@ -186,11 +157,10 @@ async function send() {
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
         if (await res.text() === "SUCCESS") {
-            alert(`✅ 저장 완료! (영수증 ${filesArray.length}장)`);
-            const msg = `[타이탄 일보]\n📅 ${payload.data.date}\n🏗️ 현장: ${payload.data.site}\n🛠️ 작업: ${payload.data.work}\n📦 자재: ${payload.data.materials}\n👥 인원: ${payload.data.members}\n🧾 영수증: ${filesArray.length}장 첨부`;
+            alert(`✅ 저장 완료!`);
+            const msg = `[타이탄 일보]\n📅 ${payload.data.date}\n🏢 ${payload.data.client}\n🏗️ ${payload.data.site}\n🛠️ ${payload.data.work}\n👥 ${payload.data.members}`;
             if (navigator.share) navigator.share({ title: '타이탄 일보', text: msg });
-            else alert("복사되었습니다:\n" + msg);
         }
-    } catch (e) { alert("⚠️ 오류 발생!"); }
+    } catch (e) { alert("⚠️ 전송 오류"); }
     finally { btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유"; }
 }

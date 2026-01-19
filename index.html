@@ -9,111 +9,69 @@
         body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; background: var(--card); border-radius: 20px; padding: 25px; box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
         h2 { font-size: 1.5rem; margin-bottom: 25px; border-bottom: 2px solid #334155; padding-bottom: 10px; }
-        
         .row { display: flex; gap: 10px; margin-bottom: 15px; }
         .col { flex: 1; }
-        
         label { display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 8px; color: #475569; }
         input, select { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; background: var(--input-bg); font-size: 1rem; }
-        
-        /* 칩 섹션 디자인 */
         .chip-header { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
         .del-mode { font-size: 0.8rem; color: #ef4444; cursor: pointer; text-decoration: underline; }
         .chip-box { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; min-height: 40px; }
         .chip { padding: 8px 15px; background: #f1f5f9; border-radius: 20px; cursor: pointer; border: 1px solid #e2e8f0; font-weight: 500; font-size: 0.9rem; transition: 0.2s; }
         .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
-        .chip.delete-target { border: 2px dashed #ef4444; color: #ef4444; }
-        
+        .chip.finished { background: #e2e8f0; color: #94a3b8; } /* 완료 현장 스타일 */
         .add-group { display: flex; gap: 5px; margin-bottom: 20px; }
         .add-group input { flex: 3; padding: 10px; font-size: 0.9rem; }
         .add-group button { flex: 1; background: #94a3b8; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-
-        .submit-btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 15px; font-weight: bold; font-size: 1.1rem; margin-top: 20px; cursor: pointer; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); }
-        .submit-btn:disabled { background: #cbd5e1; }
+        .submit-btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 15px; font-weight: bold; font-size: 1.1rem; margin-top: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>⚡ 타이탄 일보 (즉시공유)</h2>
-        
+        <h2>⚡ 타이탄 일보 (v1.3)</h2>
         <div class="row">
-            <div class="col">
-                <label>📅 날짜</label>
-                <input type="date" id="date">
-            </div>
-            <div class="col">
-                <label>🏢 거래처</label>
-                <input type="text" id="client" placeholder="선택/입력">
+            <div class="col"><label>📅 날짜</label><input type="date" id="date"></div>
+        </div>
+
+        <label>🏢 거래처 선택</label>
+        <div id="client-chips" class="chip-box"></div>
+
+        <div class="chip-header">
+            <label>🏗️ 현장명 선택</label>
+            <div style="font-size: 0.8rem; color: #64748b;">
+                <input type="checkbox" id="showFinished" onchange="renderSiteChips()" style="width:auto; margin-right:5px;"> 
+                <span>완료 현장 포함 (AS)</span>
             </div>
         </div>
-        
-       <div class="chip-header">
-    <label>🏗️ 현장명 (검색 또는 직접 입력)</label>
-    <div style="font-size: 0.8rem; color: #64748b;">
-        <input type="checkbox" id="showFinished" onchange="renderSiteChips()" style="width:auto; margin-right:5px;"> 
-        <span>완료 현장 포함 (AS)</span>
-    </div>
-</div>
+        <div id="site-chips" class="chip-box"></div>
+        <div class="add-group"><input type="text" id="add-site-input" placeholder="현장 직접 입력"><button onclick="addItem('site')">추가</button></div>
 
-<div class="add-group">
-    <input type="text" id="site-input" list="site-options" placeholder="현장명을 검색하거나 입력하세요" oninput="syncSiteSelection()">
-    <datalist id="site-options"></datalist>
-</div>
+        <label>🛠️ 작업내용</label><input type="text" id="work" placeholder="예: 입선, 트레이" style="margin-bottom:15px;">
 
-<div id="site-chips" class="chip-box"></div>
+        <div class="chip-header"><label>📦 자재내역</label><span class="del-mode" onclick="toggleDelMode('material')">🗑️ 삭제모드</span></div>
+        <div id="material-chips" class="chip-box"></div>
+        <div class="add-group"><input type="text" id="add-material-input" placeholder="자재 입력"><button onclick="addItem('material')">추가</button></div>
 
-        
-        <label>🛠️ 작업내용</label>
-        <input type="text" id="work" placeholder="예: 입선, 트레이" style="margin-bottom:15px;">
-        
         <label>⏰ 작업시간</label>
+        <div class="row"><input type="time" id="start" value="08:00"><span style="align-self:center;">~</span><input type="time" id="end" value="17:00"></div>
+        
+        <div class="chip-header"><label>👥 작업인원</label><span class="del-mode" onclick="toggleDelMode('member')">🗑️ 삭제모드</span></div>
+        <div id="member-chips" class="chip-box"></div>
+        <div class="add-group"><input type="text" id="add-member-input" placeholder="이름 입력"><button onclick="addItem('member')">추가</button></div>
+
+        <div class="chip-header"><label>🚛 차량</label><span class="del-mode" onclick="toggleDelMode('car')">🗑️ 삭제모드</span></div>
+        <div id="car-chips" class="chip-box"></div>
+        <div class="add-group"><input type="text" id="add-car-input" placeholder="차량 입력"><button onclick="addItem('car')">추가</button></div>
+
         <div class="row">
-            <input type="time" id="start" value="08:00">
-            <span style="align-self:center;">~</span>
-            <input type="time" id="end" value="17:00">
+            <div class="col" style="flex:2;"><label>💰 경비 내역</label><input type="text" id="expDetail" placeholder="자재비 등"></div>
+            <div class="col"><label>💵 금액</label><input type="number" id="expAmount" placeholder="0"></div>
         </div>
         
-        <div class="chip-header">
-            <label>👥 작업인원</label>
-            <span class="del-mode" onclick="toggleDelMode('member')">🗑️ 삭제모드</span>
-        </div>
-        <div id="member-chips" class="chip-box"></div>
-        <div class="add-group">
-            <input type="text" id="add-member-input" placeholder="이름 입력">
-            <button onclick="addItem('member')">추가</button>
-        </div>
-
-        <div class="chip-header">
-            <label>🚛 차량</label>
-            <span class="del-mode" onclick="toggleDelMode('car')">🗑️ 삭제모드</span>
-        </div>
-        <div id="car-chips" class="chip-box"></div>
-        <div class="add-group">
-            <input type="text" id="add-car-input" placeholder="차량 입력">
-            <button onclick="addItem('car')">추가</button>
-        </div>
-<label>🏗️ 자재내역</label>
-<input type="text" id="materials" placeholder="예: 전선 2.5sq, 배관재 등" style="margin-bottom:15px;">
-
-        <div class="row">
-            <div class="col" style="flex:2;">
-                <label>💰 경비 내역</label>
-                <input type="text" id="expDetail" placeholder="자재비 등">
-            </div>
-            <div class="col">
-                <label>💵 금액</label>
-                <input type="number" id="expAmount" placeholder="0">
-            </div>
-        </div>
-
         <label>🍱 석식 여부</label>
-        <select id="dinner">
-            <option value="X">석식 X</option>
-            <option value="O">석식 O</option>
-        </select>
-
-        <label style="margin-top:15px;">🧾 영수증 사진</label>
-        <input type="file" id="receipt" accept="image/*" style="background:white; border:none; padding:10px 0;">
+        <select id="dinner"><option value="X">석식 X</option><option value="O">석식 O (17시~18시 공제)</option></select>
+        
+        <label style="margin-top:15px;">🧾 영수증 사진 (여러 장 선택 가능)</label>
+        <input type="file" id="receipt" accept="image/*" multiple style="background:white; border:none; padding:10px 0;">
         
         <button class="submit-btn" id="sBtn" onclick="send()">🚀 저장 및 카톡 공유</button>
     </div>
