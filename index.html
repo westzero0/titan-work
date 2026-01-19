@@ -55,11 +55,10 @@
         <textarea id="materialExtra" placeholder="자재 수량 및 상세 내역을 입력하세요" rows="4"></textarea>
 
         <label style="margin-top:15px;">⏰ 작업시간</label>
-        <div class="row"><input type="time" id="start" value="08:00"><span style="align-self:center;">~</span><input type="time" id="end" value="17:00"></div>
-<div class="row">
-    <input type="time" id="start" value="08:00" step="1800">
+       <div class="row">
+    <select id="start" style="flex:1;"></select>
     <span style="align-self:center;">~</span>
-    <input type="time" id="end" value="17:00" step="1800">
+    <select id="end" style="flex:1;"></select>
 </div>
         
         <div class="chip-header"><label>👥 작업인원 (필수)</label><span class="del-mode" onclick="toggleDelMode('member')">🗑️ 삭제모드</span></div>
