@@ -205,24 +205,46 @@ const fileTo64 = (f) => new Promise((res) => {
 async function send() {
     const btn = document.getElementById('sBtn');
     
-    const selectedClient = document.querySelector('#client-chips .chip.active')?.innerText;
-    const selectedSite = document.getElementById('siteSearch').value || 
-                         document.querySelector('#site-chips .chip.active')?.innerText;
+    // 1. 데이터 수집
+    const client = document.querySelector('#client-chips .chip.active')?.innerText;
+    const site = document.getElementById('siteSearch').value || document.querySelector('#site-chips .chip.active')?.innerText;
     const work = document.getElementById('work').value.trim();
+    const startDate = document.getElementById('start').value; // 예: "08:00"
+    const endDate = document.getElementById('end').value;     // 예: "17:00"
+    const dateVal = document.getElementById('date').value;    // 예: "2026-01-19"
 
-    const getSelected = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
+    const getSelected = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(' ');
     const members = getSelected('#member-chips');
     const cars = getSelected('#car-chips');
-    const materialChips = getSelected('#material-chips');
-    const materialText = document.getElementById('materialExtra').value.trim();
+    const matChips = getSelected('#material-chips');
+    const matText = document.getElementById('materialExtra').value.trim();
+    const dinner = document.getElementById('dinner').value; // 석식 여부
 
-    // 🚨 필수 항목 검증 강화
-    if (!selectedClient || !selectedSite) return alert("🏢 거래처와 현장명을 모두 선택해 주세요!");
-    if (!work) return alert("🛠️ 작업내용(필수)을 입력해 주세요!");
-    if (!members) return alert("👥 작업 인원을 최소 한 명 이상 선택해야 합니다!");
-    if (!cars) return alert("🚛 사용된 차량을 최소 하나 이상 선택해야 합니다!");
+    // 필수 항목 검증
+    if (!client || !site || !work || !members || !cars) return alert("⚠️ 모든 필수 항목을 입력해 주세요!");
 
     btn.disabled = true; btn.innerText = "⏳ 전송 중...";
+
+    // 2. 메시지 폼 가공 (요청하신 양식)
+    const dateObj = new Date(dateVal);
+    const formattedDate = `${dateObj.getMonth() + 1}.${dateObj.getDate()}`; // "1.19" 형식
+    const formattedStart = startDate.replace(':', ' '); // "08 00"
+    const formattedEnd = endDate.replace(':', ' ');     // "17 00"
+    const finalMaterials = matText ? `${matChips}\n${matText}` : matChips;
+
+    // 🚀 카톡 공유용 메시지 구성
+    const msg = `날짜 :${formattedDate}
+거래처 :${client}
+현장명 :${site}
+작업내용 :${work}
+작업시간 :${formattedStart}~${formattedEnd}
+작업인원 :${members}
+차량 : ${cars}
+석식여부 : ${dinner.toLowerCase()}
+사용자재 :
+${finalMaterials}`;
+
+    // 3. 파일 처리 및 페이로드 구성
     const receiptFiles = document.getElementById('receipt').files;
     let filesArray = [];
     if (receiptFiles.length > 0) {
@@ -234,29 +256,25 @@ async function send() {
     const payload = {
         action: "saveLog",
         data: {
-            date: document.getElementById('date').value,
-            client: selectedClient,
-            site: selectedSite,
-            work: work,
-            materials: materialText ? `${materialChips}\n[상세]\n${materialText}` : materialChips,
-            start: document.getElementById('start').value,
-            end: document.getElementById('end').value,
-            members: members,
-            car: cars,
-            dinner: document.getElementById('dinner').value,
+            date: dateVal, client, site, work,
+            materials: finalMaterials,
+            start: startDate, end: endDate,
+            members, car: cars, dinner,
             expAmount: document.getElementById('expAmount').value || "0",
             expDetail: document.getElementById('expDetail').value || "없음",
             files: filesArray
         }
     };
 
+    // 4. 서버 전송 및 공유 실행
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
         if (await res.text() === "SUCCESS") {
             alert(`✅ 저장 완료!`);
-            const msg = `[타이탄 일보]\n📅 ${payload.data.date}\n🏗️ ${payload.data.site}\n🛠️ ${payload.data.work}\n👥 ${payload.data.members}`;
-            if (navigator.share) navigator.share({ title: '타이탄 일보', text: msg });
+            if (navigator.share) {
+                await navigator.share({ title: '작업일보', text: msg });
+            }
         }
-    } catch (e) { alert("⚠️ 전송 오류 발생"); }
+    } catch (e) { alert("⚠️ 오류 발생"); }
     finally { btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유"; }
 }
