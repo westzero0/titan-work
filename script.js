@@ -1,6 +1,5 @@
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyPao29x11IGt196CXBijsyxZQ4mxqHnbBc-e1WKDhTYL-x3Rc5zddu4BGPAK84OgXm/exec"; 
 
-
 let clientSiteMap = {}; 
 let currentClient = "";
 let lists = {
@@ -10,26 +9,28 @@ let lists = {
 };
 let delMode = { member: false, car: false, material: false };
 
-// 🛠️ async 에러 해결: DOMContentLoaded에 async 추가
+// ✅ 페이지 로드 시 실행 (async 필수)
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('date').valueAsDate = new Date();
     
-    // 로컬 캐시 로드
+    // 1. 로컬 저장소에서 데이터 즉시 로드 (로딩 속도 개선)
     const cached = localStorage.getItem('titan_client_map');
     if (cached) {
         clientSiteMap = JSON.parse(cached);
         renderClientChips();
     }
 
-    await fetchClientMapping(); // 최신 데이터 배경 업데이트
+    // 2. 서버에서 최신 데이터 가져와서 업데이트
+    await fetchClientMapping(); 
     renderAllChips();
 });
 
+// ✅ 서버 데이터 가져오기 (async 필수)
 async function fetchClientMapping() {
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: "getClientMapping" }) });
         const newData = await res.json();
-        localStorage.setItem('titan_client_map', JSON.stringify(newData));
+        localStorage.setItem('titan_client_map', JSON.stringify(newData)); // 캐시 저장
         clientSiteMap = newData;
         renderClientChips();
     } catch (e) { console.error("데이터 로드 실패"); }
@@ -70,7 +71,7 @@ function renderSiteChips() {
         option.value = siteObj.name;
         dataList.appendChild(option);
 
-        // 완료 현장은 5개까지만 노출
+        // ✅ 완료 현장은 최대 5개까지만 노출
         if (!isFinished || (showFinished && finishedCount < 5)) {
             const div = document.createElement('div');
             div.className = `chip ${isFinished ? 'finished' : ''}`;
@@ -131,6 +132,7 @@ const fileTo64 = (f) => new Promise((res) => {
     const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
 });
 
+// ✅ 저장 및 전송 (async 필수)
 async function send() {
     const btn = document.getElementById('sBtn');
     
@@ -138,25 +140,25 @@ async function send() {
     const selectedClient = document.querySelector('#client-chips .chip.active')?.innerText;
     const selectedSite = document.getElementById('siteSearch').value || 
                          document.querySelector('#site-chips .chip.active')?.innerText;
-    const work = document.getElementById('work').value.trim(); // 🛠️ 작업내용 가져오기
+    const work = document.getElementById('work').value.trim();
 
     const getSelected = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     const members = getSelected('#member-chips');
     const cars = getSelected('#car-chips');
+    const materialChips = getSelected('#material-chips');
+    const materialText = document.getElementById('materialExtra').value.trim();
 
-    // 🚨 필수값 검증 강화 (거래처, 현장, 작업내용, 인원, 차량)
+    // 🚨 필수값 검증 강화
     if (!selectedClient || !selectedSite) return alert("🏢 거래처와 현장명을 모두 선택해 주세요!");
-    if (!work) return alert("🛠️ 작업내용을 입력해 주세요!"); // 🚨 작업내용 검증 추가
+    if (!work) return alert("🛠️ 작업내용(필수)을 입력해 주세요!");
     if (!members) return alert("👥 작업 인원을 최소 한 명 이상 선택해야 합니다!");
     if (!cars) return alert("🚛 사용된 차량을 최소 하나 이상 선택해야 합니다!");
-
-    // ... (이하 전송 로직 동일)
-}
 
     btn.disabled = true; btn.innerText = "⏳ 전송 중...";
     const receiptFiles = document.getElementById('receipt').files;
     let filesArray = [];
     if (receiptFiles.length > 0) {
+        // ✅ Promise.all 내부에서 await 사용 시 map 앞에도 async 필수
         filesArray = await Promise.all(Array.from(receiptFiles).map(async (f) => ({
             content: await fileTo64(f), name: f.name, type: f.type
         })));
@@ -168,7 +170,7 @@ async function send() {
             date: document.getElementById('date').value,
             client: selectedClient,
             site: selectedSite,
-            work: document.getElementById('work').value,
+            work: work,
             materials: materialText ? `${materialChips}\n[상세]\n${materialText}` : materialChips,
             start: document.getElementById('start').value,
             end: document.getElementById('end').value,
@@ -183,11 +185,14 @@ async function send() {
 
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-        if (await res.text() === "SUCCESS") {
+        const result = await res.text();
+        if (result === "SUCCESS") {
             alert(`✅ 저장 완료!`);
-            const msg = `[타이탄 일보]\n📅 ${payload.data.date}\n🏗️ ${payload.data.site}\n🛠️ ${payload.data.work}\n👥 ${payload.data.members}`;
+            const msg = `[타이탄 일보]\n📅 ${payload.data.date}\n🏢 ${payload.data.client}\n🏗️ ${payload.data.site}\n🛠️ ${payload.data.work}\n👥 ${payload.data.members}`;
             if (navigator.share) navigator.share({ title: '타이탄 일보', text: msg });
+        } else {
+            alert("❌ 저장 실패: " + result);
         }
-    } catch (e) { alert("⚠️ 전송 오류"); }
+    } catch (e) { alert("⚠️ 전송 오류가 발생했습니다."); }
     finally { btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유"; }
 }
