@@ -47,19 +47,35 @@ function selectClient(client, element) {
 
 function renderSiteChips() {
     const box = document.getElementById('site-chips');
+    const dataList = document.getElementById('site-options');
     const showFinished = document.getElementById('showFinished').checked;
+    
     box.innerHTML = "";
+    dataList.innerHTML = ""; 
     if (!currentClient) return;
 
     const sites = clientSiteMap[currentClient] || [];
+    let finishedRenderCount = 0; // 완료된 현장 표시 개수 카운트
+
     sites.forEach(siteObj => {
         const isFinished = siteObj.status === "완료";
-        if (showFinished || !isFinished) {
+        
+        // 1. 검색창 자동완성 목록에는 모든 현장(진행+완료)을 항상 추가
+        const option = document.createElement('option');
+        option.value = siteObj.name;
+        dataList.appendChild(option);
+
+        // 2. 칩으로 보여주는 조건
+        // '진행중'은 무조건 표시, '완료'는 체크박스가 켜져 있고 5개 미만일 때만 표시
+        if (!isFinished || (showFinished && finishedRenderCount < 5)) {
             const div = document.createElement('div');
             div.className = `chip ${isFinished ? 'finished' : ''}`;
             div.innerText = isFinished ? `[AS] ${siteObj.name}` : siteObj.name;
-            div.setAttribute('data-name', siteObj.name.toLowerCase()); // 검색용 데이터
+            
+            if (isFinished) finishedRenderCount++;
+
             div.onclick = () => {
+                document.getElementById('siteSearch').value = siteObj.name; // 클릭 시 검색창에 입력
                 document.querySelectorAll('#site-chips .chip').forEach(c => c.classList.remove('active'));
                 div.classList.add('active');
             };
@@ -67,6 +83,20 @@ function renderSiteChips() {
         }
     });
 }
+
+function syncSiteSelection() {
+    const val = document.getElementById('siteSearch').value;
+    const chips = document.querySelectorAll('#site-chips .chip');
+    chips.forEach(chip => {
+        // 칩 이름에서 [AS] 표시를 떼고 입력값과 비교
+        if (chip.innerText.replace('[AS] ', '') === val) {
+            chip.classList.add('active');
+        } else {
+            chip.classList.remove('active');
+        }
+    });
+}
+
 
 // 🔍 현장명 실시간 필터링 함수
 function filterSites() {
@@ -128,8 +158,11 @@ const fileTo64 = (f) => new Promise((res) => {
 
 async function send() {
     const btn = document.getElementById('sBtn');
-    const selectedClient = document.querySelector('#client-chips .chip.active')?.innerText;
-    const selectedSite = document.querySelector('#site-chips .chip.active')?.innerText || document.getElementById('add-site-input').value;
+    
+    // 현장명 가져오기 (검색창 입력값 -> 선택된 칩 -> 직접 입력 순서)
+    const selectedSite = document.getElementById('siteSearch').value || 
+                         document.querySelector('#site-chips .chip.active')?.innerText || 
+                         document.getElementById('add-site-input').value;
 
     const getSelected = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
 
@@ -138,13 +171,16 @@ async function send() {
     const chipsMaterial = getSelected('#material-chips');
     const extraMaterial = document.getElementById('materialExtra').value.trim();
     
-    // 🏗️ 자재 내역 합치기 (칩 + 수기 입력)
-    const finalMaterials = extraMaterial ? `${chipsMaterial} / 추가: ${extraMaterial}` : chipsMaterial;
+    // 🏗️ 자재 내역 합치기 (선택한 칩 + 줄바꿈된 상세 내용)
+    const finalMaterials = extraMaterial ? `${chipsMaterial}\n[상세내용]\n${extraMaterial}` : chipsMaterial;
 
-    // 🚨 필수 입력값 검증 (인원, 차량)
-    if (!selectedClient || !selectedSite) return alert("🏢 거래처와 현장명을 모두 선택해 주세요!");
+    // 🚨 필수값 검증 (인원, 차량이 없으면 여기서 중단)
+    if (!selectedSite) return alert("🏗️ 현장명을 입력하거나 선택해 주세요!");
     if (!members) return alert("👥 작업 인원을 한 명 이상 선택해 주세요!");
     if (!cars) return alert("🚛 차량을 하나 이상 선택해 주세요!");
+
+    // ... (이후 fetch 전송 로직은 기존과 동일)
+}
 
     btn.disabled = true; btn.innerText = "⏳ 처리 중...";
     const receiptFiles = document.getElementById('receipt').files;

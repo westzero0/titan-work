@@ -35,34 +35,32 @@
 
         <label>🏢 거래처 선택</label>
         <div id="client-chips" class="chip-box"></div>
-
-        <div class="chip-header">
+<div class="chip-header">
             <label>🏗️ 현장명 선택</label>
             <div style="font-size: 0.8rem; color: #64748b;">
                 <input type="checkbox" id="showFinished" onchange="renderSiteChips()" style="width:auto; margin-right:5px;"> 
                 <span>완료 현장 포함 (AS)</span>
             </div>
         </div>
-        <input type="text" id="siteSearch" class="search-input" placeholder="현장 이름 검색..." oninput="filterSites()">
+        <input type="text" id="siteSearch" class="search-input" list="site-options" placeholder="현장 검색 또는 직접 입력..." oninput="syncSiteSelection()">
+        <datalist id="site-options"></datalist>
         <div id="site-chips" class="chip-box"></div>
-        <div class="add-group"><input type="text" id="add-site-input" placeholder="현장 직접 입력"><button onclick="addItem('site')">추가</button></div>
+        <div class="add-group"><input type="text" id="add-site-input" placeholder="새 현장 이름 입력"><button onclick="addItem('site')">추가</button></div>
 
         <label>🛠️ 작업내용</label><input type="text" id="work" placeholder="예: 입선, 트레이" style="margin-bottom:15px;">
 
         <div class="chip-header"><label>📦 자재내역</label><span class="del-mode" onclick="toggleDelMode('material')">🗑️ 삭제모드</span></div>
         <div id="material-chips" class="chip-box"></div>
         <div class="add-group"><input type="text" id="add-material-input" placeholder="자재 칩 추가"><button onclick="addItem('material')">추가</button></div>
-        <input type="text" id="materialExtra" placeholder="자재 수량 또는 추가 내역 입력" style="margin-top:5px;">
+        <label style="font-size: 0.8rem; color: #64748b;">추가 자재 및 상세 내역</label>
+        <textarea id="materialExtra" placeholder="수량, 규격 등 상세 내역을 여러 줄로 입력하세요" rows="4" style="margin-top:5px; resize: vertical;"></textarea>
 
-        <label style="margin-top:15px;">⏰ 작업시간</label>
-        <div class="row"><input type="time" id="start" value="08:00"><span style="align-self:center;">~</span><input type="time" id="end" value="17:00"></div>
-        
         <div class="chip-header"><label>👥 작업인원 (필수)</label><span class="del-mode" onclick="toggleDelMode('member')">🗑️ 삭제모드</span></div>
         <div id="member-chips" class="chip-box"></div>
-        <div class="add-group"><input type="text" id="add-member-input" placeholder="이름 입력"><button onclick="addItem('member')">추가</button></div>
-
         <div class="chip-header"><label>🚛 차량 (필수)</label><span class="del-mode" onclick="toggleDelMode('car')">🗑️ 삭제모드</span></div>
         <div id="car-chips" class="chip-box"></div>
+
+
         <div class="add-group"><input type="text" id="add-car-input" placeholder="차량 입력"><button onclick="addItem('car')">추가</button></div>
 
         <div class="row">
