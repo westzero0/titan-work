@@ -133,19 +133,25 @@ const fileTo64 = (f) => new Promise((res) => {
 
 async function send() {
     const btn = document.getElementById('sBtn');
+    
+    // 데이터 수집
     const selectedClient = document.querySelector('#client-chips .chip.active')?.innerText;
-    const selectedSite = document.getElementById('siteSearch').value || document.querySelector('#site-chips .chip.active')?.innerText;
+    const selectedSite = document.getElementById('siteSearch').value || 
+                         document.querySelector('#site-chips .chip.active')?.innerText;
+    const work = document.getElementById('work').value.trim(); // 🛠️ 작업내용 가져오기
 
     const getSelected = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     const members = getSelected('#member-chips');
     const cars = getSelected('#car-chips');
-    const materialChips = getSelected('#material-chips');
-    const materialText = document.getElementById('materialExtra').value.trim();
 
-    // 🚨 필수값 검증 (인원, 차량)
+    // 🚨 필수값 검증 강화 (거래처, 현장, 작업내용, 인원, 차량)
     if (!selectedClient || !selectedSite) return alert("🏢 거래처와 현장명을 모두 선택해 주세요!");
+    if (!work) return alert("🛠️ 작업내용을 입력해 주세요!"); // 🚨 작업내용 검증 추가
     if (!members) return alert("👥 작업 인원을 최소 한 명 이상 선택해야 합니다!");
     if (!cars) return alert("🚛 사용된 차량을 최소 하나 이상 선택해야 합니다!");
+
+    // ... (이하 전송 로직 동일)
+}
 
     btn.disabled = true; btn.innerText = "⏳ 전송 중...";
     const receiptFiles = document.getElementById('receipt').files;
