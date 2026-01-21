@@ -226,18 +226,41 @@ async function send() {
         }
     };
 
-    try {
+   try {
+        btn.disabled = true;
+        btn.innerText = "⏳ 서버 저장 중...";
+        
+        // 1. 먼저 서버에 저장만 진행합니다.
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-        if (await res.text() === "SUCCESS") {
-            alert("✅ 저장 성공!");
-            localStorage.removeItem('titan_client_cache');
-            if (navigator.share) await navigator.share({ title: '작업일보', text: msg });
-            resetForm(); 
-        }
-    } catch (e) { alert("⚠️ 오류 발생"); }
-    finally { btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유"; }
-}
+        const resultText = await res.text();
 
+        if (resultText === "SUCCESS") {
+            // 2. 저장이 성공하면 버튼의 용도를 '공유하기'로 바꿉니다.
+            btn.disabled = false;
+            btn.style.backgroundColor = "#fee500"; // 카카오 노란색
+            btn.style.color = "#000";
+            btn.innerText = "✅ 저장됨! 카톡으로 공유하기";
+            
+            // 버튼 클릭 이벤트를 '공유' 전용으로 일시 변경
+            btn.onclick = async () => {
+                try {
+                    await navigator.share({ title: '타이탄 작업일보', text: msg });
+                    resetForm(); // 공유까지 성공하면 폼 초기화
+                } catch (e) {
+                    await copyToClipboard(msg);
+                    alert("메시지가 복사되었습니다. 카톡에 붙여넣어 주세요!");
+                    resetForm();
+                }
+            };
+            
+            alert("서버 저장 완료! 아래 버튼을 눌러 카톡으로 공유하세요.");
+        }
+    } catch (e) {
+        alert("⚠️ 오류 발생: " + e.message);
+        btn.disabled = false;
+        btn.innerText = "🚀 다시 시도";
+    }
+}
 const fileTo64 = (f) => new Promise((res) => {
     const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
 });
@@ -255,4 +278,26 @@ function resetForm() {
     document.querySelectorAll('.chip.active').forEach(c => c.classList.remove('active'));
     document.getElementById('site-chips').innerHTML = "";
     currentSites = [];
+
+const btn = document.getElementById('sBtn');
+    btn.style.backgroundColor = "#2563eb"; // 원래 파란색
+    btn.style.color = "#fff";
+    btn.innerText = "🚀 저장 및 카톡 공유";
+    btn.onclick = send; // 클릭 이벤트를 다시 처음으로 되돌림
+}
+
+
+// 📋 클립보드 복사 보조 함수 (공유 실패 시 대비)
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (err) {
+        // 구형 브라우저나 보안 환경 대비용
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    }
 }
