@@ -9,3 +9,14 @@
 .chip.active { 
     background: #2c3e50 ! from; color: white; border-color: #2c3e50; 
 }
+/* 신규 현장 추가 칩 스타일 */
+.chip.add-chip {
+    background-color: #e3f2fd;
+    border: 1px dashed #2196f3;
+    color: #1976d2;
+    font-weight: bold;
+    cursor: pointer;
+}
+.chip.add-chip:hover {
+    background-color: #bbdefb;
+}
