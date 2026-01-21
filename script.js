@@ -189,8 +189,25 @@ async function send() {
     }
 
 
+// 💡 [중요] 카톡 메시지에 필요한 변수들을 여기서 정의합니다!
+    const startTime = document.getElementById('start').value;
+    const endTime = document.getElementById('end').value;
+    const members = getSel('#member-chips') || "없음";
+    const car = getSel('#car-chips') || "없음";
+    const dinner = document.getElementById('dinner').value === "O" ? "O" : "X";
+    
+    const materialChips = getSel('#material-chips');
+    const materialExtra = document.getElementById('materialExtra').value.trim();
+    const materials = (materialChips + (materialExtra ? " / " + materialExtra : "")).trim() || "없음";
+
+
+
 // 💡카톡 메시지 포맷
     const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 작업시간: ${startTime} ~ ${endTime}\n👥 작업인원: ${members}\n🚗 차량: ${car}\n🍱 석식여부: ${dinner}\n📦 사용자재: ${materials}`;
+
+
+// 4. 구글 서버(GAS)로 페이로드 전송
+
 
     const payload = {
         action: "saveLog",
