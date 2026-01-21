@@ -1,6 +1,7 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzWvSifWq5Gm0zgb5_paLZoHgvWnwkFp8ZfTwt8pKcmYH7YkR-qvCzo5z6if_BiTic/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxfL9aG8O-yXTqhITE4L7wGWomntx_msHweClickCQTHels5UNRCkoKtaRI5waMP29b/exec"; 
 
-let currentSites = []; // 선택된 거래처의 현장 목록 저장
+let currentClient = ""; 
+let currentSites = []; 
 let lists = {
     member: ["기원", "창재", "비비", "서호"],
     car: ["봉고", "포터", "스타렉스", "창재차"],
@@ -19,12 +20,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('submitter').value = myName || "미지정";
     document.getElementById('date').valueAsDate = new Date();
     
-    // 💡 아래 정의된 함수들을 호출합니다.
     generateTimeOptions();
     renderAllChips();
     
-    // 거래처 데이터 로드 (캐시 우선 사용)
-    await fetchClientsWithCache(); 
+    // 💡 수정: 거래처 데이터를 가져온 후 화면에 렌더링합니다.
+    const clients = await fetchClientsWithCache();
+    renderClientChips(clients);
 
     document.getElementById('siteSearch').addEventListener('input', (e) => {
         const term = e.target.value.trim();
@@ -39,9 +40,7 @@ async function fetchClientsWithCache() {
     const cacheTime = localStorage.getItem('titan_cache_time');
     const now = new Date().getTime();
 
-    // 10분 이내 캐시 데이터가 있다면 사용
     if (cachedData && cacheTime && (now - cacheTime < 10 * 60 * 1000)) {
-        console.log("⚡ 캐시 데이터를 사용합니다.");
         return JSON.parse(cachedData);
     }
 
@@ -57,18 +56,56 @@ async function fetchClientsWithCache() {
     }
 }
 
-// [3. UI 렌더링 및 보조 함수들]
-function generateTimeOptions() {
-    const s = document.getElementById('start'), e = document.getElementById('end');
-    if(!s || !e) return;
-    s.innerHTML = ""; e.innerHTML = "";
-    for (let h = 0; h < 24; h++) {
-        for (let m = 0; m < 60; m += 30) {
-            const t = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-            s.add(new Option(t, t)); e.add(new Option(t, t));
-        }
+// [3. UI 렌더링 함수들]
+
+// 💡 추가: 거래처 칩을 화면에 그리는 함수
+function renderClientChips(clients) {
+    const box = document.getElementById('client-chips');
+    if (!box) return;
+    box.innerHTML = "";
+    clients.forEach(name => {
+        const div = document.createElement('div');
+        div.className = 'chip';
+        div.innerText = name;
+        div.onclick = async () => {
+            currentClient = name;
+            document.querySelectorAll('#client-chips .chip').forEach(c => c.classList.remove('active'));
+            div.classList.add('active');
+            // 거래처 선택 시 해당 현장 목록을 서버에서 가져옴
+            await fetchSites(name);
+        };
+        box.appendChild(div);
+    });
+}
+
+// 💡 추가: 특정 거래처의 현장 목록을 가져오는 함수
+async function fetchSites(clientName) {
+    const box = document.getElementById('site-chips');
+    box.innerHTML = "⏳ 로딩 중...";
+    try {
+        const res = await fetch(GAS_URL + `?action=getSites&client=${encodeURIComponent(clientName)}`);
+        currentSites = await res.json();
+        renderSiteChips(currentSites);
+    } catch (e) {
+        box.innerHTML = "⚠️ 현장 로드 실패";
     }
-    s.value = "08:00"; e.value = "17:00";
+}
+
+function renderSiteChips(sites, term = "") {
+    const box = document.getElementById('site-chips');
+    box.innerHTML = ""; 
+    sites.forEach(s => {
+        const isFin = s.status === "완료";
+        const div = document.createElement('div');
+        div.className = `chip ${isFin ? 'finished' : ''}`;
+        div.innerText = isFin ? `[완료] ${s.name}` : s.name;
+        div.onclick = () => {
+            document.getElementById('siteSearch').value = s.name;
+            document.querySelectorAll('#site-chips .chip').forEach(c => c.classList.remove('active'));
+            div.classList.add('active');
+        };
+        box.appendChild(div);
+    });
 }
 
 function renderAllChips() { 
@@ -96,23 +133,6 @@ function renderChips(type) {
     });
 }
 
-function renderSiteChips(sites, term = "") {
-    const box = document.getElementById('site-chips');
-    box.innerHTML = ""; 
-    sites.forEach(s => {
-        const isFin = s.status === "완료";
-        const div = document.createElement('div');
-        div.className = `chip ${isFin ? 'finished' : ''}`;
-        div.innerText = isFin ? `[완료] ${s.name}` : s.name;
-        div.onclick = () => {
-            document.getElementById('siteSearch').value = s.name;
-            document.querySelectorAll('#site-chips .chip').forEach(c => c.classList.remove('active'));
-            div.classList.add('active');
-        };
-        box.appendChild(div);
-    });
-}
-
 function toggleDelMode(type) {
     delMode[type] = !delMode[type];
     const btn = document.getElementById(`del-btn-${type}`);
@@ -120,30 +140,26 @@ function toggleDelMode(type) {
     renderChips(type);
 }
 
-// [4. 전송 및 초기화 로직]
-function resetForm() {
-    document.getElementById('work').value = "";
-    document.getElementById('siteSearch').value = "";
-    document.getElementById('materialExtra').value = "";
-    document.getElementById('expAmount').value = "";
-    document.getElementById('expDetail').value = "";
-    document.getElementById('receipt').value = "";
-    document.getElementById('date').valueAsDate = new Date();
-    document.getElementById('start').value = "08:00";
-    document.getElementById('end').value = "17:00";
-    document.getElementById('dinner').value = "no";
-    document.querySelectorAll('.chip.active').forEach(c => c.classList.remove('active'));
-    document.getElementById('site-chips').innerHTML = "";
-    currentSites = [];
+// [4. 유틸리티 및 전송 로직]
+function generateTimeOptions() {
+    const s = document.getElementById('start'), e = document.getElementById('end');
+    if(!s || !e) return;
+    s.innerHTML = ""; e.innerHTML = "";
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 30) {
+            const t = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            s.add(new Option(t, t)); e.add(new Option(t, t));
+        }
+    }
+    s.value = "08:00"; e.value = "17:00";
 }
 
 async function send() {
     const btn = document.getElementById('sBtn');
     const submitter = document.getElementById('submitter').value;
-    const work = document.getElementById('work').value.trim();
+    const work = document.getElementById('work').value.trim(); // 💡 변수 정의 추가
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
     
-    // 수기 입력 혹은 칩 선택값 가져오기
     const siteInput = document.getElementById('siteSearch').value.trim();
     const activeSiteChip = document.querySelector('#site-chips .chip.active')?.innerText;
     const site = activeSiteChip || siteInput; 
@@ -162,7 +178,6 @@ async function send() {
     const files = document.getElementById('receipt').files;
     let fileArray = [];
     if (files.length > 0) {
-        // 💡 여러 장의 사진을 처리하기 위해 map을 사용합니다.
         fileArray = await Promise.all(Array.from(files).map(async f => ({ 
             content: await fileTo64(f), name: f.name, type: f.type 
         })));
@@ -186,7 +201,7 @@ async function send() {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
         if (await res.text() === "SUCCESS") {
             alert("✅ 저장 성공!");
-            localStorage.removeItem('titan_client_cache'); // 새 현장 반영 위해 캐시 삭제
+            localStorage.removeItem('titan_client_cache');
             if (navigator.share) await navigator.share({ title: '작업일보', text: msg });
             resetForm(); 
         }
@@ -201,28 +216,18 @@ const fileTo64 = (f) => new Promise((res) => {
     const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
 });
 
-// 기타 UI 보조 함수들 (renderChips, toggleDelMode 등)은 기존 로직 유지
-function renderAllChips() { ['member', 'car', 'material', 'payer'].forEach(type => renderChips(type)); }
-function renderChips(type) {
-    const box = document.getElementById(`${type}-chips`);
-    if (!box) return;
-    box.innerHTML = "";
-    lists[type].forEach(name => {
-        const div = document.createElement('div');
-        div.className = `chip ${delMode[type] ? 'delete-target' : ''}`;
-        div.innerText = name;
-        div.onclick = () => {
-            if (delMode[type]) { lists[type] = lists[type].filter(i => i !== name); renderChips(type); }
-            else {
-                if (type === 'payer') document.querySelectorAll('#payer-chips .chip').forEach(c => c.classList.remove('active'));
-                div.classList.toggle('active');
-            }
-        };
-        box.appendChild(div);
-    });
+function resetForm() {
+    document.getElementById('work').value = "";
+    document.getElementById('siteSearch').value = "";
+    document.getElementById('materialExtra').value = "";
+    document.getElementById('expAmount').value = "";
+    document.getElementById('expDetail').value = "";
+    document.getElementById('receipt').value = "";
+    document.getElementById('date').valueAsDate = new Date();
+    document.getElementById('start').value = "08:00";
+    document.getElementById('end').value = "17:00";
+    document.getElementById('dinner').value = "no";
+    document.querySelectorAll('.chip.active').forEach(c => c.classList.remove('active'));
+    document.getElementById('site-chips').innerHTML = "";
+    currentSites = [];
 }
-function toggleDelMode(type) {
-    delMode[type] = !delMode[type];
-    const btn = document.getElementById(`del-btn-${type}`);
-    if (btn) btn.innerText = delMode[type] ? "✅ 완료" : "🗑️ 삭제";
-    renderChips(type);
