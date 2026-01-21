@@ -85,11 +85,15 @@ function renderSiteChips(sites = currentSites, term = "") {
     const dl = document.getElementById('site-options');
     const showAll = document.getElementById('showFinished').checked;
 
-// 만약 sites가 여전히 비어있다면(데이터 로드 전) 함수 종료
-    if (!sites || !Array.isArray(sites)) return;
+// 만약 데이터가 아예 로드되지 않은 상태라면 함수를 종료하여 에러를 방지합니다.
+    if (!sites || !Array.isArray(sites)) {
+        console.warn("표시할 현장 데이터가 아직 없습니다.");
+        return;
+    }
 
 
-    box.innerHTML = ""; dl.innerHTML = "";
+ 	   box.innerHTML = ""; 
+	dl.innerHTML = "";
 
     sites.forEach(s => {
         const isFin = s.status === "완료";
