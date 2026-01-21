@@ -80,14 +80,23 @@ function renderClientChips(clients) {
     });
 }
 
-function renderSiteChips(sites, term = "") {
+function renderSiteChips(sites = currentSites, term = "") {
     const box = document.getElementById('site-chips');
     const dl = document.getElementById('site-options');
     const showAll = document.getElementById('showFinished').checked;
+
+// 만약 sites가 여전히 비어있다면(데이터 로드 전) 함수 종료
+    if (!sites || !Array.isArray(sites)) return;
+
+
     box.innerHTML = ""; dl.innerHTML = "";
+
     sites.forEach(s => {
         const isFin = s.status === "완료";
+
         dl.appendChild(new Option(s.name, s.name));
+
+// 필터링 로직: 완료되지 않았거나, '완료현장 포함'이 체크된 경우만 렌더링
         if (!isFin || showAll) {
             const div = document.createElement('div');
             div.className = `chip ${isFin ? 'finished' : ''}`;
