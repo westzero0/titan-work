@@ -1,4 +1,5 @@
-const GAS_URL = "본인의_GAS_URL_주소";
+
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwAA4lE4pDsCk_MArw_8vWbOw8HkeE0fdbtruPKgQmi3GVXN15_K3apbMjVCIl38ngZ/exec"; 
 
 let clientSiteMap = {};
 let currentClient = "";
@@ -11,10 +12,10 @@ let lists = {
 let delMode = { member: false, car: false, material: false, payer: false };
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. 이름 확인 (팝업)
+    // 1. 작성자 이름 처리 (팝업으로 묻고 저장)
     let myName = localStorage.getItem('titan_user_name');
     if (!myName) {
-        myName = prompt("일보 작성을 위해 이름을 입력해주세요. (최초 1회)");
+        myName = prompt("일보 작성을 위해 본인 이름을 입력해주세요. (최초 1회)");
         if (myName) localStorage.setItem('titan_user_name', myName);
     }
     document.getElementById('submitter').value = myName || "미지정";
@@ -23,24 +24,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('date').valueAsDate = new Date();
     generateTimeOptions();
     
-    // 3. 데이터 로드 및 칩 출력
+    // 3. 칩 렌더링 및 데이터 로드 시작
     renderAllChips();
-    fetchClientMapping(); 
+    await fetchClientMapping(); // 거래처 데이터를 먼저 확실히 가져옵니다.
 });
 
 async function fetchClientMapping() {
+    const chipBox = document.getElementById('client-chips');
     try {
         const res = await fetch(GAS_URL, { 
             method: 'POST', 
             body: JSON.stringify({ action: "getClientMapping" }) 
         });
         clientSiteMap = await res.json();
-        renderClientChips();
-    } catch (e) { console.error("서버 데이터 로드 실패"); }
+        
+        // 데이터가 비어있지 않다면 칩 렌더링
+        if (Object.keys(clientSiteMap).length > 0) {
+            renderClientChips();
+        } else {
+            chipBox.innerHTML = "<span class='loading-text' style='color:#ef4444;'>거래처 데이터가 비어있습니다.</span>";
+        }
+    } catch (e) { 
+        console.error("서버 데이터 로드 실패", e); 
+        chipBox.innerHTML = "<span class='loading-text' style='color:#ef4444;'>연결 실패 (URL 또는 인터넷 확인)</span>";
+    }
 }
 
 function generateTimeOptions() {
     const s = document.getElementById('start'), e = document.getElementById('end');
+    s.innerHTML = ""; e.innerHTML = "";
     for (let h = 0; h < 24; h++) {
         for (let m = 0; m < 60; m += 30) {
             const t = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
@@ -50,7 +62,7 @@ function generateTimeOptions() {
     s.value = "08:00"; e.value = "17:00";
 }
 
-// 칩 렌더링 (통합형)
+// 칩 렌더링 (인원, 차량 등)
 function renderAllChips() {
     ['member', 'car', 'material', 'payer'].forEach(type => renderChips(type));
 }
@@ -68,7 +80,6 @@ function renderChips(type) {
                 lists[type] = lists[type].filter(i => i !== name);
                 renderChips(type);
             } else {
-                // 결제자(payer)는 단일 선택 로직
                 if (type === 'payer') {
                     document.querySelectorAll('#payer-chips .chip').forEach(c => c.classList.remove('active'));
                 }
@@ -96,7 +107,7 @@ function toggleDelMode(type) {
     renderChips(type);
 }
 
-// 거래처 및 현장 칩 렌더링
+// 거래처 칩 렌더링
 function renderClientChips() {
     const box = document.getElementById('client-chips');
     box.innerHTML = "";
@@ -145,7 +156,6 @@ function syncSiteSelection() {
     });
 }
 
-// 파일 변환
 const fileTo64 = (f) => new Promise((res) => {
     const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
 });
@@ -157,13 +167,11 @@ async function send() {
     const site = document.getElementById('siteSearch').value || document.querySelector('#site-chips .chip.active')?.innerText;
     const work = document.getElementById('work').value.trim();
     
-    if (!client || !site || !work) return alert("⚠️ 필수 정보를 입력해주세요.");
+    if (!client || !site || !work) return alert("⚠️ 필수 정보(거래처, 현장, 내용)를 입력해주세요.");
 
     btn.disabled = true; btn.innerText = "⏳ 전송 중...";
 
     const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(' ');
-    
-    // 파일 처리 (다중 파일 지원)
     const files = document.getElementById('receipt').files;
     let fileArray = [];
     if (files.length > 0) {
@@ -193,7 +201,10 @@ async function send() {
 
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-        if (await res.text() === "SUCCESS") alert("✅ 저장 성공!");
-    } catch (e) { alert("⚠️ 오류 발생"); }
+        if (await res.text() === "SUCCESS") {
+            alert("✅ 저장 성공!");
+            // (카톡 공유 로직 추가 가능)
+        }
+    } catch (e) { alert("⚠️ 오류 발생: 인터넷 연결을 확인하세요."); }
     finally { btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유"; }
 }

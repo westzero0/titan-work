@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>타이탄 일보 v3.4</title>
+    <title>타이탄 일보 v3.5</title>
     <style>
         :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --chip-bg: #f1f5f9; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
@@ -12,43 +12,40 @@
         label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9rem; color: #475569; }
         input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 1rem; box-sizing: border-box; margin-bottom: 10px; }
         
-        /* 레이아웃 수정: 체크박스 */
+        /* 레이아웃 수정 */
         .site-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .checkbox-group { display: flex; align-items: center; font-size: 0.8rem; gap: 5px; cursor: pointer; }
+        .checkbox-group { display: flex; align-items: center; font-size: 0.8rem; gap: 5px; cursor: pointer; color: #64748b; }
         .checkbox-group input { width: auto; margin: 0; }
 
-        /* 칩 스타일 통일 */
         .chip-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; }
         .chip-input-group { display: flex; flex: 1; gap: 5px; }
         .chip-input-group input { margin-bottom: 0; flex: 1; padding: 8px; font-size: 0.9rem; }
-        .add-btn { background: #334155; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; white-space: nowrap; }
+        .add-btn { background: #334155; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; white-space: nowrap; cursor: pointer; }
         .del-mode-btn { color: #ef4444; font-size: 0.8rem; cursor: pointer; white-space: nowrap; font-weight: bold; }
         
         .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; min-height: 20px; }
-        .chip { padding: 8px 14px; background: var(--chip-bg); border-radius: 20px; font-size: 0.9rem; cursor: pointer; border: 1px solid #e2e8f0; }
+        .chip { padding: 8px 14px; background: var(--chip-bg); border-radius: 20px; font-size: 0.9rem; cursor: pointer; border: 1px solid #e2e8f0; transition: 0.2s; }
         .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
         .chip.delete-target { background: #fee2e2; color: #ef4444; border: 1px dashed #ef4444; }
 
         .row { display: flex; gap: 10px; }
         .col { flex: 1; }
         .submit-btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .loading-text { font-size: 0.8rem; color: #94a3b8; font-style: italic; }
     </style>
 </head>
 <body>
     <div class="container">
         <h2 style="color: var(--primary); text-align: center;">⚡ 타이탄 작업일보</h2>
 
-        <div class="card">
-            <label>✍️ 일보 작성자</label>
-            <input type="text" id="submitter" readonly style="background:#f1f5f9; color:#64748b;">
-            <p style="font-size:0.7rem; color:#94a3b8; margin:0;">* 작성자 이름 변경은 페이지 새로고침 후 가능합니다.</p>
-        </div>
+        <input type="hidden" id="submitter">
 
         <div class="card">
             <label>📅 작업 일자</label>
             <input type="date" id="date">
+            
             <label>🏢 거래처</label>
-            <div id="client-chips" class="chip-container"></div>
+            <div id="client-chips" class="chip-container"><span class="loading-text">데이터를 불러오는 중...</span></div>
             
             <div class="site-header" style="margin-top:15px;">
                 <label style="margin-bottom:0;">🏗️ 현장명</label>
