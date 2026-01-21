@@ -1,6 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbykoBPZ4nUZT_tTMcrymXF3KSAiKIGw6VvCROh_RugwMBbe6DQokSLQ_xUC9Y2LjqI/exec"; 
-
-
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxegvNbdLfBN4A6Qo6ApDTj9p4PPvnfLcbzI9aiLrjS4VxqmjlWhLsxaSbSjUDys_65/exec"; 
 
 let clientSiteMap = {}; 
 let currentClient = "";
@@ -12,12 +10,23 @@ let lists = {
 let delMode = { member: false, car: false, material: false };
 
 /**
- * 1. 초기 실행
+ * 1. 초기 실행 (페이지 로드 시)
  */
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('date').valueAsDate = new Date();
     generateTimeOptions();
     
+    // 💾 로컬 스토리지에서 '작성자' 기억된 이름 불러오기
+    const savedSubmitter = localStorage.getItem('titan_submitter');
+    if (savedSubmitter) {
+        const subEl = document.getElementById('submitter');
+        if (subEl) subEl.value = savedSubmitter;
+    }
+
+    // ✅ 경비 결제자는 자동 저장하지 않고 '없음'으로 초기화
+    const payerEl = document.getElementById('expPayer');
+    if (payerEl) payerEl.value = "없음";
+
     // 로컬 캐시 우선 로드
     const cached = localStorage.getItem('titan_client_map');
     if (cached) {
@@ -25,13 +34,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderClientChips();
     }
 
-    // 서버 데이터 업데이트
+    // 서버 데이터 업데이트 및 칩 렌더링
     fetchClientMapping(); 
     renderAllChips();
 });
 
 /**
- * 2. 데이터 동기화 및 렌더링
+ * 2. 데이터 동기화 로직
  */
 async function fetchClientMapping() {
     try {
@@ -52,7 +61,6 @@ function generateTimeOptions() {
     const startSelect = document.getElementById('start');
     const endSelect = document.getElementById('end');
     startSelect.innerHTML = ""; endSelect.innerHTML = "";
-    
     for (let h = 0; h < 24; h++) {
         for (let m = 0; m < 60; m += 30) {
             const hh = String(h).padStart(2, '0');
@@ -62,10 +70,12 @@ function generateTimeOptions() {
             endSelect.add(new Option(timeStr, timeStr));
         }
     }
-    startSelect.value = "08:00";
-    endSelect.value = "17:00";
+    startSelect.value = "08:00"; endSelect.value = "17:00";
 }
 
+/**
+ * 3. 칩(Chips) 및 UI 관련 로직
+ */
 function renderClientChips() {
     const box = document.getElementById('client-chips');
     box.innerHTML = "";
@@ -158,10 +168,12 @@ const fileTo64 = (f) => new Promise((res) => {
 });
 
 /**
- * 3. 저장 및 전송 (서식 고정 완료)
+ * 4. 최종 데이터 전송 (작성자/결제자/정산 데이터 통합)
  */
 async function send() {
     const btn = document.getElementById('sBtn');
+    
+    // 1. 필수 선택 데이터 수집
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
     const site = document.getElementById('siteSearch').value || document.querySelector('#site-chips .chip.active')?.innerText;
     const work = document.getElementById('work').value.trim();
@@ -176,18 +188,24 @@ async function send() {
     const matText = document.getElementById('materialExtra').value.trim();
     const dinner = document.getElementById('dinner')?.value || "x";
 
+    // 2. 작성자 및 결제자 데이터 수집
+    const submitter = document.getElementById('submitter').value; // 일보 작성자
+    const expPayer = document.getElementById('expPayer').value;   // 경비 결제자
+
+    // 💾 작성자 이름 다음번을 위해 기억하기
+    localStorage.setItem('titan_submitter', submitter);
+
     if (!client || !site || !work || !members || !cars) return alert("⚠️ 필수 항목을 확인해 주세요!");
 
     btn.disabled = true; btn.innerText = "⏳ 전송 중...";
 
-    // 날짜 및 시간 형식 가공
+    // 3. 카톡 공유용 메시지 가공
     const dateObj = new Date(dateVal);
     const formattedDate = `${dateObj.getMonth() + 1}.${dateObj.getDate()}`;
     const formattedStart = startDate.replace(':', ' ');
     const formattedEnd = endDate.replace(':', ' ');
     const finalMaterials = matText ? `${matChips}\n${matText}` : matChips;
 
-    // 🚀 요청하신 공유 메시지 양식
     const msg = `날짜 :${formattedDate}
 거래처 :${client}
 현장명 :${site}
@@ -199,6 +217,7 @@ async function send() {
 사용자재 :
 ${finalMaterials}`;
 
+    // 4. 파일 처리
     const receiptFiles = document.getElementById('receipt').files;
     let filesArray = [];
     if (receiptFiles.length > 0) {
@@ -207,6 +226,7 @@ ${finalMaterials}`;
         })));
     }
 
+    // 5. 서버 페이로드 (GAS에서 경비 정산을 위해 필드 추가)
     const payload = {
         action: "saveLog",
         data: {
@@ -215,6 +235,8 @@ ${finalMaterials}`;
             members, car: cars, dinner,
             expAmount: document.getElementById('expAmount').value || "0",
             expDetail: document.getElementById('expDetail').value || "없음",
+            expPayer: expPayer,   // 누가 결제했는가? [cite: 2026-01-21]
+            submitter: submitter, // 누가 작성했는가?
             files: filesArray
         }
     };
