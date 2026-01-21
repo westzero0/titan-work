@@ -1,66 +1,75 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxegvNbdLfBN4A6Qo6ApDTj9p4PPvnfLcbzI9aiLrjS4VxqmjlWhLsxaSbSjUDys_65/exec"; 
+const GAS_URL = "본인의_GAS_URL_주소";
 
-let clientSiteMap = {}; 
+let clientSiteMap = {};
+let currentClient = "";
 let lists = {
     member: ["기원", "창재", "비비", "서호"],
     car: ["봉고", "포터", "스타렉스", "창재차"],
-    payer: ["비비", "기원", "창재"] // 결제자 칩 명단 추가
+    material: ["2.5sq 전선", "4sq 전선", "CD관", "난연관"],
+    payer: ["비비", "기원", "창재"]
 };
-let delMode = { member: false, car: false, payer: false };
+let delMode = { member: false, car: false, material: false, payer: false };
 
-/**
- * 1. 초기화
- */
 document.addEventListener('DOMContentLoaded', async () => {
+    // 1. 이름 확인 (팝업)
+    let myName = localStorage.getItem('titan_user_name');
+    if (!myName) {
+        myName = prompt("일보 작성을 위해 이름을 입력해주세요. (최초 1회)");
+        if (myName) localStorage.setItem('titan_user_name', myName);
+    }
+    document.getElementById('submitter').value = myName || "미지정";
+
+    // 2. 기본 설정
     document.getElementById('date').valueAsDate = new Date();
     generateTimeOptions();
     
-    // 💾 작성자 이름 자동 로드
-    const savedName = localStorage.getItem('titan_submitter');
-    if (savedName) document.getElementById('submitter').value = savedName;
-
-    fetchClientMapping(); 
+    // 3. 데이터 로드 및 칩 출력
     renderAllChips();
+    fetchClientMapping(); 
 });
 
 async function fetchClientMapping() {
     try {
-        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: "getClientMapping" }) });
+        const res = await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: "getClientMapping" }) 
+        });
         clientSiteMap = await res.json();
         renderClientChips();
-    } catch (e) { console.error("데이터 로드 실패"); }
+    } catch (e) { console.error("서버 데이터 로드 실패"); }
 }
 
 function generateTimeOptions() {
     const s = document.getElementById('start'), e = document.getElementById('end');
     for (let h = 0; h < 24; h++) {
         for (let m = 0; m < 60; m += 30) {
-            const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-            s.add(new Option(time, time)); e.add(new Option(time, time));
+            const t = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            s.add(new Option(t, t)); e.add(new Option(t, t));
         }
     }
     s.value = "08:00"; e.value = "17:00";
 }
 
-/**
- * 2. 칩 관리 로직
- */
+// 칩 렌더링 (통합형)
 function renderAllChips() {
-    renderChips('member'); renderChips('car'); renderChips('payer');
+    ['member', 'car', 'material', 'payer'].forEach(type => renderChips(type));
 }
 
 function renderChips(type) {
     const box = document.getElementById(`${type}-chips`);
+    if (!box) return;
     box.innerHTML = "";
     lists[type].forEach(name => {
         const div = document.createElement('div');
         div.className = `chip ${delMode[type] ? 'delete-target' : ''}`;
         div.innerText = name;
         div.onclick = () => {
-            if (delMode[type]) { 
-                lists[type] = lists[type].filter(i => i !== name); renderChips(type); 
+            if (delMode[type]) {
+                lists[type] = lists[type].filter(i => i !== name);
+                renderChips(type);
             } else {
-                if(type === 'payer') { // 결제자는 하나만 선택 가능
+                // 결제자(payer)는 단일 선택 로직
+                if (type === 'payer') {
                     document.querySelectorAll('#payer-chips .chip').forEach(c => c.classList.remove('active'));
                 }
                 div.classList.toggle('active');
@@ -73,32 +82,95 @@ function renderChips(type) {
 function addItem(type) {
     const input = document.getElementById(`add-${type}-input`);
     const val = input.value.trim();
-    if (val && !lists[type].includes(val)) { lists[type].push(val); renderChips(type); }
+    if (val && !lists[type].includes(val)) {
+        lists[type].push(val);
+        renderChips(type);
+    }
     input.value = "";
 }
 
 function toggleDelMode(type) {
     delMode[type] = !delMode[type];
+    const btn = document.getElementById(`del-btn-${type}`);
+    btn.innerText = delMode[type] ? "✅ 완료" : "🗑️ 삭제";
     renderChips(type);
 }
 
-/**
- * 3. 데이터 전송
- */
-async function send() {
-    const submitter = document.getElementById('submitter').value.trim();
-    if (!submitter) return alert("⚠️ 작성자 이름을 입력해 주세요!");
-    localStorage.setItem('titan_submitter', submitter); // 이름 기억 [cite: 2026-01-21]
+// 거래처 및 현장 칩 렌더링
+function renderClientChips() {
+    const box = document.getElementById('client-chips');
+    box.innerHTML = "";
+    Object.keys(clientSiteMap).forEach(client => {
+        const div = document.createElement('div');
+        div.className = 'chip';
+        div.innerText = client;
+        div.onclick = () => {
+            document.querySelectorAll('#client-chips .chip').forEach(c => c.classList.remove('active'));
+            div.classList.add('active');
+            currentClient = client;
+            renderSiteChips();
+        };
+        box.appendChild(div);
+    });
+}
 
+function renderSiteChips() {
+    const box = document.getElementById('site-chips');
+    const dl = document.getElementById('site-options');
+    const showAll = document.getElementById('showFinished').checked;
+    box.innerHTML = ""; dl.innerHTML = "";
+    if (!currentClient) return;
+
+    (clientSiteMap[currentClient] || []).forEach(s => {
+        const isFin = s.status === "완료";
+        dl.appendChild(new Option(s.name, s.name));
+        if (!isFin || showAll) {
+            const div = document.createElement('div');
+            div.className = `chip ${isFin ? 'finished' : ''}`;
+            div.innerText = isFin ? `[완료] ${s.name}` : s.name;
+            div.onclick = () => {
+                document.getElementById('siteSearch').value = s.name;
+                document.querySelectorAll('#site-chips .chip').forEach(c => c.classList.remove('active'));
+                div.classList.add('active');
+            };
+            box.appendChild(div);
+        }
+    });
+}
+
+function syncSiteSelection() {
+    const val = document.getElementById('siteSearch').value;
+    document.querySelectorAll('#site-chips .chip').forEach(c => {
+        c.classList.toggle('active', c.innerText.replace('[완료] ', '') === val);
+    });
+}
+
+// 파일 변환
+const fileTo64 = (f) => new Promise((res) => {
+    const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
+});
+
+async function send() {
     const btn = document.getElementById('sBtn');
+    const submitter = document.getElementById('submitter').value;
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
     const site = document.getElementById('siteSearch').value || document.querySelector('#site-chips .chip.active')?.innerText;
     const work = document.getElementById('work').value.trim();
-    const expPayer = document.querySelector('#payer-chips .chip.active')?.innerText || "없음"; [cite: 2026-01-21]
+    
+    if (!client || !site || !work) return alert("⚠️ 필수 정보를 입력해주세요.");
 
-    if (!client || !site || !work) return alert("⚠️ 거래처, 현장, 내용을 확인해 주세요!");
+    btn.disabled = true; btn.innerText = "⏳ 전송 중...";
 
-    btn.disabled = true; btn.innerText = "⏳ 저장 중...";
+    const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(' ');
+    
+    // 파일 처리 (다중 파일 지원)
+    const files = document.getElementById('receipt').files;
+    let fileArray = [];
+    if (files.length > 0) {
+        fileArray = await Promise.all(Array.from(files).map(async f => ({
+            content: await fileTo64(f), name: f.name, type: f.type
+        })));
+    }
 
     const payload = {
         action: "saveLog",
@@ -107,20 +179,21 @@ async function send() {
             client, site, work,
             start: document.getElementById('start').value,
             end: document.getElementById('end').value,
-            members: Array.from(document.querySelectorAll('#member-chips .chip.active')).map(c => c.innerText).join(' '),
-            car: Array.from(document.querySelectorAll('#car-chips .chip.active')).map(c => c.innerText).join(' '),
+            members: getSel('#member-chips'),
+            car: getSel('#car-chips'),
+            materials: getSel('#material-chips') + "\n" + document.getElementById('materialExtra').value,
             dinner: document.getElementById('dinner').value,
             expAmount: document.getElementById('expAmount').value || "0",
             expDetail: document.getElementById('expDetail').value || "없음",
-            expPayer: expPayer,
+            expPayer: getSel('#payer-chips') || "없음",
             submitter: submitter,
-            files: [] // 파일 처리 로직(fileTo64)은 기존과 동일하게 추가 가능
+            files: fileArray
         }
     };
 
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-        if (await res.text() === "SUCCESS") alert("✅ 저장 완료!");
-    } catch (e) { alert("⚠️ 전송 오류"); }
+        if (await res.text() === "SUCCESS") alert("✅ 저장 성공!");
+    } catch (e) { alert("⚠️ 오류 발생"); }
     finally { btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유"; }
 }
