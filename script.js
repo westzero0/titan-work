@@ -146,7 +146,7 @@ function generateTimeOptions() {
     s.value = "08:00"; e.value = "17:00";
 }
 
-// [4. 전송 및 카톡 공유]
+// [4. 핵심 전송 및 카톡 공유 로직]
 async function send() {
     const btn = document.getElementById('sBtn');
     const work = document.getElementById('work').value.trim();
@@ -160,7 +160,6 @@ async function send() {
     btn.disabled = true; btn.innerText = "⏳ 전송 중...";
     const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     
-    // 변수 정의
     const startTime = document.getElementById('start').value;
     const endTime = document.getElementById('end').value;
     const members = getSel('#member-chips') || "없음";
@@ -170,7 +169,7 @@ async function send() {
     const materialExtra = document.getElementById('materialExtra').value.trim();
     const materials = (materialChips + (materialExtra ? " / " + materialExtra : "")).trim() || "없음";
 
-    // 💰 경비 금액 추가 로직
+    // 경비 금액 추가 로직
     const expAmount = document.getElementById('expAmount').value;
     const expDetail = document.getElementById('expDetail').value.trim();
     let expLine = "";
@@ -180,24 +179,25 @@ async function send() {
 
     const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 작업시간: ${startTime} ~ ${endTime}\n👥 작업인원: ${members}\n🚗 차량: ${car}\n🍱 석식여부: ${dinner}\n📦 사용자재: ${materials}${expLine}`;
 
-    const payload = {
-        action: "saveLog",
-        data: {
-            date: document.getElementById('date').value, client, site, work,
-            start: startTime, end: endTime, members, car, materials,
-            dinner: document.getElementById('dinner').value,
-            expAmount: expAmount || "0", expDetail: expDetail || "없음",
-            expPayer: getSel('#payer-chips') || "없음",
-            submitter: document.getElementById('submitter').value,
-            files: [], isNewSite: !activeSiteChip
-        }
-    };
-
     try {
         const files = document.getElementById('receipt').files;
+        let fileArray = [];
         if (files.length > 0) {
-            payload.data.files = await Promise.all(Array.from(files).map(async f => ({ content: await fileTo64(f), name: f.name, type: f.type })));
+            fileArray = await Promise.all(Array.from(files).map(async f => ({ content: await fileTo64(f), name: f.name, type: f.type })));
         }
+
+        const payload = {
+            action: "saveLog",
+            data: {
+                date: document.getElementById('date').value, client, site, work,
+                start: startTime, end: endTime, members, car, materials,
+                dinner: document.getElementById('dinner').value,
+                expAmount: expAmount || "0", expDetail: expDetail || "없음",
+                expPayer: getSel('#payer-chips') || "없음",
+                submitter: document.getElementById('submitter').value,
+                files: fileArray, isNewSite: !activeSiteChip
+            }
+        };
 
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
         const resultText = await res.text();
@@ -205,12 +205,14 @@ async function send() {
         if (resultText === "SUCCESS") {
             btn.disabled = false;
             btn.style.backgroundColor = "#fee500"; btn.style.color = "#3c1e1e";
+            btn.style.fontWeight = "bold";
             btn.innerText = "➡️ 지금 카톡으로 공유하기";
             
             btn.onclick = async () => {
                 try {
                     if (navigator.share) {
                         await navigator.share({ title: '', text: msg });
+                        alert("공유 완료!");
                         resetForm();
                     } else { throw new Error("공유 미지원"); }
                 } catch (err) {
