@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwkozJfzx-BGlVXbMwRydjFx3ePtUxfUoFud_EliftZ142vl9uObN7m7H5KCrYFks6Y/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbx0SZCVvSEVQW5LSGfkEmFqRQwUP4WIOr8eRjtuXnscOa-r0ohYcPUz99E6zaUaQQi8/exec";
 
 let currentSites = []; 
 let lists = {
@@ -271,7 +271,7 @@ async function send() {
             alert("저장이 완료되었습니다. 아래 노란색 버튼을 눌러 카톡으로 보내세요!");
         }
 
-
+}}
 const fileTo64 = (f) => new Promise((res) => {
     const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
 });
