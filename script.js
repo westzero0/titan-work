@@ -200,3 +200,29 @@ async function send() {
 const fileTo64 = (f) => new Promise((res) => {
     const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
 });
+
+// 기타 UI 보조 함수들 (renderChips, toggleDelMode 등)은 기존 로직 유지
+function renderAllChips() { ['member', 'car', 'material', 'payer'].forEach(type => renderChips(type)); }
+function renderChips(type) {
+    const box = document.getElementById(`${type}-chips`);
+    if (!box) return;
+    box.innerHTML = "";
+    lists[type].forEach(name => {
+        const div = document.createElement('div');
+        div.className = `chip ${delMode[type] ? 'delete-target' : ''}`;
+        div.innerText = name;
+        div.onclick = () => {
+            if (delMode[type]) { lists[type] = lists[type].filter(i => i !== name); renderChips(type); }
+            else {
+                if (type === 'payer') document.querySelectorAll('#payer-chips .chip').forEach(c => c.classList.remove('active'));
+                div.classList.toggle('active');
+            }
+        };
+        box.appendChild(div);
+    });
+}
+function toggleDelMode(type) {
+    delMode[type] = !delMode[type];
+    const btn = document.getElementById(`del-btn-${type}`);
+    if (btn) btn.innerText = delMode[type] ? "✅ 완료" : "🗑️ 삭제";
+    renderChips(type);
