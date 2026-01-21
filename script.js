@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwvOwpCQ0BB9RNsOdVCAEcsGs96f63tpemdRGCAYBNUvAEIUuxJnSH7bcUMGxZOxIdY/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwkozJfzx-BGlVXbMwRydjFx3ePtUxfUoFud_EliftZ142vl9uObN7m7H5KCrYFks6Y/exec";
 
 let currentSites = []; 
 let lists = {
@@ -45,7 +45,10 @@ async function fetchClientsWithCache() {
         localStorage.setItem('titan_client_cache', JSON.stringify(data));
         localStorage.setItem('titan_cache_time', now.toString());
         return data;
-    } catch (e) { return []; }
+  } catch (e) {
+        console.error("데이터 로드 실패:", e);
+        return [];
+    }
 }
 
 async function fetchSites(clientName) {
