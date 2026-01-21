@@ -2,10 +2,10 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwkozJfzx-BGlVXbMwRydjF
 
 let currentSites = []; 
 let lists = {
-    member: ["기원", "창재", "비비", "서호"],
+    member: ["기원", "창재", "조환", "서호"],
     car: ["봉고", "포터", "스타렉스", "창재차"],
     material: ["2.5sq 전선", "4sq 전선", "CD관", "난연관", "복스"],
-    payer: ["비비", "기원", "창재"]
+    payer: ["서영", "기원", "창재"]
 };
 let delMode = { member: false, car: false, material: false, payer: false };
 
@@ -251,13 +251,13 @@ async function send() {
                 try {
                     if (navigator.share) {
                         await navigator.share({
-                            title: '타이탄 작업일보',
+                            title: '',
                             text: msg // 위에서 미리 만들어둔 msg 변수 사용
                         });
                         alert("공유 완료!");
                         resetForm(); // 공유 완료 후 초기화
                     } else {
-                        throw new Error("공유 기능 미지원");
+                        throw new Error("공유 미지원");
                     }
                 } catch (err) {
                     // 공유 창이 안 뜨거나 취소된 경우 클립보드 복사로 대응
