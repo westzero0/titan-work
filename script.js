@@ -9,7 +9,7 @@ let lists = {
 };
 let delMode = { member: false, car: false, material: false, payer: false };
 
-// [1. 초기 로드 및 이벤트 리스너]
+// [1. 초기 로드]
 document.addEventListener('DOMContentLoaded', async () => {
     let myName = localStorage.getItem('titan_user_name');
     if (!myName) {
@@ -32,23 +32,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// [2. 데이터 로딩 및 캐싱]
+// [2. 데이터 로딩]
 async function fetchClientsWithCache() {
     const cachedData = localStorage.getItem('titan_client_cache');
     const cacheTime = localStorage.getItem('titan_cache_time');
     const now = new Date().getTime();
     if (cachedData && cacheTime && (now - cacheTime < 10 * 60 * 1000)) return JSON.parse(cachedData);
-
     try {
         const res = await fetch(GAS_URL + "?action=getClients"); 
         const data = await res.json();
         localStorage.setItem('titan_client_cache', JSON.stringify(data));
         localStorage.setItem('titan_cache_time', now.toString());
         return data;
-  } catch (e) {
-        console.error("데이터 로드 실패:", e);
-        return [];
-    }
+    } catch (e) { return []; }
 }
 
 async function fetchSites(clientName) {
@@ -58,12 +54,10 @@ async function fetchSites(clientName) {
         const res = await fetch(GAS_URL + `?action=getSites&client=${encodeURIComponent(clientName)}`);
         currentSites = await res.json();
         renderSiteChips(currentSites);
-    } catch (e) {
-        box.innerHTML = "⚠️ 현장 로드 실패";
-    }
+    } catch (e) { box.innerHTML = "⚠️ 현장 로드 실패"; }
 }
 
-// [3. UI 렌더링 함수들]
+// [3. UI 렌더링]
 function renderClientChips(clients) {
     const box = document.getElementById('client-chips');
     box.innerHTML = "";
@@ -84,23 +78,11 @@ function renderSiteChips(sites = currentSites, term = "") {
     const box = document.getElementById('site-chips');
     const dl = document.getElementById('site-options');
     const showAll = document.getElementById('showFinished').checked;
-
-// 만약 데이터가 아예 로드되지 않은 상태라면 함수를 종료하여 에러를 방지합니다.
-    if (!sites || !Array.isArray(sites)) {
-        console.warn("표시할 현장 데이터가 아직 없습니다.");
-        return;
-    }
-
-
- 	   box.innerHTML = ""; 
-	dl.innerHTML = "";
-
+    if (!sites || !Array.isArray(sites)) return;
+    box.innerHTML = ""; dl.innerHTML = "";
     sites.forEach(s => {
         const isFin = s.status === "완료";
-
         dl.appendChild(new Option(s.name, s.name));
-
-// 필터링 로직: 완료되지 않았거나, '완료현장 포함'이 체크된 경우만 렌더링
         if (!isFin || showAll) {
             const div = document.createElement('div');
             div.className = `chip ${isFin ? 'finished' : ''}`;
@@ -127,8 +109,7 @@ function renderChips(type) {
         div.innerText = name;
         div.onclick = () => {
             if (delMode[type]) { 
-                lists[type] = lists[type].filter(i => i !== name); 
-                renderChips(type); 
+                lists[type] = lists[type].filter(i => i !== name); renderChips(type); 
             } else {
                 if (type === 'payer') document.querySelectorAll('#payer-chips .chip').forEach(c => c.classList.remove('active'));
                 div.classList.toggle('active');
@@ -152,7 +133,6 @@ function toggleDelMode(type) {
     renderChips(type);
 }
 
-// [4. 유틸리티 및 전송 로직]
 function generateTimeOptions() {
     const s = document.getElementById('start'), e = document.getElementById('end');
     if(!s || !e) return;
@@ -166,8 +146,7 @@ function generateTimeOptions() {
     s.value = "08:00"; e.value = "17:00";
 }
 
-
-
+// [4. 전송 및 카톡 공유]
 async function send() {
     const btn = document.getElementById('sBtn');
     const work = document.getElementById('work').value.trim();
@@ -179,131 +158,81 @@ async function send() {
     if (!client || !site || !work) return alert("⚠️ 필수 정보를 입력해주세요.");
 
     btn.disabled = true; btn.innerText = "⏳ 전송 중...";
-    const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(' ');
+    const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     
-    // 사진 파일 처리
-    const files = document.getElementById('receipt').files;
-    let fileArray = [];
-    if (files.length > 0) {
-        fileArray = await Promise.all(Array.from(files).map(async f => ({ content: await fileTo64(f), name: f.name, type: f.type })));
-    }
-
-
-// 💡 [중요] 카톡 메시지에 필요한 변수들을 여기서 정의합니다!
+    // 변수 정의
     const startTime = document.getElementById('start').value;
     const endTime = document.getElementById('end').value;
     const members = getSel('#member-chips') || "없음";
     const car = getSel('#car-chips') || "없음";
     const dinner = document.getElementById('dinner').value === "O" ? "O" : "X";
-    
     const materialChips = getSel('#material-chips');
     const materialExtra = document.getElementById('materialExtra').value.trim();
     const materials = (materialChips + (materialExtra ? " / " + materialExtra : "")).trim() || "없음";
 
+    // 💰 경비 금액 추가 로직
+    const expAmount = document.getElementById('expAmount').value;
+    const expDetail = document.getElementById('expDetail').value.trim();
+    let expLine = "";
+    if (expAmount && parseFloat(expAmount) > 0) {
+        expLine = `\n💰 경비: ${Number(expAmount).toLocaleString()}원 (${expDetail || '내역 없음'})`;
+    }
 
-
-// 💡카톡 메시지 포맷
-    const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 작업시간: ${startTime} ~ ${endTime}\n👥 작업인원: ${members}\n🚗 차량: ${car}\n🍱 석식여부: ${dinner}\n📦 사용자재: ${materials}`;
-
-
-// 4. 구글 서버(GAS)로 페이로드 전송
-
+    const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 작업시간: ${startTime} ~ ${endTime}\n👥 작업인원: ${members}\n🚗 차량: ${car}\n🍱 석식여부: ${dinner}\n📦 사용자재: ${materials}${expLine}`;
 
     const payload = {
         action: "saveLog",
         data: {
             date: document.getElementById('date').value, client, site, work,
-            start: document.getElementById('start').value, end: document.getElementById('end').value,
-            members: getSel('#member-chips'), car: getSel('#car-chips'),
-            materials: getSel('#material-chips') + "\n" + document.getElementById('materialExtra').value,
+            start: startTime, end: endTime, members, car, materials,
             dinner: document.getElementById('dinner').value,
-            expAmount: document.getElementById('expAmount').value || "0",
-            expDetail: document.getElementById('expDetail').value || "없음",
+            expAmount: expAmount || "0", expDetail: expDetail || "없음",
             expPayer: getSel('#payer-chips') || "없음",
             submitter: document.getElementById('submitter').value,
-            files: fileArray,
-            isNewSite: !activeSiteChip
+            files: [], isNewSite: !activeSiteChip
         }
     };
 
-   try {
-        btn.disabled = true;
-        btn.innerText = "⏳ 서버 저장 중...";
-        
-        // 1. 먼저 서버에 저장만 진행합니다.
+    try {
+        const files = document.getElementById('receipt').files;
+        if (files.length > 0) {
+            payload.data.files = await Promise.all(Array.from(files).map(async f => ({ content: await fileTo64(f), name: f.name, type: f.type })));
+        }
+
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
         const resultText = await res.text();
 
-       if (resultText === "SUCCESS") {
-            alert("✅ 서버 저장 성공!");
-            localStorage.removeItem('titan_client_cache');
-            
-            // 💡 [1단계] 버튼을 카톡 공유용으로 즉시 변경
+        if (resultText === "SUCCESS") {
             btn.disabled = false;
-            btn.style.backgroundColor = "#fee500"; // 카카오 노란색
-            btn.style.color = "#3c1e1e";           // 카카오 갈색 글자
-            btn.style.fontWeight = "bold";
+            btn.style.backgroundColor = "#fee500"; btn.style.color = "#3c1e1e";
             btn.innerText = "➡️ 지금 카톡으로 공유하기";
             
-            // 💡 [2단계] 기존 클릭 이벤트를 제거하고 '공유 전용'으로 새로 연결
-            // 이렇게 분리해야 모바일 브라우저의 보안 차단을 피할 수 있습니다.
             btn.onclick = async () => {
                 try {
                     if (navigator.share) {
-                        await navigator.share({
-                            title: '',
-                            text: msg // 위에서 미리 만들어둔 msg 변수 사용
-                        });
-                        alert("공유 완료!");
-                        resetForm(); // 공유 완료 후 초기화
-                    } else {
-                        throw new Error("공유 미지원");
-                    }
+                        await navigator.share({ title: '', text: msg });
+                        resetForm();
+                    } else { throw new Error("공유 미지원"); }
                 } catch (err) {
-                    // 공유 창이 안 뜨거나 취소된 경우 클립보드 복사로 대응
                     await copyToClipboard(msg);
                     alert("메시지가 복사되었습니다. 카톡에 붙여넣어 주세요!");
                     resetForm();
                 }
             };
-            
-            // 사용자에게 버튼을 한 번 더 누르라고 안내
-            alert("저장이 완료되었습니다. 아래 노란색 버튼을 눌러 카톡으로 보내세요!");
+            alert("✅ 저장 성공! 노란색 버튼을 눌러 카톡으로 보내세요.");
         }
+    } catch (e) {
+        alert("⚠️ 오류 발생: " + e.message);
+        btn.disabled = false; btn.innerText = "🚀 다시 시도";
+    }
+}
 
-}}
 const fileTo64 = (f) => new Promise((res) => {
     const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
 });
 
-// 💡 하나로 합쳐진 최종 초기화 함수
-function resetForm() {
-    ['work', 'siteSearch', 'materialExtra', 'expAmount', 'expDetail', 'receipt'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.value = "";
-    });
-    document.getElementById('date').valueAsDate = new Date();
-    document.getElementById('start').value = "08:00";
-    document.getElementById('end').value = "17:00";
-    document.getElementById('dinner').value = "X";
-    document.querySelectorAll('.chip.active').forEach(c => c.classList.remove('active'));
-    document.getElementById('site-chips').innerHTML = "";
-    currentSites = [];
-
-const btn = document.getElementById('sBtn');
-    btn.style.backgroundColor = "#2563eb"; // 원래 파란색
-    btn.style.color = "#fff";
-    btn.innerText = "🚀 저장 및 카톡 공유";
-    btn.onclick = send; // 클릭 이벤트를 다시 처음으로 되돌림
-}
-
-
-// 📋 클립보드 복사 보조 함수 (공유 실패 시 대비)
 async function copyToClipboard(text) {
-    try {
-        await navigator.clipboard.writeText(text);
-    } catch (err) {
-        // 구형 브라우저나 보안 환경 대비용
+    try { await navigator.clipboard.writeText(text); } catch (err) {
         const textArea = document.createElement("textarea");
         textArea.value = text;
         document.body.appendChild(textArea);
@@ -311,4 +240,20 @@ async function copyToClipboard(text) {
         document.execCommand('copy');
         document.body.removeChild(textArea);
     }
+}
+
+function resetForm() {
+    ['work', 'siteSearch', 'materialExtra', 'expAmount', 'expDetail', 'receipt'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.value = "";
+    });
+    document.getElementById('date').valueAsDate = new Date();
+    document.getElementById('start').value = "08:00"; document.getElementById('end').value = "17:00";
+    document.getElementById('dinner').value = "X";
+    document.querySelectorAll('.chip.active').forEach(c => c.classList.remove('active'));
+    document.getElementById('site-chips').innerHTML = "";
+    currentSites = [];
+    const btn = document.getElementById('sBtn');
+    btn.style.backgroundColor = "#2563eb"; btn.style.color = "#fff";
+    btn.innerText = "🚀 저장 및 카톡 공유";
+    btn.onclick = send; 
 }
