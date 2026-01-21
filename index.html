@@ -3,147 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>타이탄 일보 v3.3</title>
-    <link rel="stylesheet" href="style.css"> <style>
-        /* 추가적인 탭 및 레이아웃 스타일 */
-        .tab-menu { display: flex; gap: 8px; margin-bottom: 20px; position: sticky; top: 0; background: white; z-index: 100; padding: 10px 0; }
-        .tab-btn { flex: 1; padding: 12px; border-radius: 12px; border: none; background: #e2e8f0; color: #475569; font-weight: bold; font-size: 0.9rem; cursor: pointer; }
-        .tab-btn.active { background: #2563eb; color: white; }
-        .view-section { display: none; }
-        .view-section.active { display: block; }
-        .card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
-        .row { display: flex; gap: 10px; margin-bottom: 15px; }
+    <title>타이탄 일보 v3.3 (통합)</title>
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --chip-bg: #f1f5f9; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        .container { max-width: 500px; margin: auto; padding: 15px; }
+        .card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #f1f5f9; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9rem; color: #475569; }
+        input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 1rem; box-sizing: border-box; margin-bottom: 10px; }
+        .row { display: flex; gap: 10px; }
         .col { flex: 1; }
-        select, input, textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 1rem; box-sizing: border-box; }
-        label { display: block; margin-bottom: 6px; font-weight: bold; color: #1e293b; font-size: 0.9rem; }
-        .submit-btn { width: 100%; padding: 16px; background: #2563eb; color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
+        .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .chip { padding: 8px 14px; background: var(--chip-bg); border-radius: 20px; font-size: 0.9rem; cursor: pointer; border: 1px solid #e2e8f0; }
+        .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .chip.delete-target { background: #fee2e2; color: #ef4444; border: 1px dashed #ef4444; }
+        .chip-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .add-btn { background: #334155; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; }
+        .submit-btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: bold; margin-top: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="container" style="padding: 15px; max-width: 500px; margin: auto;">
-        
-        <div class="tab-menu">
-            <button class="tab-btn active" id="tab-input" onclick="switchTab('input')">📝 작성</button>
-            <button class="tab-btn" id="tab-schedule" onclick="switchTab('schedule')">📅 일정</button>
-            <button class="tab-btn" id="tab-history" onclick="switchTab('history')">📂 내역</button>
-            <button class="tab-btn" id="tab-salary" onclick="switchTab('salary')">💰 정산</button>
+    <div class="container">
+        <h2 style="color: var(--primary); text-align: center;">⚡ 타이탄 작업일보</h2>
+
+        <div class="card">
+            <label>✍️ 일보 작성자</label>
+            <input type="text" id="submitter" placeholder="이름을 입력하세요">
         </div>
 
-        <div id="view-input" class="view-section active">
-            <div class="card">
-                <label>✍️ 일보 작성자 (자동기억)</label>
-                <select id="submitter">
-                    <option value="비비">비비</option>
-                    <option value="기원">기원</option>
-                    <option value="창재">창재</option>
-                    <option value="서호">서호</option>
-                </select>
-            </div>
-
-            <div class="card">
-                <div class="row">
-                    <div class="col">
-                        <label>📅 날짜</label>
-                        <input type="date" id="date">
-                    </div>
-                </div>
-                
-                <label>🏢 거래처 선택</label>
-                <div id="client-chips" class="chip-container"></div>
-
-                <label style="margin-top:15px;">🏗️ 현장명</label>
-                <input type="text" id="siteSearch" list="site-options" placeholder="현장 검색 또는 입력" oninput="syncSiteSelection()">
-                <datalist id="site-options"></datalist>
-                <div id="site-chips" class="chip-container" style="margin-top:8px;"></div>
-                <label style="font-size:0.8rem; color:#64748b;"><input type="checkbox" id="showFinished"> 완료 현장 보기</label>
-            </div>
-
-            <div class="card">
-                <label>🛠️ 작업 내용</label>
-                <textarea id="work" rows="2" placeholder="예: 입선 및 결선 작업"></textarea>
-                
-                <div class="row" style="margin-top:10px;">
-                    <div class="col">
-                        <label>⏰ 시작</label>
-                        <select id="start"></select>
-                    </div>
-                    <div class="col">
-                        <label>⏰ 종료</label>
-                        <select id="end"></select>
-                    </div>
-                </div>
-                <label>🍱 석식 여부</label>
-                <select id="dinner">
-                    <option value="X">X (안먹음)</option>
-                    <option value="O">O (먹음)</option>
-                </select>
-            </div>
-
-            <div class="card">
-                <label>👥 작업 인원</label>
-                <div id="member-chips" class="chip-container"></div>
-                
-                <label style="margin-top:15px;">🚗 사용 차량</label>
-                <div id="car-chips" class="chip-container"></div>
-            </div>
-
-            <div class="card">
-                <label>📦 사용 자재</label>
-                <div id="material-chips" class="chip-container"></div>
-                <textarea id="materialExtra" rows="2" style="margin-top:8px;" placeholder="기타 자재 직접 입력"></textarea>
-            </div>
-
-            <div class="card">
-                <div class="row">
-                    <div class="col">
-                        <label>💰 경비 금액</label>
-                        <input type="number" id="expAmount" placeholder="0">
-                    </div>
-                    <div class="col">
-                        <label>💳 경비 결제자</label>
-                        <select id="expPayer">
-                            <option value="없음">없음</option>
-                            <option value="비비">비비</option>
-                            <option value="기원">기원</option>
-                            <option value="창재">창재</option>
-                            <option value="서호">서호</option>
-                        </select>
-                    </div>
-                </div>
-                <label>📝 경비 내용</label>
-                <input type="text" id="expDetail" placeholder="자재 구매 등 상세 내용">
-                
-                <label style="margin-top:15px;">📸 영수증/현장 사진</label>
-                <input type="file" id="receipt" multiple accept="image/*">
-            </div>
-
-            <button id="sBtn" class="submit-btn" onclick="send()">🚀 저장 및 카톡 공유</button>
+        <div class="card">
+            <label>📅 작업 일자</label>
+            <input type="date" id="date">
+            <label>🏢 거래처 선택</label>
+            <div id="client-chips" class="chip-container"></div>
+            <label>🏗️ 현장명</label>
+            <input type="text" id="siteSearch" list="site-options" placeholder="현장명 검색 또는 입력" oninput="syncSiteSelection()">
+            <datalist id="site-options"></datalist>
+            <div id="site-chips" class="chip-container"></div>
+            <label style="font-size:0.8rem;"><input type="checkbox" id="showFinished"> 완료 현장 포함</label>
         </div>
 
-        <div id="view-schedule" class="view-section">
-            <h2 style="margin-bottom:15px;">🗓️ 현장 일정표</h2>
-            <div id="schedule-container"></div>
-        </div>
-
-        <div id="view-history" class="view-section">
-            <h2 style="margin-bottom:15px;">📂 과거 내역 조회</h2>
+        <div class="card">
+            <label>🛠️ 작업 내용</label>
+            <textarea id="work" rows="3" placeholder="오늘 진행한 작업을 적어주세요"></textarea>
             <div class="row">
-                <input type="text" id="searchName" placeholder="직원 이름 검색">
-                <button onclick="loadHistory()" style="padding:0 15px; background:#334155; color:white; border-radius:10px; border:none;">조회</button>
+                <div class="col"><label>⏰ 시작</label><select id="start"></select></div>
+                <div class="col"><label>⏰ 종료</label><select id="end"></select></div>
             </div>
-            <div id="history-list"></div>
+            <label>🍱 석식 여부</label>
+            <select id="dinner"><option value="X">안먹음 (X)</option><option value="O">먹음 (O)</option></select>
         </div>
 
-        <div id="view-salary" class="view-section">
-            <h2 style="margin-bottom:15px;">💰 월별 급여 정산</h2>
-            <div class="card">
-                <label>📅 정산 월 선택 (B1 셀 연동)</label>
-                <p style="font-size:0.9rem; color:#64748b;">※ 정산은 구글 시트의 [월별정산] 탭에서 '정산 실행' 버튼을 눌러주세요.</p>
-            </div>
+        <div class="card">
+            <div class="chip-header"><label>👥 작업 인원</label></div>
+            <div id="member-chips" class="chip-container"></div>
+            <div class="chip-header"><label>🚗 사용 차량</label></div>
+            <div id="car-chips" class="chip-container"></div>
         </div>
 
+        <div class="card">
+            <label>💰 경비 금액</label>
+            <input type="number" id="expAmount" placeholder="0">
+            
+            <div class="chip-header">
+                <label>💳 경비 결제자 (칩 선택)</label>
+                <div>
+                    <span onclick="toggleDelMode('payer')" style="color:#ef4444; font-size:0.8rem; cursor:pointer; margin-right:10px;">🗑️ 삭제</span>
+                </div>
+            </div>
+            <div class="row" style="margin-bottom:10px;">
+                <input type="text" id="add-payer-input" placeholder="이름 추가" style="margin-bottom:0; flex:3;">
+                <button onclick="addItem('payer')" class="add-btn" style="flex:1; margin-left:5px;">추가</button>
+            </div>
+            <div id="payer-chips" class="chip-container"></div>
+
+            <label>📝 경비 내용</label>
+            <input type="text" id="expDetail" placeholder="자재비, 유류비 등">
+            <label>📸 영수증 첨부</label>
+            <input type="file" id="receipt" multiple accept="image/*">
+        </div>
+
+        <button id="sBtn" class="submit-btn" onclick="send()">🚀 저장 및 카톡 공유</button>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
