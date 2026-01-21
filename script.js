@@ -234,33 +234,44 @@ async function send() {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
         const resultText = await res.text();
 
-        if (resultText === "SUCCESS") {
-            // 2. 저장이 성공하면 버튼의 용도를 '공유하기'로 바꿉니다.
+       if (resultText === "SUCCESS") {
+            alert("✅ 서버 저장 성공!");
+            localStorage.removeItem('titan_client_cache');
+            
+            // 💡 [1단계] 버튼을 카톡 공유용으로 즉시 변경
             btn.disabled = false;
             btn.style.backgroundColor = "#fee500"; // 카카오 노란색
-            btn.style.color = "#000";
-            btn.innerText = "✅ 저장됨! 카톡으로 공유하기";
+            btn.style.color = "#3c1e1e";           // 카카오 갈색 글자
+            btn.style.fontWeight = "bold";
+            btn.innerText = "➡️ 지금 카톡으로 공유하기";
             
-            // 버튼 클릭 이벤트를 '공유' 전용으로 일시 변경
+            // 💡 [2단계] 기존 클릭 이벤트를 제거하고 '공유 전용'으로 새로 연결
+            // 이렇게 분리해야 모바일 브라우저의 보안 차단을 피할 수 있습니다.
             btn.onclick = async () => {
                 try {
-                    await navigator.share({ title: '타이탄 작업일보', text: msg });
-                    resetForm(); // 공유까지 성공하면 폼 초기화
-                } catch (e) {
+                    if (navigator.share) {
+                        await navigator.share({
+                            title: '타이탄 작업일보',
+                            text: msg // 위에서 미리 만들어둔 msg 변수 사용
+                        });
+                        alert("공유 완료!");
+                        resetForm(); // 공유 완료 후 초기화
+                    } else {
+                        throw new Error("공유 기능 미지원");
+                    }
+                } catch (err) {
+                    // 공유 창이 안 뜨거나 취소된 경우 클립보드 복사로 대응
                     await copyToClipboard(msg);
                     alert("메시지가 복사되었습니다. 카톡에 붙여넣어 주세요!");
                     resetForm();
                 }
             };
             
-            alert("서버 저장 완료! 아래 버튼을 눌러 카톡으로 공유하세요.");
+            // 사용자에게 버튼을 한 번 더 누르라고 안내
+            alert("저장이 완료되었습니다. 아래 노란색 버튼을 눌러 카톡으로 보내세요!");
         }
-    } catch (e) {
-        alert("⚠️ 오류 발생: " + e.message);
-        btn.disabled = false;
-        btn.innerText = "🚀 다시 시도";
-    }
-}
+
+
 const fileTo64 = (f) => new Promise((res) => {
     const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(f);
 });
