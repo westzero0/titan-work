@@ -188,8 +188,9 @@ async function send() {
         fileArray = await Promise.all(Array.from(files).map(async f => ({ content: await fileTo64(f), name: f.name, type: f.type })));
     }
 
-    // 카톡 공유 메시지 생성
-    const msg = `날짜: ${document.getElementById('date').value}\n거래처: ${client}\n현장명: ${site}\n작업내용: ${work}\n인원: ${getSel('#member-chips')}`;
+
+// 💡카톡 메시지 포맷
+    const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 작업시간: ${startTime} ~ ${endTime}\n👥 작업인원: ${members}\n🚗 차량: ${car}\n🍱 석식여부: ${dinner}\n📦 사용자재: ${materials}`;
 
     const payload = {
         action: "saveLog",
