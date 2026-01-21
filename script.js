@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxfL9aG8O-yXTqhITE4L7wGWomntx_msHweClickCQTHels5UNRCkoKtaRI5waMP29b/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzWvSifWq5Gm0zgb5_paLZoHgvWnwkFp8ZfTwt8pKcmYH7YkR-qvCzo5z6if_BiTic/exec"; 
 
 let currentClient = ""; 
 let currentSites = []; 
@@ -20,10 +20,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('submitter').value = myName || "미지정";
     document.getElementById('date').valueAsDate = new Date();
     
+    // 💡 에러 원인이었던 함수들을 모두 정상 호출합니다.
     generateTimeOptions();
     renderAllChips();
     
-    // 💡 수정: 거래처 데이터를 가져온 후 화면에 렌더링합니다.
+    // 거래처 데이터를 불러와서 화면에 그립니다.
     const clients = await fetchClientsWithCache();
     renderClientChips(clients);
 
@@ -41,6 +42,7 @@ async function fetchClientsWithCache() {
     const now = new Date().getTime();
 
     if (cachedData && cacheTime && (now - cacheTime < 10 * 60 * 1000)) {
+        console.log("⚡ 캐시 데이터를 사용합니다.");
         return JSON.parse(cachedData);
     }
 
@@ -56,9 +58,19 @@ async function fetchClientsWithCache() {
     }
 }
 
-// [3. UI 렌더링 함수들]
+async function fetchSites(clientName) {
+    const box = document.getElementById('site-chips');
+    box.innerHTML = "⏳ 로딩 중...";
+    try {
+        const res = await fetch(GAS_URL + `?action=getSites&client=${encodeURIComponent(clientName)}`);
+        currentSites = await res.json();
+        renderSiteChips(currentSites);
+    } catch (e) {
+        box.innerHTML = "⚠️ 현장 로드 실패";
+    }
+}
 
-// 💡 추가: 거래처 칩을 화면에 그리는 함수
+// [3. UI 렌더링 함수들 (보조 코드 포함)]
 function renderClientChips(clients) {
     const box = document.getElementById('client-chips');
     if (!box) return;
@@ -71,24 +83,10 @@ function renderClientChips(clients) {
             currentClient = name;
             document.querySelectorAll('#client-chips .chip').forEach(c => c.classList.remove('active'));
             div.classList.add('active');
-            // 거래처 선택 시 해당 현장 목록을 서버에서 가져옴
             await fetchSites(name);
         };
         box.appendChild(div);
     });
-}
-
-// 💡 추가: 특정 거래처의 현장 목록을 가져오는 함수
-async function fetchSites(clientName) {
-    const box = document.getElementById('site-chips');
-    box.innerHTML = "⏳ 로딩 중...";
-    try {
-        const res = await fetch(GAS_URL + `?action=getSites&client=${encodeURIComponent(clientName)}`);
-        currentSites = await res.json();
-        renderSiteChips(currentSites);
-    } catch (e) {
-        box.innerHTML = "⚠️ 현장 로드 실패";
-    }
 }
 
 function renderSiteChips(sites, term = "") {
@@ -133,6 +131,13 @@ function renderChips(type) {
     });
 }
 
+function addItem(type) {
+    const input = document.getElementById(`add-${type}-input`);
+    const val = input.value.trim();
+    if (val && !lists[type].includes(val)) { lists[type].push(val); renderChips(type); }
+    input.value = "";
+}
+
 function toggleDelMode(type) {
     delMode[type] = !delMode[type];
     const btn = document.getElementById(`del-btn-${type}`);
@@ -157,7 +162,7 @@ function generateTimeOptions() {
 async function send() {
     const btn = document.getElementById('sBtn');
     const submitter = document.getElementById('submitter').value;
-    const work = document.getElementById('work').value.trim(); // 💡 변수 정의 추가
+    const work = document.getElementById('work').value.trim();
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
     
     const siteInput = document.getElementById('siteSearch').value.trim();
