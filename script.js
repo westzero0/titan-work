@@ -1,5 +1,5 @@
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwAA4lE4pDsCk_MArw_8vWbOw8HkeE0fdbtruPKgQmi3GVXN15_K3apbMjVCIl38ngZ/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzudAS88Rq1OUZR_q_a6orqrlmCXJeHo0a6hHq8OHfubJtTPMQVKqslQxKVsLqgmEQ/exec"; 
 
 let clientSiteMap = {};
 let currentClient = "";
@@ -203,7 +203,49 @@ async function send() {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
         if (await res.text() === "SUCCESS") {
             alert("✅ 저장 성공!");
-            // (카톡 공유 로직 추가 가능)
+        async function send() {
+    const btn = document.getElementById('sBtn');
+    const submitter = document.getElementById('submitter').value;
+    const client = document.querySelector('#client-chips .chip.active')?.innerText;
+    const site = document.getElementById('siteSearch').value || document.querySelector('#site-chips .chip.active')?.innerText;
+    const work = document.getElementById('work').value.trim();
+    
+    if (!client || !site || !work) return alert("⚠️ 필수 정보(거래처, 현장, 내용)를 입력해주세요.");
+
+    btn.disabled = true; btn.innerText = "⏳ 전송 중...";
+
+    const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(' ');
+    const startDate = document.getElementById('start').value;
+    const endDate = document.getElementById('end').value;
+    const dateVal = document.getElementById('date').value;
+    const members = getSel('#member-chips');
+    const cars = getSel('#car-chips');
+    const dinner = document.getElementById('dinner').value;
+    const matChips = getSel('#material-chips');
+    const matText = document.getElementById('materialExtra').value.trim();
+    const finalMaterials = matText ? `${matChips}\n${matText}` : matChips;
+
+    // 💰 경비 데이터 추출 및 메시지 가공
+    const expAmt = document.getElementById('expAmount').value;
+    const expDet = document.getElementById('expDetail').value.trim();
+    let expLine = "";
+    if (expAmt && expAmt > 0) {
+        expLine = `\n경비금액 :${Number(expAmt).toLocaleString()}원 (${expDet})`;
+    }
+
+    // 📱 카카오톡 공유용 메시지 양식 (경비 포함)
+    const dateObj = new Date(dateVal);
+    const formattedDate = `${dateObj.getMonth() + 1}.${dateObj.getDate()}`;
+    const msg = `날짜 :${formattedDate}
+거래처 :${client}
+현장명 :${site}
+작업내용 :${work}
+작업시간 :${startDate.replace(':', ' ')}~${endDate.replace(':', ' ')}
+작업인원 :${members}
+차량 : ${cars}
+석식여부 : ${dinner.toLowerCase()}
+사용자재 :
+${finalMaterials}${expLine}`; // 경비가 있을 때만 한 줄 추가됨
         }
     } catch (e) { alert("⚠️ 오류 발생: 인터넷 연결을 확인하세요."); }
     finally { btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유"; }
