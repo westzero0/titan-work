@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAllChips();
     
     // 💡 에러 해결 포인트: 아래 정의된 함수 이름과 똑같이 맞췄습니다.
-    loadTitanDataWithBackgroundSync();
+   loadTitanDataWithBackgroundSync();
 
     // 4) 현장 검색 이벤트 리스너
     document.getElementById('siteSearch').addEventListener('input', (e) => {
@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderSiteChips(filtered, term);
     });
 });
+
 
 // [2. 데이터 로딩 - 백그라운드 동기화 방식]
 async function loadTitanDataWithBackgroundSync() {
@@ -285,3 +286,18 @@ function resetForm() {
     btn.innerText = "🚀 저장 및 카톡 공유";
     btn.onclick = send; 
 }
+
+/**
+ * 🔍 현장 검색창 입력 시 칩 목록을 필터링하는 함수
+ * HTML의 oninput="syncSiteSelection()" 호출에 대응합니다.
+ */
+function syncSiteSelection() {
+    const term = document.getElementById('siteSearch').value.trim();
+    
+    // currentSites는 거래처 선택 시 업데이트되는 전역 변수입니다.
+    if (currentSites && Array.isArray(currentSites)) {
+        const filtered = currentSites.filter(s => s.name.includes(term));
+        renderSiteChips(filtered, term);
+    }
+}
+
