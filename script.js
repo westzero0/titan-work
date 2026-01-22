@@ -28,10 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3) 정적 칩(인원, 차량 등) 렌더링
     renderAllChips();
     
-    // 4) 핵심: 거래처 목록 백그라운드 동기화 실행 (기다림 없음)
-    loadClientsWithBackgroundSync();
+    // 💡 에러 해결 포인트: 아래 정의된 함수 이름과 똑같이 맞췄습니다.
+    loadTitanDataWithBackgroundSync();
 
-    // 5) 현장 검색 이벤트 리스너
+    // 4) 현장 검색 이벤트 리스너
     document.getElementById('siteSearch').addEventListener('input', (e) => {
         const term = e.target.value.trim();
         const filtered = currentSites.filter(s => s.name.includes(term));
@@ -39,14 +39,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-
 // [2. 데이터 로딩 - 백그라운드 동기화 방식]
 async function loadTitanDataWithBackgroundSync() {
     // 💡 1단계: 메모리에서 전체 매핑 데이터 즉시 불러오기
     const cachedMap = localStorage.getItem('titan_full_data_cache');
     if (cachedMap) {
         const fullData = JSON.parse(cachedMap);
-        renderClientChips(Object.keys(fullData)); // 거래처 버튼 생성
+        renderClientChips(Object.keys(fullData)); 
     }
 
     // 💡 2단계: 백그라운드에서 전체 데이터(거래처+현장) 최신화
