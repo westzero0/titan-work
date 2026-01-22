@@ -301,3 +301,17 @@ function syncSiteSelection() {
     }
 }
 
+
+/**
+ * 🔍 현장 검색창 입력 시 칩 목록을 실시간으로 필터링합니다.
+ * HTML의 oninput="syncSiteSelection()" 호출에 대응하는 함수입니다.
+ */
+function syncSiteSelection() {
+    const term = document.getElementById('siteSearch').value.trim();
+    
+    // 전역 변수인 currentSites가 존재할 때만 필터링을 수행합니다.
+    if (currentSites && Array.isArray(currentSites)) {
+        const filtered = currentSites.filter(s => s.name.includes(term));
+        renderSiteChips(filtered, term);
+    }
+}
