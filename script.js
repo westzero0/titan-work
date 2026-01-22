@@ -1,4 +1,6 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbx0SZCVvSEVQW5LSGfkEmFqRQwUP4WIOr8eRjtuXnscOa-r0ohYcPUz99E6zaUaQQi8/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbx6Kw0va7chL7OYgYZrvuFFTg-LSi65qfRYFGq7A-FuB1uG4Zt74JgdIMmOB_BTbS9v/exec";
+
+
 
 let currentSites = []; 
 let lists = {
@@ -10,21 +12,26 @@ let lists = {
 let delMode = { member: false, car: false, material: false, payer: false };
 
 // [1. 초기 로드]
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+    // 1) 사용자 이름 확인 및 설정
     let myName = localStorage.getItem('titan_user_name');
     if (!myName) {
         myName = prompt("이름을 입력해주세요.");
         if (myName) localStorage.setItem('titan_user_name', myName);
     }
     document.getElementById('submitter').value = myName || "미지정";
-    document.getElementById('date').valueAsDate = new Date();
     
+    // 2) 날짜 및 시간 옵션 초기화
+    document.getElementById('date').valueAsDate = new Date();
     generateTimeOptions();
+    
+    // 3) 정적 칩(인원, 차량 등) 렌더링
     renderAllChips();
     
-    const clients = await fetchClientsWithCache();
-    renderClientChips(clients);
+    // 4) 핵심: 거래처 목록 백그라운드 동기화 실행 (기다림 없음)
+    loadClientsWithBackgroundSync();
 
+    // 5) 현장 검색 이벤트 리스너
     document.getElementById('siteSearch').addEventListener('input', (e) => {
         const term = e.target.value.trim();
         const filtered = currentSites.filter(s => s.name.includes(term));
@@ -32,34 +39,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// [2. 데이터 로딩]
-async function fetchClientsWithCache() {
-    const cachedData = localStorage.getItem('titan_client_cache');
-    const cacheTime = localStorage.getItem('titan_cache_time');
-    const now = new Date().getTime();
-    if (cachedData && cacheTime && (now - cacheTime < 10 * 60 * 1000)) return JSON.parse(cachedData);
+
+// [2. 데이터 로딩 - 백그라운드 동기화 방식]
+async function loadTitanDataWithBackgroundSync() {
+    // 💡 1단계: 메모리에서 전체 매핑 데이터 즉시 불러오기
+    const cachedMap = localStorage.getItem('titan_full_data_cache');
+    if (cachedMap) {
+        const fullData = JSON.parse(cachedMap);
+        renderClientChips(Object.keys(fullData)); // 거래처 버튼 생성
+    }
+
+    // 💡 2단계: 백그라운드에서 전체 데이터(거래처+현장) 최신화
     try {
-        const res = await fetch(GAS_URL + "?action=getClients"); 
-        const data = await res.json();
-        localStorage.setItem('titan_client_cache', JSON.stringify(data));
-        localStorage.setItem('titan_cache_time', now.toString());
-        return data;
-    } catch (e) { return []; }
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getAllData' })
+        });
+        const fullData = await res.json();
+        
+        localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
+        
+        // 데이터가 처음이거나 변경되었다면 거래처 칩 다시 그리기
+        if (!cachedMap) renderClientChips(Object.keys(fullData));
+    } catch (e) {
+        console.log("오프라인 모드: 기존 캐시 데이터를 사용합니다.");
+    }
 }
 
-async function fetchSites(clientName) {
+// 💡 수정된 fetchSites: 이제 서버에 물어보지 않고 메모리에서 바로 꺼내옵니다!
+function fetchSites(clientName) {
     const box = document.getElementById('site-chips');
-    box.innerHTML = "⏳ 로딩 중...";
-    try {
-        const res = await fetch(GAS_URL + `?action=getSites&client=${encodeURIComponent(clientName)}`);
-        currentSites = await res.json();
-        renderSiteChips(currentSites);
-    } catch (e) { box.innerHTML = "⚠️ 현장 로드 실패"; }
+    const cachedMap = localStorage.getItem('titan_full_data_cache');
+    
+    if (cachedMap) {
+        const fullData = JSON.parse(cachedMap);
+        const sites = fullData[clientName] || [];
+        currentSites = sites; // 검색 기능을 위해 전역 변수 업데이트
+        renderSiteChips(sites);
+    } else {
+        box.innerHTML = "⚠️ 먼저 데이터를 불러와야 합니다.";
+    }
 }
+
 
 // [3. UI 렌더링]
 function renderClientChips(clients) {
     const box = document.getElementById('client-chips');
+    if (!box) return;
     box.innerHTML = "";
     clients.forEach(name => {
         const div = document.createElement('div');
@@ -73,6 +99,7 @@ function renderClientChips(clients) {
         box.appendChild(div);
     });
 }
+
 
 function renderSiteChips(sites = currentSites, term = "") {
     const box = document.getElementById('site-chips');
