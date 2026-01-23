@@ -226,36 +226,40 @@ async function send() {
     }
 
     // 📸 [영수증 파일 처리 - 압축 로직만 남기고 중복 제거]
-    const receiptInput = document.getElementById('receipt');
+   const receiptInput = document.getElementById('receipt');
     const files = receiptInput.files;
-    let receiptData = [];
+    let filesData = [];
 
     if (files.length > 0) {
         btn.innerText = "📸 이미지 압축 중..."; 
         for (let file of files) {
-            // 💡 이 부분에서 이미 압축과 변환이 모두 끝납니다!
             const data = await compressImage(file); 
-            receiptData.push(data);
+            filesData.push({
+                content: data.base64, // 💡 base64 대신 content
+                type: data.mimeType,  // 💡 mimeType 대신 type
+                name: data.name
+            });
         }
     }
 
     const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${startTime} ~ ${endTime}\n👥 인원: ${members}\n🚗 차량: ${car}\n🍱 석식: ${dinner}\n📦 자재: ${materials}${expenseLine}`;
 
-    try {
+  try {
         btn.innerText = "🚀 서버 전송 중..."; 
-
         const payload = {
             action: "saveLog",
             data: {
-                date: document.getElementById('date').value, client, site, work,
-                start: startTime, end: endTime, members, car, materials, dinner,
+                date: document.getElementById('date').value, 
+                client, site, work,
+                start: startTime, end: endTime, 
+                members, car, materials, dinner,
                 expAmount, expDetail, expPayer,
-                receipt: receiptData, 
+                files: filesData, // 💡 receipt 대신 files로 변경
                 submitter: document.getElementById('submitter').value
             }
         };
 
-        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+     const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
         const resultText = await res.text();
 
         if (resultText === "SUCCESS") {
