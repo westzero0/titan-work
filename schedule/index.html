@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스케줄 공유</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 95%; max-width: 500px; }
+        .day { border: 1px solid #ddd; padding: 5px; text-align: center; border-radius: 8px; }
+        .btn-group { display: flex; flex-direction: column; gap: 3px; margin-top: 5px; }
+        button { border: 1px solid #ccc; border-radius: 4px; padding: 8px 0; font-size: 12px; cursor: pointer; background: white; }
+        .status-1 { background-color: #C8E6C9 !important; border-color: #4CAF50; } /* 가능(연두) */
+        .status-2 { background-color: #2196F3 !important; border-color: #0D47A1; color: white; } /* 확정(파랑) */
+    </style>
+</head>
+<body>
+    <h2 id="title">📅 스케줄 관리</h2>
+    <div class="calendar" id="calendar"></div>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzlUdE7J3ByXp2TjEXaNxk81AEvZF-4fx-By4o8zwLfkQ0DldZSPzBqqMzrJYG9S8K82A/exec';
+        const urlParams = new URLSearchParams(window.location.search);
+        const user = urlParams.get('user') || 'me';
+        document.getElementById('title').innerText = user === 'me' ? "🙋‍♀️ 내 스케줄 설정" : "🙋‍♂️ 오빠용 확정 화면";
+
+        async function init() {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            renderCalendar(data);
+        }
+
+        function renderCalendar(data) {
+            const container = document.getElementById('calendar');
+            const today = new Date();
+            for (let i = 0; i < 14; i++) { // 2주치 생성
+                const d = new Date(today); d.setDate(today.getDate() + i);
+                const dateStr = d.toISOString().split('T')[0];
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'day';
+                dayDiv.innerHTML = `<div>${d.getDate()}일</div>`;
+                
+                const btnGroup = document.createElement('div');
+                btnGroup.className = 'btn-group';
+                ['AM', 'PM'].forEach(time => {
+                    const id = `${dateStr}-${time}`;
+                    const item = data.find(d => d.id === id) || { status: 0 };
+                    const btn = document.createElement('button');
+                    btn.innerText = (time === 'AM' ? '☀️주' : '🌙야') + (item.status === 2 ? ' ✅' : '');
+                    btn.className = `status-${item.status}`;
+                    btn.onclick = () => handleToggle(id, item.status);
+                    btnGroup.appendChild(btn);
+                });
+                dayDiv.appendChild(btnGroup);
+                container.appendChild(dayDiv);
+            }
+        }
+
+        async function handleToggle(id, currentStatus) {
+            let nextStatus = currentStatus;
+            if (user === 'me') {
+                nextStatus = currentStatus === 0 ? 1 : (currentStatus === 1 ? 0 : currentStatus);
+            } else if (user === 'oppa' && currentStatus !== 0) {
+                nextStatus = currentStatus === 1 ? 2 : 1;
+            }
+            if (nextStatus !== currentStatus) {
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify({ id, status: nextStatus }) });
+                location.reload();
+            }
+        }
+        init();
+    </script>
+</body>
+</html>
