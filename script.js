@@ -211,32 +211,36 @@ async function send() {
     const car = getSel('#car-chips') || "없음";
     const dinner = document.getElementById('dinner').value === "O" ? "O" : "X";
     
- // 💡 [해결 1] 자재 정보 결합 로직 강화
     const materialChips = getSel('#material-chips');
     const materialExtra = document.getElementById('materialExtra').value.trim();
     const materials = [materialChips, materialExtra].filter(Boolean).join(', ') || "없음";
 
-// 경비 데이터 처리
-    const expAmount = document.getElementById('expAmount').value || "0";
-    const expDetail = document.getElementById('expDetail').value.trim() || "없음";
+ // [경비 데이터 처리 개선]
+    const expAmountRaw = document.getElementById('expAmount').value;
+    const expAmount = Number(expAmountRaw) || 0; // 숫자로 변환
+    const expDetail = document.getElementById('expDetail').value.trim();
     const expPayer = getSel('#payer-chips') || "없음";
 
-    // 💡 [해결] 경비가 0원이 아닐 때만 메시지에 추가하는 로직
+    // 💡 [해결] 숫자가 0보다 클 때만 메시지 줄 생성
     let expenseLine = "";
-    if (expAmount !== "0" && expAmount !== "") {
-        expenseLine = `\n💰 경비: ${Number(expAmount).toLocaleString()}원 (${expDetail})`;
+    if (expAmount > 0) {
+        expenseLine = `\n💰 경비: ${expAmount.toLocaleString()}원`;
+        
+        // 💡 상세 내용이 있을 때만 괄호와 내용을 추가
+        if (expDetail) {
+            expenseLine += ` (${expDetail})`;
+        }
     }
 
-    // 카톡 메시지 구성 (expenseLine이 비어있으면 자동으로 생략됨)
+    // 카톡 메시지 구성
     const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${startTime} ~ ${endTime}\n👥 인원: ${members}\n🚗 차량: ${car}\n🍱 석식: ${dinner}\n📦 자재: ${materials}${expenseLine}`;
-
     try {
         const payload = {
             action: "saveLog",
             data: {
                 date: document.getElementById('date').value, client, site, work,
                 start: startTime, end: endTime, members, car, materials, dinner,
-                expAmount, expDetail, expPayer,
+                expAmount, expDetail, expPayer, // 이제 오류 없이 전송됩니다.
                 submitter: document.getElementById('submitter').value
             }
         };
@@ -245,7 +249,6 @@ async function send() {
         const resultText = await res.text();
 
         if (resultText === "SUCCESS") {
-            // 3. [해결] 버튼 노란색으로 변경 및 카톡 공유 활성화
             btn.disabled = false;
             btn.style.setProperty("background-color", "#fee500", "important");
             btn.style.setProperty("color", "#3c1e1e", "important");
@@ -260,10 +263,10 @@ async function send() {
                         await copyToClipboard(msg);
                         alert("메시지가 복사되었습니다!");
                     }
-                    // 4. [해결] 공유 완료 후 폼 초기화
                     resetForm();
                 } catch (err) {
                     console.error("공유 실패:", err);
+                    resetForm();
                 }
             };
             alert("✅ 저장 성공! 노란색 버튼을 눌러 공유하세요.");
