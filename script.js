@@ -319,62 +319,62 @@ async function copyToClipboard(text) {
         alert("메시지가 복사되었습니다.");
     }
 }
+
+
 function compressImage(file) {
     return new Promise((resolve, reject) => {
-        // 1단계: 파일 객체 확인
-        if (!file) return reject(new Error("파일이 선택되지 않았습니다."));
-        if (file.size === 0) return reject(new Error("파일 용량이 0입니다. (손상된 파일)"));
+        // 💡 1. NotReadableError를 피하기 위해 즉시 임시 주소를 생성합니다.
+        let blobUrl;
+        try {
+            blobUrl = URL.createObjectURL(file);
+        } catch (e) {
+            return reject(new Error("파일 임시 주소 생성 실패"));
+        }
 
-        const reader = new FileReader();
-        
-        // 2단계: 파일 읽기 시도
-        reader.readAsDataURL(file);
-        
-        reader.onerror = () => reject(new Error(`파일 읽기 단계 실패: ${reader.error ? reader.error.name : '알 수 없는 오류'}`));
-        
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            
-            // 3단계: 이미지 객체 생성 시도
-            img.onerror = () => reject(new Error("이미지 객체 생성 실패 (모바일 메모리 부족 또는 파일 형식 미지원)"));
-            
-            img.onload = () => {
-                try {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const max_size = 800; // 모바일 최적화 크기
+        const img = new Image();
+        img.src = blobUrl;
 
-                    if (width > height) {
-                        if (width > max_size) { height *= max_size / width; width = max_size; }
-                    } else {
-                        if (height > max_size) { width *= max_size / height; height = max_size; }
-                    }
+        // 사진 읽기 단계가 생략되므로 NotReadableError 발생 지점을 건너뜁니다.
+        img.onerror = () => {
+            URL.revokeObjectURL(blobUrl);
+            reject(new Error("사진 데이터를 불러올 수 없습니다. (권한 또는 메모리 오류)"));
+        };
 
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    
-                    // 4단계: 캔버스에 그리기
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
-                    // 5단계: 최종 압축 데이터 추출 (품질 0.4로 더 하향)
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
-                    
-                    if (dataUrl.length < 100) {
-                        return reject(new Error("압축 결과 데이터가 비정상적으로 작습니다."));
-                    }
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const max_size = 800; // 모바일 최적화
 
-                    resolve({
-                        base64: dataUrl.split(',')[1],
-                        mimeType: 'image/jpeg',
-                        name: file.name.split('.')[0] + '.jpg'
-                    });
-                } catch (e) {
-                    reject(new Error(`캔버스 처리 단계 오류: ${e.message}`));
+                if (width > height) {
+                    if (width > max_size) { height *= max_size / width; width = max_size; }
+                } else {
+                    if (height > max_size) { width *= max_size / height; height = max_size; }
                 }
-            };
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // 💡 2. 품질을 0.4로 낮추어 모바일 메모리 부담을 최소화합니다.
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
+                
+                // 사용 완료된 주소는 즉시 해제(메모리 반환)
+                URL.revokeObjectURL(blobUrl);
+
+                if (dataUrl.length < 100) throw new Error("압축 데이터 생성 실패");
+
+                resolve({
+                    base64: dataUrl.split(',')[1],
+                    mimeType: 'image/jpeg',
+                    name: file.name.split('.')[0] + '.jpg'
+                });
+            } catch (e) {
+                URL.revokeObjectURL(blobUrl);
+                reject(new Error(`이미지 처리 중 오류: ${e.message}`));
+            }
         };
     });
 }
