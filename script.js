@@ -170,6 +170,7 @@ function addItem(type) {
         renderChips(type); 
     }
     input.value = "";
+    
 }
 
 function toggleDelMode(type) {
@@ -232,51 +233,42 @@ async function send() {
         }
     }
 
-    // 영수증 처리
-const receiptInput = document.getElementById('receipt');
-    const file = receiptInput.files[0];
-    let receiptData = null;
+// 📸 영수증 파일 처리
+    const receiptInput = document.getElementById('receipt');
+    const files = receiptInput.files;
+    let receiptData = [];
 
-    // 💡 파일을 읽어서 Base64 문자열로 변환하는 함수
-    const readFile = (file) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve({
-                base64: reader.result.split(',')[1],
-                mimeType: file.type,
-                name: file.name
+    if (files.length > 0) {
+        btn.innerText = "📸 영수증 변환 중...";
+        for (let file of files) {
+            const data = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve({
+                    base64: reader.result.split(',')[1],
+                    mimeType: file.type,
+                    name: file.name
+                });
+                reader.readAsDataURL(file);
             });
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    };
-
-    if (file) {
-        btn.innerText = "📸 이미지 처리 중...";
-        receiptData = await readFile(file);
+            receiptData.push(data);
+        }
     }
-
-    try {
-        const payload = {
-            action: "saveLog",
-            data: {
-                // ... 기존 데이터들 ...
-                receipt: receiptData, // 💡 파일 데이터를 포함
-                submitter: document.getElementById('submitter').value
-            }
-        };
 
 
         
     // 카톡 메시지 구성
     const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${startTime} ~ ${endTime}\n👥 인원: ${members}\n🚗 차량: ${car}\n🍱 석식: ${dinner}\n📦 자재: ${materials}${expenseLine}`;
     try {
+       // 💡 [해결] payload를 하나로 통합하여 영수증(receipt)을 확실히 포함시킵니다.
         const payload = {
             action: "saveLog",
             data: {
-                date: document.getElementById('date').value, client, site, work,
-                start: startTime, end: endTime, members, car, materials, dinner,
-                expAmount, expDetail, expPayer, // 이제 오류 없이 전송됩니다.
+                date: document.getElementById('date').value, 
+                client, site, work,
+                start: startTime, end: endTime, 
+                members, car, materials, dinner,
+                expAmount, expDetail, expPayer,
+                receipt: receiptData, // 영수증 데이터 전송
                 submitter: document.getElementById('submitter').value
             }
         };
