@@ -203,43 +203,38 @@ async function send() {
 
     if (!client || !site || !work) return alert("⚠️ 필수 정보를 입력해주세요.");
 
-    btn.disabled = true; btn.innerText = "⏳ 전송 중...";
+    btn.disabled = true; btn.innerText = "⏳ 준비 중...";
     const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     
+    // 1. 기본 데이터 수집
     const startTime = document.getElementById('start').value;
     const endTime = document.getElementById('end').value;
     const members = getSel('#member-chips') || "없음";
     const car = getSel('#car-chips') || "없음";
     const dinner = document.getElementById('dinner').value === "O" ? "O" : "X";
-    
     const materialChips = getSel('#material-chips');
     const materialExtra = document.getElementById('materialExtra').value.trim();
     const materials = [materialChips, materialExtra].filter(Boolean).join(', ') || "없음";
 
- // [경비 데이터 처리 개선]
+    // 2. 경비 데이터 처리 (숫자 비교로 수정)
     const expAmountRaw = document.getElementById('expAmount').value;
-    const expAmount = Number(expAmountRaw) || 0; // 숫자로 변환
+    const expAmount = Number(expAmountRaw) || 0; 
     const expDetail = document.getElementById('expDetail').value.trim();
     const expPayer = getSel('#payer-chips') || "없음";
 
-    // 💡 [해결] 숫자가 0보다 클 때만 메시지 줄 생성
     let expenseLine = "";
     if (expAmount > 0) {
         expenseLine = `\n💰 경비: ${expAmount.toLocaleString()}원`;
-        
-        // 💡 상세 내용이 있을 때만 괄호와 내용을 추가
-        if (expDetail) {
-            expenseLine += ` (${expDetail})`;
-        }
+        if (expDetail) expenseLine += ` (${expDetail})`;
     }
 
-// 📸 영수증 파일 처리
+    // 3. 📸 영수증 파일 변환 로직
     const receiptInput = document.getElementById('receipt');
     const files = receiptInput.files;
     let receiptData = [];
 
     if (files.length > 0) {
-        btn.innerText = "📸 영수증 변환 중...";
+        btn.innerText = "📸 영수증 변환 중..."; // 💡 변환 시작 알림
         for (let file of files) {
             const data = await new Promise((resolve) => {
                 const reader = new FileReader();
@@ -254,21 +249,20 @@ async function send() {
         }
     }
 
-
-        
-    // 카톡 메시지 구성
+    // 4. 전송 메시지 구성
     const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${startTime} ~ ${endTime}\n👥 인원: ${members}\n🚗 차량: ${car}\n🍱 석식: ${dinner}\n📦 자재: ${materials}${expenseLine}`;
+
     try {
-       // 💡 [해결] payload를 하나로 통합하여 영수증(receipt)을 확실히 포함시킵니다.
+        btn.innerText = "🚀 서버로 전송 중..."; // 💡 실제 업로드 시작 알림
+
+        // 5. 💡 [핵심] 모든 데이터를 단 하나의 payload에 통합 전송
         const payload = {
             action: "saveLog",
             data: {
-                date: document.getElementById('date').value, 
-                client, site, work,
-                start: startTime, end: endTime, 
-                members, car, materials, dinner,
+                date: document.getElementById('date').value, client, site, work,
+                start: startTime, end: endTime, members, car, materials, dinner,
                 expAmount, expDetail, expPayer,
-                receipt: receiptData, // 영수증 데이터 전송
+                receipt: receiptData, // 드디어 영수증이 누락 없이 담깁니다!
                 submitter: document.getElementById('submitter').value
             }
         };
@@ -285,24 +279,16 @@ async function send() {
             
             btn.onclick = async () => {
                 try {
-                    if (navigator.share) {
-                        await navigator.share({ text: msg });
-                    } else {
-                        await copyToClipboard(msg);
-                        alert("메시지가 복사되었습니다!");
-                    }
+                    if (navigator.share) await navigator.share({ text: msg });
+                    else await copyToClipboard(msg);
                     resetForm();
-                } catch (err) {
-                    console.error("공유 실패:", err);
-                    resetForm();
-                }
+                } catch (err) { console.error("공유 실패:", err); resetForm(); }
             };
             alert("✅ 저장 성공! 노란색 버튼을 눌러 공유하세요.");
         }
     } catch (e) {
         alert("⚠️ 오류 발생: " + e.message);
-        btn.disabled = false;
-        btn.innerText = "🚀 다시 시도";
+        btn.disabled = false; btn.innerText = "🚀 다시 시도";
     }
 }
 
