@@ -54,9 +54,9 @@
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbxnNslNsmaQLKp1eu-bbKD6nhW1a9aRBHlzlWIHm96nz_JJRzXGDOnrEuLFmkjpS_CK/exec'; 
-        const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(window.location.search);
         const user = urlParams.get('user') || 'me';
-        let currentYear = 2026, currentMonth = 0; 
+        let currentYear, currentMonth; 
 
         const holidayData = { "2026-01-01": "신정", "2026-02-16": "설날 연휴", "2026-02-17": "설날", "2026-02-18": "설날 연휴", "2026-03-01": "삼일절", "2026-03-02": "대체공휴일", "2026-05-05": "어린이날", "2026-05-24": "부처님오신날", "2026-05-25": "대체공휴일", "2026-06-03": "지방선거", "2026-06-06": "현충일", "2026-08-15": "광복절", "2026-08-17": "대체공휴일", "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴", "2026-10-03": "개천절", "2026-10-05": "대체공휴일", "2026-10-09": "한글날", "2026-12-25": "성탄절" };
 
@@ -70,6 +70,7 @@
         }
 
         async function fetchData() {
+            document.getElementById('loading-bar').style.width = '30%';
             try {
                 const res = await fetch(API_URL + "?t=" + new Date().getTime());
                 const allData = await res.json();
@@ -78,6 +79,8 @@
             } catch (e) {
                 const cached = localStorage.getItem('full_data_cache');
                 if (cached) render(JSON.parse(cached));
+            } finally {
+                document.getElementById('loading-bar').style.width = '0%';
             }
         }
 
@@ -96,22 +99,34 @@
 
         function createCell(date, isOther, allData) {
             const cell = document.createElement('div');
-            cell.className = `cell ${isOther ? 'other-month' : ''}`;
             const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${date.toString().padStart(2, '0')}`;
             const holidayName = holidayData[dateStr];
+            
+            // 오늘 날짜인지 확인
+            const now = new Date();
+            const isToday = !isOther && 
+                            date === now.getDate() && 
+                            currentMonth === now.getMonth() && 
+                            currentYear === now.getFullYear();
+
+            cell.className = `cell ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''}`;
+            
             if (holidayName) cell.classList.add('is-holiday');
             cell.innerHTML = `<div class="date-num">${date}${holidayName ? ` <span class="holiday-label">${holidayName}</span>` : ''}</div>`;
             
             if (!isOther && allData) {
-                // 1. 장기 부재 여부 확인 (Events 시트에 등록된 일정이 있는지)
-                const isAbsent = allData.events.some(ev => {
-                    const s = new Date(ev.start); const e = new Date(ev.end); const curr = new Date(dateStr);
-                    s.setHours(0,0,0,0); e.setHours(0,0,0,0); curr.setHours(0,0,0,0);
+                const eventOnThisDay = allData.events.find(ev => {
+                    const s = new Date(ev.start); s.setHours(0,0,0,0);
+                    const e = new Date(ev.end); e.setHours(0,0,0,0);
+                    const curr = new Date(dateStr); curr.setHours(0,0,0,0);
                     return curr >= s && curr <= e;
                 });
 
-                // 2. 부재중이 아닐 때만 주/야 근무 버튼 표시
-                if (!isAbsent) {
+                if (eventOnThisDay) {
+                    cell.classList.add('has-event');
+                    cell.style.backgroundColor = eventOnThisDay.color + '33'; 
+                    cell.innerHTML += `<div class="event-title">${eventOnThisDay.title}</div>`;
+                } else {
                     const btnGroup = document.createElement('div');
                     btnGroup.className = 'btn-group';
                     ['AM', 'PM'].forEach(time => {
@@ -125,20 +140,6 @@
                     });
                     cell.appendChild(btnGroup);
                 }
-
-                // 3. 장기 일정 바 렌더링
-                allData.events.forEach((ev, idx) => {
-                    const s = new Date(ev.start); const e = new Date(ev.end); const curr = new Date(dateStr);
-                    s.setHours(0,0,0,0); e.setHours(0,0,0,0); curr.setHours(0,0,0,0);
-                    if (curr >= s && curr <= e) {
-                        const bar = document.createElement('div');
-                        bar.className = 'event-bar';
-                        bar.style.background = ev.color;
-                        bar.style.top = (20 + idx * 15) + "px";
-                        if (curr.toDateString() === s.toDateString()) bar.innerText = ev.title;
-                        cell.appendChild(bar);
-                    }
-                });
             }
             document.getElementById('calendar').appendChild(cell);
         }
@@ -150,12 +151,16 @@
             
             if (nextStatus !== currentStatus) {
                 document.getElementById('loading-bar').style.width = '100%';
-                await fetch(API_URL, { method: 'POST', body: JSON.stringify({ id, status: nextStatus }), mode: 'no-cors' });
-                const idx = allData.daily.findIndex(d => d.id === id);
-                if (idx > -1) allData.daily[idx].status = nextStatus;
-                else allData.daily.push({ id, status: nextStatus });
-                render(allData);
-                setTimeout(() => { document.getElementById('loading-bar').style.width = '0%'; }, 400);
+                try {
+                    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ id, status: nextStatus }), mode: 'no-cors' });
+                    const idx = allData.daily.findIndex(d => d.id === id);
+                    if (idx > -1) allData.daily[idx].status = nextStatus;
+                    else allData.daily.push({ id, status: nextStatus });
+                    localStorage.setItem('full_data_cache', JSON.stringify(allData));
+                    render(allData);
+                } finally {
+                    setTimeout(() => { document.getElementById('loading-bar').style.width = '0%'; }, 400);
+                }
             }
         }
 
