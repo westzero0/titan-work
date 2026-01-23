@@ -319,56 +319,62 @@ async function copyToClipboard(text) {
         alert("메시지가 복사되었습니다.");
     }
 }
-
-
-// 💡 더 빠르고 안전하게 개선된 압축 함수
 function compressImage(file) {
     return new Promise((resolve, reject) => {
-        // 1. 💡 파일을 읽는 대신, 브라우저 메모리에 임시 주소를 생성합니다. (메모리 절약)
-        const blobUrl = URL.createObjectURL(file);
-        const img = new Image();
+        // 1단계: 파일 객체 확인
+        if (!file) return reject(new Error("파일이 선택되지 않았습니다."));
+        if (file.size === 0) return reject(new Error("파일 용량이 0입니다. (손상된 파일)"));
+
+        const reader = new FileReader();
         
-        img.src = blobUrl;
+        // 2단계: 파일 읽기 시도
+        reader.readAsDataURL(file);
+        
+        reader.onerror = () => reject(new Error(`파일 읽기 단계 실패: ${reader.error ? reader.error.name : '알 수 없는 오류'}`));
+        
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            
+            // 3단계: 이미지 객체 생성 시도
+            img.onerror = () => reject(new Error("이미지 객체 생성 실패 (모바일 메모리 부족 또는 파일 형식 미지원)"));
+            
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const max_size = 800; // 모바일 최적화 크기
 
-        // 파일 읽기 단계가 생략되므로 reader.onerror는 필요 없습니다.
-        img.onerror = () => {
-            URL.revokeObjectURL(blobUrl); // 사용한 주소 해제
-            reject(new Error("이미지 객체 생성 실패 (파일이 깨졌거나 형식이 다름)"));
-        };
+                    if (width > height) {
+                        if (width > max_size) { height *= max_size / width; width = max_size; }
+                    } else {
+                        if (height > max_size) { width *= max_size / height; height = max_size; }
+                    }
 
-        img.onload = () => {
-            try {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-                const max_size = 800; // 💡 모바일 전송을 위해 800px 유지
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 4단계: 캔버스에 그리기
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 5단계: 최종 압축 데이터 추출 (품질 0.4로 더 하향)
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
+                    
+                    if (dataUrl.length < 100) {
+                        return reject(new Error("압축 결과 데이터가 비정상적으로 작습니다."));
+                    }
 
-                if (width > height) {
-                    if (width > max_size) { height *= max_size / width; width = max_size; }
-                } else {
-                    if (height > max_size) { width *= max_size / height; height = max_size; }
+                    resolve({
+                        base64: dataUrl.split(',')[1],
+                        mimeType: 'image/jpeg',
+                        name: file.name.split('.')[0] + '.jpg'
+                    });
+                } catch (e) {
+                    reject(new Error(`캔버스 처리 단계 오류: ${e.message}`));
                 }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // 2. 💡 품질을 0.5로 낮추어 전송 성공률을 극대화합니다.
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-                
-                // 사용이 끝난 임시 주소는 즉시 삭제하여 메모리를 확보합니다.
-                URL.revokeObjectURL(blobUrl);
-
-                resolve({
-                    base64: dataUrl.split(',')[1],
-                    mimeType: 'image/jpeg',
-                    name: file.name.split('.')[0] + '.jpg'
-                });
-            } catch (e) {
-                URL.revokeObjectURL(blobUrl);
-                reject(e);
-            }
+            };
         };
     });
 }
