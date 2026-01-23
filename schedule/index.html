@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>스케줄 공유</title>
+    <title>업무 스케줄</title>
     <style>
-        :root { --bg: #f4f7f6; --white: #ffffff; --green: #e2fbe5; --green-text: #155724; --blue: #007bff; --text: #333; --gray: #888; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        :root { --bg: #f4f7f6; --white: #ffffff; --green: #e2fbe5; --green-text: #155724; --blue: #007bff; --text: #333; --gray: #888; --skeleton: #eceef1; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         
         header { width: 100%; max-width: 500px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         h2 { font-size: 1.1rem; margin: 0; font-weight: 600; }
         
-        /* 역할 배지 디자인 */
         .role-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
         .role-me { background: var(--green); color: var(--green-text); border: 1px solid #a3cfbb; }
         .role-oppa { background: #cfe2ff; color: #084298; border: 1px solid #b6d4fe; }
@@ -19,17 +18,20 @@
         .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; width: 100%; max-width: 500px; }
         .day-label { text-align: center; font-size: 0.7rem; color: var(--gray); font-weight: bold; padding-bottom: 5px; }
         
-        .day { background: var(--white); border-radius: 12px; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; display: flex; flex-direction: column; gap: 6px; }
+        .day { background: var(--white); border-radius: 12px; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; display: flex; flex-direction: column; gap: 6px; min-height: 80px; }
         .date-num { font-size: 0.85rem; font-weight: bold; margin-bottom: 2px; }
         .today { border: 2px solid var(--blue); }
 
         .btn-group { display: flex; flex-direction: column; gap: 4px; }
-        button { border: 1px solid #eee; border-radius: 8px; padding: 12px 0; font-size: 0.7rem; cursor: pointer; transition: all 0.15s; background: #fafafa; -webkit-tap-highlight-color: transparent; }
+        button { border: 1px solid #eee; border-radius: 8px; padding: 12px 0; font-size: 0.7rem; cursor: pointer; transition: background 0.2s; background: #fafafa; }
         
-        /* 버튼 상태 스타일 */
         button.status-1 { background-color: var(--green) !important; border-color: #a3cfbb; color: var(--green-text); font-weight: bold; }
         button.status-2 { background-color: var(--blue) !important; border-color: #0056b3; color: white; font-weight: bold; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 스켈레톤 애니메이션 */
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .skeleton-btn { background: linear-gradient(90deg, var(--skeleton) 25%, #f5f5f5 50%, var(--skeleton) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border: none; height: 35px; }
+        .skeleton-text { background: var(--skeleton); height: 12px; width: 60%; margin: 0 auto 8px; border-radius: 4px; }
 
         .loading-bar { position: fixed; top: 0; left: 0; width: 0%; height: 3px; background: var(--blue); transition: width 0.3s; z-index: 1000; }
     </style>
@@ -37,7 +39,7 @@
 <body>
     <div id="loading-bar" class="loading-bar"></div>
     <header>
-        <h2 id="title">스케줄 로딩...</h2>
+        <h2 id="title">업무 스케줄</h2>
         <div id="badge" class="role-badge">로딩중</div>
     </header>
     
@@ -47,24 +49,47 @@
     </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbySmczdvEwp0FKaru7-ieTmg5xKf8G4WoOac6fK-eKu18SdQA_1Fhojav9JCSoL0NYh9A/exec'; 
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzd8BYaicsFmw9CCVQXeWTbNbhAtZqmQ7oH4ZR4lBsloaRSWlqnztPTqNptWWBqcveMBQ/exec'; // 실제 URL로 교체 확인!
         const urlParams = new URLSearchParams(window.location.search);
         const user = urlParams.get('user') || 'me';
 
-        // 상단 UI 설정
         const badge = document.getElementById('badge');
-        document.getElementById('title').innerText = "📅 업무 스케줄";
         badge.innerText = user === 'me' ? "🙋‍♀️ 내 설정" : "🙋‍♂️ 오빠 확인";
         badge.className = `role-badge ${user === 'me' ? 'role-me' : 'role-oppa'}`;
 
+        // 1. 초기 실행: 스켈레톤 UI 또는 캐시 데이터 표시
         async function init() {
+            const cachedData = localStorage.getItem('schedule_cache');
+            
+            if (cachedData) {
+                // 캐시가 있으면 즉시 렌더링 (체감 속도 0초)
+                renderCalendar(JSON.parse(cachedData));
+            } else {
+                // 캐시 없으면 스켈레톤 표시
+                renderSkeleton();
+            }
+
+            // 백그라운드에서 최신 데이터 가져오기
             try {
-                const response = await fetch(API_URL);
-                const data = await response.json();
-                renderCalendar(data);
+                const response = await fetch(API_URL + "?t=" + new Date().getTime());
+                const newData = await response.json();
+                
+                // 캐시 업데이트 및 재렌더링
+                localStorage.setItem('schedule_cache', JSON.stringify(newData));
+                document.getElementById('calendar').querySelectorAll('.day').forEach(el => el.remove());
+                renderCalendar(newData);
             } catch (e) {
-                console.error("데이터 로딩 실패", e);
-                renderCalendar([]);
+                console.error("최신 데이터 로딩 실패", e);
+            }
+        }
+
+        function renderSkeleton() {
+            const container = document.getElementById('calendar');
+            for (let i = 0; i < 14; i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'day';
+                dayDiv.innerHTML = `<div class="skeleton-text"></div><div class="btn-group"><div class="skeleton-btn"></div><div class="skeleton-btn"></div></div>`;
+                container.appendChild(dayDiv);
             }
         }
 
@@ -72,9 +97,9 @@
             const container = document.getElementById('calendar');
             const today = new Date();
             const startPoint = new Date(today);
-            startPoint.setDate(today.getDate() - today.getDay()); // 이번 주 일요일부터 시작
+            startPoint.setDate(today.getDate() - today.getDay());
 
-            for (let i = 0; i < 14; i++) { // 2주치 표시
+            for (let i = 0; i < 14; i++) {
                 const d = new Date(startPoint);
                 d.setDate(startPoint.getDate() + i);
                 const dateStr = d.toISOString().split('T')[0];
@@ -91,9 +116,7 @@
                     const item = data.find(item => item.id === id) || { status: 0 };
                     const btn = document.createElement('button');
                     btn.id = id;
-                    btn.dataset.status = item.status;
                     updateButtonStyle(btn, item.status, time);
-                    
                     btn.onclick = () => handleToggle(id, time);
                     btnGroup.appendChild(btn);
                 });
@@ -115,35 +138,34 @@
             let currentStatus = parseInt(btn.dataset.status) || 0;
             let nextStatus = currentStatus;
 
-            // 핵심 로직: 권한별 엄격 분리
             if (user === 'me') {
-                if (currentStatus === 0) nextStatus = 1;      // 빈칸 -> 가능
-                else if (currentStatus === 1) nextStatus = 0; // 가능 -> 빈칸
-                else return; // 확정된 것은 수정 불가
-            } 
-            else if (user === 'oppa') {
-                if (currentStatus === 1) nextStatus = 2;      // 가능 -> 확정
-                else if (currentStatus === 2) nextStatus = 1; // 확정 -> 가능(취소)
-                else return; // 빈칸은 클릭 무시
+                if (currentStatus === 0) nextStatus = 1;
+                else if (currentStatus === 1) nextStatus = 0;
+                else return;
+            } else if (user === 'oppa') {
+                if (currentStatus === 1) nextStatus = 2;
+                else if (currentStatus === 2) nextStatus = 1;
+                else return;
             }
 
             if (nextStatus !== currentStatus) {
-                // 1. 화면 즉시 반영 (Optimistic UI)
                 updateButtonStyle(btn, nextStatus, time);
-                document.getElementById('loading-bar').style.width = '100%';
+                
+                // 로컬 스토리지도 즉시 업데이트 (새로고침 시 유지용)
+                const currentCache = JSON.parse(localStorage.getItem('schedule_cache') || '[]');
+                const index = currentCache.findIndex(item => item.id === id);
+                if (index > -1) currentCache[index].status = nextStatus;
+                else currentCache.push({ id, status: nextStatus });
+                localStorage.setItem('schedule_cache', JSON.stringify(currentCache));
 
+                document.getElementById('loading-bar').style.width = '100%';
                 try {
-                    // 2. 백그라운드 서버 저장
-                    await fetch(API_URL, { 
-                        method: 'POST', 
-                        body: JSON.stringify({ id, status: nextStatus }),
-                        mode: 'no-cors' // 속도 향상을 위해 응답 대기 생략
-                    });
+                    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ id, status: nextStatus }), mode: 'no-cors' });
                 } catch (e) {
-                    alert("저장 실패! 다시 시도해주세요.");
+                    alert("저장 실패!");
                     location.reload();
                 } finally {
-                    setTimeout(() => { document.getElementById('loading-bar').style.width = '0%'; }, 500);
+                    setTimeout(() => { document.getElementById('loading-bar').style.width = '0%'; }, 400);
                 }
             }
         }
