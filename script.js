@@ -216,21 +216,27 @@ async function send() {
     const materialExtra = document.getElementById('materialExtra').value.trim();
     const materials = [materialChips, materialExtra].filter(Boolean).join(', ') || "없음";
 
-    // 💡 [해결 2] 경비 데이터 기본값 강제 할당
+// 경비 데이터 처리
     const expAmount = document.getElementById('expAmount').value || "0";
     const expDetail = document.getElementById('expDetail').value.trim() || "없음";
     const expPayer = getSel('#payer-chips') || "없음";
-    // 카톡 메시지에 자재 정보 포함
-    const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${startTime} ~ ${endTime}\n👥 인원: ${members}\n🚗 차량: ${car}\n🍱 석식: ${dinner}\n📦 자재: ${materials}\n💰 경비: ${Number(expAmount).toLocaleString()}원 (${expDetail})`;
+
+    // 💡 [해결] 경비가 0원이 아닐 때만 메시지에 추가하는 로직
+    let expenseLine = "";
+    if (expAmount !== "0" && expAmount !== "") {
+        expenseLine = `\n💰 경비: ${Number(expAmount).toLocaleString()}원 (${expDetail})`;
+    }
+
+    // 카톡 메시지 구성 (expenseLine이 비어있으면 자동으로 생략됨)
+    const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${startTime} ~ ${endTime}\n👥 인원: ${members}\n🚗 차량: ${car}\n🍱 석식: ${dinner}\n📦 자재: ${materials}${expenseLine}`;
 
     try {
         const payload = {
             action: "saveLog",
             data: {
                 date: document.getElementById('date').value, client, site, work,
-                start: startTime, end: endTime, members, car, materials,
-                dinner: document.getElementById('dinner').value,
-                expAmount, expDetail, expPayer, // 경비 데이터 전송
+                start: startTime, end: endTime, members, car, materials, dinner,
+                expAmount, expDetail, expPayer,
                 submitter: document.getElementById('submitter').value
             }
         };
@@ -240,7 +246,6 @@ async function send() {
 
         if (resultText === "SUCCESS") {
             // 3. [해결] 버튼 노란색으로 변경 및 카톡 공유 활성화
-       // 💡 [해결 3] 버튼 스타일 강제 변경 (노란색)
             btn.disabled = false;
             btn.style.setProperty("background-color", "#fee500", "important");
             btn.style.setProperty("color", "#3c1e1e", "important");
