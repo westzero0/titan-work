@@ -1,59 +1,100 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>스케줄 공유</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 95%; max-width: 500px; }
-        .day { border: 1px solid #ddd; padding: 5px; text-align: center; border-radius: 8px; }
-        .btn-group { display: flex; flex-direction: column; gap: 3px; margin-top: 5px; }
-        button { border: 1px solid #ccc; border-radius: 4px; padding: 8px 0; font-size: 12px; cursor: pointer; background: white; }
-        .status-1 { background-color: #C8E6C9 !important; border-color: #4CAF50; } /* 가능(연두) */
-        .status-2 { background-color: #2196F3 !important; border-color: #0D47A1; color: white; } /* 확정(파랑) */
+        :root { --bg: #f4f7f6; --white: #ffffff; --green: #e2fbe5; --green-text: #155724; --blue: #007bff; --text: #333; --gray: #888; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        
+        header { width: 100%; max-width: 500px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h2 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+        
+        /* 역할 배지 디자인 */
+        .role-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
+        .role-me { background: var(--green); color: var(--green-text); border: 1px solid #a3cfbb; }
+        .role-oppa { background: #cfe2ff; color: #084298; border: 1px solid #b6d4fe; }
+
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; width: 100%; max-width: 500px; }
+        .day-label { text-align: center; font-size: 0.7rem; color: var(--gray); font-weight: bold; padding-bottom: 5px; }
+        
+        .day { background: var(--white); border-radius: 12px; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; display: flex; flex-direction: column; gap: 6px; }
+        .date-num { font-size: 0.85rem; font-weight: bold; margin-bottom: 2px; }
+        .today { border: 2px solid var(--blue); }
+
+        .btn-group { display: flex; flex-direction: column; gap: 4px; }
+        button { border: 1px solid #eee; border-radius: 8px; padding: 12px 0; font-size: 0.7rem; cursor: pointer; transition: all 0.15s; background: #fafafa; -webkit-tap-highlight-color: transparent; }
+        
+        /* 버튼 상태 스타일 */
+        button.status-1 { background-color: var(--green) !important; border-color: #a3cfbb; color: var(--green-text); font-weight: bold; }
+        button.status-2 { background-color: var(--blue) !important; border-color: #0056b3; color: white; font-weight: bold; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .loading-bar { position: fixed; top: 0; left: 0; width: 0%; height: 3px; background: var(--blue); transition: width 0.3s; z-index: 1000; }
     </style>
 </head>
 <body>
-    <h2 id="title">📅 스케줄 관리</h2>
-    <div class="calendar" id="calendar"></div>
+    <div id="loading-bar" class="loading-bar"></div>
+    <header>
+        <h2 id="title">스케줄 로딩...</h2>
+        <div id="badge" class="role-badge">로딩중</div>
+    </header>
+    
+    <div class="calendar" id="calendar">
+        <div class="day-label">일</div><div class="day-label">월</div><div class="day-label">화</div>
+        <div class="day-label">수</div><div class="day-label">목</div><div class="day-label">금</div><div class="day-label">토</div>
+    </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbz-wpJcsVrmrYc2efX1Clps1RFbifraHTgg9b7PZDsIeiogtUnofddqhG6NYjshjCQSKw/exec';
+        const API_URL = '여기에_본인의_웹_앱_URL_입력'; 
         const urlParams = new URLSearchParams(window.location.search);
         const user = urlParams.get('user') || 'me';
-        document.getElementById('title').innerText = user === 'me' ? "🙋‍♀️ 내 스케줄 설정" : "🙋‍♂️ 오빠용 확정 화면";
 
-async function init() {
-    try {
-        const response = await fetch(API_URL);
-        if (!response.ok) throw new Error('네트워크 응답이 올바르지 않습니다.');
-        const data = await response.json();
-        renderCalendar(data);
-    } catch (error) {
-        console.error('데이터를 가져오는 중 오류 발생:', error);
-        // 에러가 나더라도 빈 달력이라도 보이게 처리
-        renderCalendar([]); 
-    }
-}
+        // 상단 UI 설정
+        const badge = document.getElementById('badge');
+        document.getElementById('title').innerText = "📅 업무 스케줄";
+        badge.innerText = user === 'me' ? "🙋‍♀️ 내 설정" : "🙋‍♂️ 오빠 확인";
+        badge.className = `role-badge ${user === 'me' ? 'role-me' : 'role-oppa'}`;
+
+        async function init() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                renderCalendar(data);
+            } catch (e) {
+                console.error("데이터 로딩 실패", e);
+                renderCalendar([]);
+            }
+        }
+
         function renderCalendar(data) {
             const container = document.getElementById('calendar');
             const today = new Date();
-            for (let i = 0; i < 14; i++) { // 2주치 생성
-                const d = new Date(today); d.setDate(today.getDate() + i);
+            const startPoint = new Date(today);
+            startPoint.setDate(today.getDate() - today.getDay()); // 이번 주 일요일부터 시작
+
+            for (let i = 0; i < 14; i++) { // 2주치 표시
+                const d = new Date(startPoint);
+                d.setDate(startPoint.getDate() + i);
                 const dateStr = d.toISOString().split('T')[0];
+                
                 const dayDiv = document.createElement('div');
-                dayDiv.className = 'day';
-                dayDiv.innerHTML = `<div>${d.getDate()}일</div>`;
+                dayDiv.className = `day ${d.toDateString() === today.toDateString() ? 'today' : ''}`;
+                dayDiv.innerHTML = `<div class="date-num">${d.getDate()}</div>`;
                 
                 const btnGroup = document.createElement('div');
                 btnGroup.className = 'btn-group';
+                
                 ['AM', 'PM'].forEach(time => {
                     const id = `${dateStr}-${time}`;
-                    const item = data.find(d => d.id === id) || { status: 0 };
+                    const item = data.find(item => item.id === id) || { status: 0 };
                     const btn = document.createElement('button');
-                    btn.innerText = (time === 'AM' ? '☀️주' : '🌙야') + (item.status === 2 ? ' ✅' : '');
-                    btn.className = `status-${item.status}`;
-                    btn.onclick = () => handleToggle(id, item.status);
+                    btn.id = id;
+                    btn.dataset.status = item.status;
+                    updateButtonStyle(btn, item.status, time);
+                    
+                    btn.onclick = () => handleToggle(id, time);
                     btnGroup.appendChild(btn);
                 });
                 dayDiv.appendChild(btnGroup);
@@ -61,16 +102,49 @@ async function init() {
             }
         }
 
-        async function handleToggle(id, currentStatus) {
+        function updateButtonStyle(btn, status, time) {
+            btn.className = `status-${status}`;
+            btn.dataset.status = status;
+            const icon = time === 'AM' ? '☀️' : '🌙';
+            const label = time === 'AM' ? '주간' : '야간';
+            btn.innerText = status === 2 ? `${icon} 확정` : (status === 1 ? `${icon} 가능` : `${icon} ${label}`);
+        }
+
+        async function handleToggle(id, time) {
+            const btn = document.getElementById(id);
+            let currentStatus = parseInt(btn.dataset.status) || 0;
             let nextStatus = currentStatus;
+
+            // 핵심 로직: 권한별 엄격 분리
             if (user === 'me') {
-                nextStatus = currentStatus === 0 ? 1 : (currentStatus === 1 ? 0 : currentStatus);
-            } else if (user === 'oppa' && currentStatus !== 0) {
-                nextStatus = currentStatus === 1 ? 2 : 1;
+                if (currentStatus === 0) nextStatus = 1;      // 빈칸 -> 가능
+                else if (currentStatus === 1) nextStatus = 0; // 가능 -> 빈칸
+                else return; // 확정된 것은 수정 불가
+            } 
+            else if (user === 'oppa') {
+                if (currentStatus === 1) nextStatus = 2;      // 가능 -> 확정
+                else if (currentStatus === 2) nextStatus = 1; // 확정 -> 가능(취소)
+                else return; // 빈칸은 클릭 무시
             }
+
             if (nextStatus !== currentStatus) {
-                await fetch(API_URL, { method: 'POST', body: JSON.stringify({ id, status: nextStatus }) });
-                location.reload();
+                // 1. 화면 즉시 반영 (Optimistic UI)
+                updateButtonStyle(btn, nextStatus, time);
+                document.getElementById('loading-bar').style.width = '100%';
+
+                try {
+                    // 2. 백그라운드 서버 저장
+                    await fetch(API_URL, { 
+                        method: 'POST', 
+                        body: JSON.stringify({ id, status: nextStatus }),
+                        mode: 'no-cors' // 속도 향상을 위해 응답 대기 생략
+                    });
+                } catch (e) {
+                    alert("저장 실패! 다시 시도해주세요.");
+                    location.reload();
+                } finally {
+                    setTimeout(() => { document.getElementById('loading-bar').style.width = '0%'; }, 500);
+                }
             }
         }
         init();
