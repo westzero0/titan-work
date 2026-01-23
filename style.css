@@ -20,3 +20,33 @@
 .chip.add-chip:hover {
     background-color: #bbdefb;
 }
+
+#splash-screen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* 최상단에 위치 */
+    transition: opacity 0.5s ease-out;
+}
+
+.splash-content img {
+    width: 200px; /* 로고 크기 조절 */
+    display: block;
+    margin-bottom: 20px;
+}
+
+/* 로딩 애니메이션 (선택사항) */
+.loader {
+    width: 40px; height: 40px;
+    border: 4px solid #333;
+    border-top: 4px solid #E31E24; /* 타이탄 레컬러 */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
