@@ -324,7 +324,20 @@ async function copyToClipboard(text) {
 // 💡 더 빠르고 안전하게 개선된 압축 함수
 function compressImage(file) {
     return new Promise((resolve, reject) => {
+        // 💡 모바일 브라우저가 파일을 제대로 인식했는지 먼저 체크
+        if (!file || !(file instanceof Blob)) {
+            reject(new Error("올바른 파일 형식이 아닙니다."));
+            return;
+        }
+
         const reader = new FileReader();
+        
+        reader.onerror = (e) => {
+            console.error("FileReader Error:", e);
+            // 💡 에러 메시지를 더 구체적으로 표시
+            reject(new Error(`파일 읽기 실패: ${e.target.error ? e.target.error.name : '알 수 없는 오류'}`));
+        };
+
         reader.readAsDataURL(file);
         
         reader.onerror = () => reject(new Error("파일 읽기 실패"));
