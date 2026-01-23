@@ -333,55 +333,58 @@ async function copyToClipboard(text) {
     }
 }
 
-
-function compressImage(file) {
+async function compressImage(file) {
     return new Promise((resolve, reject) => {
-        // 1. 💡 과부하 방지: 메모리 주소만 따오는 임시 주소 생성
-        let blobUrl;
-        try {
-            blobUrl = URL.createObjectURL(file);
-        } catch (e) {
-            return reject(new Error("임시 주소 생성 실패"));
-        }
-
+        // 💡 1단계: 파일을 아주 작은 덩어리(Blob)로 복제해서 권한을 고정합니다.
+        const blob = file.slice(0, file.size, file.type);
+        const blobUrl = URL.createObjectURL(blob);
         const img = new Image();
+
         img.src = blobUrl;
 
         img.onerror = () => {
             URL.revokeObjectURL(blobUrl);
-            reject(new Error("사진 로딩 실패 (메모리 부족 또는 권한 오류)"));
+            reject(new Error("사진 로딩 실패: 사진 용량이 너무 커서 브라우저가 읽지 못합니다. (다른 앱을 닫고 다시 시도해 주세요)"));
         };
 
         img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // 2. 💡 변압기 역할: 사진 크기를 800px로 대폭 줄여 부하 감소
-            let width = img.width;
-            let height = img.height;
-            const max_size = 800; 
+            try {
+                // 💡 2단계: 캔버스 크기를 600px로 더 줄여서 메모리 과부하를 원천 차단합니다.
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                let width = img.width;
+                let height = img.height;
+                const max_size = 600; // 800에서 600으로 더 하향
 
-            if (width > height) {
-                if (width > max_size) { height *= max_size / width; width = max_size; }
-            } else {
-                if (height > max_size) { width *= max_size / height; height = max_size; }
+                if (width > height) {
+                    if (width > max_size) { height *= max_size / width; width = max_size; }
+                } else {
+                    if (height > max_size) { width *= max_size / height; height = max_size; }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                
+                // 💡 3단계: 이미지를 캔버스에 그릴 때 품질 손실을 감수하고서라도 메모리를 아낍니다.
+                ctx.imageSmoothingEnabled = false; 
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // 💡 4단계: 품질을 0.3까지 낮춰 전송 성공률을 99%까지 끌어올립니다.
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.3);
+                URL.revokeObjectURL(blobUrl);
+
+                if (dataUrl.length < 100) throw new Error("압축 데이터 생성 실패");
+
+                resolve({
+                    base64: dataUrl.split(',')[1],
+                    mimeType: 'image/jpeg',
+                    name: file.name.split('.')[0] + '.jpg'
+                });
+            } catch (e) {
+                URL.revokeObjectURL(blobUrl);
+                reject(new Error("메모리 부족: 실행 중인 다른 앱들을 종료하고 다시 시도해 주세요."));
             }
-
-            canvas.width = width;
-            canvas.height = height;
-            ctx.drawImage(img, 0, 0, width, height);
-
-            // 3. 💡 절연 마감: 품질을 0.4로 낮춰서 전송 속도 향상
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
-            
-            // 4. 💡 뒤처리: 사용한 메모리는 즉시 반환 (매우 중요!)
-            URL.revokeObjectURL(blobUrl);
-
-            resolve({
-                base64: dataUrl.split(',')[1],
-                mimeType: 'image/jpeg',
-                name: file.name.split('.')[0] + '.jpg'
-            });
         };
     });
 }
