@@ -323,58 +323,52 @@ async function copyToClipboard(text) {
 
 function compressImage(file) {
     return new Promise((resolve, reject) => {
-        // 💡 1. NotReadableError를 피하기 위해 즉시 임시 주소를 생성합니다.
+        // 1. 💡 과부하 방지: 메모리 주소만 따오는 임시 주소 생성
         let blobUrl;
         try {
             blobUrl = URL.createObjectURL(file);
         } catch (e) {
-            return reject(new Error("파일 임시 주소 생성 실패"));
+            return reject(new Error("임시 주소 생성 실패"));
         }
 
         const img = new Image();
         img.src = blobUrl;
 
-        // 사진 읽기 단계가 생략되므로 NotReadableError 발생 지점을 건너뜁니다.
         img.onerror = () => {
             URL.revokeObjectURL(blobUrl);
-            reject(new Error("사진 데이터를 불러올 수 없습니다. (권한 또는 메모리 오류)"));
+            reject(new Error("사진 로딩 실패 (메모리 부족 또는 권한 오류)"));
         };
 
         img.onload = () => {
-            try {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-                const max_size = 800; // 모바일 최적화
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 2. 💡 변압기 역할: 사진 크기를 800px로 대폭 줄여 부하 감소
+            let width = img.width;
+            let height = img.height;
+            const max_size = 800; 
 
-                if (width > height) {
-                    if (width > max_size) { height *= max_size / width; width = max_size; }
-                } else {
-                    if (height > max_size) { width *= max_size / height; height = max_size; }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // 💡 2. 품질을 0.4로 낮추어 모바일 메모리 부담을 최소화합니다.
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
-                
-                // 사용 완료된 주소는 즉시 해제(메모리 반환)
-                URL.revokeObjectURL(blobUrl);
-
-                if (dataUrl.length < 100) throw new Error("압축 데이터 생성 실패");
-
-                resolve({
-                    base64: dataUrl.split(',')[1],
-                    mimeType: 'image/jpeg',
-                    name: file.name.split('.')[0] + '.jpg'
-                });
-            } catch (e) {
-                URL.revokeObjectURL(blobUrl);
-                reject(new Error(`이미지 처리 중 오류: ${e.message}`));
+            if (width > height) {
+                if (width > max_size) { height *= max_size / width; width = max_size; }
+            } else {
+                if (height > max_size) { width *= max_size / height; height = max_size; }
             }
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // 3. 💡 절연 마감: 품질을 0.4로 낮춰서 전송 속도 향상
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
+            
+            // 4. 💡 뒤처리: 사용한 메모리는 즉시 반환 (매우 중요!)
+            URL.revokeObjectURL(blobUrl);
+
+            resolve({
+                base64: dataUrl.split(',')[1],
+                mimeType: 'image/jpeg',
+                name: file.name.split('.')[0] + '.jpg'
+            });
         };
     });
 }
