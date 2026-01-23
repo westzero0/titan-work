@@ -43,13 +43,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// 4. [데이터 동기화] 백그라운드에서 거래처 및 현장 정보 갱신
+// 3. [데이터 동기화 및 스플래시 화면 제어]
 async function loadTitanDataWithBackgroundSync() {
+    // 💡 1단계: 기존 캐시 렌더링
     const cachedMap = localStorage.getItem('titan_full_data_cache');
     if (cachedMap) {
         renderClientChips(Object.keys(JSON.parse(cachedMap))); 
     }
 
+    // 💡 2단계: 서버 최신 데이터 가져오기
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -59,7 +61,20 @@ async function loadTitanDataWithBackgroundSync() {
         localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
         if (!cachedMap) renderClientChips(Object.keys(fullData));
     } catch (e) {
-        console.log("오프라인 모드: 기존 캐시 데이터를 사용합니다.");
+        console.log("오프라인 모드: 캐시 사용");
+    } finally {
+        // 💡 3단계: 로딩 완료 후 스플래시 화면 숨기기 (성공/실패 상관없이 실행)
+        hideSplashScreen();
+    }
+}
+
+function hideSplashScreen() {
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+        splash.style.opacity = '0';
+        setTimeout(() => {
+            splash.style.display = 'none';
+        }, 500);
     }
 }
 
