@@ -296,6 +296,19 @@ function resetFormOnlyInputs() {
 
 function resetFormFull() {
     resetFormOnlyInputs();
+    // 1. 💡 시간 선택 상자를 다시 08:00와 17:00로 돌려놓습니다.
+    const startTime = document.getElementById('start');
+    const endTime = document.getElementById('end');
+    if (startTime) startTime.value = "08:00";
+    if (endTime) endTime.value = "17:00";
+
+    // 2. 석식 여부도 다시 'X'로 초기화
+    const dinner = document.getElementById('dinner');
+    if (dinner) dinner.value = "X";
+
+    // 3. 날짜를 오늘로 다시 설정
+    document.getElementById('date').valueAsDate = new Date();
+    
     const btn = document.getElementById('sBtn');
     btn.style.backgroundColor = ""; btn.style.color = ""; btn.style.fontWeight = "normal";
     btn.innerText = "🚀 저장 및 카톡 공유";
