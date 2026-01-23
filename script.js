@@ -226,21 +226,26 @@ async function send() {
     }
 
     // 📸 [영수증 파일 처리 - 압축 로직만 남기고 중복 제거]
-   const receiptInput = document.getElementById('receipt');
-    const files = receiptInput.files;
-    let filesData = [];
-
-    if (files.length > 0) {
-        btn.innerText = "📸 이미지 압축 중..."; 
-        for (let file of files) {
-            const data = await compressImage(file); 
+    const receiptInput = document.getElementById('receipt'); // 1. 입력창 찾기
+const files = receiptInput.files;                      // 2. 선택된 파일들 가져오기
+let filesData = [];                                    // 3. 데이터를 담을 그릇 준비
+   if (files.length > 0) {
+    try {
+        for (let i = 0; i < files.length; i++) {
+            btn.innerText = `📸 압축 중 (${i + 1}/${files.length})`; 
+            const data = await compressImage(files[i]); 
             filesData.push({
-                content: data.base64, // 💡 base64 대신 content
-                type: data.mimeType,  // 💡 mimeType 대신 type
+                content: data.base64,
+                type: data.mimeType,
                 name: data.name
             });
         }
+    } catch (err) {
+        alert("📸 사진 처리 중 오류: " + err.message);
+        btn.disabled = false; btn.innerText = "🚀 다시 시도";
+        return;
     }
+}
 
     const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${startTime} ~ ${endTime}\n👥 인원: ${members}\n🚗 차량: ${car}\n🍱 석식: ${dinner}\n📦 자재: ${materials}${expenseLine}`;
 
@@ -428,30 +433,41 @@ async function copyToClipboard(text) {
 }
 
 
-// 💡 이미지 용량을 줄여주는 함수 (가로 1024px 기준)
+// 💡 더 빠르고 안전하게 개선된 압축 함수
 function compressImage(file) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
+        
+        reader.onerror = () => reject(new Error("파일 읽기 실패"));
+        
         reader.onload = (event) => {
             const img = new Image();
             img.src = event.target.result;
+            
+            img.onerror = () => reject(new Error("이미지 객체 생성 실패"));
+            
             img.onload = () => {
                 const canvas = document.createElement('canvas');
                 let width = img.width;
                 let height = img.height;
-                const max_size = 1024; // 💡 가로 최대 1024px로 조절
+                const max_size = 800; // 💡 1024 -> 800으로 하향 조정
 
-                if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
-                else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+                // 비율 유지 계산
+                if (width > height) {
+                    if (width > max_size) { height *= max_size / width; width = max_size; }
+                } else {
+                    if (height > max_size) { width *= max_size / height; height = max_size; }
+                }
 
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
                 
-                // 💡 품질을 0.7(70%)로 낮춰서 용량을 대폭 줄임
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                // 💡 품질을 0.5로 낮추어 전송 속도와 안정성 확보
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                
                 resolve({
                     base64: dataUrl.split(',')[1],
                     mimeType: 'image/jpeg',
