@@ -45,13 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 3. [데이터 동기화 및 스플래시 화면 제어]
 async function loadTitanDataWithBackgroundSync() {
-    // 💡 1단계: 기존 캐시 렌더링
-    const cachedMap = localStorage.getItem('titan_full_data_cache');
-    if (cachedMap) {
-        renderClientChips(Object.keys(JSON.parse(cachedMap))); 
-    }
 
-    // 💡 2단계: 서버 최신 데이터 가져오기
+    // 💡 시작 시간을 기록합니다.
+    const startTime = Date.now();
+    
+    const cachedMap = localStorage.getItem('titan_full_data_cache');
+    if (cachedMap) { renderClientChips(Object.keys(JSON.parse(cachedMap))); }
+
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -63,10 +63,20 @@ async function loadTitanDataWithBackgroundSync() {
     } catch (e) {
         console.log("오프라인 모드: 캐시 사용");
     } finally {
-        // 💡 3단계: 로딩 완료 후 스플래시 화면 숨기기 (성공/실패 상관없이 실행)
-        hideSplashScreen();
+        // 💡 핵심: 현재 시간과 시작 시간의 차이를 계산합니다.
+        const elapsedTime = Date.now() - startTime;
+        const minimumDisplayTime = 2000; // 2초 (2000ms)
+
+        // 💡 2초보다 빨리 끝났다면 부족한 시간만큼 기다렸다가 숨깁니다.
+        const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime);
+        
+        setTimeout(() => {
+            hideSplashScreen();
+        }, remainingTime);
     }
 }
+
+
 
 function hideSplashScreen() {
     const splash = document.getElementById('splash-screen');
