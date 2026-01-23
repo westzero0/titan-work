@@ -324,37 +324,25 @@ async function copyToClipboard(text) {
 // 💡 더 빠르고 안전하게 개선된 압축 함수
 function compressImage(file) {
     return new Promise((resolve, reject) => {
-        // 💡 모바일 브라우저가 파일을 제대로 인식했는지 먼저 체크
-        if (!file || !(file instanceof Blob)) {
-            reject(new Error("올바른 파일 형식이 아닙니다."));
-            return;
-        }
-
-        const reader = new FileReader();
+        // 1. 💡 파일을 읽는 대신, 브라우저 메모리에 임시 주소를 생성합니다. (메모리 절약)
+        const blobUrl = URL.createObjectURL(file);
+        const img = new Image();
         
-        reader.onerror = (e) => {
-            console.error("FileReader Error:", e);
-            // 💡 에러 메시지를 더 구체적으로 표시
-            reject(new Error(`파일 읽기 실패: ${e.target.error ? e.target.error.name : '알 수 없는 오류'}`));
+        img.src = blobUrl;
+
+        // 파일 읽기 단계가 생략되므로 reader.onerror는 필요 없습니다.
+        img.onerror = () => {
+            URL.revokeObjectURL(blobUrl); // 사용한 주소 해제
+            reject(new Error("이미지 객체 생성 실패 (파일이 깨졌거나 형식이 다름)"));
         };
 
-        reader.readAsDataURL(file);
-        
-        reader.onerror = () => reject(new Error("파일 읽기 실패"));
-        
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            
-            img.onerror = () => reject(new Error("이미지 객체 생성 실패"));
-            
-            img.onload = () => {
+        img.onload = () => {
+            try {
                 const canvas = document.createElement('canvas');
                 let width = img.width;
                 let height = img.height;
-                const max_size = 800; // 💡 1024 -> 800으로 하향 조정
+                const max_size = 800; // 💡 모바일 전송을 위해 800px 유지
 
-                // 비율 유지 계산
                 if (width > height) {
                     if (width > max_size) { height *= max_size / width; width = max_size; }
                 } else {
@@ -365,16 +353,22 @@ function compressImage(file) {
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                
-                // 💡 품질을 0.5로 낮추어 전송 속도와 안정성 확보
+
+                // 2. 💡 품질을 0.5로 낮추어 전송 성공률을 극대화합니다.
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
                 
+                // 사용이 끝난 임시 주소는 즉시 삭제하여 메모리를 확보합니다.
+                URL.revokeObjectURL(blobUrl);
+
                 resolve({
                     base64: dataUrl.split(',')[1],
                     mimeType: 'image/jpeg',
                     name: file.name.split('.')[0] + '.jpg'
                 });
-            };
+            } catch (e) {
+                URL.revokeObjectURL(blobUrl);
+                reject(e);
+            }
         };
     });
 }
