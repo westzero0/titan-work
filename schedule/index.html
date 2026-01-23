@@ -23,12 +23,18 @@
         const user = urlParams.get('user') || 'me';
         document.getElementById('title').innerText = user === 'me' ? "🙋‍♀️ 내 스케줄 설정" : "🙋‍♂️ 오빠용 확정 화면";
 
-        async function init() {
-            const response = await fetch(API_URL);
-            const data = await response.json();
-            renderCalendar(data);
-        }
-
+async function init() {
+    try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error('네트워크 응답이 올바르지 않습니다.');
+        const data = await response.json();
+        renderCalendar(data);
+    } catch (error) {
+        console.error('데이터를 가져오는 중 오류 발생:', error);
+        // 에러가 나더라도 빈 달력이라도 보이게 처리
+        renderCalendar([]); 
+    }
+}
         function renderCalendar(data) {
             const container = document.getElementById('calendar');
             const today = new Date();
