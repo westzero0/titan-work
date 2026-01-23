@@ -192,7 +192,9 @@ function generateTimeOptions() {
     s.value = "08:00"; e.value = "17:00";
 }
 
-// 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송async function send() {
+// 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송
+
+async function send() {
     const btn = document.getElementById('sBtn');
     const work = document.getElementById('work').value.trim();
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
