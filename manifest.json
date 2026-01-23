@@ -1,0 +1,15 @@
+{
+  "name": "타이탄 작업일보",
+  "short_name": "타이탄",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#E31E24",
+  "icons": [
+    {
+      "src": "https://drive.google.com/file/d/1wOnXJ_yITVqfMK-w00l6ylhKOH69p04K/view?usp=drive_link",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
