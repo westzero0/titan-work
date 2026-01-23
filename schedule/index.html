@@ -5,33 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>업무 스케줄</title>
     <style>
-        :root { --bg: #f4f7f6; --white: #ffffff; --green: #e2fbe5; --green-text: #155724; --blue: #007bff; --text: #333; --gray: #888; --skeleton: #eceef1; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        /* 디자인 수정 버전 */
+        :root { --bg: #f8f9fa; --white: #ffffff; --green: #e2fbe5; --green-text: #155724; --blue: #007bff; --text: #333; --gray: #888; --skeleton: #eceef1; --border: #eee; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         
-        header { width: 100%; max-width: 500px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        /* 헤더: 한 줄로 깔끔하게 정렬 및 폭 확대 */
+        header { width: 100%; max-width: 600px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         h2 { font-size: 1.1rem; margin: 0; font-weight: 600; }
         
-        .role-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
+        .role-badge { font-size: 0.7rem; padding: 4px 8px; border-radius: 12px; font-weight: bold; white-space: nowrap; }
         .role-me { background: var(--green); color: var(--green-text); border: 1px solid #a3cfbb; }
         .role-oppa { background: #cfe2ff; color: #084298; border: 1px solid #b6d4fe; }
 
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; width: 100%; max-width: 500px; }
-        .day-label { text-align: center; font-size: 0.7rem; color: var(--gray); font-weight: bold; padding-bottom: 5px; }
+        /* 달력 컨테이너: 최대 폭을 늘리고 간격을 좁힘 */
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 100%; max-width: 600px; }
+        .day-label { text-align: center; font-size: 0.7rem; color: var(--gray); font-weight: 600; padding-bottom: 5px; }
         
-        .day { background: var(--white); border-radius: 12px; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; display: flex; flex-direction: column; gap: 6px; min-height: 80px; }
-        .date-num { font-size: 0.85rem; font-weight: bold; margin-bottom: 2px; }
+        /* 날짜 칸: 내부 여백과 간격을 줄여 컴팩트하게 */
+        .day { background: var(--white); border-radius: 8px; padding: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: center; display: flex; flex-direction: column; gap: 3px; }
+        .date-num { font-size: 0.8rem; font-weight: 600; margin-bottom: 2px; }
         .today { border: 2px solid var(--blue); }
 
-        .btn-group { display: flex; flex-direction: column; gap: 4px; }
-        button { border: 1px solid #eee; border-radius: 8px; padding: 12px 0; font-size: 0.7rem; cursor: pointer; transition: background 0.2s; background: #fafafa; }
+        .btn-group { display: flex; flex-direction: column; gap: 3px; }
+        
+        /* 버튼: 위아래 여백을 대폭 줄여 비율 개선 */
+        button { border: 1px solid var(--border); border-radius: 4px; padding: 6px 0; font-size: 0.65rem; cursor: pointer; transition: background 0.15s; background: #fcfcfc; color: #555; }
         
         button.status-1 { background-color: var(--green) !important; border-color: #a3cfbb; color: var(--green-text); font-weight: bold; }
         button.status-2 { background-color: var(--blue) !important; border-color: #0056b3; color: white; font-weight: bold; }
 
-        /* 스켈레톤 애니메이션 */
+        /* 스켈레톤 UI도 비율에 맞춰 수정 */
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .skeleton-btn { background: linear-gradient(90deg, var(--skeleton) 25%, #f5f5f5 50%, var(--skeleton) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border: none; height: 35px; }
-        .skeleton-text { background: var(--skeleton); height: 12px; width: 60%; margin: 0 auto 8px; border-radius: 4px; }
+        .skeleton-btn { background: linear-gradient(90deg, var(--skeleton) 25%, #f5f5f5 50%, var(--skeleton) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border: none; height: 22px; border-radius: 4px; }
+        .skeleton-text { background: var(--skeleton); height: 10px; width: 50%; margin: 2px auto 5px; border-radius: 4px; }
 
         .loading-bar { position: fixed; top: 0; left: 0; width: 0%; height: 3px; background: var(--blue); transition: width 0.3s; z-index: 1000; }
     </style>
@@ -49,7 +55,7 @@
     </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzd8BYaicsFmw9CCVQXeWTbNbhAtZqmQ7oH4ZR4lBsloaRSWlqnztPTqNptWWBqcveMBQ/exec'; // 실제 URL로 교체 확인!
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzd8BYaicsFmw9CCVQXeWTbNbhAtZqmQ7oH4ZR4lBsloaRSWlqnztPTqNptWWBqcveMBQ/exec'; // 실제 URL 확인 필수!
         const urlParams = new URLSearchParams(window.location.search);
         const user = urlParams.get('user') || 'me';
 
@@ -57,29 +63,23 @@
         badge.innerText = user === 'me' ? "🙋‍♀️ 내 설정" : "🙋‍♂️ 오빠 확인";
         badge.className = `role-badge ${user === 'me' ? 'role-me' : 'role-oppa'}`;
 
-        // 1. 초기 실행: 스켈레톤 UI 또는 캐시 데이터 표시
         async function init() {
             const cachedData = localStorage.getItem('schedule_cache');
-            
             if (cachedData) {
-                // 캐시가 있으면 즉시 렌더링 (체감 속도 0초)
                 renderCalendar(JSON.parse(cachedData));
             } else {
-                // 캐시 없으면 스켈레톤 표시
                 renderSkeleton();
             }
 
-            // 백그라운드에서 최신 데이터 가져오기
             try {
                 const response = await fetch(API_URL + "?t=" + new Date().getTime());
                 const newData = await response.json();
-                
-                // 캐시 업데이트 및 재렌더링
                 localStorage.setItem('schedule_cache', JSON.stringify(newData));
                 document.getElementById('calendar').querySelectorAll('.day').forEach(el => el.remove());
                 renderCalendar(newData);
             } catch (e) {
                 console.error("최신 데이터 로딩 실패", e);
+                if (!cachedData) renderCalendar([]);
             }
         }
 
@@ -151,7 +151,6 @@
             if (nextStatus !== currentStatus) {
                 updateButtonStyle(btn, nextStatus, time);
                 
-                // 로컬 스토리지도 즉시 업데이트 (새로고침 시 유지용)
                 const currentCache = JSON.parse(localStorage.getItem('schedule_cache') || '[]');
                 const index = currentCache.findIndex(item => item.id === id);
                 if (index > -1) currentCache[index].status = nextStatus;
@@ -162,8 +161,7 @@
                 try {
                     await fetch(API_URL, { method: 'POST', body: JSON.stringify({ id, status: nextStatus }), mode: 'no-cors' });
                 } catch (e) {
-                    alert("저장 실패!");
-                    location.reload();
+                    // 조용히 실패 (다음 로딩 때 동기화됨)
                 } finally {
                     setTimeout(() => { document.getElementById('loading-bar').style.width = '0%'; }, 400);
                 }
