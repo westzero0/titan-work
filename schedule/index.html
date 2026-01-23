@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>업무 스케줄 - 월간</title>
     <style>
-        :root { --bg: #f8f9fa; --white: #ffffff; --red: #ff4d4f; --blue: #007bff; --green: #e2fbe5; --text: #333; --border: #eee; }
+        :root { --bg: #f4f7f6; --white: #ffffff; --red: #ff4d4f; --blue: #007bff; --green: #e2fbe5; --text: #333; --border: #eee; --today-bg: #fff9db; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         
         header { width: 100%; max-width: 600px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -20,19 +20,26 @@
         .day-label { text-align: center; font-size: 0.65rem; color: #888; font-weight: 600; padding: 8px 0; border-bottom: 1px solid var(--border); }
         .day-label:nth-child(7n+1) { color: var(--red); }
         
-        .cell { position: relative; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 85px; padding: 2px; display: flex; flex-direction: column; }
+        .cell { position: relative; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 90px; padding: 2px; display: flex; flex-direction: column; transition: background 0.2s; }
         .cell:nth-child(7n) { border-right: none; }
-        .date-num { font-size: 0.75rem; font-weight: 600; margin-bottom: 2px; padding: 2px; }
+        
+        /* 오늘 날짜 강조 스타일 */
+        .cell.today { background-color: var(--today-bg) !important; border: 2px solid var(--blue) !important; z-index: 5; }
+        .cell.today .date-num { color: var(--blue); font-size: 0.9rem; font-weight: 800; }
+
+        .date-num { font-size: 0.8rem; font-weight: 600; margin-bottom: 2px; padding: 2px; z-index: 3; }
         .is-holiday .date-num { color: var(--red); }
         .holiday-label { font-size: 0.55rem; font-weight: normal; margin-left: 4px; opacity: 0.8; }
         .other-month { opacity: 0.2; pointer-events: none; }
 
-        .btn-group { display: flex; flex-direction: column; gap: 1px; margin-top: auto; z-index: 2; }
-        button.status { border: 1px solid var(--border); border-radius: 3px; padding: 4px 0; font-size: 0.55rem; cursor: pointer; background: #fff; line-height: 1; }
+        .btn-group { display: flex; flex-direction: column; gap: 2px; margin-top: auto; z-index: 3; }
+        button.status { border: 1px solid var(--border); border-radius: 4px; padding: 5px 0; font-size: 0.6rem; cursor: pointer; background: rgba(255,255,255,0.8); line-height: 1; }
         button.status-1 { background: var(--green) !important; color: #155724; border-color: #a3cfbb; font-weight: bold; }
         button.status-2 { background: var(--blue) !important; color: white; border-color: #0056b3; font-weight: bold; }
 
-        .event-bar { position: absolute; left: 0; right: 0; height: 12px; color: white; font-size: 0.5rem; padding: 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-radius: 1px; z-index: 1; pointer-events: none; line-height: 12px; }
+        .cell.has-event { border-top: 1px solid rgba(0,0,0,0.05); }
+        .event-title { font-size: 0.55rem; color: #444; padding: 2px 4px; z-index: 3; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
         .loading-bar { position: fixed; top: 0; left: 0; width: 0%; height: 3px; background: var(--blue); transition: width 0.3s; z-index: 1000; }
     </style>
 </head>
@@ -41,7 +48,7 @@
     <header>
         <div class="nav-month">
             <div class="nav-btn" onclick="changeMonth(-1)">◀</div>
-            <span id="current-month">2026.01</span>
+            <span id="current-month">로딩중...</span>
             <div class="nav-btn" onclick="changeMonth(1)">▶</div>
         </div>
         <div id="badge" class="role-badge">로딩중</div>
@@ -53,8 +60,8 @@
     </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbxnNslNsmaQLKp1eu-bbKD6nhW1a9aRBHlzlWIHm96nz_JJRzXGDOnrEuLFmkjpS_CK/exec'; 
-    const urlParams = new URLSearchParams(window.location.search);
+        const API_URL = 'https://script.google.com/macros/s/AKfycby4b4qF3TgjlISH0cBlaEWlxJymbzxw4adNmWwRsT1EMQJq50tL9y43ZuHcsAdtD_ZF0Q/exec'; 
+        const urlParams = new URLSearchParams(window.location.search);
         const user = urlParams.get('user') || 'me';
         let currentYear, currentMonth; 
 
