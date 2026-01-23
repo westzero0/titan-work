@@ -194,7 +194,6 @@ function generateTimeOptions() {
 }
 
 // 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송
-
 async function send() {
     const btn = document.getElementById('sBtn');
     const work = document.getElementById('work').value.trim();
@@ -203,10 +202,9 @@ async function send() {
 
     if (!client || !site || !work) return alert("⚠️ 필수 정보를 입력해주세요.");
 
-    btn.disabled = true; btn.innerText = "⏳ 준비 중...";
+    btn.disabled = true; btn.innerText = "⏳ 데이터 수집 중...";
     const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     
-    // 1. 기본 데이터 수집
     const startTime = document.getElementById('start').value;
     const endTime = document.getElementById('end').value;
     const members = getSel('#member-chips') || "없음";
@@ -216,7 +214,6 @@ async function send() {
     const materialExtra = document.getElementById('materialExtra').value.trim();
     const materials = [materialChips, materialExtra].filter(Boolean).join(', ') || "없음";
 
-    // 2. 경비 데이터 처리 (숫자 비교로 수정)
     const expAmountRaw = document.getElementById('expAmount').value;
     const expAmount = Number(expAmountRaw) || 0; 
     const expDetail = document.getElementById('expDetail').value.trim();
@@ -228,41 +225,32 @@ async function send() {
         if (expDetail) expenseLine += ` (${expDetail})`;
     }
 
-    // 3. 📸 영수증 파일 변환 로직
+    // 📸 [영수증 파일 처리 - 압축 로직만 남기고 중복 제거]
     const receiptInput = document.getElementById('receipt');
     const files = receiptInput.files;
     let receiptData = [];
 
     if (files.length > 0) {
-        btn.innerText = "📸 영수증 변환 중..."; // 💡 변환 시작 알림
+        btn.innerText = "📸 이미지 압축 중..."; 
         for (let file of files) {
-            const data = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve({
-                    base64: reader.result.split(',')[1],
-                    mimeType: file.type,
-                    name: file.name
-                });
-                reader.readAsDataURL(file);
-            });
+            // 💡 이 부분에서 이미 압축과 변환이 모두 끝납니다!
+            const data = await compressImage(file); 
             receiptData.push(data);
         }
     }
 
-    // 4. 전송 메시지 구성
     const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${startTime} ~ ${endTime}\n👥 인원: ${members}\n🚗 차량: ${car}\n🍱 석식: ${dinner}\n📦 자재: ${materials}${expenseLine}`;
 
     try {
-        btn.innerText = "🚀 서버로 전송 중..."; // 💡 실제 업로드 시작 알림
+        btn.innerText = "🚀 서버 전송 중..."; 
 
-        // 5. 💡 [핵심] 모든 데이터를 단 하나의 payload에 통합 전송
         const payload = {
             action: "saveLog",
             data: {
                 date: document.getElementById('date').value, client, site, work,
                 start: startTime, end: endTime, members, car, materials, dinner,
                 expAmount, expDetail, expPayer,
-                receipt: receiptData, // 드디어 영수증이 누락 없이 담깁니다!
+                receipt: receiptData, 
                 submitter: document.getElementById('submitter').value
             }
         };
@@ -433,4 +421,39 @@ async function copyToClipboard(text) {
         document.body.appendChild(t); t.select(); document.execCommand('copy');
         document.body.removeChild(t);
     }
+}
+
+
+// 💡 이미지 용량을 줄여주는 함수 (가로 1024px 기준)
+function compressImage(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const max_size = 1024; // 💡 가로 최대 1024px로 조절
+
+                if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
+                else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 💡 품질을 0.7(70%)로 낮춰서 용량을 대폭 줄임
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                resolve({
+                    base64: dataUrl.split(',')[1],
+                    mimeType: 'image/jpeg',
+                    name: file.name.split('.')[0] + '.jpg'
+                });
+            };
+        };
+    });
 }
