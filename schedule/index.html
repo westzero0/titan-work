@@ -3,169 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>업무 스케줄</title>
+    <title>업무 스케줄 - 월간</title>
     <style>
-        /* 디자인 수정 버전 */
-        :root { --bg: #f8f9fa; --white: #ffffff; --green: #e2fbe5; --green-text: #155724; --blue: #007bff; --text: #333; --gray: #888; --skeleton: #eceef1; --border: #eee; }
+        :root { --bg: #f8f9fa; --white: #ffffff; --red: #ff4d4f; --blue: #007bff; --green: #e2fbe5; --text: #333; --border: #eee; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         
-        /* 헤더: 한 줄로 깔끔하게 정렬 및 폭 확대 */
-        header { width: 100%; max-width: 600px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        h2 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+        header { width: 100%; max-width: 600px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .nav-month { display: flex; align-items: center; gap: 12px; font-weight: bold; font-size: 1rem; }
+        .nav-btn { cursor: pointer; padding: 4px 10px; background: white; border: 1px solid var(--border); border-radius: 5px; font-size: 0.8rem; }
         
-        .role-badge { font-size: 0.7rem; padding: 4px 8px; border-radius: 12px; font-weight: bold; white-space: nowrap; }
-        .role-me { background: var(--green); color: var(--green-text); border: 1px solid #a3cfbb; }
+        .role-badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
+        .role-me { background: var(--green); color: #155724; border: 1px solid #a3cfbb; }
         .role-oppa { background: #cfe2ff; color: #084298; border: 1px solid #b6d4fe; }
 
-        /* 달력 컨테이너: 최대 폭을 늘리고 간격을 좁힘 */
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 100%; max-width: 600px; }
-        .day-label { text-align: center; font-size: 0.7rem; color: var(--gray); font-weight: 600; padding-bottom: 5px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); width: 100%; max-width: 600px; background: var(--white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .day-label { text-align: center; font-size: 0.65rem; color: #888; font-weight: 600; padding: 8px 0; border-bottom: 1px solid var(--border); }
+        .day-label:nth-child(7n+1) { color: var(--red); } /* 일요일 */
         
-        /* 날짜 칸: 내부 여백과 간격을 줄여 컴팩트하게 */
-        .day { background: var(--white); border-radius: 8px; padding: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: center; display: flex; flex-direction: column; gap: 3px; }
-        .date-num { font-size: 0.8rem; font-weight: 600; margin-bottom: 2px; }
-        .today { border: 2px solid var(--blue); }
+        .cell { position: relative; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 85px; padding: 2px; display: flex; flex-direction: column; }
+        .cell:nth-child(7n) { border-right: none; }
+        .date-num { font-size: 0.75rem; font-weight: 600; margin-bottom: 2px; padding: 2px; }
+        .is-holiday .date-num { color: var(--red); }
+        .other-month { opacity: 0.2; pointer-events: none; }
 
-        .btn-group { display: flex; flex-direction: column; gap: 3px; }
-        
-        /* 버튼: 위아래 여백을 대폭 줄여 비율 개선 */
-        button { border: 1px solid var(--border); border-radius: 4px; padding: 6px 0; font-size: 0.65rem; cursor: pointer; transition: background 0.15s; background: #fcfcfc; color: #555; }
-        
-        button.status-1 { background-color: var(--green) !important; border-color: #a3cfbb; color: var(--green-text); font-weight: bold; }
-        button.status-2 { background-color: var(--blue) !important; border-color: #0056b3; color: white; font-weight: bold; }
+        /* AM/PM 버튼 */
+        .btn-group { display: flex; flex-direction: column; gap: 1px; margin-top: auto; z-index: 2; }
+        button.status { border: 1px solid var(--border); border-radius: 3px; padding: 4px 0; font-size: 0.55rem; cursor: pointer; background: #fff; line-height: 1; }
+        button.status-1 { background: var(--green) !important; color: #155724; border-color: #a3cfbb; font-weight: bold; }
+        button.status-2 { background: var(--blue) !important; color: white; border-color: #0056b3; font-weight: bold; }
 
-        /* 스켈레톤 UI도 비율에 맞춰 수정 */
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .skeleton-btn { background: linear-gradient(90deg, var(--skeleton) 25%, #f5f5f5 50%, var(--skeleton) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border: none; height: 22px; border-radius: 4px; }
-        .skeleton-text { background: var(--skeleton); height: 10px; width: 50%; margin: 2px auto 5px; border-radius: 4px; }
-
-        .loading-bar { position: fixed; top: 0; left: 0; width: 0%; height: 3px; background: var(--blue); transition: width 0.3s; z-index: 1000; }
+        /* 장기 일정 바(Event Bar) */
+        .event-bar { position: absolute; left: 0; right: 0; height: 12px; color: white; font-size: 0.5rem; padding: 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-radius: 1px; z-index: 1; pointer-events: none; line-height: 12px; }
     </style>
 </head>
 <body>
-    <div id="loading-bar" class="loading-bar"></div>
     <header>
-        <h2 id="title">업무 스케줄</h2>
+        <div class="nav-month">
+            <div class="nav-btn" onclick="changeMonth(-1)">◀</div>
+            <span id="current-month">2026.01</span>
+            <div class="nav-btn" onclick="changeMonth(1)">▶</div>
+        </div>
         <div id="badge" class="role-badge">로딩중</div>
     </header>
     
-    <div class="calendar" id="calendar">
+    <div class="calendar-grid" id="calendar">
         <div class="day-label">일</div><div class="day-label">월</div><div class="day-label">화</div>
         <div class="day-label">수</div><div class="day-label">목</div><div class="day-label">금</div><div class="day-label">토</div>
     </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycby4b4qF3TgjlISH0cBlaEWlxJymbzxw4adNmWwRsT1EMQJq50tL9y43ZuHcsAdtD_ZF0Q/exec'; // 실제 URL 확인 필수!
+        const API_URL = 'https://script.google.com/macros/s/AKfycby4b4qF3TgjlISH0cBlaEWlxJymbzxw4adNmWwRsT1EMQJq50tL9y43ZuHcsAdtD_ZF0Q/exec'; 
         const urlParams = new URLSearchParams(window.location.search);
         const user = urlParams.get('user') || 'me';
+        let currentYear = 2026, currentMonth = 0; 
 
-        const badge = document.getElementById('badge');
-        badge.innerText = user === 'me' ? "🙋‍♀️ 내 설정" : "🙋‍♂️ 오빠 확인";
-        badge.className = `role-badge ${user === 'me' ? 'role-me' : 'role-oppa'}`;
+        // 2026년 주요 공휴일 (설날 연휴 포함)
+        const holidays = ["2026-01-01", "2026-01-28", "2026-01-29", "2026-01-30", "2026-03-01", "2026-05-05", "2026-05-24", "2026-06-06", "2026-08-15", "2026-09-24", "2026-09-25", "2026-09-26", "2026-10-03", "2026-10-09", "2026-12-25"];
 
         async function init() {
-            const cachedData = localStorage.getItem('schedule_cache');
-            if (cachedData) {
-                renderCalendar(JSON.parse(cachedData));
-            } else {
-                renderSkeleton();
-            }
+            const badge = document.getElementById('badge');
+            badge.innerText = user === 'me' ? "🙋‍♀️ 내 설정" : "🙋‍♂️ 오빠 확인";
+            badge.className = `role-badge ${user === 'me' ? 'role-me' : 'role-oppa'}`;
+            
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentMonth = now.getMonth();
+            await fetchData();
+        }
 
+        async function fetchData() {
             try {
-                const response = await fetch(API_URL + "?t=" + new Date().getTime());
-                const newData = await response.json();
-                localStorage.setItem('schedule_cache', JSON.stringify(newData));
-                document.getElementById('calendar').querySelectorAll('.day').forEach(el => el.remove());
-                renderCalendar(newData);
+                const res = await fetch(API_URL + "?t=" + new Date().getTime());
+                const allData = await res.json();
+                localStorage.setItem('full_data_cache', JSON.stringify(allData));
+                render(allData);
             } catch (e) {
-                console.error("최신 데이터 로딩 실패", e);
-                if (!cachedData) renderCalendar([]);
+                const cached = localStorage.getItem('full_data_cache');
+                if (cached) render(JSON.parse(cached));
             }
         }
 
-        function renderSkeleton() {
+        function render(allData) {
+            document.getElementById('current-month').innerText = `${currentYear}.${(currentMonth + 1).toString().padStart(2, '0')}`;
             const container = document.getElementById('calendar');
-            for (let i = 0; i < 14; i++) {
-                const dayDiv = document.createElement('div');
-                dayDiv.className = 'day';
-                dayDiv.innerHTML = `<div class="skeleton-text"></div><div class="btn-group"><div class="skeleton-btn"></div><div class="skeleton-btn"></div></div>`;
-                container.appendChild(dayDiv);
-            }
+            container.querySelectorAll('.cell').forEach(el => el.remove());
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const prevLastDate = new Date(currentYear, currentMonth, 0).getDate();
+
+            for (let i = firstDay - 1; i >= 0; i--) createCell(prevLastDate - i, true);
+            for (let i = 1; i <= lastDate; i++) createCell(i, false, allData);
+            const remaining = 42 - container.querySelectorAll('.cell').length;
+            for (let i = 1; i <= remaining; i++) createCell(i, true);
         }
 
-        function renderCalendar(data) {
-            const container = document.getElementById('calendar');
-            const today = new Date();
-            const startPoint = new Date(today);
-            startPoint.setDate(today.getDate() - today.getDay());
-
-            for (let i = 0; i < 14; i++) {
-                const d = new Date(startPoint);
-                d.setDate(startPoint.getDate() + i);
-                const dateStr = d.toISOString().split('T')[0];
-                
-                const dayDiv = document.createElement('div');
-                dayDiv.className = `day ${d.toDateString() === today.toDateString() ? 'today' : ''}`;
-                dayDiv.innerHTML = `<div class="date-num">${d.getDate()}</div>`;
-                
+        function createCell(date, isOther, allData) {
+            const cell = document.createElement('div');
+            cell.className = `cell ${isOther ? 'other-month' : ''}`;
+            const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${date.toString().padStart(2, '0')}`;
+            if (holidays.includes(dateStr)) cell.classList.add('is-holiday');
+            cell.innerHTML = `<div class="date-num">${date}</div>`;
+            
+            if (!isOther && allData) {
+                // AM/PM 버튼 렌더링 (daily 데이터 접근)
                 const btnGroup = document.createElement('div');
                 btnGroup.className = 'btn-group';
-                
                 ['AM', 'PM'].forEach(time => {
                     const id = `${dateStr}-${time}`;
-                    const item = data.find(item => item.id === id) || { status: 0 };
+                    const item = allData.daily.find(d => d.id === id) || { status: 0 };
                     const btn = document.createElement('button');
-                    btn.id = id;
-                    updateButtonStyle(btn, item.status, time);
-                    btn.onclick = () => handleToggle(id, time);
+                    btn.className = `status status-${item.status}`;
+                    btn.innerText = (time === 'AM' ? '☀️' : '🌙') + (item.status === 2 ? ' 확정' : (item.status === 1 ? ' 가능' : ''));
+                    btn.onclick = () => handleToggle(id, item.status, time, allData);
                     btnGroup.appendChild(btn);
                 });
-                dayDiv.appendChild(btnGroup);
-                container.appendChild(dayDiv);
+                cell.appendChild(btnGroup);
+
+                // 장기 일정 바 렌더링 (events 데이터 접근)
+                allData.events.forEach((ev, idx) => {
+                    const s = new Date(ev.start); const e = new Date(ev.end);
+                    const curr = new Date(dateStr);
+                    if (curr >= s && curr <= e) {
+                        const bar = document.createElement('div');
+                        bar.className = 'event-bar';
+                        bar.style.background = ev.color;
+                        bar.style.top = (18 + idx * 14) + "px"; // 바 겹침 방지
+                        if (curr.toDateString() === s.toDateString()) bar.innerText = ev.title;
+                        cell.appendChild(bar);
+                    }
+                });
             }
+            document.getElementById('calendar').appendChild(cell);
         }
 
-        function updateButtonStyle(btn, status, time) {
-            btn.className = `status-${status}`;
-            btn.dataset.status = status;
-            const icon = time === 'AM' ? '☀️' : '🌙';
-            const label = time === 'AM' ? '주간' : '야간';
-            btn.innerText = status === 2 ? `${icon} 확정` : (status === 1 ? `${icon} 가능` : `${icon} ${label}`);
-        }
-
-        async function handleToggle(id, time) {
-            const btn = document.getElementById(id);
-            let currentStatus = parseInt(btn.dataset.status) || 0;
+        async function handleToggle(id, currentStatus, time, allData) {
             let nextStatus = currentStatus;
-
             if (user === 'me') {
-                if (currentStatus === 0) nextStatus = 1;
-                else if (currentStatus === 1) nextStatus = 0;
-                else return;
+                nextStatus = currentStatus === 0 ? 1 : (currentStatus === 1 ? 0 : currentStatus);
             } else if (user === 'oppa') {
                 if (currentStatus === 1) nextStatus = 2;
                 else if (currentStatus === 2) nextStatus = 1;
-                else return;
             }
 
             if (nextStatus !== currentStatus) {
-                updateButtonStyle(btn, nextStatus, time);
-                
-                const currentCache = JSON.parse(localStorage.getItem('schedule_cache') || '[]');
-                const index = currentCache.findIndex(item => item.id === id);
-                if (index > -1) currentCache[index].status = nextStatus;
-                else currentCache.push({ id, status: nextStatus });
-                localStorage.setItem('schedule_cache', JSON.stringify(currentCache));
-
-                document.getElementById('loading-bar').style.width = '100%';
-                try {
-                    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ id, status: nextStatus }), mode: 'no-cors' });
-                } catch (e) {
-                    // 조용히 실패 (다음 로딩 때 동기화됨)
-                } finally {
-                    setTimeout(() => { document.getElementById('loading-bar').style.width = '0%'; }, 400);
-                }
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify({ id, status: nextStatus }), mode: 'no-cors' });
+                const idx = allData.daily.findIndex(d => d.id === id);
+                if (idx > -1) allData.daily[idx].status = nextStatus;
+                else allData.daily.push({ id, status: nextStatus });
+                render(allData);
             }
+        }
+
+        function changeMonth(dir) {
+            currentMonth += dir;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            const cached = localStorage.getItem('full_data_cache');
+            if (cached) render(JSON.parse(cached));
+            fetchData();
         }
         init();
     </script>
