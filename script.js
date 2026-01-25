@@ -388,6 +388,8 @@ async function compressImage(file) {
         };
     });
 }
+
+
 let allSchedules = [];
 
 // 💡 1. 시트에서 데이터를 받아와 화면에 뿌리는 함수 (통합 버전)
@@ -403,42 +405,90 @@ async function loadSchedules() {
         const result = await res.json();
         allSchedules = result.schedules;
         
-        // 근무자 드롭다운 업데이트
         const select = document.getElementById('worker-select');
         const currentVal = select.value;
         select.innerHTML = '<option value="전체">👤 전체 보기</option>';
-        
-        if (result.workers && result.workers.length > 0) {
-            result.workers.forEach(w => {
-                select.add(new Option(w, w));
-            });
-        }
+        if (result.workers) result.workers.forEach(w => select.add(new Option(w, w)));
         select.value = currentVal || "전체";
 
-        renderCards(select.value);
+        // 💡 핵심: 두 화면을 한 번에 그립니다.
+        renderSchedulePage(); 
     } catch (e) {
-        console.error("일정 로드 실패:", e);
-        container.innerHTML = '<p style="text-align:center; color:red;">⚠️ 일정 로드 실패 (서버 확인 필요)</p>';
+        container.innerHTML = '<p style="text-align:center; color:red;">⚠️ 일정 로드 실패</p>';
     }
 }
 
 // 💡 2. 선택한 사람의 일정만 골라서 보여주는 함수
 function filterSchedules() {
-    const worker = document.getElementById('worker-select').value;
-    renderCards(worker);
+    renderSchedulePage(); 
 }
 
-// 💡 3. 일정 카드를 그리는 함수 (주소 복사 기능 포함)
-function renderCards(worker) {
-    const container = document.getElementById('schedule-container');
-    const filtered = worker === "전체" ? allSchedules : allSchedules.filter(s => s.workers.includes(worker));
 
-    if (!filtered || filtered.length === 0) {
-        container.innerHTML = '<p style="text-align:center; padding:20px;">일정이 없습니다.</p>';
-        return;
+let showPast = false; // 과거 일정 노출 여부
+
+function renderSchedulePage() {
+    renderTimeline(); // 1. 상단 2주치 막대 달력
+    renderCards();    // 2. 하단 상세 카드뷰
+}
+
+// 1. 타임라인 (2주치 막대) 그리기
+function renderTimeline() {
+    const grid = document.getElementById('timeline-grid');
+    if(!grid) return; // HTML에 id="timeline-grid"가 있는지 확인하세요!
+    grid.innerHTML = '';
+
+    const worker = document.getElementById('worker-select').value;
+
+    for (let i = 0; i < 14; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        
+        // 날짜를 YYYY-MM-DD 형식으로 변환 (서버 데이터와 비교용)
+        const dateStr = date.getFullYear() + '-' + 
+                        String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(date.getDate()).padStart(2, '0');
+        
+        // 작업자 필터링 적용
+        let dayJobs = allSchedules.filter(j => j.date === dateStr);
+        if (worker !== "전체") {
+            dayJobs = dayJobs.filter(j => j.workers.includes(worker));
+        }
+        
+        // 주간 먼저 정렬
+        dayJobs.sort((a, b) => (a.shift === '주' ? -1 : 1));
+
+        const col = document.createElement('div');
+        col.className = 'time-col';
+        col.innerHTML = `
+            <div style="font-size:0.7rem; color:#64748b; font-weight:bold; margin-bottom:5px;">
+                ${date.getMonth()+1}/${date.getDate()}
+            </div>
+            ${dayJobs.map(j => `
+                <div class="job-bar ${j.shift === '주' ? 'bar-day' : 'bar-night'}">
+                    ${j.site} (${j.workers.length})
+                </div>
+            `).join('')}
+        `;
+        grid.appendChild(col);
     }
+}
 
-    container.innerHTML = filtered.map(s => {
+
+
+// 2. 카드뷰 (히스토리 포함)
+function renderCards() {
+    const container = document.getElementById('schedule-container');
+    const today = new Date().toISOString().split('T')[0];
+
+    // 과거 일정 보기 버튼 추가
+    let html = `<button class="past-btn" onclick="togglePast()">${showPast ? '⬆️ 과거 일정 숨기기' : '⬇️ 지난 일정 보기'}</button>`;
+
+    const filtered = allSchedules.filter(s => {
+        if (showPast) return true; // 전체 보기
+        return s.date >= today;    // 오늘 이후만 보기
+    }).sort((a, b) => showPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
+
+        container.innerHTML = filtered.map(s => {
         // 주/야 구분에 따른 배지 컬러 설정
         const shiftColor = s.shift === '야' ? '#1e293b' : '#2563eb';
         const shiftLabel = s.shift === '야' ? '🌙 야간' : '☀️ 주간';
@@ -477,6 +527,13 @@ function renderCards(worker) {
         `;
     }).join('');
 }
+
+
+function togglePast() {
+    showPast = !showPast;
+    renderSchedulePage();
+}
+
 
 
 // 💡 4. 주소 클릭 시 범용 복사 함수 호출
