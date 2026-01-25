@@ -75,6 +75,59 @@
             margin: 0 auto;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+
+        /* 💡 2주치 타임라인 컨테이너 */
+.timeline-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding: 15px 5px;
+    background: #fff;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    scrollbar-width: none;
+}
+
+/* 💡 개별 날짜 기둥 */
+.time-col {
+    min-width: 80px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+}
+
+/* 💡 일정 막대 스타일 */
+.job-bar {
+    width: 100%;
+    font-size: 0.75rem;
+    padding: 4px 2px;
+    border-radius: 4px;
+    color: white;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: bold;
+}
+.bar-day { background: #2563eb; }   /* 주간: 파랑 */
+.bar-night { background: #1e293b; } /* 야간: 검정 */
+
+.past-btn {
+    width: 100%;
+    padding: 10px;
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
         
     </style>
 </head>
