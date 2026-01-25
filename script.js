@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwDBzUVVOf4mQ9YAMPAG1xWQY0sss34kQfOqB12RPrnZfW3TIXR5IuUueqlj56fbqsm/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwD0o90GoUApVhc2hqvemBcwlHsaTBImJqfYtN1dGJ1d4IJERCSq30PSZ5CbZjk1pJL/exec";
 
 let currentSites = []; 
 
@@ -522,11 +522,13 @@ function renderCards() {
                         <div style="font-size:1.2rem; font-weight:800; color:#1e293b; line-height:1.3;">${s.site}</div>
                     </div>
 
-                    <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:4px;">
-                        ${s.workers.length > 0 
-                            ? s.workers.map(w => `<span class="worker-chip">${w}</span>`).join('') 
-                            : '<span style="font-size:0.8rem; color:#94a3b8;">인원 미정</span>'}
-                    </div>
+               <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:4px;">
+    ${s.workers.length > 0 
+        ? s.workers
+            .filter(w => w && w.trim() !== "" && w !== s.memo) // 💡 메모와 겹치는 내용 삭제
+            .map(w => `<span class="worker-chip">${w}</span>`).join('') 
+        : '<span style="font-size:0.8rem; color:#94a3b8;">인원 미정</span>'}
+</div>
 
                     ${s.address ? `
                         <div onclick="copyAddr('${s.address}')" style="background:#eff6ff; border:1px dashed #bfdbfe; padding:10px; border-radius:10px; font-size:0.85rem; cursor:pointer; color:#1d4ed8; display:flex; justify-content:space-between;">
@@ -549,27 +551,72 @@ function renderCards() {
 function copyScheduleToLog(s) {
     if(!confirm("📝 선택한 일정 내용으로 일보 작성을 시작할까요?")) return;
 
-    // 날짜 및 현장명 세팅
+    // 1. 기본 정보 입력
     document.getElementById('date').value = s.date;
     document.getElementById('siteSearch').value = s.site;
+    // H열(작업내용)과 I열(특이사항)을 합쳐서 작업 칸에 입력
+    document.getElementById('work').value = (s.workContent || "") + "\n" + (s.memo || ""); 
     
-    // 거래처 칩 선택 시뮬레이션
+    // 2. 거래처 칩 선택
     const clientChips = document.querySelectorAll('#client-chips .chip');
     clientChips.forEach(chip => {
         if(chip.innerText === s.client) chip.click();
     });
 
-    // 인원 칩 활성화 (초기화 후 재설정)
-    const memberChips = document.querySelectorAll('#member-chips .chip');
+    // 3. 인원 칩 활성화 (목록에 없으면 자동 추가)
+const memberContainer = document.getElementById('member-chips'); // 칩들이 담긴 부모 요소
+const memberChips = document.querySelectorAll('#member-chips .chip');
+
+// 먼저 기존 칩들 상태 초기화
+memberChips.forEach(chip => chip.classList.remove('active'));
+
+s.workers.forEach(workerName => {
+    let found = false;
     memberChips.forEach(chip => {
-        if(s.workers.includes(chip.innerText)) {
+        if (chip.innerText === workerName) {
             chip.classList.add('active');
-        } else {
-            chip.classList.remove('active');
+            found = true;
         }
     });
 
-    // 시간 자동 세팅
+    // 💡 만약 칩 목록에 이름이 없다면? 새로 만들어줍니다!
+    if (!found && workerName.trim() !== "") {
+        const newChip = document.createElement('div');
+        newChip.className = 'chip active'; // 만들자마자 활성화
+        newChip.innerText = workerName;
+        // 기존 칩들과 동일한 클릭 이벤트 연결 (필요 시)
+        newChip.onclick = function() { this.classList.toggle('active'); };
+        memberContainer.appendChild(newChip);
+    }
+});
+
+   // 4. 💡 차량 칩 자동 선택 및 목록에 없으면 자동 추가
+const carContainer = document.getElementById('car-chips');
+const carChips = document.querySelectorAll('#car-chips .chip');
+
+// 기존 차량 칩 상태 초기화
+carChips.forEach(chip => chip.classList.remove('active'));
+
+if (s.car && s.car.trim() !== "") {
+    let carFound = false;
+    carChips.forEach(chip => {
+        if (chip.innerText === s.car) {
+            chip.click(); // 기존 칩이 있으면 클릭해서 활성화
+            carFound = true;
+        }
+    });
+
+    // 💡 만약 차량 목록에 없다면? 새로 만들어줍니다!
+    if (!carFound) {
+        const newCarChip = document.createElement('div');
+        newCarChip.className = 'chip active'; // 만들자마자 활성화
+        newCarChip.innerText = s.car;
+        newCarChip.onclick = function() { this.classList.toggle('active'); };
+        carContainer.appendChild(newCarChip);
+    }
+}
+
+    // 5. 시간 자동 세팅
     if(s.shift === '야') {
         document.getElementById('start').value = "18:00";
         document.getElementById('end').value = "05:00";
@@ -596,38 +643,4 @@ function copyAddr(text) {
 }
 
 
-function copyScheduleToLog(s) {
-    // 1. 날짜와 현장명 입력
-    document.getElementById('date').value = s.date;
-    document.getElementById('siteSearch').value = s.site;
-    
-    // 2. 거래처 자동 선택 (칩 클릭 시뮬레이션)
-    const clientChips = document.querySelectorAll('#client-chips .chip');
-    clientChips.forEach(chip => {
-        if(chip.innerText === s.client) chip.click();
-    });
 
-    // 3. 인원 자동 선택
-    const memberChips = document.querySelectorAll('#member-chips .chip');
-    memberChips.forEach(chip => {
-        if(s.workers.includes(chip.innerText)) {
-            chip.classList.add('active');
-        } else {
-            chip.classList.remove('active');
-        }
-    });
-
-    // 4. 시간 자동 세팅 (주/야 구분)
-    if(s.shift === '야') {
-        document.getElementById('start').value = "18:00";
-        document.getElementById('end').value = "05:00";
-    } else {
-        document.getElementById('start').value = "08:00";
-        document.getElementById('end').value = "17:00";
-    }
-
-    // 5. 화면 이동 및 알림
-    showPage('log-page');
-    // 상단으로 스크롤 올려주기
-    window.scrollTo(0, 0);
-}
