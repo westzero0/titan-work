@@ -595,19 +595,31 @@ function copyScheduleToLog(s) {
         if(chip.innerText === s.client) chip.click();
     });
 
-    // 💡 4. 현장 칩 자동 활성화 (현장명이 동일한 경우)
+    
+// 💡 4. 현장 칩 자동 활성화 (현장명이 동일한 경우) 보강
     // 거래처 클릭 후 현장 칩들이 생성될 시간을 위해 잠시 후 실행
     setTimeout(() => {
+        // 검색창에 현장명 먼저 입력 (이게 되어야 칩이 보임)
+        const siteSearchInput = document.getElementById('siteSearch');
+        if (siteSearchInput) {
+            siteSearchInput.value = s.site;
+            // 입력 이벤트 강제 발생시켜서 칩 렌더링 유도
+            siteSearchInput.dispatchEvent(new Event('input'));
+        }
+
+        // 그 다음 생성된 칩들 중 이름이 같은 걸 찾아 활성화
         const siteChips = document.querySelectorAll('#site-chips .chip');
         siteChips.forEach(chip => {
-            if(chip.innerText === s.site) {
+            // [완료] 표시가 붙은 칩일 수도 있으니 includes로 체크
+            if(chip.innerText.includes(s.site)) {
                 chip.classList.add('active');
+                // 화면 중앙으로 스크롤 (칩이 많을 경우 대비)
+                chip.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             } else {
                 chip.classList.remove('active');
             }
         });
-    }, 300); // 0.3초 대기 후 실행
-
+    }, 400); // 0.1초 더 늘려서 안정성 확보
 
     
     // 3. 인원 칩 활성화 (목록에 없으면 자동 추가)
