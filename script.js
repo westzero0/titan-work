@@ -434,7 +434,7 @@ function renderSchedulePage() {
 // 1. 타임라인 (2주치 막대) 그리기
 function renderTimeline() {
     const grid = document.getElementById('timeline-grid');
-    if(!grid) return; // HTML에 id="timeline-grid"가 있는지 확인하세요!
+    if (!grid) return;
     grid.innerHTML = '';
 
     const worker = document.getElementById('worker-select').value;
@@ -443,89 +443,143 @@ function renderTimeline() {
         const date = new Date();
         date.setDate(date.getDate() + i);
         
-        // 날짜를 YYYY-MM-DD 형식으로 변환 (서버 데이터와 비교용)
+        // 날짜 비교용 문자열 생성 (YYYY-MM-DD)
         const dateStr = date.getFullYear() + '-' + 
                         String(date.getMonth() + 1).padStart(2, '0') + '-' + 
                         String(date.getDate()).padStart(2, '0');
         
-        // 작업자 필터링 적용
-        let dayJobs = allSchedules.filter(j => j.date === dateStr);
-        if (worker !== "전체") {
-            dayJobs = dayJobs.filter(j => j.workers.includes(worker));
-        }
-        
-        // 주간 먼저 정렬
+        // 💡 필터링: 전체보기면 다 보여주고, 특정인이면 그 사람이 포함된 것만!
+        let dayJobs = allSchedules.filter(j => {
+            const isDateMatch = j.date === dateStr;
+            const isWorkerMatch = (worker === "전체" || j.workers.includes(worker));
+            return isDateMatch && isWorkerMatch;
+        });
+
+        // 💡 시인성: 주간 먼저, 야간 나중으로 정렬
         dayJobs.sort((a, b) => (a.shift === '주' ? -1 : 1));
 
         const col = document.createElement('div');
         col.className = 'time-col';
+        
+        // 오늘 날짜 하이라이트 효과 (옵션)
+if (i === 0) {
+    col.style.border = "2px solid var(--primary)";
+    col.style.background = "#eff6ff"; // 💡 오늘 날짜 배경을 연한 파란색으로!
+}
+
         col.innerHTML = `
-            <div style="font-size:0.7rem; color:#64748b; font-weight:bold; margin-bottom:5px;">
+            <div style="font-size:0.75rem; color:#1e293b; font-weight:800; margin-bottom:8px; border-bottom:1px solid #e2e8f0; width:100%; text-align:center; padding-bottom:4px;">
                 ${date.getMonth()+1}/${date.getDate()}
             </div>
-            ${dayJobs.map(j => `
-                <div class="job-bar ${j.shift === '주' ? 'bar-day' : 'bar-night'}">
-                    ${j.site} (${j.workers.length})
+            ${dayJobs.length > 0 ? dayJobs.map(j => `
+                <div class="job-bar ${j.shift === '주' ? 'bar-day' : 'bar-night'}" 
+                     style="font-size:0.7rem; line-height:1.2;">
+                    ${j.site}<br>
+                    <span style="font-size:0.6rem; opacity:0.9;">(${j.workers.length}명)</span>
                 </div>
-            `).join('')}
+            `).join('') : '<div style="height:20px;"></div>'}
         `;
         grid.appendChild(col);
     }
 }
 
 
-
-// 2. 카드뷰 (히스토리 포함)
+// 💡 1. 카드뷰 렌더링 (아이콘 추가 및 괄호 보수)
 function renderCards() {
     const container = document.getElementById('schedule-container');
+    const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 과거 일정 보기 버튼 추가
-    let html = `<button class="past-btn" onclick="togglePast()">${showPast ? '⬆️ 과거 일정 숨기기' : '⬇️ 지난 일정 보기'}</button>`;
-
     const filtered = allSchedules.filter(s => {
-        if (showPast) return true; // 전체 보기
-        return s.date >= today;    // 오늘 이후만 보기
+        const isWorkerMatch = (worker === "전체" || s.workers.includes(worker));
+        const isDateMatch = (showPast || s.date >= today);
+        return isWorkerMatch && isDateMatch;
     }).sort((a, b) => showPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
 
-        container.innerHTML = filtered.map(s => {
-        // 주/야 구분에 따른 배지 컬러 설정
-        const shiftColor = s.shift === '야' ? '#1e293b' : '#2563eb';
-        const shiftLabel = s.shift === '야' ? '🌙 야간' : '☀️ 주간';
-        
-        return `
-            <div class="card" style="border-left: 6px solid ${shiftColor}; padding: 12px 16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-weight:bold; font-size:1.1rem; color:#0f172a;">📅 ${s.date}</span>
-                    <span style="background:${shiftColor}; color:white; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:bold;">${shiftLabel}</span>
-                </div>
+    let html = `<button class="past-btn" onclick="togglePast()">${showPast ? '⬆️ 과거 일정 숨기기' : '⬇️ 지난 일정 보기'}</button>`;
 
-                <div style="margin-bottom:10px;">
-                    <div style="font-size:0.85rem; color:#64748b; margin-bottom:2px;">🏢 ${s.client}</div>
-                    <div style="font-size:1.2rem; font-weight:800; color:#1e293b; line-height:1.3;">${s.site}</div>
-                </div>
-
-                <div style="background:#f8fafc; border-radius:8px; padding:8px; margin-bottom:10px; border:1px solid #e2e8f0;">
-                    <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:4px;">👥 투입 인원</div>
-                    <div style="font-size:0.9rem; font-weight:600; color:#475569;">
-                        ${s.workers.length > 0 ? s.workers.join(', ') : '인원 미정'}
+    if (filtered.length === 0) {
+        html += '<p style="text-align:center; padding:20px; color:#94a3b8;">해당하는 일정이 없습니다.</p>';
+    } else {
+        html += filtered.map(s => {
+            const shiftColor = s.shift === '야' ? '#1e293b' : '#2563eb';
+            const shiftLabel = s.shift === '야' ? '🌙 야간' : '☀️ 주간';
+            
+            return `
+                <div class="card" style="border-left: 6px solid ${shiftColor}; padding: 12px 16px; position: relative;">
+                    <div onclick='copyScheduleToLog(${JSON.stringify(s)})' 
+                         style="position: absolute; top: 12px; right: 12px; font-size: 1.4rem; cursor: pointer; padding: 5px; z-index: 10;">
+                        📝
                     </div>
+
+                    <div style="display:flex; align-items:center; margin-bottom:8px;">
+                        <span style="font-weight:bold; font-size:1.1rem;">📅 ${s.date}</span>
+                        <span style="margin-left:8px; color:${shiftColor}; font-weight:bold; font-size:0.85rem;">${shiftLabel}</span>
+                    </div>
+
+                    <div style="margin-bottom:10px;">
+                        <div style="font-size:0.85rem; color:#64748b; margin-bottom:2px;">🏢 ${s.client}</div>
+                        <div style="font-size:1.2rem; font-weight:800; color:#1e293b; line-height:1.3;">${s.site}</div>
+                    </div>
+
+                    <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:4px;">
+                        ${s.workers.length > 0 
+                            ? s.workers.map(w => `<span class="worker-chip">${w}</span>`).join('') 
+                            : '<span style="font-size:0.8rem; color:#94a3b8;">인원 미정</span>'}
+                    </div>
+
+                    ${s.address ? `
+                        <div onclick="copyAddr('${s.address}')" style="background:#eff6ff; border:1px dashed #bfdbfe; padding:10px; border-radius:10px; font-size:0.85rem; cursor:pointer; color:#1d4ed8; display:flex; justify-content:space-between;">
+                            <span>📍 ${s.address}</span>
+                            <span style="font-weight:bold;">[복사]</span>
+                        </div>` : ''}
+
+                    ${s.memo ? `
+                        <div style="margin-top:10px; padding-top:8px; border-top:1px solid #f1f5f9; font-size:0.85rem; color:#ef4444; font-weight:500;">
+                            🔑 메모: ${s.memo}
+                        </div>` : ''}
                 </div>
+            `;
+        }).join('');
+    }
+    container.innerHTML = html;
+}
 
-                ${s.address ? `
-                    <div onclick="copyAddr('${s.address}')" style="background:#eff6ff; border:1px dashed #bfdbfe; padding:10px; border-radius:10px; font-size:0.9rem; cursor:pointer; display:flex; align-items:center; gap:5px;">
-                        <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#1d4ed8;">📍 ${s.address}</span>
-                        <span style="color:#2563eb; font-weight:bold; font-size:0.75rem; white-space:nowrap;">[복사]</span>
-                    </div>` : ''}
+// 💡 2. 데이터 전송 로직 (실제 일보 폼으로 데이터 쏴주기)
+function copyScheduleToLog(s) {
+    if(!confirm("📝 선택한 일정 내용으로 일보 작성을 시작할까요?")) return;
 
-                ${s.memo ? `
-                    <div style="margin-top:10px; padding-top:8px; border-top:1px solid #f1f5f9; font-size:0.85rem; color:#ef4444; display:flex; gap:5px;">
-                        <span>🔑</span>
-                        <span style="font-weight:500;">메모: ${s.memo}</span>
-                    </div>` : ''}
-            </div>
-        `;
-    }).join('');
+    // 날짜 및 현장명 세팅
+    document.getElementById('date').value = s.date;
+    document.getElementById('siteSearch').value = s.site;
+    
+    // 거래처 칩 선택 시뮬레이션
+    const clientChips = document.querySelectorAll('#client-chips .chip');
+    clientChips.forEach(chip => {
+        if(chip.innerText === s.client) chip.click();
+    });
+
+    // 인원 칩 활성화 (초기화 후 재설정)
+    const memberChips = document.querySelectorAll('#member-chips .chip');
+    memberChips.forEach(chip => {
+        if(s.workers.includes(chip.innerText)) {
+            chip.classList.add('active');
+        } else {
+            chip.classList.remove('active');
+        }
+    });
+
+    // 시간 자동 세팅
+    if(s.shift === '야') {
+        document.getElementById('start').value = "18:00";
+        document.getElementById('end').value = "05:00";
+    } else {
+        document.getElementById('start').value = "08:00";
+        document.getElementById('end').value = "17:00";
+    }
+
+    showPage('log-page');
+    window.scrollTo(0, 0);
 }
 
 
