@@ -581,8 +581,8 @@ function copyScheduleToLog(s) {
     // 1. 기본 정보 입력
     document.getElementById('date').value = s.date;
     document.getElementById('siteSearch').value = s.site;
-    // H열(작업내용)과 I열(특이사항)을 합쳐서 작업 칸에 입력
-    document.getElementById('work').value = (s.workContent || "") + "\n" + (s.memo || ""); 
+    // H열(작업내용)작업 칸에 입력
+    document.getElementById('work').value = (s.workContent || ""); 
     
     // 2. 거래처 칩 선택
     const clientChips = document.querySelectorAll('#client-chips .chip');
@@ -590,6 +590,21 @@ function copyScheduleToLog(s) {
         if(chip.innerText === s.client) chip.click();
     });
 
+    // 💡 4. 현장 칩 자동 활성화 (현장명이 동일한 경우)
+    // 거래처 클릭 후 현장 칩들이 생성될 시간을 위해 잠시 후 실행
+    setTimeout(() => {
+        const siteChips = document.querySelectorAll('#site-chips .chip');
+        siteChips.forEach(chip => {
+            if(chip.innerText === s.site) {
+                chip.classList.add('active');
+            } else {
+                chip.classList.remove('active');
+            }
+        });
+    }, 300); // 0.3초 대기 후 실행
+
+
+    
     // 3. 인원 칩 활성화 (목록에 없으면 자동 추가)
 const memberContainer = document.getElementById('member-chips'); // 칩들이 담긴 부모 요소
 const memberChips = document.querySelectorAll('#member-chips .chip');
