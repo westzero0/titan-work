@@ -388,3 +388,73 @@ async function compressImage(file) {
         };
     });
 }
+let allSchedules = [];
+
+// 💡 1. 시트에서 데이터를 받아와 화면에 뿌리는 함수 (통합 버전)
+async function loadSchedules() {
+    const container = document.getElementById('schedule-container');
+    container.innerHTML = '<p style="text-align:center;">🔌 서버 연결 중...</p>';
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getScheduleData' })
+        });
+        const result = await res.json();
+        allSchedules = result.schedules;
+        
+        // 근무자 드롭다운 업데이트
+        const select = document.getElementById('worker-select');
+        const currentVal = select.value;
+        select.innerHTML = '<option value="전체">👤 전체 보기</option>';
+        
+        if (result.workers && result.workers.length > 0) {
+            result.workers.forEach(w => {
+                select.add(new Option(w, w));
+            });
+        }
+        select.value = currentVal || "전체";
+
+        renderCards(select.value);
+    } catch (e) {
+        console.error("일정 로드 실패:", e);
+        container.innerHTML = '<p style="text-align:center; color:red;">⚠️ 일정 로드 실패 (서버 확인 필요)</p>';
+    }
+}
+
+// 💡 2. 선택한 사람의 일정만 골라서 보여주는 함수
+function filterSchedules() {
+    const worker = document.getElementById('worker-select').value;
+    renderCards(worker);
+}
+
+// 💡 3. 일정 카드를 그리는 함수 (주소 복사 기능 포함)
+function renderCards(worker) {
+    const container = document.getElementById('schedule-container');
+    const filtered = worker === "전체" ? allSchedules : allSchedules.filter(s => s.workers.includes(worker));
+
+    if (!filtered || filtered.length === 0) {
+        container.innerHTML = '<p style="text-align:center; padding:20px;">일정이 없습니다.</p>';
+        return;
+    }
+
+    container.innerHTML = filtered.map(s => `
+        <div class="card" style="border-left: 5px solid ${s.shift === '야' ? '#1e293b' : '#2563eb'};">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span style="font-weight:bold;">📅 ${s.date} [${s.shift}]</span>
+                <span style="font-size:0.8rem; color:#64748b;">${s.client}</span>
+            </div>
+            <div style="font-size:1.1rem; font-weight:bold; margin-bottom:8px;">${s.site}</div>
+            ${s.address ? `
+                <div onclick="copyAddr('${s.address}')" style="background:#f1f5f9; padding:10px; border-radius:8px; font-size:0.85rem; cursor:pointer;">
+                    📍 ${s.address} <span style="color:#2563eb; font-weight:bold;">(복사)</span>
+                </div>` : ''}
+            ${s.memo ? `<div style="margin-top:5px; font-size:0.8rem; color:#ef4444;">🔑 비번: ${s.memo}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+// 💡 4. 주소 클릭 시 범용 복사 함수 호출
+function copyAddr(text) {
+    copyToClipboard(text);
+}
