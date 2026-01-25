@@ -529,18 +529,35 @@ function scrollToCard(date, site) {
 function renderCards() {
     const container = document.getElementById('schedule-container');
     const worker = document.getElementById('worker-select').value;
+    
+    // 💡 시간을 제외한 순수 오늘 날짜 (YYYY-MM-DD)
     const today = new Date().toISOString().split('T')[0];
 
     const filtered = allSchedules.filter(s => {
+        // 1. 작업자 필터 (공통)
         const isWorkerMatch = (worker === "전체" || s.workers.includes(worker));
-        const isDateMatch = (showPast || s.date >= today);
+        
+        // 2. 💡 날짜 필터 (핵심 보수 구간)
+        // showPast가 false면 오늘 이후(>=)만, true면 오늘 이전(<)만 보여줍니다.
+        const isDateMatch = showPast ? (s.date < today) : (s.date >= today);
+        
         return isWorkerMatch && isDateMatch;
-    }).sort((a, b) => b.date.localeCompare(a.date));
+    });
 
-    let html = `<button class="past-btn" onclick="togglePast()">${showPast ? '⬆️ 과거 일정 숨기기' : '⬇️ 지난 일정 보기'}</button>`;
+    // 💡 정렬: 미래 일정은 가까운 순(오름차순), 과거 일정은 최신 순(내림차순)
+    filtered.sort((a, b) => {
+        return showPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+    });
+
+    // 상단 버튼 마감 (상태에 따라 문구 변경)
+    let html = `<button class="past-btn" onclick="togglePast()" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:none; background:#f1f5f9; color:#475569; font-weight:bold;">
+        ${showPast ? '⬆️ 오늘 이후 일정 보기' : '⬇️ 지난 일정 보기'}
+    </button>`;
 
     if (filtered.length === 0) {
-        html += '<p style="text-align:center; padding:20px; color:#94a3b8;">해당하는 일정이 없습니다.</p>';
+        html += `<p style="text-align:center; padding:40px; color:#94a3b8;">
+            ${showPast ? '기록된 과거 일정이 없습니다.' : '예정된 일정이 없습니다.'}
+        </p>`;
     } else {
         html += filtered.map(s => {
             const shiftColor = s.shift === '야' ? '#1e293b' : '#2563eb';
@@ -550,7 +567,7 @@ function renderCards() {
                 <div class="card schedule-card-item" 
                      data-date="${s.date}" 
                      data-site="${s.site}" 
-                     style="border-left: 6px solid ${shiftColor}; padding: 12px 16px; position: relative; margin-bottom: 15px; transition: all 0.4s ease;">
+                     style="border-left: 6px solid ${shiftColor}; padding: 12px 16px; position: relative; margin-bottom: 15px; transition: all 0.4s ease; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                     
                     <div onclick='copyScheduleToLog(${JSON.stringify(s)})' 
                          style="position: absolute; top: 12px; right: 12px; font-size: 1.4rem; cursor: pointer; padding: 5px; z-index: 10;">
@@ -569,9 +586,7 @@ function renderCards() {
 
                     <div style="margin-bottom:8px; display:flex; flex-wrap:wrap; gap:4px;">
                         ${s.workers.length > 0 
-                            ? s.workers
-                                .filter(w => w && w.trim() !== "" && w !== s.memo)
-                                .map(w => `<span class="worker-chip">${w}</span>`).join('') 
+                            ? s.workers.filter(w => w && w.trim() !== "").map(w => `<span class="worker-chip">${w}</span>`).join('') 
                             : '<span style="font-size:0.8rem; color:#94a3b8;">인원 미정</span>'}
                     </div>
 
@@ -587,11 +602,6 @@ function renderCards() {
                         <div onclick="copyAddr('${s.address}')" style="background:#eff6ff; border:1px dashed #bfdbfe; padding:10px; border-radius:10px; font-size:0.85rem; cursor:pointer; color:#1d4ed8; display:flex; justify-content:space-between;">
                             <span>📍 ${s.address}</span>
                             <span style="font-weight:bold;">[복사]</span>
-                        </div>` : ''}
-
-                    ${s.memo ? `
-                        <div style="margin-top:10px; padding-top:8px; border-top:1px solid #f1f5f9; font-size:0.85rem; color:#ef4444; font-weight:500;">
-                            🔑 메모: ${s.memo}
                         </div>` : ''}
                 </div>
             `;
