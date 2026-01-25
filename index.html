@@ -103,16 +103,12 @@
 
 /* 💡 일정 막대 스타일 */
 .job-bar {
-    width: 100%;
+    width: 90%;
     font-size: 0.75rem;
-    padding: 4px 2px;
-    border-radius: 4px;
-    color: white;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-weight: bold;
+    padding: 6px 4px; /* 더 두껍게 */
+    margin: 2px 0;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 .bar-day { background: #2563eb; }   /* 주간: 파랑 */
 .bar-night { background: #1e293b; } /* 야간: 검정 */
@@ -126,6 +122,17 @@
     margin-bottom: 15px;
     color: #64748b;
     font-size: 0.9rem;
+}
+        /* 인원 표시 칩 스타일 */
+.worker-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-right: 4px;
+    color: #475569;
+    font-weight: 600;
 }
 
         
@@ -235,23 +242,21 @@
             <button id="sBtn" class="submit-btn" onclick="send()">🚀 저장 및 카톡 공유</button>
         </div>
 
-      <div id="schedule-page" class="page" style="display:none;">
-    <h2 style="color: var(--primary); text-align: center;">📅 현장 타임라인</h2>
-    
-    <div id="timeline-grid" class="timeline-grid">
-        </div>
-
-    <div class="card" style="margin-bottom: 10px;">
-        <label>👤 작업자 선택</label>
-        <select id="worker-select" onchange="filterSchedules()">
-            <option value="전체">전체 보기</option>
+ <div id="schedule-page" class="page" style="display:none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="color: var(--primary); margin: 0; font-size: 1.2rem;">📅 현장 타임라인</h2>
+        <select id="worker-select" onchange="filterSchedules()" style="width: auto; margin: 0; padding: 5px 10px; font-size: 0.85rem;">
+            <option value="전체">👤 전체</option>
         </select>
     </div>
+    
+    <div id="timeline-grid" class="timeline-grid"></div>
 
-    <div id="schedule-container">
-        <p style="text-align:center; color:#94a3b8;">데이터를 불러오는 중...</p>
-    </div>
+    <div id="schedule-container"></div>
 </div>
+
+
+        
     </div>
     
     <script src="script.js"></script>
