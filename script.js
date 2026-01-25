@@ -504,15 +504,24 @@ col.innerHTML = `
 
 // 💡 막대 클릭 시 해당 카드로 이동하는 함수
 function scrollToCard(date, site) {
+    // 모든 카드 중에서 날짜와 현장명이 일치하는 놈을 찾습니다.
     const cards = document.querySelectorAll('.schedule-card-item');
-    for (let card of cards) {
+    
+    cards.forEach(card => {
         if (card.dataset.date === date && card.dataset.site === site) {
+            // 💡 화면 중앙으로 부드럽게 이동
             card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            card.style.boxShadow = "0 0 15px rgba(37, 99, 235, 0.5)"; // 하이라이트 효과
-            setTimeout(() => card.style.boxShadow = "", 2000);
-            break;
+            
+            // 💡 찾았다는 표시로 테두리에 파란 불을 켰다 끕니다.
+            card.style.boxShadow = "0 0 20px rgba(37, 99, 235, 0.8)";
+            card.style.borderColor = "#2563eb";
+            
+            setTimeout(() => {
+                card.style.boxShadow = "";
+                card.style.borderColor = "";
+            }, 2000);
         }
-    }
+    });
 }
 
 
