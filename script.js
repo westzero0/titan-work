@@ -438,21 +438,46 @@ function renderCards(worker) {
         return;
     }
 
-    container.innerHTML = filtered.map(s => `
-        <div class="card" style="border-left: 5px solid ${s.shift === '야' ? '#1e293b' : '#2563eb'};">
-            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                <span style="font-weight:bold;">📅 ${s.date} [${s.shift}]</span>
-                <span style="font-size:0.8rem; color:#64748b;">${s.client}</span>
+    container.innerHTML = filtered.map(s => {
+        // 주/야 구분에 따른 배지 컬러 설정
+        const shiftColor = s.shift === '야' ? '#1e293b' : '#2563eb';
+        const shiftLabel = s.shift === '야' ? '🌙 야간' : '☀️ 주간';
+        
+        return `
+            <div class="card" style="border-left: 6px solid ${shiftColor}; padding: 12px 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-weight:bold; font-size:1.1rem; color:#0f172a;">📅 ${s.date}</span>
+                    <span style="background:${shiftColor}; color:white; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:bold;">${shiftLabel}</span>
+                </div>
+
+                <div style="margin-bottom:10px;">
+                    <div style="font-size:0.85rem; color:#64748b; margin-bottom:2px;">🏢 ${s.client}</div>
+                    <div style="font-size:1.2rem; font-weight:800; color:#1e293b; line-height:1.3;">${s.site}</div>
+                </div>
+
+                <div style="background:#f8fafc; border-radius:8px; padding:8px; margin-bottom:10px; border:1px solid #e2e8f0;">
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:4px;">👥 투입 인원</div>
+                    <div style="font-size:0.9rem; font-weight:600; color:#475569;">
+                        ${s.workers.length > 0 ? s.workers.join(', ') : '인원 미정'}
+                    </div>
+                </div>
+
+                ${s.address ? `
+                    <div onclick="copyAddr('${s.address}')" style="background:#eff6ff; border:1px dashed #bfdbfe; padding:10px; border-radius:10px; font-size:0.9rem; cursor:pointer; display:flex; align-items:center; gap:5px;">
+                        <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#1d4ed8;">📍 ${s.address}</span>
+                        <span style="color:#2563eb; font-weight:bold; font-size:0.75rem; white-space:nowrap;">[복사]</span>
+                    </div>` : ''}
+
+                ${s.memo ? `
+                    <div style="margin-top:10px; padding-top:8px; border-top:1px solid #f1f5f9; font-size:0.85rem; color:#ef4444; display:flex; gap:5px;">
+                        <span>🔑</span>
+                        <span style="font-weight:500;">메모: ${s.memo}</span>
+                    </div>` : ''}
             </div>
-            <div style="font-size:1.1rem; font-weight:bold; margin-bottom:8px;">${s.site}</div>
-            ${s.address ? `
-                <div onclick="copyAddr('${s.address}')" style="background:#f1f5f9; padding:10px; border-radius:8px; font-size:0.85rem; cursor:pointer;">
-                    📍 ${s.address} <span style="color:#2563eb; font-weight:bold;">(복사)</span>
-                </div>` : ''}
-            ${s.memo ? `<div style="margin-top:5px; font-size:0.8rem; color:#ef4444;">🔑 비번: ${s.memo}</div>` : ''}
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
+
 
 // 💡 4. 주소 클릭 시 범용 복사 함수 호출
 function copyAddr(text) {
