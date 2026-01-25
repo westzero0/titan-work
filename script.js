@@ -594,3 +594,40 @@ function togglePast() {
 function copyAddr(text) {
     copyToClipboard(text);
 }
+
+
+function copyScheduleToLog(s) {
+    // 1. 날짜와 현장명 입력
+    document.getElementById('date').value = s.date;
+    document.getElementById('siteSearch').value = s.site;
+    
+    // 2. 거래처 자동 선택 (칩 클릭 시뮬레이션)
+    const clientChips = document.querySelectorAll('#client-chips .chip');
+    clientChips.forEach(chip => {
+        if(chip.innerText === s.client) chip.click();
+    });
+
+    // 3. 인원 자동 선택
+    const memberChips = document.querySelectorAll('#member-chips .chip');
+    memberChips.forEach(chip => {
+        if(s.workers.includes(chip.innerText)) {
+            chip.classList.add('active');
+        } else {
+            chip.classList.remove('active');
+        }
+    });
+
+    // 4. 시간 자동 세팅 (주/야 구분)
+    if(s.shift === '야') {
+        document.getElementById('start').value = "18:00";
+        document.getElementById('end').value = "05:00";
+    } else {
+        document.getElementById('start').value = "08:00";
+        document.getElementById('end').value = "17:00";
+    }
+
+    // 5. 화면 이동 및 알림
+    showPage('log-page');
+    // 상단으로 스크롤 올려주기
+    window.scrollTo(0, 0);
+}
