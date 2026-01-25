@@ -405,11 +405,37 @@ async function loadSchedules() {
         const result = await res.json();
         allSchedules = result.schedules;
         
-        const select = document.getElementById('worker-select');
-        const currentVal = select.value;
-        select.innerHTML = '<option value="전체">👤 전체 보기</option>';
-        if (result.workers) result.workers.forEach(w => select.add(new Option(w, w)));
-        select.value = currentVal || "전체";
+    // 💡 드롭다운 목록 생성 (최근 2주간 일정이 있는 사람만 필터링)
+const select = document.getElementById('worker-select');
+const currentVal = select.value;
+select.innerHTML = '<option value="전체">👤 전체 보기</option>';
+
+if (allSchedules.length > 0) {
+    const today = new Date();
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(today.getDate() - 14); // 오늘부터 14일 전 계산
+
+    // 1. 최근 2주간 일정이 있는 데이터만 골라내기
+    const recentSchedules = allSchedules.filter(s => {
+        const scheduleDate = new Date(s.date);
+        return scheduleDate >= twoWeeksAgo;
+    });
+
+    // 2. 해당 일정들에 포함된 작업자 이름만 수집 (중복 제거)
+    let activeWorkerSet = new Set();
+    recentSchedules.forEach(s => {
+        if (s.workers) {
+            s.workers.forEach(w => activeWorkerSet.add(w));
+        }
+    });
+
+    // 3. 이름순으로 정렬해서 드롭다운에 추가
+    Array.from(activeWorkerSet).sort().forEach(w => {
+        select.add(new Option(w, w));
+    });
+}
+
+select.value = currentVal || "전체";
 
         // 💡 핵심: 두 화면을 한 번에 그립니다.
         renderSchedulePage(); 
@@ -442,44 +468,45 @@ function renderTimeline() {
     for (let i = 0; i < 14; i++) {
         const date = new Date();
         date.setDate(date.getDate() + i);
+        const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
         
-        // 날짜 비교용 문자열 생성 (YYYY-MM-DD)
-        const dateStr = date.getFullYear() + '-' + 
-                        String(date.getMonth() + 1).padStart(2, '0') + '-' + 
-                        String(date.getDate()).padStart(2, '0');
-        
-        // 💡 필터링: 전체보기면 다 보여주고, 특정인이면 그 사람이 포함된 것만!
         let dayJobs = allSchedules.filter(j => {
             const isDateMatch = j.date === dateStr;
             const isWorkerMatch = (worker === "전체" || j.workers.includes(worker));
             return isDateMatch && isWorkerMatch;
         });
 
-        // 💡 시인성: 주간 먼저, 야간 나중으로 정렬
-        dayJobs.sort((a, b) => (a.shift === '주' ? -1 : 1));
-
         const col = document.createElement('div');
         col.className = 'time-col';
-        
-        // 오늘 날짜 하이라이트 효과 (옵션)
-if (i === 0) {
-    col.style.border = "2px solid var(--primary)";
-    col.style.background = "#eff6ff"; // 💡 오늘 날짜 배경을 연한 파란색으로!
+        if (i === 0) { col.style.border = "2px solid var(--primary)"; col.style.background = "#eff6ff"; }
+
+     // renderTimeline 내 막대 생성 부분
+col.innerHTML = `
+    <div style="font-size:0.85rem; color:#1e293b; font-weight:800; margin-bottom:8px; border-bottom:2px solid #e2e8f0; width:100%; text-align:center; padding-bottom:4px;">
+        ${date.getMonth()+1}/${date.getDate()}
+    </div>
+    ${dayJobs.length > 0 ? dayJobs.map(j => `
+        <div class="job-bar ${j.shift === '주' ? 'bar-day' : 'bar-night'}" 
+             onclick="scrollToCard('${j.date}', '${j.site}')">
+            ${j.site}<br>
+            <span style="font-size:0.65rem; font-weight:500; opacity:0.9;">(${j.workers.length}명)</span>
+        </div>
+    `).join('') : '<div style="height:20px;"></div>'}
+`;
+        grid.appendChild(col);
+    }
 }
 
-        col.innerHTML = `
-            <div style="font-size:0.75rem; color:#1e293b; font-weight:800; margin-bottom:8px; border-bottom:1px solid #e2e8f0; width:100%; text-align:center; padding-bottom:4px;">
-                ${date.getMonth()+1}/${date.getDate()}
-            </div>
-            ${dayJobs.length > 0 ? dayJobs.map(j => `
-                <div class="job-bar ${j.shift === '주' ? 'bar-day' : 'bar-night'}" 
-                     style="font-size:0.7rem; line-height:1.2;">
-                    ${j.site}<br>
-                    <span style="font-size:0.6rem; opacity:0.9;">(${j.workers.length}명)</span>
-                </div>
-            `).join('') : '<div style="height:20px;"></div>'}
-        `;
-        grid.appendChild(col);
+// 💡 막대 클릭 시 해당 카드로 이동하는 함수
+function scrollToCard(date, site) {
+    const cards = document.querySelectorAll('.schedule-card-item');
+    for (let card of cards) {
+        if (card.dataset.date === date && card.dataset.site === site) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            card.style.boxShadow = "0 0 15px rgba(37, 99, 235, 0.5)"; // 하이라이트 효과
+            setTimeout(() => card.style.boxShadow = "", 2000);
+            break;
+        }
     }
 }
 
