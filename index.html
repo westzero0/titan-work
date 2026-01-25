@@ -36,6 +36,12 @@
         .submit-btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: bold; margin-top: 10px; cursor: pointer; }
         .loading-text { font-size: 0.8rem; color: #94a3b8; font-style: italic; }
 
+        
+        /* 💡 추가된 네비게이션 스타일 */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: white; display: flex; border-top: 1px solid #e2e8f0; z-index: 1000; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8rem; color: #64748b; cursor: pointer; }
+        .nav-item.active { color: var(--primary); font-weight: bold; }
+        
         /* 💡 스플래시 화면 스타일 추가 */
         #splash-screen {
             position: fixed;
@@ -65,116 +71,135 @@
     </style>
 </head>
 <body>
-
     <div id="splash-screen">
-    <div class="splash-content">
-        <img src="https://github.com/westzero0/titan-work/blob/main/192.png?raw=true" alt="TITAN">
-        <div class="loader"></div>
+        <div class="splash-content">
+            <img src="https://github.com/westzero0/titan-work/blob/main/192.png?raw=true" alt="TITAN">
+            <div class="loader"></div>
+        </div>
     </div>
-</div>
 
-    
+    <nav class="bottom-nav">
+        <div onclick="showPage('log-page')" id="tab-log" class="nav-item active">📝 일보작성</div>
+        <div onclick="showPage('schedule-page')" id="tab-sched" class="nav-item">📅 일정확인</div>
+    </nav>
+
     <div class="container">
-        <h2 style="color: var(--primary); text-align: center;">⚡ 타이탄 작업일보</h2>
+        <div id="log-page" class="page">
+            <h2 style="color: var(--primary); text-align: center;">⚡ 타이탄 작업일보</h2>
+            <input type="hidden" id="submitter">
 
-        <input type="hidden" id="submitter">
-
-        <div class="card">
-            <label>📅 작업 일자</label>
-            <input type="date" id="date">
-            
-            <label>🏢 거래처</label>
-            <div id="client-chips" class="chip-container"><span class="loading-text">데이터를 불러오는 중...</span></div>
-            
-            <div class="site-header" style="margin-top:15px;">
-                <label style="margin-bottom:0;">🏗️ 현장명</label>
-                <label class="checkbox-group">
-                    <input type="checkbox" id="showFinished" onchange="renderSiteChips()"> 완료현장 포함
-                </label>
+            <div class="card">
+                <label>📅 작업 일자</label>
+                <input type="date" id="date">
+                <label>🏢 거래처</label>
+                <div id="client-chips" class="chip-container"><span class="loading-text">데이터를 불러오는 중...</span></div>
+                
+                <div class="site-header" style="margin-top:15px;">
+                    <label style="margin-bottom:0;">🏗️ 현장명</label>
+                    <label class="checkbox-group">
+                        <input type="checkbox" id="showFinished" onchange="renderSiteChips()"> 완료현장 포함
+                    </label>
+                </div>
+                <input type="text" id="siteSearch" list="site-options" placeholder="현장 검색 또는 직접 입력" oninput="syncSiteSelection()">
+                <datalist id="site-options"></datalist>
+                <div id="site-chips" class="chip-container"></div>
             </div>
-            <input type="text" id="siteSearch" list="site-options" placeholder="현장 검색 또는 직접 입력" oninput="syncSiteSelection()">
-            <datalist id="site-options"></datalist>
-            <div id="site-chips" class="chip-container"></div>
-        </div>
 
-        <div class="card">
-            <label>🛠️ 작업 내용</label>
-            <textarea id="work" rows="3" placeholder="오늘 작업 내용을 입력하세요"></textarea>
-            <div class="row">
-                <div class="col"><label>⏰ 시작</label><select id="start"></select></div>
-                <div class="col"><label>⏰ 종료</label><select id="end"></select></div>
+            <div class="card">
+                <label>🛠️ 작업 내용</label>
+                <textarea id="work" rows="3" placeholder="오늘 작업 내용을 입력하세요"></textarea>
+                <div class="row">
+                    <div class="col"><label>⏰ 시작</label><select id="start"></select></div>
+                    <div class="col"><label>⏰ 종료</label><select id="end"></select></div>
+                </div>
+                <label>🍱 석식 여부</label>
+                <select id="dinner"><option value="X">안먹음 (X)</option><option value="O">먹음 (O)</option></select>
             </div>
-            <label>🍱 석식 여부</label>
-            <select id="dinner"><option value="X">안먹음 (X)</option><option value="O">먹음 (O)</option></select>
-        </div>
 
-        <div class="card">
-            <div class="chip-header">
-                <label style="margin-bottom:0;">👥 작업 인원</label>
-                <span onclick="toggleDelMode('member')" id="del-btn-member" class="del-mode-btn">🗑️ 삭제</span>
-            </div>
-            <div class="chip-header">
+            <div class="card">
+                <div class="chip-header">
+                    <label style="margin-bottom:0;">👥 작업 인원</label>
+                    <span onclick="toggleDelMode('member')" id="del-btn-member" class="del-mode-btn">🗑️ 삭제</span>
+                </div>
                 <div class="chip-input-group">
                     <input type="text" id="add-member-input" placeholder="이름 추가">
                     <button onclick="addItem('member')" class="add-btn">추가</button>
                 </div>
+                <div id="member-chips" class="chip-container"></div>
             </div>
-            <div id="member-chips" class="chip-container"></div>
-        </div>
 
-        <div class="card">
-            <div class="chip-header">
-                <label style="margin-bottom:0;">🚗 사용 차량</label>
-                <span onclick="toggleDelMode('car')" id="del-btn-car" class="del-mode-btn">🗑️ 삭제</span>
-            </div>
-            <div class="chip-header">
+            <div class="card">
+                <div class="chip-header">
+                    <label style="margin-bottom:0;">🚗 사용 차량</label>
+                    <span onclick="toggleDelMode('car')" id="del-btn-car" class="del-mode-btn">🗑️ 삭제</span>
+                </div>
                 <div class="chip-input-group">
                     <input type="text" id="add-car-input" placeholder="차량 추가">
                     <button onclick="addItem('car')" class="add-btn">추가</button>
                 </div>
+                <div id="car-chips" class="chip-container"></div>
             </div>
-            <div id="car-chips" class="chip-container"></div>
-        </div>
-<div class="card">
-    <div class="chip-header">
-        <label style="margin-bottom:0;">📦 사용 자재 (칩 선택)</label>
-        <span onclick="toggleDelMode('material')" id="del-btn-material" class="del-mode-btn">🗑️ 삭제</span>
-    </div>
-    <div class="chip-header">
-        <div class="chip-input-group">
-            <input type="text" id="add-material-input" placeholder="자재 이름 추가">
-            <button onclick="addItem('material')" class="add-btn">추가</button>
-        </div>
-    </div>
-    <div id="material-chips" class="chip-container"></div>
-    
-    <textarea id="materialExtra" rows="2" style="margin-top:10px;" placeholder="한번에 입력하려면 여기에 입력하세요."></textarea>
-</div>
 
-        <div class="card">
-            <label>💰 경비 금액</label>
-            <input type="number" id="expAmount" placeholder="0">
-            
-            <div class="chip-header">
-                <label style="margin-bottom:0;">💳 경비 결제자</label>
-                <span onclick="toggleDelMode('payer')" id="del-btn-payer" class="del-mode-btn">🗑️ 삭제</span>
+            <div class="card">
+                <div class="chip-header">
+                    <label style="margin-bottom:0;">📦 사용 자재 (칩 선택)</label>
+                    <span onclick="toggleDelMode('material')" id="del-btn-material" class="del-mode-btn">🗑️ 삭제</span>
+                </div>
+                <div class="chip-input-group">
+                    <input type="text" id="add-material-input" placeholder="자재 이름 추가">
+                    <button onclick="addItem('material')" class="add-btn">추가</button>
+                </div>
+                <div id="material-chips" class="chip-container"></div>
+                <textarea id="materialExtra" rows="2" style="margin-top:10px;" placeholder="한번에 입력하려면 여기에 입력하세요."></textarea>
             </div>
-            <div class="chip-header">
+
+            <div class="card">
+                <label>💰 경비 금액</label>
+                <input type="number" id="expAmount" placeholder="0">
+                <div class="chip-header">
+                    <label style="margin-bottom:0;">💳 경비 결제자</label>
+                    <span onclick="toggleDelMode('payer')" id="del-btn-payer" class="del-mode-btn">🗑️ 삭제</span>
+                </div>
                 <div class="chip-input-group">
                     <input type="text" id="add-payer-input" placeholder="이름 추가">
                     <button onclick="addItem('payer')" class="add-btn">추가</button>
                 </div>
+                <div id="payer-chips" class="chip-container"></div>
+                <label style="margin-top:10px;">📝 경비 내용</label>
+                <input type="text" id="expDetail" placeholder="상세 내용">
+                <label>📸 영수증 첨부</label>
+                <input type="file" id="receipt" multiple accept="image/*">
             </div>
-            <div id="payer-chips" class="chip-container"></div>
 
-            <label style="margin-top:10px;">📝 경비 내용</label>
-            <input type="text" id="expDetail" placeholder="상세 내용">
-            <label>📸 영수증 첨부 (다중 선택 가능)</label>
-            <input type="file" id="receipt" multiple accept="image/*">
+            <button id="sBtn" class="submit-btn" onclick="send()">🚀 저장 및 카톡 공유</button>
         </div>
 
-        <button id="sBtn" class="submit-btn" onclick="send()">🚀 저장 및 카톡 공유</button>
-    </div>
-    <script src="script.js"></script>
+        <div id="schedule-page" class="page" style="display:none;">
+            <h2 style="color: var(--primary); text-align: center;">📅 근무 일정표</h2>
+            <div class="card">
+                <label>👤 작업자 선택</label>
+                <select id="worker-select" onchange="filterSchedules()">
+                    <option value="전체">전체 보기</option>
+                </select>
+            </div>
+            <div id="schedule-container">
+               <p style="text-align:center; color:#94a3b8;">데이터를 불러오는 중...</p>
+            </div>
+        </div>
+    </div> <script src="script.js"></script>
+    <script>
+        // 💡 화면 전환 스위치 로직
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+            document.getElementById(pageId).style.display = 'block';
+            document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+            if(pageId === 'log-page') {
+                document.getElementById('tab-log').classList.add('active');
+            } else {
+                document.getElementById('tab-sched').classList.add('active');
+                if(typeof loadSchedules === 'function') loadSchedules();
+            }
+        }
+    </script>
 </body>
 </html>
