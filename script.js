@@ -521,7 +521,7 @@ function renderCards() {
         const isWorkerMatch = (worker === "전체" || s.workers.includes(worker));
         const isDateMatch = (showPast || s.date >= today);
         return isWorkerMatch && isDateMatch;
-    }).sort((a, b) => showPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
+    }).sort((a, b) => b.date.localeCompare(a.date)); // 항상 최신순 정렬
 
     let html = `<button class="past-btn" onclick="togglePast()">${showPast ? '⬆️ 과거 일정 숨기기' : '⬇️ 지난 일정 보기'}</button>`;
 
@@ -532,52 +532,54 @@ function renderCards() {
             const shiftColor = s.shift === '야' ? '#1e293b' : '#2563eb';
             const shiftLabel = s.shift === '야' ? '🌙 야간' : '☀️ 주간';
             
-           // renderCards 함수 내 카드 생성 부분 보수
-return `
-    <div class="card schedule-card-item" 
-         data-date="${s.date}" 
-         data-site="${s.site}" 
-         style="border-left: 6px solid ${shiftColor}; padding: 12px 16px; position: relative; transition: all 0.3s ease;">
-        
-        <div onclick='copyScheduleToLog(${JSON.stringify(s)})' 
-             style="position: absolute; top: 12px; right: 12px; font-size: 1.4rem; cursor: pointer; padding: 5px; z-index: 10;">
-            📝
-        </div>
+            // 💡 여기서 class와 data-속성이 빠지면 타임라인에서 못 찾아갑니다!
+            return `
+                <div class="card schedule-card-item" 
+                     data-date="${s.date}" 
+                     data-site="${s.site}" 
+                     style="border-left: 6px solid ${shiftColor}; padding: 12px 16px; position: relative; margin-bottom: 15px; transition: all 0.4s ease;">
+                    
+                    <div onclick='copyScheduleToLog(${JSON.stringify(s)})' 
+                         style="position: absolute; top: 12px; right: 12px; font-size: 1.4rem; cursor: pointer; padding: 5px; z-index: 10;">
+                        📝
+                    </div>
 
-        <div style="display:flex; align-items:center; margin-bottom:8px;">
-            <span style="font-weight:bold; font-size:1.1rem;">📅 ${s.date}</span>
-            <span style="margin-left:8px; color:${shiftColor}; font-weight:bold; font-size:0.85rem;">${shiftLabel}</span>
-        </div>
+                    <div style="display:flex; align-items:center; margin-bottom:8px;">
+                        <span style="font-weight:bold; font-size:1.1rem;">📅 ${s.date}</span>
+                        <span style="margin-left:8px; color:${shiftColor}; font-weight:bold; font-size:0.85rem;">${shiftLabel}</span>
+                    </div>
 
-        <div style="margin-bottom:10px;">
-            <div style="font-size:0.85rem; color:#64748b; margin-bottom:2px;">🏢 ${s.client}</div>
-            <div style="font-size:1.2rem; font-weight:800; color:#1e293b; line-height:1.3;">${s.site}</div>
-        </div>
+                    <div style="margin-bottom:10px;">
+                        <div style="font-size:0.85rem; color:#64748b; margin-bottom:2px;">🏢 ${s.client}</div>
+                        <div style="font-size:1.2rem; font-weight:800; color:#1e293b; line-height:1.3;">${s.site}</div>
+                    </div>
 
-        <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:4px;">
-            ${s.workers.length > 0 
-                ? s.workers
-                    .filter(w => w && w.trim() !== "" && w !== s.memo)
-                    .map(w => `<span class="worker-chip">${w}</span>`).join('') 
-                : '<span style="font-size:0.8rem; color:#94a3b8;">인원 미정</span>'}
-        </div>
+                    <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:4px;">
+                        ${s.workers.length > 0 
+                            ? s.workers
+                                .filter(w => w && w.trim() !== "" && w !== s.memo)
+                                .map(w => `<span class="worker-chip">${w}</span>`).join('') 
+                            : '<span style="font-size:0.8rem; color:#94a3b8;">인원 미정</span>'}
+                    </div>
 
-        ${s.address ? `
-            <div onclick="copyAddr('${s.address}')" style="background:#eff6ff; border:1px dashed #bfdbfe; padding:10px; border-radius:10px; font-size:0.85rem; cursor:pointer; color:#1d4ed8; display:flex; justify-content:space-between;">
-                <span>📍 ${s.address}</span>
-                <span style="font-weight:bold;">[복사]</span>
-            </div>` : ''}
+                    ${s.address ? `
+                        <div onclick="copyAddr('${s.address}')" style="background:#eff6ff; border:1px dashed #bfdbfe; padding:10px; border-radius:10px; font-size:0.85rem; cursor:pointer; color:#1d4ed8; display:flex; justify-content:space-between;">
+                            <span>📍 ${s.address}</span>
+                            <span style="font-weight:bold;">[복사]</span>
+                        </div>` : ''}
 
-        ${s.memo ? `
-            <div style="margin-top:10px; padding-top:8px; border-top:1px solid #f1f5f9; font-size:0.85rem; color:#ef4444; font-weight:500;">
-                🔑 메모: ${s.memo}
-            </div>` : ''}
-    </div>
-`;
+                    ${s.memo ? `
+                        <div style="margin-top:10px; padding-top:8px; border-top:1px solid #f1f5f9; font-size:0.85rem; color:#ef4444; font-weight:500;">
+                            🔑 메모: ${s.memo}
+                        </div>` : ''}
+                </div>
+            `;
         }).join('');
     }
     container.innerHTML = html;
 }
+
+
 
 // 💡 2. 데이터 전송 로직 (실제 일보 폼으로 데이터 쏴주기)
 function copyScheduleToLog(s) {
