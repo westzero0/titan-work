@@ -9,7 +9,15 @@
     <title>타이탄 일보 v3.5</title>
     <style>
         :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --chip-bg: #f1f5f9; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        body {
+        font-family: -apple-system, sans-serif; 
+        background: var(--bg); 
+        color: var(--text); 
+        margin: 0; 
+        padding: 0; 
+        /* 내비바에 버튼이 가려지지 않도록 아래쪽 공간 확보 */
+        padding-bottom: 100px;
+        }
         .container { max-width: 500px; margin: auto; padding: 15px; }
         .card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #f1f5f9; }
         label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9rem; color: #475569; }
