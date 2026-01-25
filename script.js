@@ -535,7 +535,7 @@ function renderCards() {
         const isWorkerMatch = (worker === "전체" || s.workers.includes(worker));
         const isDateMatch = (showPast || s.date >= today);
         return isWorkerMatch && isDateMatch;
-    }).sort((a, b) => b.date.localeCompare(a.date)); // 항상 최신순 정렬
+    }).sort((a, b) => b.date.localeCompare(a.date));
 
     let html = `<button class="past-btn" onclick="togglePast()">${showPast ? '⬆️ 과거 일정 숨기기' : '⬇️ 지난 일정 보기'}</button>`;
 
@@ -546,7 +546,6 @@ function renderCards() {
             const shiftColor = s.shift === '야' ? '#1e293b' : '#2563eb';
             const shiftLabel = s.shift === '야' ? '🌙 야간' : '☀️ 주간';
             
-            // 💡 여기서 class와 data-속성이 빠지면 타임라인에서 못 찾아갑니다!
             return `
                 <div class="card schedule-card-item" 
                      data-date="${s.date}" 
@@ -568,12 +567,20 @@ function renderCards() {
                         <div style="font-size:1.2rem; font-weight:800; color:#1e293b; line-height:1.3;">${s.site}</div>
                     </div>
 
-                    <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:4px;">
+                    <div style="margin-bottom:8px; display:flex; flex-wrap:wrap; gap:4px;">
                         ${s.workers.length > 0 
                             ? s.workers
                                 .filter(w => w && w.trim() !== "" && w !== s.memo)
                                 .map(w => `<span class="worker-chip">${w}</span>`).join('') 
                             : '<span style="font-size:0.8rem; color:#94a3b8;">인원 미정</span>'}
+                    </div>
+
+                    <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:4px;">
+                        ${s.car ? 
+                            `<span class="worker-chip" style="background-color: #f8fafc; color: #475569; border: 1px solid #e2e8f0; font-size: 0.8rem;">
+                                🚗 ${s.car}
+                            </span>` 
+                            : '<span style="font-size:0.8rem; color:#94a3b8;">🚗 차량 미지정</span>'}
                     </div>
 
                     ${s.address ? `
