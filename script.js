@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbykgrMsIOE9qRFg5tpCLBpwbM5UVnc5LHQR3sdO5zqFlD2MmWnf8pDoGDdsXxpreTSJ/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzTwJnLMkHpmLKnsvmWUI6oCud-xHR2NmboxtPz_mnMga-JH7ZuDPfXgGbrsst1dvo5/exec";
 
 let currentSites = []; 
 let allSchedules = [];
