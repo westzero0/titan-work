@@ -148,83 +148,89 @@ html { scroll-behavior: smooth; }
     font-weight: 600;
 }
 
-
- /* 💡 1. 캘린더 전체 카드 여백 최소화 (양옆 빈공간 제거) */
-#schedule-container .card { 
-    padding: 8px 2px !important; 
-    margin-left: -5px; 
-    margin-right: -5px;
-    width: calc(100% + 10px); /* 화면 끝까지 확장 */
+/* 💡 1. [공통] 기본 카드 스타일 (리스트 모드용 마진 유지) */
+.card { 
+    background: white; 
+    border-radius: 16px; 
+    padding: 16px; 
+    margin-bottom: 16px; 
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+    border: 1px solid #f1f5f9; 
+    box-sizing: border-box; /* 테두리 포함 크기 고정 */
 }
 
-/* 💡 2. 날짜 격자 배선 최적화 */
+/* 💡 2. [캘린더 전용] 캘린더일 때만 화면 끝까지 확장 */
+#schedule-container .calendar-card { 
+    padding: 8px 2px !important; 
+    margin-left: -5px !important; 
+    margin-right: -5px !important;
+    width: calc(100% + 10px) !important;
+    border-radius: 0; /* 끝까지 꽉 채움 */
+    box-shadow: none;
+}
+
+/* 💡 3. 리스트 모드(카드뷰)일 때 중복 간섭 차단 */
+#schedule-container .card:not(.calendar-card) {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+}
+
+/* 💡 4. 달력 내부 격자 및 칸 최적화 (가로폭 확보) */
 #schedule-container div[style*="grid-template-columns"] {
     gap: 1px !important; 
-    background: #cbd5e1; /* 구분선 색상 명확화 */
+    background: #cbd5e1; 
     border: 1px solid #cbd5e1;
 }
 
-/* 💡 3. 날짜 칸 내부 가로 폭 확보 */
 .calendar-day-cell {
     background: #ffffff;
-    min-height: 90px !important; 
+    min-height: 95px !important; 
     padding: 2px 1px !important; 
     display: flex;
     flex-direction: column;
 }
 
-/* 💡 4. 날짜 숫자 크기 및 위치 조정 */
-.calendar-date-num {
-    font-size: 0.6rem !important; 
-    font-weight: 800;
-    color: #64748b;
-    margin-bottom: 2px;
-    padding-left: 2px;
-}
-
-/* 💡 5. 현장명 막대: 글자가 최대한 많이 보이도록 마감 */
+/* 💡 5. 현장명 막대 가독성 (자간/아이콘 효과) */
 .calendar-event-bar {
     font-size: 0.55rem !important; 
-    letter-spacing: -0.9px; /* 자간을 더 줄여 가독성 확보 */
+    letter-spacing: -0.9px; 
     line-height: 1.1;
     padding: 3px 2px !important;
-    border-radius: 2px !important;
+    border-radius: 3px !important;
     margin-bottom: 2px !important;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* 글자가 넘치면 ... 표시 */
-    width: 100%;
-    box-sizing: border-box;
-}
-
-/* 💡 6. 주말 색상 강조 */
-.sun { color: #ef4444 !important; }
-.sat { color: #2563eb !important; }
-
-        /* 💡 야간/주간 막대 시인성 극대화 */
-.calendar-event-bar.bar-night {
-    background: #1e293b !important; /* 진한 남색/검정 */
-    border-left: 3px solid #facc15 !important; /* 👈 야간은 왼쪽에 노란색 포인트 배선 */
-}
-
-.calendar-event-bar.bar-day {
-    background: #2563eb !important; /* 파란색 */
-    border-left: 3px solid #60a5fa !important; /* 주간은 하늘색 포인트 */
-}
-
-/* 💡 글자 그림자로 가독성 확보 (작은 폰트 보완) */
-.calendar-event-bar {
+    text-overflow: ellipsis;
     text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
+}
+
+/* 야간/주간 포인트 배선 */
+.calendar-event-bar.bar-night { background: #1e293b !important; border-left: 3px solid #facc15 !important; }
+.calendar-event-bar.bar-day { background: #2563eb !important; border-left: 3px solid #60a5fa !important; }
+
+/* 💡 6. 기타 UI 효과 */
+.sun { color: #ef4444 !important; }
+.sat { color: #2563eb !important; }
+.is-today { background-color: #eff6ff !important; border: 1.5px solid var(--primary) !important; }
+.worker-chip { display: inline-block; padding: 2px 8px; background: #e2e8f0; border-radius: 12px; font-size: 0.75rem; margin-right: 4px; color: #475569; font-weight: 600; }
+.schedule-card-item { transition: all 0.4s ease; }
+
+        
+        /* 💡 요일 헤더 시인성 보강 */
+.calendar-card div[style*="grid-template-columns"] > div:nth-child(1) { color: #ef4444 !important; } /* 일요일 빨강 */
+.calendar-card div[style*="grid-template-columns"] > div:nth-child(7) { color: #2563eb !important; } /* 토요일 파랑 */
+
+/* 💡 날짜 숫자 위치 최적화 */
+.calendar-day-cell {
+    position: relative;
     justify-content: flex-start;
 }
 
-/* 💡 오늘 날짜 강조 배선 */
-.is-today {
-    background-color: #eff6ff !important; /* 연한 파랑 배경 */
-    border: 1.5px solid var(--primary) !important;
-}
+/* 💡 스크롤바 숨기기 (타임라인용) */
+.timeline-grid::-webkit-scrollbar { display: none; }
 
         
     </style>
