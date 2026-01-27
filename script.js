@@ -43,12 +43,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// 3. [데이터 동기화 및 스플래시 화면 제어]
+// 3. [데이터 동기화 및 스플래시 화면 제어 - 안전장치 보강]
 async function loadTitanDataWithBackgroundSync() {
-
-    // 💡 시작 시간을 기록합니다.
     const startTime = Date.now();
     
+    // 💡 [안전장치] 서버 응답이 없어도 5초 뒤에는 무조건 스플래시를 닫습니다.
+    const safetyTimeout = setTimeout(() => {
+        console.log("서버 응답 지연: 강제 진입");
+        hideSplashScreen();
+    }, 5000); 
+
     const cachedMap = localStorage.getItem('titan_full_data_cache');
     if (cachedMap) { renderClientChips(Object.keys(JSON.parse(cachedMap))); }
 
@@ -63,20 +67,19 @@ async function loadTitanDataWithBackgroundSync() {
     } catch (e) {
         console.log("오프라인 모드: 캐시 사용");
     } finally {
-        // 💡 핵심: 현재 시간과 시작 시간의 차이를 계산합니다.
+        // 데이터 로드 성공 시 타이머 해제
+        clearTimeout(safetyTimeout); 
+        
         const elapsedTime = Date.now() - startTime;
-        const minimumDisplayTime = 2000; // 2초 (2000ms)
-
-        // 💡 2초보다 빨리 끝났다면 부족한 시간만큼 기다렸다가 숨깁니다.
+        const minimumDisplayTime = 2000; // 최소 2초는 보여줌
         const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime);
         
+        // 최종적으로 스플래시 제거 신호 전송
         setTimeout(() => {
             hideSplashScreen();
         }, remainingTime);
     }
 }
-
-
 
 function hideSplashScreen() {
     const splash = document.getElementById('splash-screen');
@@ -1368,6 +1371,7 @@ function renderTimeline() {
         grid.appendChild(col);
     }
 }
+
 
 // 💡 막대 클릭 시 해당 카드로 이동하는 함수
 function scrollToCard(date, site) {
