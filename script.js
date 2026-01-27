@@ -747,17 +747,19 @@ function toggleView() {
     renderView();
 }
 
-// 2. 💡 통합 렌더링 (모드에 따라 화면 교체)
+// 💡 뷰 전환 및 타임라인 노출 제어 로직
 function renderView() {
     const timeline = document.getElementById('timeline-grid');
     const container = document.getElementById('schedule-container');
 
     if (currentView === 'calendar') {
-        if(timeline) timeline.style.display = 'none'; // 타임라인 숨김
-        renderCalendar(); // 달력 모드 렌더링
+        // 💡 캘린더 모드: 타임라인 숨기고 달력 그리기
+        if (timeline) timeline.style.display = 'none';
+        renderCalendar(); 
     } else {
-        if(timeline) timeline.style.display = 'flex'; // 타임라인 보임
-        renderSchedulePage(); // 기존 카드 리스트 렌더링
+        // 💡 리스트 모드: 타임라인 보여주고 카드뷰 그리기
+        if (timeline) timeline.style.display = 'flex';
+        renderSchedulePage(); 
     }
 }
 
