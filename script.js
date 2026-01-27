@@ -1,6 +1,10 @@
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwsfApRys8pwPRNaPDe9EEsdz6N12IydNSuYCzmsKx0cfV2khMhFuIAYucOFvONWrJi/exec";
 
 let currentSites = []; 
+let allSchedules = [];
+let showPast = false;
+let currentView = 'list';
+let viewDate = new Date();
 
 // 1. [데이터 초기화] 저장된 리스트가 있으면 불러오고, 없으면 기본값 사용
 const savedLists = localStorage.getItem('titan_custom_lists');
@@ -44,12 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // 3. [데이터 동기화 및 스플래시 화면 제어 - 안전장치 보강]
+// 💡 [수정 2] 무한 로딩 방지 차단기 설치
 async function loadTitanDataWithBackgroundSync() {
     const startTime = Date.now();
     
-    // 💡 [안전장치] 서버 응답이 없어도 5초 뒤에는 무조건 스플래시를 닫습니다.
+    // 🛡️ [비상용 차단기] 서버가 5초 동안 답 없으면 강제 진입!
     const safetyTimeout = setTimeout(() => {
-        console.log("서버 응답 지연: 강제 진입");
+        console.log("서버 응답 지연: 비상 차단기 가동 (강제 진입)");
         hideSplashScreen();
     }, 5000); 
 
@@ -67,27 +72,21 @@ async function loadTitanDataWithBackgroundSync() {
     } catch (e) {
         console.log("오프라인 모드: 캐시 사용");
     } finally {
-        // 데이터 로드 성공 시 타이머 해제
+        // 데이터가 오면 비상 타이머를 해제하고 화면을 닫습니다.
         clearTimeout(safetyTimeout); 
-        
         const elapsedTime = Date.now() - startTime;
-        const minimumDisplayTime = 2000; // 최소 2초는 보여줌
+        const minimumDisplayTime = 1500; // 최소 1.5초는 보여줌
         const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime);
         
-        // 최종적으로 스플래시 제거 신호 전송
-        setTimeout(() => {
-            hideSplashScreen();
-        }, remainingTime);
+        setTimeout(() => hideSplashScreen(), remainingTime);
     }
 }
 
 function hideSplashScreen() {
     const splash = document.getElementById('splash-screen');
-    if (splash) {
+    if (splash && splash.style.display !== 'none') {
         splash.style.opacity = '0';
-        setTimeout(() => {
-            splash.style.display = 'none';
-        }, 500);
+        setTimeout(() => { splash.style.display = 'none'; }, 500);
     }
 }
 
@@ -937,7 +936,6 @@ function renderTimeline() {
     const grid = document.getElementById('timeline-grid');
     if (!grid) return;
     grid.innerHTML = '';
-
     const worker = document.getElementById('worker-select').value;
     const todayStr = new Date().toISOString().split('T')[0];
 
@@ -956,15 +954,15 @@ function renderTimeline() {
         const col = document.createElement('div');
         col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
         
-        col.innerHTML = `
+        // 💡 누락되었던 HTML 배선 복구
+       col.innerHTML = `
             <div style="font-size:0.75rem; color:${dateStr === todayStr ? 'var(--primary)' : '#64748b'}; font-weight:800; margin-bottom:5px; text-align:center;">
                 ${dateStr === todayStr ? '🌟 오늘' : (date.getMonth()+1)+'/'+date.getDate()}
             </div>
             <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
                 ${dayJobs.length > 0 ? dayJobs.map(j => `
                     <div class="job-bar ${j.shift === '야' ? 'bar-night' : 'bar-day'}" 
-                         onclick="scrollToCard('${j.date}', '${j.site}')"
-                         style="font-size:0.65rem; padding:5px 2px; border-radius:5px; line-height:1.1; width:100%; box-sizing:border-box;">
+                         onclick="scrollToCard('${j.date}', '${j.site}')">
                         ${j.site}
                     </div>
                 `).join('') : '<div style="height:20px; border:1px dashed #e2e8f0; border-radius:5px;"></div>'}
