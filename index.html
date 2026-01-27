@@ -255,22 +255,20 @@ html { scroll-behavior: smooth; }
             <button id="sBtn" class="submit-btn" onclick="send()">🚀 저장 및 카톡 공유</button>
         </div>
 
- <div id="schedule-page" class="page" style="display:none;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2 style="color: var(--primary); margin: 0; font-size: 1.2rem;">📅 현장 타임라인</h2>
-        <select id="worker-select" onchange="filterSchedules()" style="width: auto; margin: 0; padding: 5px 10px; font-size: 0.85rem;">
-            <option value="전체">👤 전체</option>
-        </select>
-
-        <div style="display: flex; align-items: center; gap: 10px;">
-    <select id="worker-select" onchange="renderView()"></select>
-    <div id="view-toggle" onclick="toggleView()" style="cursor:pointer; font-size:1.5rem;">📅</div>
-</div>
-
+<div id="schedule-page" class="page" style="display:none; padding-top: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 5px;">
+        <h2 style="color: var(--primary); margin: 0; font-size: 1.2rem; letter-spacing: -1px;">📅 현장 일정</h2>
         
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <select id="worker-select" onchange="renderView()" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.85rem; border-radius: 10px; border: 1px solid #cbd5e1; background: white; font-weight: 600;">
+                <option value="전체">👤 전체</option>
+            </select>
+            
+            <div id="view-toggle" onclick="toggleView()" style="cursor:pointer; font-size:1.4rem; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">📅</div>
+        </div>
     </div>
     
-    <div id="timeline-grid" class="timeline-grid"></div>
+    <div id="timeline-grid" class="timeline-grid" style="margin-bottom: 15px;"></div>
 
     <div id="schedule-container"></div>
 </div>
