@@ -1600,8 +1600,17 @@ function renderTimeline() {
         });
 
         const col = document.createElement('div');
-        col.className = 'time-col';
-        // (기존 innerHTML 로직 삽입)
+        col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
+        col.innerHTML = `
+            <div style="font-size:0.75rem; color:${dateStr === todayStr ? 'var(--primary)' : '#64748b'}; font-weight:800; margin-bottom:5px; text-align:center; white-space:nowrap;">
+                ${dateStr === todayStr ? '🌟 오늘' : (date.getMonth()+1)+'/'+date.getDate()}
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+                ${dayJobs.length > 0 ? dayJobs.map(j => `
+                    <div class="job-bar ${j.shift === '야' ? 'bar-night' : 'bar-day'}" onclick="scrollToCard('${j.date}', '${j.site}')" style="font-size:0.65rem; padding:5px 2px; border-radius:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${j.site}
+                    </div>`).join('') : '<div style="height:20px; border:1px dashed #e2e8f0; border-radius:6px;"></div>'}
+            </div>`;
         grid.appendChild(col);
     }
 }
