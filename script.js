@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyhgjCAnofU5hzf5DcNH9FjIbpUQFgnKDzCUSigfEoNFG6PL9GPIxPkcueSn8AbPtrF/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycby_SL7npPwAqurjNmvKOcKK5GHHZOA3Lki4xTSkBy7M6riTR1h3xJUchOhZ2iEQ5tHq/exec";
 
 let currentSites = []; 
 let allSchedules = [];
@@ -51,43 +51,29 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadTitanDataWithBackgroundSync() {
     const startTime = Date.now();
     
+    // 🛡️ 비상 차단기: 서버가 5초 동안 답 없으면 강제로 스플래시 화면을 끕니다.
     const safetyTimeout = setTimeout(() => {
-        console.log("서버 지연: 안전 차단기 가동");
+        console.log("서버 지연: 강제 화면 진입");
         hideSplashScreen();
     }, 5000); 
 
     try {
-        // 💡 [핵심 수리] fetch 옵션에 'follow' 리다이렉트와 'no-cors' 대응을 보강합니다.
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            mode: 'cors', // 👈 구글 서버와 통신할 때 필수
-            headers: { 'Content-Type': 'text/plain' }, // 👈 CORS 에러를 피하기 위한 트릭
             body: JSON.stringify({ action: 'getAllData' })
         });
-
-        // 💡 구글 앱스 스크립트는 가끔 리다이렉트 에러를 뱉으므로, 
-        // 응답이 안 오면 아까 테스트 성공한 doGet으로 우회해서 데이터를 가져오게 합니다.
-        if (!res.ok) {
-            const fallbackRes = await fetch(`${GAS_URL}?action=getAllData`);
-            const fullData = await fallbackRes.json();
-            localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
-            renderClientChips(Object.keys(fullData));
-        } else {
-            const fullData = await res.json();
+        const fullData = await res.json();
+        
+        // 데이터가 정상적으로 왔을 때만 저장 및 렌더링
+        if (fullData && !fullData.status) {
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             renderClientChips(Object.keys(fullData));
         }
     } catch (e) {
-        console.log("CORS/리다이렉트 우회 시도...");
-        // 💡 비상 배선: POST가 막히면 GET으로 강제 연결
-        try {
-            const fallbackRes = await fetch(`${GAS_URL}?action=getAllData`);
-            const fullData = await fallbackRes.json();
-            localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
-            renderClientChips(Object.keys(fullData));
-        } catch (err) {
-            console.log("오프라인 모드");
-        }
+        console.log("연결 실패: 캐시 데이터 사용 시도");
+        // 연결 실패 시 저장되어 있던 예전 데이터라도 불러옵니다.
+        const cached = localStorage.getItem('titan_full_data_cache');
+        if (cached) renderClientChips(Object.keys(JSON.parse(cached)));
     } finally {
         clearTimeout(safetyTimeout); 
         const elapsedTime = Date.now() - startTime;
