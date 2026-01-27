@@ -735,92 +735,100 @@ function copyAddr(text) {
     copyToClipboard(text);
 }
 
-
 let currentView = 'list'; // 'list' 또는 'calendar'
-let viewDate = new Date(); // 현재 보고 있는 달력 기준 날짜
+let viewDate = new Date(); 
 
-// 1. 💡 뷰 전환 토글 함수
+// 1. 💡 뷰 전환 토글 (아이콘 클릭 시 실행)
 function toggleView() {
     currentView = (currentView === 'list') ? 'calendar' : 'list';
     const toggleBtn = document.getElementById('view-toggle');
-    toggleBtn.innerText = (currentView === 'list') ? '📅' : '📋'; // 아이콘 변경
+    // 리스트일 때는 달력 아이콘을, 달력일 때는 리스트 아이콘을 보여줌
+    toggleBtn.innerText = (currentView === 'list') ? '📅' : '📋'; 
     renderView();
 }
 
-// 2. 💡 통합 렌더링 함수
+// 2. 💡 통합 렌더링 (모드에 따라 화면 교체)
 function renderView() {
     const timeline = document.getElementById('timeline-grid');
     const container = document.getElementById('schedule-container');
 
     if (currentView === 'calendar') {
-        timeline.style.display = 'none'; // 타임라인 숨김
-        renderCalendar(); // 달력 그리기
+        if(timeline) timeline.style.display = 'none'; // 타임라인 숨김
+        renderCalendar(); // 달력 모드 렌더링
     } else {
-        timeline.style.display = 'flex'; // 타임라인 보임
-        renderSchedulePage(); // 기존 카드뷰+타임라인 그리기
+        if(timeline) timeline.style.display = 'flex'; // 타임라인 보임
+        renderSchedulePage(); // 기존 카드 리스트 렌더링
     }
 }
 
-// 3. 💡 먼슬리 캘린더 렌더링 함수
+
+// 3. 💡 먼슬리 캘린더 렌더링 함수 (빠졌던 부분 추가)
 function renderCalendar() {
     const container = document.getElementById('schedule-container');
     const worker = document.getElementById('worker-select').value;
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
 
-    // 달력 헤더 및 기본 구조
+    // 달력 헤더 및 격자 구조 생성
     let html = `
-        <div class="card" style="padding: 10px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <button onclick="changeMonth(-1)" style="border:none; background:none; font-size:1.2rem;">◀</button>
-                <b style="font-size:1.1rem;">${year}년 ${month + 1}월</b>
-                <button onclick="changeMonth(1)" style="border:none; background:none; font-size:1.2rem;">▶</button>
+        <div class="card" style="padding: 10px; border-radius: 12px; background: white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding: 5px 10px;">
+                <button onclick="changeMonth(-1)" style="border:none; background:#f1f5f9; padding:5px 12px; border-radius:8px; font-weight:bold; cursor:pointer;">◀</button>
+                <b style="font-size:1.1rem; color:#1e293b;">${year}년 ${month + 1}월</b>
+                <button onclick="changeMonth(1)" style="border:none; background:#f1f5f9; padding:5px 12px; border-radius:8px; font-weight:bold; cursor:pointer;">▶</button>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0;">
-                ${['일','월','화','수','목','금','토'].map(d => `<div style="background:#f8fafc; text-align:center; padding:5px; font-size:0.7rem; color:#64748b;">${d}</div>`).join('')}
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                ${['일','월','화','수','목','금','토'].map(d => `<div style="background:#f8fafc; text-align:center; padding:8px 0; font-size:0.75rem; color:#64748b; font-weight:bold;">${d}</div>`).join('')}
     `;
 
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
 
-    // 빈칸 생성
-    for (let i = 0; i < firstDay; i++) html += `<div style="background:white; min-height:80px;"></div>`;
+    // 이전 달 빈칸
+    for (let i = 0; i < firstDay; i++) html += `<div style="background:#fff; min-height:90px;"></div>`;
 
-    // 날짜 생성
+    // 해당 월 날짜들 생성
     for (let d = 1; d <= lastDate; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const dayJobs = allSchedules.filter(s => {
-            const isWorkerMatch = (worker === "전체" || s.workers.includes(worker));
-            return s.date === dateStr && isWorkerMatch;
-        });
+        
+        // 날짜별 일정 필터링
+      const dayJobs = allSchedules.filter(s => {
+    // 💡 날짜 데이터에서 '시간'은 버리고 'YYYY-MM-DD'만 추출하여 비교
+    const sDateOnly = new Date(s.date).toISOString().split('T')[0]; 
+    const isWorkerMatch = (worker === "전체" || s.workers.includes(worker));
+    return sDateOnly === dateStr && isWorkerMatch;
+});
 
-    html += `
-    <div style="background:white; min-height:85px; padding:2px; border:0.5px solid #f1f5f9; position:relative;">
-        <span style="font-size:0.7rem; font-weight:bold; color:${new Date(dateStr).getDay() === 0 ? '#ef4444' : '#64748b'}">${d}</span>
-        <div style="display:flex; flex-direction:column; gap:2px; margin-top:2px;">
-            ${dayJobs.map(j => {
-                const color = j.shift === '야' ? '#1e293b' : '#2563eb';
-                return `
-                    <div onclick="jumpToCard('${j.date}', '${j.site}')" 
-                         style="background:${color}; color:white; font-size:0.6rem; padding:2px 4px; border-radius:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-0.5px;">
-                        ${j.site} <span style="opacity:0.8; font-size:0.55rem;">(${j.workers.length})</span>
-                    </div>`;
-            }).join('')}
-        </div>
-    </div>
-`;
+        const isToday = new Date().toISOString().split('T')[0] === dateStr;
+
+        html += `
+            <div style="background:${isToday ? '#eff6ff' : '#fff'}; min-height:95px; padding:4px; border:0.5px solid #f1f5f9; position:relative; overflow:hidden;">
+                <span style="font-size:0.75rem; font-weight:800; color:${new Date(dateStr).getDay() === 0 ? '#ef4444' : '#64748b'}">${d}</span>
+                <div style="display:flex; flex-direction:column; gap:3px; margin-top:4px;">
+                    ${dayJobs.map(j => {
+                        const color = j.shift === '야' ? '#1e293b' : '#2563eb';
+                        return `
+                            <div onclick="jumpToCard('${j.date}', '${j.site}')" 
+                                 style="background:${color}; color:white; font-size:0.6rem; padding:3px 4px; border-radius:4px; white-space:nowrap; overflow:hidden; text-shadow: 0 1px 1px rgba(0,0,0,0.3); cursor:pointer; letter-spacing:-0.5px; font-weight:600;">
+                                ${j.site} <span style="font-size:0.55rem; opacity:0.8;">(${j.workers.length})</span>
+                            </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        `;
     }
     html += `</div></div>`;
     container.innerHTML = html;
 }
 
-// 4. 💡 달력에서 클릭 시 카드뷰로 강제 점프
+
+// 3. 💡 달력에서 일정을 눌렀을 때 해당 카드로 '점프'
 function jumpToCard(date, site) {
-    currentView = 'list'; // 카드뷰로 모드 전환
+    currentView = 'list'; // 리스트 모드로 자동 전환
     document.getElementById('view-toggle').innerText = '📅';
-    renderView(); // 화면 다시 그리기
+    renderView(); 
     
-    // 0.1초 뒤에 스크롤 이동 (렌더링 시간 확보)
+    // 카드들이 그려질 시간을 0.1초 준 뒤 해당 카드로 스크롤
     setTimeout(() => {
         scrollToCard(date, site);
     }, 100);
