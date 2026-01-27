@@ -5,6 +5,7 @@ let allSchedules = [];
 let showPast = false;
 let currentView = 'list';
 let viewDate = new Date();
+let delMode = { member: false, car: false, material: false, payer: false };
 
 // 1. [데이터 초기화] 저장된 리스트가 있으면 불러오고, 없으면 기본값 사용
 const savedLists = localStorage.getItem('titan_custom_lists');
@@ -433,7 +434,6 @@ function saveListsToStorage() {
     localStorage.setItem('titan_custom_lists', JSON.stringify(lists));
 }
 
-let delMode = { member: false, car: false, material: false, payer: false };
 
 // 3. [초기 로드] 앱 실행 시 실행되는 로직
 document.addEventListener('DOMContentLoaded', () => {
@@ -868,7 +868,6 @@ function filterSchedules() {
 }
 
 
-let showPast = false; // 과거 일정 노출 여부
 
 function renderSchedulePage() {
     // 1. 하단 상세 카드뷰를 먼저 확실하게 그립니다.
