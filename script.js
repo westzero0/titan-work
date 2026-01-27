@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzTwJnLMkHpmLKnsvmWUI6oCud-xHR2NmboxtPz_mnMga-JH7ZuDPfXgGbrsst1dvo5/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyhgjCAnofU5hzf5DcNH9FjIbpUQFgnKDzCUSigfEoNFG6PL9GPIxPkcueSn8AbPtrF/exec";
 
 let currentSites = []; 
 let allSchedules = [];
@@ -51,23 +51,44 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadTitanDataWithBackgroundSync() {
     const startTime = Date.now();
     
-    // 🛡️ 서버가 5초 동안 답 없으면 무조건 강제 진입!
     const safetyTimeout = setTimeout(() => {
-        console.log("서버 응답 지연: 비상 차단기 가동");
+        console.log("서버 지연: 안전 차단기 가동");
         hideSplashScreen();
     }, 5000); 
 
     try {
+        // 💡 [핵심 수리] fetch 옵션에 'follow' 리다이렉트와 'no-cors' 대응을 보강합니다.
         const res = await fetch(GAS_URL, {
             method: 'POST',
+            mode: 'cors', // 👈 구글 서버와 통신할 때 필수
+            headers: { 'Content-Type': 'text/plain' }, // 👈 CORS 에러를 피하기 위한 트릭
             body: JSON.stringify({ action: 'getAllData' })
         });
-        const fullData = await res.json();
-        localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
+
+        // 💡 구글 앱스 스크립트는 가끔 리다이렉트 에러를 뱉으므로, 
+        // 응답이 안 오면 아까 테스트 성공한 doGet으로 우회해서 데이터를 가져오게 합니다.
+        if (!res.ok) {
+            const fallbackRes = await fetch(`${GAS_URL}?action=getAllData`);
+            const fullData = await fallbackRes.json();
+            localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
+            renderClientChips(Object.keys(fullData));
+        } else {
+            const fullData = await res.json();
+            localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
+            renderClientChips(Object.keys(fullData));
+        }
     } catch (e) {
-        console.log("서버 연결 실패: 오프라인 모드");
+        console.log("CORS/리다이렉트 우회 시도...");
+        // 💡 비상 배선: POST가 막히면 GET으로 강제 연결
+        try {
+            const fallbackRes = await fetch(`${GAS_URL}?action=getAllData`);
+            const fullData = await fallbackRes.json();
+            localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
+            renderClientChips(Object.keys(fullData));
+        } catch (err) {
+            console.log("오프라인 모드");
+        }
     } finally {
-        // 성공하든 실패하든 비상 타이머를 끄고 스플래시를 닫습니다.
         clearTimeout(safetyTimeout); 
         const elapsedTime = Date.now() - startTime;
         const remainingTime = Math.max(0, 1500 - elapsedTime);
