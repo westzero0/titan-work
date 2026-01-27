@@ -836,16 +836,55 @@ function renderCalendar() {
 
 // 3. 💡 달력에서 일정을 눌렀을 때 해당 카드로 '점프'
 function jumpToCard(date, site) {
-    currentView = 'list'; // 리스트 모드로 자동 전환
+    const today = new Date().toISOString().split('T')[0];
+    
+    // 💡 과거 날짜를 눌렀다면 자동으로 '지난 일정 보기' 모드를 켭니다.
+    if (date < today) {
+        showPast = true; 
+    } else {
+        showPast = false;
+    }
+currentView = 'list'; 
     document.getElementById('view-toggle').innerText = '📅';
+    
+    // 💡 뷰를 다시 그릴 때 필터(showPast)가 즉시 반영됩니다.
     renderView(); 
     
-    // 카드들이 그려질 시간을 0.1초 준 뒤 해당 카드로 스크롤
+    // 💡 카드가 렌더링될 시간을 0.15초 준 뒤 해당 카드로 자동 스크롤
     setTimeout(() => {
         scrollToCard(date, site);
-    }, 100);
+    }, 150);
 }
 
+// 💡 2. 타임라인(2주치 막대) 유효성 필터 추가 마감
+function renderTimeline() {
+    const grid = document.getElementById('timeline-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const worker = document.getElementById('worker-select').value;
+
+    for (let i = 0; i < 14; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        
+        let dayJobs = allSchedules.filter(j => {
+            // 💡 필수 데이터 체크: 거래처와 현장명이 있을 때만 통과
+            const hasRequiredData = j.client && j.client.trim() !== "" && j.site && j.site.trim() !== "";
+            if (!hasRequiredData) return false;
+
+            const isDateMatch = j.date === dateStr;
+            const isWorkerMatch = (worker === "전체" || j.workers.includes(worker));
+            return isDateMatch && isWorkerMatch;
+        });
+
+        const col = document.createElement('div');
+        col.className = 'time-col';
+        // (기존 innerHTML 로직 삽입)
+        grid.appendChild(col);
+    }
+}
+        
 function changeMonth(val) {
     viewDate.setMonth(viewDate.getMonth() + val);
     renderCalendar();
