@@ -415,10 +415,6 @@ function renderSchedulePage() {
     }, 100);
 }
 
-// 1. 타임라인 (2주치 막대) 그리기
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwD0o90GoUApVhc2hqvemBcwlHsaTBImJqfYtN1dGJ1d4IJERCSq30PSZ5CbZjk1pJL/exec";
-
-let currentSites = []; 
 
 // 1. [데이터 초기화] 저장된 리스트가 있으면 불러오고, 없으면 기본값 사용
 const savedLists = localStorage.getItem('titan_custom_lists');
@@ -807,8 +803,6 @@ async function compressImage(file) {
 }
 
 
-let allSchedules = [];
-
 // 💡 1. 시트에서 데이터를 받아와 화면에 뿌리는 함수 (통합 버전)
 async function loadSchedules() {
     const container = document.getElementById('schedule-container');
@@ -879,46 +873,7 @@ function renderSchedulePage() {
     }, 100);
 }
 
-// 1. 타임라인 (2주치 막대) 그리기
-function renderTimeline() {
-    const grid = document.getElementById('timeline-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    const worker = document.getElementById('worker-select').value;
-    const todayStr = new Date().toISOString().split('T')[0];
 
-    for (let i = 0; i < 14; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-        
-        let dayJobs = allSchedules.filter(j => {
-            const hasRequiredData = j.client && j.site;
-            const isDateMatch = j.date === dateStr;
-            const isWorkerMatch = (worker === "전체" || j.workers.includes(worker));
-            return hasRequiredData && isDateMatch && isWorkerMatch;
-        });
-
-        const col = document.createElement('div');
-        col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
-        
-        // 💡 누락되었던 HTML 배선 복구
-       col.innerHTML = `
-            <div style="font-size:0.75rem; color:${dateStr === todayStr ? 'var(--primary)' : '#64748b'}; font-weight:800; margin-bottom:5px; text-align:center;">
-                ${dateStr === todayStr ? '🌟 오늘' : (date.getMonth()+1)+'/'+date.getDate()}
-            </div>
-            <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
-                ${dayJobs.length > 0 ? dayJobs.map(j => `
-                    <div class="job-bar ${j.shift === '야' ? 'bar-night' : 'bar-day'}" 
-                         onclick="scrollToCard('${j.date}', '${j.site}')">
-                        ${j.site}
-                    </div>
-                `).join('') : '<div style="height:20px; border:1px dashed #e2e8f0; border-radius:5px;"></div>'}
-            </div>
-        `;
-        grid.appendChild(col);
-    }
-}
 
 // 💡 막대 클릭 시 해당 카드로 이동하는 함수
 function scrollToCard(date, site) {
@@ -1270,51 +1225,7 @@ currentView = 'list';
     }, 150);
 }
 
-// 💡 2. 타임라인(2주치 막대) 유효성 필터 추가 마감
-function renderTimeline() {
-    const grid = document.getElementById('timeline-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    
-    const worker = document.getElementById('worker-select').value;
-    const todayStr = new Date().toISOString().split('T')[0];
 
-    for (let i = 0; i < 14; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-        
-        let dayJobs = allSchedules.filter(j => {
-            // 필수 데이터 체크: 거래처와 현장명이 있을 때만 통과
-            const hasRequiredData = j.client && j.client.trim() !== "" && j.site && j.site.trim() !== "";
-            if (!hasRequiredData) return false;
-
-            const isDateMatch = j.date === dateStr;
-            const isWorkerMatch = (worker === "전체" || j.workers.includes(worker));
-            return isDateMatch && isWorkerMatch;
-        });
-
-        const col = document.createElement('div');
-        // 💡 오늘 날짜면 'today' 클래스를 붙여 파란 테두리 점등
-        col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
-        
-        col.innerHTML = `
-            <div style="font-size:0.75rem; color:${dateStr === todayStr ? 'var(--primary)' : '#64748b'}; font-weight:800; margin-bottom:5px; text-align:center; white-space:nowrap;">
-                ${dateStr === todayStr ? '🌟 오늘' : (date.getMonth()+1)+'/'+date.getDate()}
-            </div>
-            <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
-                ${dayJobs.length > 0 ? dayJobs.map(j => `
-                    <div class="job-bar ${j.shift === '야' ? 'bar-night' : 'bar-day'}" 
-                         onclick="scrollToCard('${j.date}', '${j.site}')"
-                         style="font-size:0.65rem; padding:5px 2px; border-radius:6px; line-height:1.1; width:100%; box-sizing:border-box; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                        ${j.site}
-                    </div>
-                `).join('') : '<div style="height:20px; border:1px dashed #e2e8f0; border-radius:6px;"></div>'}
-            </div>
-        `;
-        grid.appendChild(col);
-    }
-}
 
 
 // 💡 막대 클릭 시 해당 카드로 이동하는 함수
