@@ -392,58 +392,7 @@ async function compressImage(file) {
 }
 
 
-let allSchedules = [];
 
-// 💡 1. 시트에서 데이터를 받아와 화면에 뿌리는 함수 (통합 버전)
-async function loadSchedules() {
-    const container = document.getElementById('schedule-container');
-    container.innerHTML = '<p style="text-align:center;">🔌 서버 연결 중...</p>';
-
-    try {
-        const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'getScheduleData' })
-        });
-        const result = await res.json();
-        allSchedules = result.schedules;
-        
-        // 1. 드롭다운 목록 생성 (최근 2주간 일정이 있는 사람만 필터링)
-        const select = document.getElementById('worker-select');
-        const currentVal = select.value;
-        select.innerHTML = '<option value="전체">👤 전체 보기</option>';
-
-        if (allSchedules.length > 0) {
-            const today = new Date();
-            const twoWeeksAgo = new Date();
-            twoWeeksAgo.setDate(today.getDate() - 14);
-
-            const recentSchedules = allSchedules.filter(s => {
-                const scheduleDate = new Date(s.date);
-                return scheduleDate >= twoWeeksAgo;
-            });
-
-            let activeWorkerSet = new Set();
-            recentSchedules.forEach(s => {
-                if (s.workers) {
-                    s.workers.forEach(w => activeWorkerSet.add(w));
-                }
-            });
-
-            Array.from(activeWorkerSet).sort().forEach(w => {
-                select.add(new Option(w, w));
-            });
-        }
-
-        // 2. 💡 기존 선택값 복구 또는 기본값 설정
-        select.value = currentVal || "전체";
-        
-        // 3. 💡 핵심: 현재 선택된 뷰(리스트/캘린더)에 맞춰 화면을 즉시 그립니다.
-        renderView();
-        
-    } catch (e) {
-        container.innerHTML = '<p style="text-align:center; color:red;">⚠️ 일정 로드 실패</p>';
-    }
-}
 
 
 
@@ -1204,8 +1153,7 @@ function copyAddr(text) {
     copyToClipboard(text);
 }
 
-let currentView = 'list'; // 'list' 또는 'calendar'
-let viewDate = new Date(); 
+
 
 // 1. 💡 뷰 전환 토글 (아이콘 클릭 시 실행)
 function toggleView() {
@@ -1324,7 +1272,6 @@ currentView = 'list';
 }
 
 // 💡 2. 타임라인(2주치 막대) 유효성 필터 추가 마감
-// 💡 2. 타임라인(2주치 막대) 렌더링 함수 최종 복구
 function renderTimeline() {
     const grid = document.getElementById('timeline-grid');
     if (!grid) return;
@@ -1603,8 +1550,6 @@ function copyAddr(text) {
     copyToClipboard(text);
 }
 
-let currentView = 'list'; // 'list' 또는 'calendar'
-let viewDate = new Date(); 
 
 // 1. 💡 뷰 전환 토글 (아이콘 클릭 시 실행)
 function toggleView() {
