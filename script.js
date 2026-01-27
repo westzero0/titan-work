@@ -526,20 +526,20 @@ function scrollToCard(date, site) {
 }
 
 
-// 💡 1. 카드뷰 렌더링 (아이콘 추가 및 괄호 보수)
+// 💡 1. 카드뷰 렌더링 (유효 데이터 필터링 적용)
 function renderCards() {
     const container = document.getElementById('schedule-container');
     const worker = document.getElementById('worker-select').value;
-    
-    // 💡 시간을 제외한 순수 오늘 날짜 (YYYY-MM-DD)
     const today = new Date().toISOString().split('T')[0];
 
+    // 💡 중복을 제거하고 알맹이(거래처, 현장명)가 있는 데이터만 필터링
     const filtered = allSchedules.filter(s => {
-        // 1. 작업자 필터 (공통)
+        // 1. 필수 정보(거래처, 현장명) 유무 체크
+        const hasRequiredData = s.client && s.client.trim() !== "" && s.site && s.site.trim() !== "";
+        if (!hasRequiredData) return false;
+
+        // 2. 작업자 및 날짜 필터 (기존 로직)
         const isWorkerMatch = (worker === "전체" || s.workers.includes(worker));
-        
-        // 2. 💡 날짜 필터 (핵심 보수 구간)
-        // showPast가 false면 오늘 이후(>=)만, true면 오늘 이전(<)만 보여줍니다.
         const isDateMatch = showPast ? (s.date < today) : (s.date >= today);
         
         return isWorkerMatch && isDateMatch;
@@ -550,7 +550,7 @@ function renderCards() {
         return showPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
     });
 
-    // 상단 버튼 마감 (상태에 따라 문구 변경)
+    // 상단 버튼 및 리스트 생성
     let html = `<button class="past-btn" onclick="togglePast()" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:none; background:#f1f5f9; color:#475569; font-weight:bold;">
         ${showPast ? '⬆️ 오늘 이후 일정 보기' : '⬇️ 지난 일정 보기'}
     </button>`;
@@ -586,7 +586,7 @@ function renderCards() {
                     </div>
 
                     <div style="margin-bottom:8px; display:flex; flex-wrap:wrap; gap:4px;">
-                        ${s.workers.length > 0 
+                        ${s.workers && s.workers.length > 0 
                             ? s.workers.filter(w => w && w.trim() !== "").map(w => `<span class="worker-chip">${w}</span>`).join('') 
                             : '<span style="font-size:0.8rem; color:#94a3b8;">인원 미정</span>'}
                     </div>
@@ -771,7 +771,7 @@ function renderCalendar() {
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
 
-    // 달력 헤더 및 격자 구조 생성
+    // 1. 달력 헤더 및 격자 구조 생성
     let html = `
         <div class="card" style="padding: 10px; border-radius: 12px; background: white;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding: 5px 10px;">
@@ -786,20 +786,30 @@ function renderCalendar() {
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
 
-    // 이전 달 빈칸
+    // 2. 이전 달 빈칸 생성
     for (let i = 0; i < firstDay; i++) html += `<div style="background:#fff; min-height:90px;"></div>`;
 
-    // 해당 월 날짜들 생성
+    // 3. 해당 월 날짜들 생성
     for (let d = 1; d <= lastDate; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         
-        // 날짜별 일정 필터링
-      const dayJobs = allSchedules.filter(s => {
-    // 💡 날짜 데이터에서 '시간'은 버리고 'YYYY-MM-DD'만 추출하여 비교
-    const sDateOnly = new Date(s.date).toISOString().split('T')[0]; 
-    const isWorkerMatch = (worker === "전체" || s.workers.includes(worker));
-    return sDateOnly === dateStr && isWorkerMatch;
-});
+        // 💡 핵심: 필터 배선 통합 (중복 제거 완료)
+        const dayJobs = allSchedules.filter(s => {
+            // 1) 필수 데이터(거래처, 현장명) 유무 체크
+            const hasRequiredData = s.client && s.client.trim() !== "" && s.site && s.site.trim() !== "";
+            if (!hasRequiredData) return false;
+
+            // 2) 날짜 데이터 유효성 방어
+            if (!s.date) return false; 
+            
+            try {
+                const sDateOnly = new Date(s.date).toISOString().split('T')[0]; 
+                const isWorkerMatch = (worker === "전체" || s.workers.includes(worker));
+                return sDateOnly === dateStr && isWorkerMatch;
+            } catch (e) {
+                return false; // 날짜 형식이 깨진 데이터는 차단
+            }
+        });
 
         const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
