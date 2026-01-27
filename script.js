@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwsfApRys8pwPRNaPDe9EEsdz6N12IydNSuYCzmsKx0cfV2khMhFuIAYucOFvONWrJi/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxQTzwa7St8Wnt4yXCvhfApXjV2lY0fzuxj3tHxF4eWhSrgskLRXIi4XgDPvJCyXDPd/exec";
 
 let currentSites = []; 
 let allSchedules = [];
@@ -48,18 +48,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // 3. [데이터 동기화 및 스플래시 화면 제어 - 안전장치 보강]
-// 💡 [수정 2] 무한 로딩 방지 차단기 설치
 async function loadTitanDataWithBackgroundSync() {
     const startTime = Date.now();
     
-    // 🛡️ [비상용 차단기] 서버가 5초 동안 답 없으면 강제 진입!
+    // 🛡️ 서버가 5초 동안 답 없으면 무조건 강제 진입!
     const safetyTimeout = setTimeout(() => {
-        console.log("서버 응답 지연: 비상 차단기 가동 (강제 진입)");
+        console.log("서버 응답 지연: 비상 차단기 가동");
         hideSplashScreen();
     }, 5000); 
-
-    const cachedMap = localStorage.getItem('titan_full_data_cache');
-    if (cachedMap) { renderClientChips(Object.keys(JSON.parse(cachedMap))); }
 
     try {
         const res = await fetch(GAS_URL, {
@@ -68,16 +64,13 @@ async function loadTitanDataWithBackgroundSync() {
         });
         const fullData = await res.json();
         localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
-        if (!cachedMap) renderClientChips(Object.keys(fullData));
     } catch (e) {
-        console.log("오프라인 모드: 캐시 사용");
+        console.log("서버 연결 실패: 오프라인 모드");
     } finally {
-        // 데이터가 오면 비상 타이머를 해제하고 화면을 닫습니다.
+        // 성공하든 실패하든 비상 타이머를 끄고 스플래시를 닫습니다.
         clearTimeout(safetyTimeout); 
         const elapsedTime = Date.now() - startTime;
-        const minimumDisplayTime = 1500; // 최소 1.5초는 보여줌
-        const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime);
-        
+        const remainingTime = Math.max(0, 1500 - elapsedTime);
         setTimeout(() => hideSplashScreen(), remainingTime);
     }
 }
