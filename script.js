@@ -468,7 +468,6 @@ function renderTimeline() {
     const grid = document.getElementById('timeline-grid');
     if (!grid) return;
     grid.innerHTML = '';
-
     const worker = document.getElementById('worker-select').value;
 
     for (let i = 0; i < 14; i++) {
@@ -477,10 +476,14 @@ function renderTimeline() {
         const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
         
         let dayJobs = allSchedules.filter(j => {
-            const isDateMatch = j.date === dateStr;
-            const isWorkerMatch = (worker === "전체" || j.workers.includes(worker));
-            return isDateMatch && isWorkerMatch;
+            // 💡 필수 체크: 거래처와 현장명이 "둘 다" 있어야만 통과
+            const hasData = j.client && j.client.trim() !== "" && j.site && j.site.trim() !== "";
+            if (!hasData) return false;
+
+            return j.date === dateStr && (worker === "전체" || j.workers.includes(worker));
         });
+
+        
 
         const col = document.createElement('div');
         col.className = 'time-col';
@@ -725,9 +728,9 @@ if (s.car && s.car.trim() !== "") {
 
 function togglePast() {
     showPast = !showPast;
-    renderSchedulePage();
+    // 💡 핵심: 상태를 바꾼 후 '전체 뷰'를 다시 그려야 반영됩니다.
+    renderView(); 
 }
-
 
 
 // 💡 4. 주소 클릭 시 범용 복사 함수 호출
@@ -753,11 +756,9 @@ function renderView() {
     const container = document.getElementById('schedule-container');
 
     if (currentView === 'calendar') {
-        // 💡 캘린더 모드: 타임라인 숨기고 달력 그리기
         if (timeline) timeline.style.display = 'none';
         renderCalendar(); 
     } else {
-        // 💡 리스트 모드: 타임라인 보여주고 카드뷰 그리기
         if (timeline) timeline.style.display = 'flex';
         renderSchedulePage(); 
     }
@@ -772,8 +773,8 @@ function renderCalendar() {
     const month = viewDate.getMonth();
 
     // 1. 달력 헤더 및 격자 구조 생성
-    let html = `
-        <div class="card" style="padding: 10px; border-radius: 12px; background: white;">
+  let html = `
+        <div class="card calendar-card" style="padding: 10px; border-radius: 12px; background: white;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding: 5px 10px;">
                 <button onclick="changeMonth(-1)" style="border:none; background:#f1f5f9; padding:5px 12px; border-radius:8px; font-weight:bold; cursor:pointer;">◀</button>
                 <b style="font-size:1.1rem; color:#1e293b;">${year}년 ${month + 1}월</b>
