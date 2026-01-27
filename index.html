@@ -148,6 +148,84 @@ html { scroll-behavior: smooth; }
     font-weight: 600;
 }
 
+
+ /* 💡 1. 캘린더 전체 카드 여백 최소화 (양옆 빈공간 제거) */
+#schedule-container .card { 
+    padding: 8px 2px !important; 
+    margin-left: -5px; 
+    margin-right: -5px;
+    width: calc(100% + 10px); /* 화면 끝까지 확장 */
+}
+
+/* 💡 2. 날짜 격자 배선 최적화 */
+#schedule-container div[style*="grid-template-columns"] {
+    gap: 1px !important; 
+    background: #cbd5e1; /* 구분선 색상 명확화 */
+    border: 1px solid #cbd5e1;
+}
+
+/* 💡 3. 날짜 칸 내부 가로 폭 확보 */
+.calendar-day-cell {
+    background: #ffffff;
+    min-height: 90px !important; 
+    padding: 2px 1px !important; 
+    display: flex;
+    flex-direction: column;
+}
+
+/* 💡 4. 날짜 숫자 크기 및 위치 조정 */
+.calendar-date-num {
+    font-size: 0.6rem !important; 
+    font-weight: 800;
+    color: #64748b;
+    margin-bottom: 2px;
+    padding-left: 2px;
+}
+
+/* 💡 5. 현장명 막대: 글자가 최대한 많이 보이도록 마감 */
+.calendar-event-bar {
+    font-size: 0.55rem !important; 
+    letter-spacing: -0.9px; /* 자간을 더 줄여 가독성 확보 */
+    line-height: 1.1;
+    padding: 3px 2px !important;
+    border-radius: 2px !important;
+    margin-bottom: 2px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 글자가 넘치면 ... 표시 */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 💡 6. 주말 색상 강조 */
+.sun { color: #ef4444 !important; }
+.sat { color: #2563eb !important; }
+
+        /* 💡 야간/주간 막대 시인성 극대화 */
+.calendar-event-bar.bar-night {
+    background: #1e293b !important; /* 진한 남색/검정 */
+    border-left: 3px solid #facc15 !important; /* 👈 야간은 왼쪽에 노란색 포인트 배선 */
+}
+
+.calendar-event-bar.bar-day {
+    background: #2563eb !important; /* 파란색 */
+    border-left: 3px solid #60a5fa !important; /* 주간은 하늘색 포인트 */
+}
+
+/* 💡 글자 그림자로 가독성 확보 (작은 폰트 보완) */
+.calendar-event-bar {
+    text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* 💡 오늘 날짜 강조 배선 */
+.is-today {
+    background-color: #eff6ff !important; /* 연한 파랑 배경 */
+    border: 1.5px solid var(--primary) !important;
+}
+
         
     </style>
 </head>
