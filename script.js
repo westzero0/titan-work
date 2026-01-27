@@ -193,16 +193,31 @@ function generateTimeOptions() {
     s.value = "08:00"; e.value = "17:00";
 }
 
-// 5. [전송 및 이미지 압축]
+// 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송 
 async function send() {
     const btn = document.getElementById('sBtn');
     const work = document.getElementById('work').value.trim();
-    const client = document.querySelector('#client-chips .chip.active')?.innerText;
-    const site = document.querySelector('#site-chips .chip.active')?.innerText || document.getElementById('siteSearch').value.trim();
+    
+    // 칩 선택 확인 (안전하게 선택자 수정)
+    const clientChip = document.querySelector('#client-chips .chip.active');
+    const client = clientChip ? clientChip.innerText : "";
+    
+    // 현장명 확인 (칩 또는 검색창)
+    const siteChip = document.querySelector('#site-chips .chip.active');
+    let site = siteChip ? siteChip.innerText : document.getElementById('siteSearch').value.trim();
+    
+    // 완료된 현장 칩일 경우 "[완료] " 떼고 저장하고 싶으면 아래 주석 해제
+    // if (site.startsWith("[완료] ")) site = site.replace("[완료] ", "");
 
-    if (!client || !site || !work) return alert("⚠️ 필수 정보를 입력해주세요.");
+    if (!client || !site || !work) {
+        return alert("⚠️ 필수 정보를 입력해주세요.\n(거래처, 현장명, 작업내용)");
+    }
 
-    btn.disabled = true; btn.innerText = "⏳ 데이터 수집 중...";
+    // 버튼 잠금
+    btn.disabled = true; 
+    btn.innerText = "⏳ 데이터 포장 중...";
+    
+    // 데이터 수집
     const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     
     const startTime = document.getElementById('start').value;
@@ -215,6 +230,11 @@ async function send() {
     const expDetail = document.getElementById('expDetail').value.trim();
     const expPayer = getSel('#payer-chips') || "없음";
 
+    // 카톡 공유용 메시지 미리 생성
+    let expenseLine = expAmount > 0 ? `\n💰 경비: ${expAmount.toLocaleString()}원 (${expDetail})` : "";
+    const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${startTime} ~ ${endTime}\n👥 인원: ${members}\n🚗 차량: ${car}\n🍱 석식: ${dinner}\n📦 자재: ${materials}${expenseLine}`;
+
+    // 이미지 압축
     const receiptInput = document.getElementById('receipt');
     const files = receiptInput.files;
     let filesData = [];
@@ -222,19 +242,20 @@ async function send() {
     if (files.length > 0) {
         try {
             for (let i = 0; i < files.length; i++) {
-                btn.innerText = `📸 압축 중 (${i + 1}/${files.length})`; 
+                btn.innerText = `📸 사진 압축 중 (${i + 1}/${files.length})`; 
                 const data = await compressImage(files[i]); 
                 filesData.push({ content: data.base64, type: data.mimeType, name: data.name });
             }
         } catch (err) {
             alert("사진 압축 오류: " + err.message);
-            btn.disabled = false; btn.innerText = "🚀 다시 시도";
+            btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유";
             return;
         }
     }
 
+    // 서버 전송 시작
     try {
-        btn.innerText = "🚀 서버 전송 중..."; 
+        btn.innerText = "🚀 서버로 날아가는 중..."; 
         const payload = {
             action: "saveLog",
             data: {
@@ -245,17 +266,55 @@ async function send() {
             }
         };
 
-        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+        // 💡 여기가 핵심! 서버 응답을 기다립니다.
+        const res = await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify(payload) 
+        });
+        
+        // 응답 텍스트를 받습니다.
         const resultText = await res.text();
+        console.log("서버 응답:", resultText); // 개발자 도구 확인용
 
-        if (resultText === "SUCCESS") {
-            alert("✅ 저장 성공!");
-            resetFormFull();
+        if (resultText.includes("SUCCESS")) {
+            // ✅ 성공 시 로직
+            const tempMsg = msg;
+            resetFormOnlyInputs(); // 입력창 비우기
+
+            btn.disabled = false;
+            btn.style.setProperty("background-color", "#fee500", "important");
+            btn.style.setProperty("color", "#3c1e1e", "important");
+            btn.innerText = "➡️ 지금 카톡으로 공유하기";
+            
+            // 버튼 클릭 시 공유 기능으로 변경
+            btn.onclick = async () => {
+                try {
+                    if (navigator.share) {
+                        await navigator.share({ text: tempMsg });
+                    } else {
+                        await copyToClipboard(tempMsg);
+                    }
+                    alert("공유 완료! 초기화합니다.");
+                    location.reload(); // 공유 후 완전 초기화
+                } catch (err) {
+                    console.log("공유 취소됨");
+                    location.reload();
+                }
+            };
+            
+            alert("✅ 저장 성공! 버튼을 눌러 카톡으로 보내세요.");
+            
+        } else {
+            // ❌ 실패 시 (이게 없어서 반응이 없었던 겁니다)
+            throw new Error(resultText); // 에러를 강제로 발생시켜 catch로 보냄
         }
+
     } catch (e) {
-        alert("⚠️ 전송 오류: " + e.message);
-    } finally {
-        btn.disabled = false; btn.innerText = "🚀 저장 및 카톡 공유";
+        // 🚨 에러 발생 시 팝업 띄우기
+        alert("⚠️ 저장 실패!\n원인: " + e.message);
+        btn.disabled = false; 
+        btn.innerText = "🚀 다시 시도 (누르면 재전송)";
+        btn.onclick = send; // 버튼 기능 복구
     }
 }
 
