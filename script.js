@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxNSm4mxaZaYnqmv6UPvF8t-scxmtNHBUztLPqhANFKlKwlzV5gFmpEJzFmKNsFmR5Y/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwsfApRys8pwPRNaPDe9EEsdz6N12IydNSuYCzmsKx0cfV2khMhFuIAYucOFvONWrJi/exec";
 
 let currentSites = []; 
 
