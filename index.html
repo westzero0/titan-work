@@ -261,6 +261,13 @@ html { scroll-behavior: smooth; }
         <select id="worker-select" onchange="filterSchedules()" style="width: auto; margin: 0; padding: 5px 10px; font-size: 0.85rem;">
             <option value="전체">👤 전체</option>
         </select>
+
+        <div style="display: flex; align-items: center; gap: 10px;">
+    <select id="worker-select" onchange="renderView()"></select>
+    <div id="view-toggle" onclick="toggleView()" style="cursor:pointer; font-size:1.5rem;">📅</div>
+</div>
+
+        
     </div>
     
     <div id="timeline-grid" class="timeline-grid"></div>
