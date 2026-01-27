@@ -365,27 +365,6 @@ html { scroll-behavior: smooth; }
     </div>
     
     <script src="script.js"></script>
-    <script>
-    // 💡 화면 전환 스위치 로직 수정
-function showPage(pageId) {
-    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
-    document.getElementById(pageId).style.display = 'block';
-    document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
-    
-    if(pageId === 'log-page') {
-        document.getElementById('tab-log').classList.add('active');
-    } else {
-        document.getElementById('tab-sched').classList.add('active');
-        
-        // 🚀 일정 페이지로 갈 때, 데이터가 이미 있다면 바로 화면을 그리고
-        // 데이터가 없다면 서버에서 불러옵니다.
-        if(typeof allSchedules !== 'undefined' && allSchedules.length > 0) {
-            renderSchedulePage(); 
-        } else if(typeof loadSchedules === 'function') {
-            loadSchedules();
-        }
-    }
-}
-    </script>
+ 
 </body>
 </html>
