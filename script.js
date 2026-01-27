@@ -294,9 +294,53 @@ async function compressImage(file) {
     });
 }
 
-function resetFormFull() {
-    location.reload();
+
+// 💡 입력창만 비우는 함수 (send 함수에서 호출함)
+function resetFormOnlyInputs() {
+    // 지울 항목들 리스트
+    const targetIds = ['work', 'siteSearch', 'materialExtra', 'expAmount', 'expDetail'];
+    
+    targetIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = ""; // 글자 입력칸 비우기
+    });
+
+    // 영수증 파일 칸 비우기
+    const receipt = document.getElementById('receipt');
+    if (receipt) receipt.value = "";
+
+    // 선택된 칩들(파란색) 전부 해제
+    document.querySelectorAll('.chip.active').forEach(chip => {
+        chip.classList.remove('active');
+    });
 }
+
+// 💡 공유까지 끝난 후 완전 초기화하는 함수
+function resetFormFull() {
+    resetFormOnlyInputs(); // 일단 입력칸 다 비우고
+    
+    // 시간만 기본값으로 복구
+    const startTime = document.getElementById('start');
+    const endTime = document.getElementById('end');
+    if (startTime) startTime.value = "08:00";
+    if (endTime) endTime.value = "17:00";
+
+    // 날짜는 오늘로 다시 세팅
+    const dateEl = document.getElementById('date');
+    if (dateEl) dateEl.valueAsDate = new Date();
+
+    // 전송 버튼 원래대로 복구
+    const btn = document.getElementById('sBtn');
+    if (btn) {
+        btn.style.backgroundColor = ""; 
+        btn.style.color = ""; 
+        btn.innerText = "🚀 저장 및 카톡 공유";
+        btn.onclick = send; // 다시 저장 기능으로 연결
+        btn.disabled = false;
+    }
+}
+
+
 
 function copyAddr(text) {
     navigator.clipboard.writeText(text);
