@@ -75,32 +75,35 @@
             margin: 0 auto;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-
-        /* 💡 2주치 타임라인 컨테이너 */
+/* 💡 타임라인 그리드: 높이 고정 및 내부 세로 스크롤 허용 */
 .timeline-grid {
     display: flex;
     overflow-x: auto;
-    gap: 10px;
-    padding: 15px 5px;
-    background: #fff;
-    border-radius: 12px;
+    overflow-y: hidden; /* 가로 스크롤만 메인으로 */
+    max-height: 200px;  /* 👈 너무 길어지지 않게 상한선 설정 */
+    gap: 12px;
+    padding: 15px 10px;
+    background: white;
+    border-radius: 16px;
     margin-bottom: 20px;
     scrollbar-width: none;
+    align-items: flex-start; /* 막대들을 위쪽으로 정렬 */
 }
 
-/* 💡 개별 날짜 기둥 */
+/* 💡 개별 날짜 기둥: 내부 일정이 많을 경우 자체 스크롤 */
 .time-col {
-    min-width: 80px;
-    background: #f1f5f9;
-    border-radius: 8px;
-    padding: 8px 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: center;
+    min-width: 95px;
+    max-height: 170px; /* 기둥 높이 제한 */
+    overflow-y: auto;  /* 현장이 많으면 기둥 안에서 스크롤 */
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 10px 4px;
+    scrollbar-width: none; /* 기둥 스크롤바 숨기기 */
 }
+.time-col::-webkit-scrollbar { display: none; }
 
+        
 /* 💡 화면 전체에 부드러운 스크롤 적용 */
 html { scroll-behavior: smooth; }
 
