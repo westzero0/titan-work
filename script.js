@@ -162,15 +162,28 @@ function renderChips(type) {
     });
 }
 
-function addItem(type) {
+// 💡 통합된 추가 함수 (버튼 클릭 & 컴퓨터 자동 추가 공용)
+function addItem(type, val = null) {
+    // 1. 직접 입력(val 없음)이면 입력창에서 가져오고, 자동추가(val 있음)면 그 값을 씀
     const input = document.getElementById(`add-${type}-input`);
-    const val = input.value.trim();
-    if (val && !lists[type].includes(val)) { 
-        lists[type].push(val); 
-        saveListsToStorage(); 
-        renderChips(type); 
+    const finalVal = (val !== null) ? val.trim() : input.value.trim();
+
+    if (finalVal && !lists[type].includes(finalVal)) {
+        lists[type].push(finalVal);
+        saveListsToStorage();
+        renderChips(type);
     }
-    input.value = "";
+
+    // 2. 입력창을 통해 추가했을 때만 칸을 비워줌
+    if (input && val === null) input.value = "";
+
+    // 3. 자동 추가 시에는 해당 칩을 파란색(active)으로 바로 켜줌
+    if (val !== null) {
+        setTimeout(() => {
+            const chips = document.querySelectorAll(`#${type}-chips .chip`);
+            chips.forEach(c => { if(c.innerText === finalVal) c.classList.add('active'); });
+        }, 50);
+    }
 }
 
 function toggleDelMode(type) {
@@ -427,7 +440,9 @@ function renderTimeline() {
     if (!grid) return;
     grid.innerHTML = '';
     const worker = document.getElementById('worker-select').value;
-    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // 💡 오늘 날짜를 비교하기 위해 이 줄이 반드시 필요합니다.
+    const todayStr = new Date().toISOString().split('T')[0]; 
 
     for (let i = 0; i < 14; i++) {
         const date = new Date();
@@ -439,6 +454,7 @@ function renderTimeline() {
         );
 
         const col = document.createElement('div');
+        // 💡 여기서 todayStr을 사용합니다.
         col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
         col.innerHTML = `
             <div style="font-size:0.75rem; text-align:center; margin-bottom:5px; font-weight:bold;">${dateStr === todayStr ? '🌟' : (date.getMonth()+1)+'/'+date.getDate()}</div>
@@ -530,23 +546,66 @@ function scrollToCard(d, s) {
 }
 
 function copyScheduleToLog(s) {
-    if(!confirm("일보 작성을 시작할까요?")) return;
+    if(!confirm("📝 선택한 일정 내용으로 일보 작성을 시작할까요?")) return;
+
+    // 1. 날짜, 현장명, 작업내용 기본 입력
     document.getElementById('date').value = s.date;
     document.getElementById('siteSearch').value = s.site;
     document.getElementById('work').value = s.workContent || "";
     
+    // 2. 거래처 칩 먼저 선택 (현장 칩을 불러오기 위함)
     const clientChips = document.querySelectorAll('#client-chips .chip');
     clientChips.forEach(c => { if(c.innerText === s.client) c.click(); });
-    
+
+    // 3. 시간 설정 (주간/야간)
+    if(s.shift === '야') {
+        document.getElementById('start').value = "18:00";
+        document.getElementById('end').value = "05:00";
+    } else {
+        document.getElementById('start').value = "08:00";
+        document.getElementById('end').value = "17:00";
+    }
+
+    // 💡 4. 핵심 수리: 0.5초 대기 후 인원/차량/현장 칩 자동 선택
+    // (칩들이 화면에 다 그려질 시간을 주는 겁니다)
     setTimeout(() => {
+        // [현장 칩 선택]
         const siteInput = document.getElementById('siteSearch');
         if(siteInput) { siteInput.dispatchEvent(new Event('input')); }
         const siteChips = document.querySelectorAll('#site-chips .chip');
-        siteChips.forEach(c => { if(c.innerText.includes(s.site)) c.classList.add('active'); });
+        siteChips.forEach(c => {
+            if(c.innerText.includes(s.site)) c.classList.add('active');
+        });
+
+        // [인원 칩 선택]
+        const memChips = document.querySelectorAll('#member-chips .chip');
+        memChips.forEach(c => c.classList.remove('active')); // 초기화
+        if (s.workers && Array.isArray(s.workers)) {
+            s.workers.forEach(w => {
+                let found = false;
+                memChips.forEach(c => {
+                    if(c.innerText === w.trim()) { c.classList.add('active'); found = true; }
+                });
+                // 목록에 없는 사람이라면 새로 만들어서 선택
+                if(!found && w.trim()){
+                     addItem('member', w.trim());
+                }
+            });
+        }
+
+        // [차량 칩 선택]
+        const carChips = document.querySelectorAll('#car-chips .chip');
+        carChips.forEach(c => c.classList.remove('active')); // 초기화
+        if(s.car){
+            let found = false;
+            carChips.forEach(c => {
+                if(c.innerText === s.car.trim()){ c.classList.add('active'); found = true; }
+            });
+            // 목록에 없는 차량이라면 새로 만들어서 선택
+            if(!found) addItem('car', s.car.trim());
+        }
     }, 500);
 
-    if(s.shift==='야') { document.getElementById('start').value="18:00"; document.getElementById('end').value="05:00"; }
-    else { document.getElementById('start').value="08:00"; document.getElementById('end').value="17:00"; }
-    
     showPage('log-page');
+    window.scrollTo(0, 0);
 }
