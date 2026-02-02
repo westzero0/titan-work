@@ -1,5 +1,137 @@
 const GAS_URL = "https://script.google.com/macros/s/AKfycby_SL7npPwAqurjNmvKOcKK5GHHZOA3Lki4xTSkBy7M6riTR1h3xJUchOhZ2iEQ5tHq/exec";
 
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. 스플래시 화면 제어 (빨간 화면)
+    setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            splash.style.opacity = '0';
+            setTimeout(() => { splash.style.display = 'none'; }, 500);
+        }
+    }, 2000);
+
+    // 2. 로그인 상태 확인 (핵심 보안)
+    const savedName = localStorage.getItem('titan_user_name');
+    
+    if (!savedName) {
+        // 이름 저장 안 되어 있으면 로그인 창 띄우기
+        showLoginScreen();
+    } else {
+        // 이름은 있는데, 혹시 그 사이에 퇴사 처리 됐는지 실시간 체크
+        const isActive = await checkAuth(savedName);
+        if (isActive) {
+            // 재직 중인 정상 사용자면 앱 기능들 시작
+            initApp(savedName); 
+        }
+    }
+});
+
+/**
+ * 💡 로그인 화면 제어
+ */
+async function showLoginScreen() {
+    const screen = document.getElementById('login-screen');
+    const select = document.getElementById('login-name-select');
+    
+    // 메인 페이지와 내비바 숨기기
+    document.querySelector('.container').style.display = 'none';
+    document.querySelector('.bottom-nav').style.display = 'none';
+    screen.style.display = 'flex';
+
+    try {
+        // 서버에서 재직자 명단 가져오기 (단가 노출 없음)
+        const res = await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: "getWorkerList" }) 
+        });
+        const workers = await res.json();
+        
+        workers.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.innerText = name;
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        alert("명단을 불러오지 못했습니다. 인터넷을 확인하세요.");
+    }
+}
+
+/**
+ * 💡 로그인 실행
+ */
+async function handleLogin() {
+    const name = document.getElementById('login-name-select').value;
+    const pw = document.getElementById('login-pw-input').value;
+    const btn = document.getElementById('login-btn');
+
+    if (!name || !pw) return alert("이름과 비밀번호를 입력하세요.");
+
+    btn.disabled = true;
+    btn.innerText = "⏳ 확인 중...";
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "loginCheck", userName: name, password: pw })
+        });
+        const result = await res.json();
+
+        if (result.res === "SUCCESS") {
+            localStorage.setItem('titan_user_name', name);
+            alert(`${name}님, 환영합니다!`);
+            location.reload(); // 새로고침하여 메인 진입
+        } else {
+            alert(result.msg);
+            btn.disabled = false;
+            btn.innerText = "로그인";
+        }
+    } catch (e) {
+        alert("로그인 중 오류 발생");
+        btn.disabled = false;
+        btn.innerText = "로그인";
+    }
+}
+
+/**
+ * 💡 퇴사 여부 실시간 체크
+ */
+async function checkAuth(userName) {
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "loginCheck", userName: userName, password: "SKIP_PASSWORD" })
+        });
+        const result = await res.json();
+        
+        if (result.msg === "퇴사 처리된 계정입니다.") {
+            localStorage.removeItem('titan_user_name');
+            alert("접근 권한이 취소되었습니다. 관리자에게 문의하세요.");
+            location.reload();
+            return false;
+        }
+        return true;
+    } catch (e) {
+        return true; // 에러 시 서비스 연속성을 위해 일단 허용
+    }
+}
+
+/**
+ * 💡 앱 초기화 (로그인 성공 후)
+ */
+function initApp(name) {
+    document.getElementById('submitter').value = name;
+    document.getElementById('login-screen').style.display = 'none';
+    document.querySelector('.container').style.display = 'block';
+    document.querySelector('.bottom-nav').style.display = 'flex';
+    
+    // 기존에 만드신 데이터 로딩 함수들 실행
+    if (typeof loadAllData === 'function') loadAllData(); 
+}
+
+
+
 let currentSites = []; 
 let allSchedules = [];
 let showPast = false;
@@ -20,32 +152,7 @@ function saveListsToStorage() {
     localStorage.setItem('titan_custom_lists', JSON.stringify(lists));
 }
 
-// 2. [초기 로드]
-document.addEventListener('DOMContentLoaded', () => {
-    let myName = localStorage.getItem('titan_user_name');
-    if (!myName) {
-        myName = prompt("이름을 입력해주세요.");
-        if (myName) localStorage.setItem('titan_user_name', myName);
-    }
-    const subEl = document.getElementById('submitter');
-    if (subEl) subEl.value = myName || "미지정";
-    
-    const dateEl = document.getElementById('date');
-    if (dateEl) dateEl.valueAsDate = new Date();
-    
-    generateTimeOptions();
-    renderAllChips(); 
-    loadTitanDataWithBackgroundSync();
 
-    const searchEl = document.getElementById('siteSearch');
-    if (searchEl) {
-        searchEl.addEventListener('input', (e) => {
-            const term = e.target.value.trim();
-            const filtered = currentSites.filter(s => s.name.includes(term));
-            renderSiteChips(filtered, term);
-        });
-    }
-});
 
 // 3. [데이터 동기화] (무한로딩 방지 안전장치 포함)
 async function loadTitanDataWithBackgroundSync() {
