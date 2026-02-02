@@ -37,39 +37,47 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyG7dVLv1oqEsB3-S4HA7GqBq0w1un3sGiBsvKzB3fOjyzkrbQ5ySFlQD3GliieUu1z/exec"; // 👈 꼭 본인 주소로 수정하세요!
 
-        async function loadAdminData() {
-            const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) });
-            const workers = await res.json();
-            const box = document.getElementById('worker-list-admin');
-            box.innerHTML = workers.map(w => `
-                <div class="worker-item">
-                    <div>
-                        <b>${w.name}</b> (${w.role})<br>
-                        <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span>
-                        <small>PW: ${w.pw}</small>
+       async function loadAdminData() {
+            try {
+                const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) });
+                const workers = await res.json();
+                const box = document.getElementById('worker-list-admin');
+                
+                // 💡 리스트 출력 시 [비번변경] 버튼을 추가했습니다.
+                box.innerHTML = workers.map(w => `
+                    <div class="worker-item">
+                        <div>
+                            <b>${w.name}</b> (${w.role})<br>
+                            <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span>
+                            <small>PW: <b>${w.pw}</b></small>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn-outline" onclick="changePassword('${w.name}')">비번변경</button>
+                            <button class="btn-red" style="font-size:0.75rem; padding:6px;" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">
+                                ${w.status === '재직' ? '퇴사처리' : '복구'}
+                            </button>
+                        </div>
                     </div>
-                    <div style="width: 100px;">
-                        <button class="btn-red" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">${w.status === '재직' ? '퇴사처리' : '복구'}</button>
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
+            } catch (e) {
+                alert("데이터를 불러오지 못했습니다.");
+            }
         }
 
-        
-// 💡 새로 추가할 함수
-async function changePassword(name) {
-    const newPw = prompt(`${name}님의 새 비밀번호 4자리를 입력하세요.`);
-    if (!newPw || newPw.length !== 4) return alert("비밀번호는 반드시 4자리여야 합니다.");
+        // 💡 비밀번호 변경 실행 함수
+        async function changePassword(name) {
+            const newPw = prompt(`${name}님의 새 비밀번호 4자리를 입력하세요.`);
+            if (!newPw || newPw.length !== 4 || isNaN(newPw)) return alert("숫자 4자리를 정확히 입력하세요.");
 
-    if (confirm(`${name}님의 비밀번호를 ${newPw}로 변경할까요?`)) {
-        await fetch(GAS_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: 'adminUpdatePassword', userName: name, newPw: newPw }) 
-        });
-        alert("변경 완료!");
-        loadAdminData(); // 리스트 새로고침
-    }
-}
+            if (confirm(`${name}님의 비밀번호를 [${newPw}]로 변경할까요?`)) {
+                await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ action: 'adminUpdatePassword', userName: name, newPw: newPw }) 
+                });
+                alert("비밀번호 변경 완료!");
+                loadAdminData(); // 리스트 새로고침
+            }
+        }
 
         
         async function addWorker() {
