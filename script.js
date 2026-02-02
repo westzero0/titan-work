@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyQsOU0u5by7v_bU0Zs-8Cik2oje6_mDdqxfc9nbyUefdAwe6ld6ctkRFISJqg_D309/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxaiFhxIBuP91ke8IM8UJYnpqF7NziRPHVf00v2YgAvgCY8ppJCQ1HYEK5qDEcVN32B/exec";
 
 
 // 💡 1. 통합 초기 로드 로직
