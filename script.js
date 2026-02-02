@@ -850,35 +850,49 @@ function renderCategoryTabs() {
 // 선택한 대분류에 따른 자재 리스트 표시
 function filterMaterial(cat, el) {
     // 탭 강조 효과
-    document.querySelectorAll('.cat-tab').forEach(t => {
-        t.style.background = '#e2e8f0';
-        t.style.color = '#475569';
-    });
-    el.style.background = '#2563eb';
-    el.style.color = '#fff';
+   document.querySelectorAll('.cat-tab').forEach(t => { t.style.background = '#e2e8f0'; t.style.color = '#475569'; });
+    el.style.background = '#2563eb'; el.style.color = '#fff';
 
     const list = allMaterials[cat];
     const container = document.getElementById('material-list');
     
-    container.innerHTML = list.map(m => {
+    let html = `
+        <table class="mat-table">
+            <thead>
+                <tr>
+                    <th>품목/규격</th>
+                    <th style="width:70px; text-align:center;">수량</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    list.forEach(m => {
         const currentQty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
-        return `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9;">
-                <div>
-                    <div style="font-weight: bold; font-size: 0.9rem;">${m.name}</div>
-                    <div style="font-size: 0.75rem; color: #64748b;">${m.spec} | ${m.unit}</div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <button type="button" onclick="changeQty('${cat}', '${m.name}', -1)" style="width:28px; height:28px; padding:0;">-</button>
-                    <input type="number" id="qty-${m.name}" value="${currentQty}" 
-                           onchange="changeQty('${cat}', '${m.name}', this.value, true)"
-                           style="width: 45px; text-align: center; border: 1px solid #ddd; border-radius: 4px;">
-                    <button type="button" onclick="changeQty('${cat}', '${m.name}', 1)" style="width:28px; height:28px; padding:0;">+</button>
-                </div>
-            </div>
+        html += `
+            <tr>
+                <td>
+                    <div style="font-weight:bold;">${m.name}</div>
+                    <div style="font-size:0.7rem; color:gray;">${m.spec} (${m.unit})</div>
+                </td>
+                <td style="display:flex; justify-content:center;">
+                    <div class="qty-wrapper">
+                        <input type="number" id="qty-${m.name}" class="qty-input-table" value="${currentQty}" 
+                               onchange="changeQty('${cat}', '${m.name}', this.value, true)">
+                        <div class="qty-btns">
+                            <button type="button" class="qty-btn-up" onclick="changeQty('${cat}', '${m.name}', 1)">▲</button>
+                            <button type="button" class="qty-btn-down" onclick="changeQty('${cat}', '${m.name}', -1)">▼</button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
         `;
-    }).join('');
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
 }
+
 
 // 수량 변경 함수 (+, - 버튼 및 직접 입력)
 function changeQty(cat, name, val, isDirect = false) {
