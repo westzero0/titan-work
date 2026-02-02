@@ -39,7 +39,15 @@
 
        async function loadAdminData() {
             try {
-                const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) });
+             // script.js나 admin.html의 fetch 부분을 이렇게 바꾸세요
+const res = await fetch(GAS_URL, {
+    method: 'POST',
+    // mode: 'cors' 를 쓰고 있다면 과감히 지우세요!
+    body: JSON.stringify({ action: "getWorkerList" }),
+    // 구글 리다이렉션을 허용하는 핵심 옵션
+    redirect: 'follow' 
+});
+                
                 const workers = await res.json();
                 const box = document.getElementById('worker-list-admin');
                 
