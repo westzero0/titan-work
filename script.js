@@ -182,12 +182,7 @@ function saveListsToStorage() {
 // 3. [데이터 동기화] (무한로딩 방지 안전장치 포함)
 async function loadTitanDataWithBackgroundSync() {
     const startTime = Date.now();
-    
-    // 🛡️ 5초 지나면 강제로 로딩 화면 끄기 (안전장치)
-    const safetyTimeout = setTimeout(() => {
-        console.log("서버 지연: 강제 화면 진입");
-        hideSplashScreen();
-    }, 5000); 
+    const safetyTimeout = setTimeout(() => hideSplashScreen(), 5000); 
 
     try {
         const res = await fetch(GAS_URL, {
@@ -195,15 +190,14 @@ async function loadTitanDataWithBackgroundSync() {
             body: JSON.stringify({ action: 'getAllData' })
         });
         const fullData = await res.json();
-
-
-        // 💡 여기에 추가: 데이터가 들어오는지 팝업으로 확인
-        alert("서버 응답 확인: " + JSON.stringify(fullData).substring(0, 50));
-
         
-        if (fullData && !fullData.status) {
+        // 데이터가 정상적인 객체인지 확인
+        if (fullData && typeof fullData === 'object' && !fullData.status) {
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
-            renderClientChips(Object.keys(fullData));
+            
+            // 칩 렌더링 함수 실행
+            const clientNames = Object.keys(fullData);
+            renderClientChips(clientNames);
         }
     } catch (e) {
         console.log("연결 실패: 캐시 데이터 사용");
@@ -211,8 +205,7 @@ async function loadTitanDataWithBackgroundSync() {
         if (cached) renderClientChips(Object.keys(JSON.parse(cached)));
     } finally {
         clearTimeout(safetyTimeout); 
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 1500 - elapsedTime);
+        const remainingTime = Math.max(0, 1500 - (Date.now() - startTime));
         setTimeout(() => hideSplashScreen(), remainingTime);
     }
 }
@@ -235,18 +228,30 @@ function fetchSites(clientName) {
 }
 
 // 4. [UI 렌더링]
+// 💡 거래처 칩 렌더링 함수 (비우기 로직 강화 버전)
 function renderClientChips(clients) {
     const box = document.getElementById('client-chips');
     if (!box) return;
-    box.innerHTML = "";
-    clients.forEach(name => {
+    
+    // 1. 기존 내용(글자, 로딩 메시지 등)을 완전히 깨끗하게 삭제
+    box.innerHTML = ""; 
+
+    if (!clients || clients.length === 0) {
+        box.innerHTML = "<span class='loading-text' style='color:#ef4444;'>등록된 거래처가 없습니다.</span>";
+        return;
+    }
+
+    // 2. 서버에서 받은 이름들을 가나다 순으로 정렬해서 칩 생성
+    clients.sort().forEach(name => {
+        if (!name) return; 
         const div = document.createElement('div');
         div.className = 'chip';
         div.innerText = name;
         div.onclick = () => {
+            // 다른 칩의 파란색(active)을 끄고 클릭한 것만 켬
             document.querySelectorAll('#client-chips .chip').forEach(c => c.classList.remove('active'));
             div.classList.add('active');
-            fetchSites(name);
+            fetchSites(name); // 해당 거래처의 현장 목록 불러오기
         };
         box.appendChild(div);
     });
