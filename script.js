@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxVTslDgmTBO-IQTqDCUSBGRq1A-2kcF2SkfOXmgJG8sZ0QcRyqzNCNcH5ZHXw2V2Oq/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyQsOU0u5by7v_bU0Zs-8Cik2oje6_mDdqxfc9nbyUefdAwe6ld6ctkRFISJqg_D309/exec";
 
 
 // 💡 1. 통합 초기 로드 로직
@@ -39,11 +39,14 @@ async function showLoginScreen() {
     screen.style.display = 'flex';
 
     try {
-        // 서버에서 재직자 명단 가져오기 (단가 노출 없음)
-        const res = await fetch(GAS_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: "getWorkerList" }) 
-        });
+      // script.js나 admin.html의 fetch 부분을 이렇게 바꾸세요
+const res = await fetch(GAS_URL, {
+    method: 'POST',
+    // mode: 'cors' 를 쓰고 있다면 과감히 지우세요!
+    body: JSON.stringify({ action: "getWorkerList" }),
+    // 구글 리다이렉션을 허용하는 핵심 옵션
+    redirect: 'follow' 
+});
         const workers = await res.json();
         
         workers.forEach(name => {
