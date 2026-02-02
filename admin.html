@@ -5,16 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>타이탄 관리자 패널</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f1f5f9; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-blue { background: #2563eb; color: white; }
-        .btn-red { background: #ef4444; color: white; margin-top: 5px; }
-        .worker-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
-        .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
-        .status-on { background: #dcfce7; color: #166534; }
-        .status-off { background: #fee2e2; color: #991b1b; }
+               body { font-family: sans-serif; padding: 20px; background: #f1f5f9; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .btn-blue { background: #2563eb; color: white; }
+    .btn-red { background: #ef4444; color: white; margin-top: 5px; }
+
+    /* 💡 비번변경 버튼과 레이아웃을 위한 추가 스타일 */
+    .btn-outline { background: white; color: #64748b; border: 1px solid #cbd5e1; font-size: 0.8rem; padding: 6px; margin-bottom: 4px; border-radius: 4px; }
+    .btn-outline:hover { background: #f8f9fa; }
+    .btn-group { display: flex; flex-direction: column; width: 90px; }
+    
+    .worker-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
+    .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; display: inline-block; margin: 4px 0; }
+    .status-on { background: #dcfce7; color: #166534; }
+    .status-off { background: #fee2e2; color: #991b1b; }
     </style>
 </head>
 <body>
@@ -37,52 +43,24 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxaiFhxIBuP91ke8IM8UJYnpqF7NziRPHVf00v2YgAvgCY8ppJCQ1HYEK5qDEcVN32B/exec"; // 👈 꼭 본인 주소로 수정하세요!
 
-     async function loadAdminData() {
-    try {
-        // 💡 redirect: 'follow' 옵션을 추가하여 구글 보안망을 통과합니다.
-        const res = await fetch(GAS_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: 'getAllWorkerInfo' }),
-            redirect: 'follow' 
-        });
-        
-        // 💡 응답을 텍스트로 먼저 받고 JSON으로 변환하는 것이 에러 방지에 좋습니다.
-        const text = await res.text();
-        const workers = JSON.parse(text);
-        
-        const box = document.getElementById('worker-list-admin');
-        
-        box.innerHTML = workers.map(w => `
-            <div class="worker-item">
-                <div>
-                    <b>${w.name}</b> (${w.role})<br>
-                    <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span><br>
-                    <small>PW: <b style="color:#2563eb">${w.pw}</b></small>
-                </div>
-                <div class="btn-group">
-                    <button class="btn-outline" onclick="changePassword('${w.name}')">비번변경</button>
-                    <button class="btn-red" style="font-size:0.75rem; padding:6px;" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">
-                        ${w.status === '재직' ? '퇴사처리' : '복구'}
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    } catch (e) {
-        console.error(e);
-        alert("데이터를 불러오지 못했습니다. (CORS 또는 URL 확인)");
-    }
-}
+   async function loadAdminData() {
+            const box = document.getElementById('worker-list-admin');
+            try {
+                const res = await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ action: 'getAllWorkerInfo' }),
+                    redirect: 'follow' 
+                });
                 
-                const workers = await res.json();
-                const box = document.getElementById('worker-list-admin');
+                const text = await res.text();
+                const workers = JSON.parse(text);
                 
-                // 💡 리스트 출력 시 [비번변경] 버튼을 추가했습니다.
                 box.innerHTML = workers.map(w => `
                     <div class="worker-item">
                         <div>
                             <b>${w.name}</b> (${w.role})<br>
-                            <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span>
-                            <small>PW: <b>${w.pw}</b></small>
+                            <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span><br>
+                            <small>PW: <b style="color:#2563eb">${w.pw}</b></small>
                         </div>
                         <div class="btn-group">
                             <button class="btn-outline" onclick="changePassword('${w.name}')">비번변경</button>
@@ -93,36 +71,33 @@
                     </div>
                 `).join('');
             } catch (e) {
-                alert("데이터를 불러오지 못했습니다.");
+                console.error(e);
+                box.innerHTML = `<p style="color:red">⚠️ 데이터를 불러오지 못했습니다. (CORS 에러)</p>`;
             }
         }
+                
+          
 
-        // 💡 비밀번호 변경 실행 함수
-      async function changePassword(name) {
-    const newPw = prompt(`${name}님의 새 비밀번호 4자리를 입력하세요.`);
-    if (!newPw || newPw.length !== 4 || isNaN(newPw)) return alert("숫자 4자리를 정확히 입력하세요.");
+     // 2. 비밀번호 변경 함수
+        async function changePassword(name) {
+            const newPw = prompt(`${name}님의 새 비밀번호 4자리를 입력하세요.`);
+            if (!newPw || newPw.length !== 4 || isNaN(newPw)) return alert("숫자 4자리를 정확히 입력하세요.");
 
-    if (confirm(`${name}님의 비밀번호를 [${newPw}]로 변경할까요?`)) {
-        try {
-            const res = await fetch(GAS_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: 'adminUpdatePassword', userName: name, newPw: newPw }) 
-            });
-            const result = await res.json();
-            
-            if (result === "SUCCESS") {
-                alert("✅ 비밀번호가 성공적으로 변경되었습니다.");
-                loadAdminData();
-            } else {
-                alert("❌ 서버 오류: " + JSON.stringify(result));
+            if (confirm(`${name}님의 비밀번호를 [${newPw}]로 변경할까요?`)) {
+                try {
+                    await fetch(GAS_URL, { 
+                        method: 'POST', 
+                        body: JSON.stringify({ action: 'adminUpdatePassword', userName: name, newPw: newPw }),
+                        redirect: 'follow'
+                    });
+                    alert("✅ 변경 완료!");
+                    loadAdminData();
+                } catch (e) { alert("비번 변경 실패"); }
             }
-        } catch (e) {
-            alert("❌ 통신 실패: " + e.toString());
         }
-    }
-}
 
         
+      // 3. 신규 인원 등록 함수
         async function addWorker() {
             const data = {
                 name: document.getElementById('new-name').value,
@@ -132,15 +107,28 @@
             };
             if(!data.name || !data.pw) return alert("필수 정보를 입력하세요.");
             
-            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'adminAddWorker', data }) });
-            alert("등록 완료!");
-            location.reload();
+            try {
+                await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ action: 'adminAddWorker', data }),
+                    redirect: 'follow' 
+                });
+                alert("✅ 등록 완료!");
+                location.reload();
+            } catch (e) { alert("등록 실패"); }
         }
 
+    // 4. 상태 변경 함수 (퇴사/재직)
         async function updateStatus(name, newStatus) {
             if(!confirm(`${name}님을 ${newStatus} 처리하시겠습니까?`)) return;
-            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'adminUpdateStatus', userName: name, status: newStatus }) });
-            loadAdminData();
+            try {
+                await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ action: 'adminUpdateStatus', userName: name, status: newStatus }),
+                    redirect: 'follow'
+                });
+                loadAdminData();
+            } catch (e) { alert("상태 변경 실패"); }
         }
 
         window.onload = loadAdminData;
