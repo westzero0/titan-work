@@ -37,16 +37,41 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxaiFhxIBuP91ke8IM8UJYnpqF7NziRPHVf00v2YgAvgCY8ppJCQ1HYEK5qDEcVN32B/exec"; // 👈 꼭 본인 주소로 수정하세요!
 
-       async function loadAdminData() {
-            try {
-             // script.js나 admin.html의 fetch 부분을 이렇게 바꾸세요
-const res = await fetch(GAS_URL, {
-    method: 'POST',
-    // mode: 'cors' 를 쓰고 있다면 과감히 지우세요!
-    body: JSON.stringify({ action: "getWorkerList" }),
-    // 구글 리다이렉션을 허용하는 핵심 옵션
-    redirect: 'follow' 
-});
+     async function loadAdminData() {
+    try {
+        // 💡 redirect: 'follow' 옵션을 추가하여 구글 보안망을 통과합니다.
+        const res = await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'getAllWorkerInfo' }),
+            redirect: 'follow' 
+        });
+        
+        // 💡 응답을 텍스트로 먼저 받고 JSON으로 변환하는 것이 에러 방지에 좋습니다.
+        const text = await res.text();
+        const workers = JSON.parse(text);
+        
+        const box = document.getElementById('worker-list-admin');
+        
+        box.innerHTML = workers.map(w => `
+            <div class="worker-item">
+                <div>
+                    <b>${w.name}</b> (${w.role})<br>
+                    <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span><br>
+                    <small>PW: <b style="color:#2563eb">${w.pw}</b></small>
+                </div>
+                <div class="btn-group">
+                    <button class="btn-outline" onclick="changePassword('${w.name}')">비번변경</button>
+                    <button class="btn-red" style="font-size:0.75rem; padding:6px;" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">
+                        ${w.status === '재직' ? '퇴사처리' : '복구'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error(e);
+        alert("데이터를 불러오지 못했습니다. (CORS 또는 URL 확인)");
+    }
+}
                 
                 const workers = await res.json();
                 const box = document.getElementById('worker-list-admin');
