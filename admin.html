@@ -55,6 +55,23 @@
             `).join('');
         }
 
+        
+// 💡 새로 추가할 함수
+async function changePassword(name) {
+    const newPw = prompt(`${name}님의 새 비밀번호 4자리를 입력하세요.`);
+    if (!newPw || newPw.length !== 4) return alert("비밀번호는 반드시 4자리여야 합니다.");
+
+    if (confirm(`${name}님의 비밀번호를 ${newPw}로 변경할까요?`)) {
+        await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'adminUpdatePassword', userName: name, newPw: newPw }) 
+        });
+        alert("변경 완료!");
+        loadAdminData(); // 리스트 새로고침
+    }
+}
+
+        
         async function addWorker() {
             const data = {
                 name: document.getElementById('new-name').value,
