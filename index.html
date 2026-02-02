@@ -324,17 +324,35 @@ html { scroll-behavior: smooth; }
             </div>
 
             <div class="card">
-                <div class="chip-header">
-                    <label style="margin-bottom:0;">📦 사용 자재 (칩 선택)</label>
-                    <span onclick="toggleDelMode('material')" id="del-btn-material" class="del-mode-btn">🗑️ 삭제</span>
-                </div>
-                <div class="chip-input-group">
-                    <input type="text" id="add-material-input" placeholder="자재 이름 추가">
-                    <button onclick="addItem('material')" class="add-btn">추가</button>
-                </div>
-                <div id="material-chips" class="chip-container"></div>
+               <h3>📝 자재 (기존 방식 - 메모)</h3>
                 <textarea id="materialExtra" rows="2" style="margin-top:10px;" placeholder="한번에 입력하려면 여기에 입력하세요."></textarea>
             </div>
+            
+           <div class="card" style="border: 1.5px solid #2563eb; background: #f8fafc;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; color: #2563eb;">📦 정밀 자재 선택 (신규)</h3>
+        <button type="button" id="btn-toggle-mat" onclick="toggleMaterialUI()" 
+                style="width: auto; padding: 6px 15px; font-size: 0.85rem; background: #2563eb; color: white; border-radius: 6px;">
+            자재창 열기
+        </button>
+    </div>
+
+    <div id="material-section" style="display: none; margin-top: 15px; border-top: 1px solid #dee2e6; pt: 15px;">
+        <div id="category-tabs" style="display: flex; overflow-x: auto; gap: 8px; padding: 10px 0; border-bottom: 1px solid #eee; scrollbar-width: none;">
+            </div>
+        
+        <div id="material-list" style="max-height: 250px; overflow-y: auto; margin-top: 10px;">
+            <p style="text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 20px;">대분류를 선택하면 자재 목록이 나옵니다.</p>
+        </div>
+
+        <button type="button" onclick="addCustomMaterialRow()" 
+                style="margin-top: 15px; background: white; color: #2563eb; border: 1px dashed #2563eb; font-size: 0.85rem;">
+            + 목록에 없는 자재 직접 입력
+        </button>
+    </div>
+</div>
+
+   
 
             <div class="card">
                 <label>💰 경비 금액</label>
