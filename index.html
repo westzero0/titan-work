@@ -235,6 +235,59 @@ html { scroll-behavior: smooth; }
 /* 💡 스크롤바 숨기기 (타임라인용) */
 .timeline-grid::-webkit-scrollbar { display: none; }
 
+
+
+        /* 자재 리스트 표 스타일 */
+.mat-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+.mat-table th { background: #f1f5f9; padding: 8px; text-align: left; border-bottom: 2px solid #cbd5e1; }
+.mat-table td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+
+/* 수량 컨트롤러 (인풋 박스 내 위아래 버튼) */
+.qty-wrapper {
+    display: flex;
+    align-items: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    width: 60px;
+    height: 40px;
+    overflow: hidden;
+    background: white;
+}
+.qty-input-table {
+    width: 35px;
+    border: none;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1rem;
+    padding: 0;
+    margin: 0;
+    -moz-appearance: textfield;
+}
+.qty-input-table::-webkit-outer-spin-button,
+.qty-input-table::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.qty-btns {
+    display: flex;
+    flex-direction: column;
+    width: 25px;
+    height: 100%;
+    border-left: 1px solid #cbd5e1;
+}
+.qty-btn-up, .qty-btn-down {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #f8fafc;
+    cursor: pointer;
+    font-size: 0.6rem;
+    border: none;
+    padding: 0;
+}
+.qty-btn-up { border-bottom: 0.5px solid #cbd5e1; }
+.qty-btn-up:active, .qty-btn-down:active { background: #e2e8f0; }
+
+        
         
     </style>
 </head>
