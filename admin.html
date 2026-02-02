@@ -43,39 +43,41 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxaiFhxIBuP91ke8IM8UJYnpqF7NziRPHVf00v2YgAvgCY8ppJCQ1HYEK5qDEcVN32B/exec"; // 👈 꼭 본인 주소로 수정하세요!
 
-   async function loadAdminData() {
-            const box = document.getElementById('worker-list-admin');
-            try {
-                const res = await fetch(GAS_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify({ action: 'getAllWorkerInfo' }),
-                    redirect: 'follow' 
-                });
-                
-                const text = await res.text();
-                const workers = JSON.parse(text);
-                
-                box.innerHTML = workers.map(w => `
-                    <div class="worker-item">
-                        <div>
-                            <b>${w.name}</b> (${w.role})<br>
-                            <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span><br>
-                            <small>PW: <b style="color:#2563eb">${w.pw}</b></small>
-                        </div>
-                        <div class="btn-group">
-                            <button class="btn-outline" onclick="changePassword('${w.name}')">비번변경</button>
-                            <button class="btn-red" style="font-size:0.75rem; padding:6px;" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">
-                                ${w.status === '재직' ? '퇴사처리' : '복구'}
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (e) {
-                console.error(e);
-                box.innerHTML = `<p style="color:red">⚠️ 데이터를 불러오지 못했습니다. (CORS 에러)</p>`;
-            }
-        }
-                
+   // 1. 명단 불러오기 (async 키워드가 핵심!)
+async function loadAdminData() {
+    const box = document.getElementById('worker-list-admin');
+    box.innerHTML = "⏳ 데이터를 불러오는 중...";
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'getAllWorkerInfo' }),
+            redirect: 'follow' 
+        });
+        
+        // 💡 텍스트로 먼저 받고 JSON으로 변환 (CORS 안정성 확보)
+        const text = await res.text();
+        const workers = JSON.parse(text);
+        
+        box.innerHTML = workers.map(w => `
+            <div class="worker-item">
+                <div>
+                    <b>${w.name}</b> (${w.role})<br>
+                    <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span><br>
+                    <small>PW: <b style="color:#2563eb">${w.pw}</b></small>
+                </div>
+                <div class="btn-group">
+                    <button class="btn-outline" onclick="changePassword('${w.name}')">비번변경</button>
+                    <button class="btn-red" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">
+                        ${w.status === '재직' ? '퇴사처리' : '복구'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error(e);
+        box.innerHTML = `<p style="color:red">⚠️ 데이터를 불러오지 못했습니다. (CORS 또는 문법 에러)</p>`;
+    }
+}
           
 
      // 2. 비밀번호 변경 함수
