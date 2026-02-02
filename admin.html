@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>타이탄 관리자 패널</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f1f5f9; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-blue { background: #2563eb; color: white; }
+        .btn-red { background: #ef4444; color: white; margin-top: 5px; }
+        .worker-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
+        .status-on { background: #dcfce7; color: #166534; }
+        .status-off { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <h2>⚡ 관리자 마스터 패널</h2>
+
+    <div class="card">
+        <h3>👤 신규 인원 등록</h3>
+        <input type="text" id="new-name" placeholder="이름 (예: 홍길동)">
+        <select id="new-role"><option value="기공">기공</option><option value="조공">조공</option></select>
+        <input type="number" id="new-rate" placeholder="일당 (숫자만)">
+        <input type="password" id="new-pw" placeholder="초기 비밀번호 (4자리)">
+        <button class="btn-blue" onclick="addWorker()">등록하기</button>
+    </div>
+
+    <div class="card">
+        <h3>👥 인원 관리 (재직/퇴사/비번)</h3>
+        <div id="worker-list-admin">불러오는 중...</div>
+    </div>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwo5p_T99BWcXyz5Mjhhx1K2ELZDuzH3AJSSEnnrv0V92HONZU8CNC19kcleib1g8Je/exec"; // 👈 꼭 본인 주소로 수정하세요!
+
+        async function loadAdminData() {
+            const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) });
+            const workers = await res.json();
+            const box = document.getElementById('worker-list-admin');
+            box.innerHTML = workers.map(w => `
+                <div class="worker-item">
+                    <div>
+                        <b>${w.name}</b> (${w.role})<br>
+                        <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span>
+                        <small>PW: ${w.pw}</small>
+                    </div>
+                    <div style="width: 100px;">
+                        <button class="btn-red" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">${w.status === '재직' ? '퇴사처리' : '복구'}</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addWorker() {
+            const data = {
+                name: document.getElementById('new-name').value,
+                role: document.getElementById('new-role').value,
+                rate: document.getElementById('new-rate').value,
+                pw: document.getElementById('new-pw').value
+            };
+            if(!data.name || !data.pw) return alert("필수 정보를 입력하세요.");
+            
+            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'adminAddWorker', data }) });
+            alert("등록 완료!");
+            location.reload();
+        }
+
+        async function updateStatus(name, newStatus) {
+            if(!confirm(`${name}님을 ${newStatus} 처리하시겠습니까?`)) return;
+            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'adminUpdateStatus', userName: name, status: newStatus }) });
+            loadAdminData();
+        }
+
+        window.onload = loadAdminData;
+    </script>
+</body>
+</html>
