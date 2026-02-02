@@ -195,6 +195,11 @@ async function loadTitanDataWithBackgroundSync() {
             body: JSON.stringify({ action: 'getAllData' })
         });
         const fullData = await res.json();
+
+
+        // 💡 여기에 추가: 데이터가 들어오는지 팝업으로 확인
+        alert("서버 응답 확인: " + JSON.stringify(fullData).substring(0, 50));
+
         
         if (fullData && !fullData.status) {
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
