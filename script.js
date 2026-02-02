@@ -39,16 +39,19 @@ async function showLoginScreen() {
     screen.style.display = 'flex';
 
     try {
-      // script.js나 admin.html의 fetch 부분을 이렇게 바꾸세요
+// 💡 fetch 옵션에서 'mode'는 제거하고 'redirect'를 추가합니다.
 const res = await fetch(GAS_URL, {
     method: 'POST',
-    // mode: 'cors' 를 쓰고 있다면 과감히 지우세요!
+    // mode: 'cors' 혹은 'no-cors'가 있다면 지우세요! (기본값으로 두는게 안전함)
     body: JSON.stringify({ action: "getWorkerList" }),
-    // 구글 리다이렉션을 허용하는 핵심 옵션
+    
+    // 🔑 구글 서버의 리다이렉션을 따라가도록 만드는 핵심 옵션
     redirect: 'follow' 
 });
-        const workers = await res.json();
-        
+
+// 💡 응답을 텍스트로 먼저 받은 후 JSON으로 파싱 (CORS 에러 완화 전략)
+const text = await res.text();
+const workers = JSON.parse(text);
         workers.forEach(name => {
             const opt = document.createElement('option');
             opt.value = name;
