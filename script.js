@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbySvpbqlkJYVkrxLA1psVQAfAgbByEab45zS0m4xkv1NOQG-O0jyV6TtbXo8yrqYqh0/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwpxUcqkehrTbQzQXZi1hHbqhv8u4qhfw6Rhi4sIhbtpFRol3d0J9w3pfS0ovMMfWS1/exec";
 
 
 // 💡 1. 통합 초기 로드 로직
@@ -360,7 +360,13 @@ async function send() {
     const work = document.getElementById('work').value.trim();
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
     const site = document.querySelector('#site-chips .chip.active')?.innerText || document.getElementById('siteSearch').value.trim();
+    const matListForServer = Object.values(selectedMaterials).filter(m => m.qty > 0);
 
+    
+// 💡 신규 시스템에서 수량이 1개 이상인 항목만 추출
+    const matList = Object.values(selectedMaterials).filter(m => m.qty > 0);
+const matDetailedString = matList.map(m => `${m.name}(${m.qty}${m.unit})`).join(', ');
+    
     if (!client || !site || !work) return alert("⚠️ 필수 정보를 입력해주세요.");
 
     btn.disabled = true; btn.innerText = "⏳ 데이터 전송 중...";
@@ -369,8 +375,11 @@ async function send() {
     // 데이터 정리
     const expAmount = Number(document.getElementById('expAmount').value) || 0; 
     const expDetail = document.getElementById('expDetail').value.trim();
-    const materials = [getSel('#material-chips'), document.getElementById('materialExtra').value.trim()].filter(Boolean).join(', ') || "없음";
-    let expenseLine = expAmount > 0 ? `\n💰 경비: ${expAmount.toLocaleString()}원${expDetail ? ` (${expDetail})` : ''}` : "";
+const materials = [
+    getSel('#material-chips'), 
+    document.getElementById('materialExtra').value.trim(),
+    matDetailedString // 신규 정밀 자재 추가
+].filter(Boolean).join(', ') || "없음";    let expenseLine = expAmount > 0 ? `\n💰 경비: ${expAmount.toLocaleString()}원${expDetail ? ` (${expDetail})` : ''}` : "";
 
     // 카톡 메시지 미리 생성 (백업)
     const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${document.getElementById('start').value} ~ ${document.getElementById('end').value}\n👥 인원: ${getSel('#member-chips') || "없음"}\n🚗 차량: ${getSel('#car-chips') || "없음"}\n🍱 석식: ${document.getElementById('dinner').value}\n📦 자재: ${materials}${expenseLine}`;
@@ -388,17 +397,32 @@ async function send() {
 
     try {
         btn.innerText = "🚀 서버 전송 중..."; 
-        const payload = {
-            action: "saveLog",
-            data: {
-                date: document.getElementById('date').value, client, site, work,
-                start: document.getElementById('start').value, end: document.getElementById('end').value,
-                members: getSel('#member-chips'), car: getSel('#car-chips'), materials, 
-                dinner: document.getElementById('dinner').value,
-                expAmount, expDetail, expPayer: getSel('#payer-chips'), files: filesData,
-                submitter: document.getElementById('submitter').value
-            }
-        };
+     const payload = {
+        action: "saveLog",
+        data: {
+            date: document.getElementById('date').value,
+            client: client,
+            site: site,
+            work: work,
+            start: document.getElementById('start').value,
+            end: document.getElementById('end').value,
+            members: getSel('#member-chips'),
+            car: getSel('#car-chips'),
+            dinner: document.getElementById('dinner').value,
+            
+            // 1. 기존 방식 (텍스트 메모)
+            materials: document.getElementById('materialExtra').value.trim() || "없음",
+            
+            // 2. 신규 방식 (선택된 자재 리스트 전송)
+            selectedMaterials: matList, 
+
+            expAmount: Number(document.getElementById('expAmount').value) || 0,
+            expDetail: document.getElementById('expDetail').value.trim(),
+            expPayer: getSel('#payer-chips'),
+            files: filesData,
+            submitter: document.getElementById('submitter').value
+        }
+    };
 
         // 💡 핵심 수리: 'no-cors' 모드를 사용해 차단 에러를 회피하고 강제 성공 처리
         await fetch(GAS_URL, { 
@@ -499,7 +523,12 @@ function resetFormOnlyInputs() {
     document.querySelectorAll('.chip.active').forEach(chip => {
         chip.classList.remove('active');
     });
+    // 💡 추가: 신규 자재 데이터 초기화
+    selectedMaterials = {}; 
+    const matListContainer = document.getElementById('material-list');
+    if (matListContainer) matListContainer.innerHTML = "<p style='text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 20px;'>대분류를 선택하면 자재 목록이 나옵니다.</p>";
 }
+
 
 // 💡 공유까지 끝난 후 완전 초기화하는 함수
 function resetFormFull() {
@@ -756,4 +785,138 @@ function copyScheduleToLog(s) {
 
     showPage('log-page');
     window.scrollTo(0, 0);
+}
+
+
+let allMaterials = {}; // 서버에서 가져온 전체 자재 데이터
+let selectedMaterials = {}; // 수량이 입력된 자재 데이터
+let isMatLoaded = false; // 데이터 중복 로드 방지
+
+// ✅ 자재창 온/오프 토글 함수
+function toggleMaterialUI() {
+    const section = document.getElementById('material-section');
+    const btn = document.getElementById('btn-toggle-mat');
+
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        btn.innerText = '창 닫기';
+        btn.style.background = '#64748b'; // 닫기일 때 색상 변경
+        
+        // 창을 처음 열 때만 서버에서 데이터를 가져옴
+        if (!isMatLoaded) {
+            loadMaterialData();
+        }
+    } else {
+        section.style.display = 'none';
+        btn.innerText = '자재창 열기';
+        btn.style.background = '#2563eb';
+    }
+}
+
+// 서버에서 자재 마스터 데이터 불러오기 (fetch 방식)
+async function loadMaterialData() {
+    const listContainer = document.getElementById('material-list');
+    listContainer.innerHTML = "<p style='text-align:center; padding:20px;'>⏳ 자재 목록 불러오는 중...</p>";
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "getMaterialData" }),
+            redirect: 'follow'
+        });
+        const text = await res.text();
+        allMaterials = JSON.parse(text);
+        isMatLoaded = true;
+        renderCategoryTabs();
+    } catch (e) {
+        listContainer.innerHTML = "<p style='text-align:center; color:red;'>⚠️ 목록 로드 실패</p>";
+        console.error("자재 로드 에러:", e);
+    }
+}
+
+// 대분류 탭 생성
+function renderCategoryTabs() {
+    const cats = Object.keys(allMaterials);
+    const container = document.getElementById('category-tabs');
+    
+    container.innerHTML = cats.map((cat, idx) => `
+        <div class="cat-tab" onclick="filterMaterial('${cat}', this)" 
+             style="padding: 6px 14px; background: #e2e8f0; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 0.8rem; font-weight: bold;">
+            ${cat}
+        </div>
+    `).join('');
+}
+
+// 선택한 대분류에 따른 자재 리스트 표시
+function filterMaterial(cat, el) {
+    // 탭 강조 효과
+    document.querySelectorAll('.cat-tab').forEach(t => {
+        t.style.background = '#e2e8f0';
+        t.style.color = '#475569';
+    });
+    el.style.background = '#2563eb';
+    el.style.color = '#fff';
+
+    const list = allMaterials[cat];
+    const container = document.getElementById('material-list');
+    
+    container.innerHTML = list.map(m => {
+        const currentQty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
+        return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9;">
+                <div>
+                    <div style="font-weight: bold; font-size: 0.9rem;">${m.name}</div>
+                    <div style="font-size: 0.75rem; color: #64748b;">${m.spec} | ${m.unit}</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" onclick="changeQty('${cat}', '${m.name}', -1)" style="width:28px; height:28px; padding:0;">-</button>
+                    <input type="number" id="qty-${m.name}" value="${currentQty}" 
+                           onchange="changeQty('${cat}', '${m.name}', this.value, true)"
+                           style="width: 45px; text-align: center; border: 1px solid #ddd; border-radius: 4px;">
+                    <button type="button" onclick="changeQty('${cat}', '${m.name}', 1)" style="width:28px; height:28px; padding:0;">+</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 수량 변경 함수 (+, - 버튼 및 직접 입력)
+function changeQty(cat, name, val, isDirect = false) {
+    if (!selectedMaterials[name]) {
+        const item = allMaterials[cat].find(i => i.name === name);
+        selectedMaterials[name] = { ...item, category: cat, qty: 0 };
+    }
+
+    if (isDirect) {
+        selectedMaterials[name].qty = Math.max(0, parseInt(val) || 0);
+    } else {
+        selectedMaterials[name].qty = Math.max(0, selectedMaterials[name].qty + val);
+    }
+
+    document.getElementById(`qty-${name}`).value = selectedMaterials[name].qty;
+}
+
+// 목록에 없는 자재 직접 입력 팝업
+function addCustomMaterialRow() {
+    const name = prompt("자재명을 입력하세요 (예: 전산볼트)");
+    if (!name) return;
+    const spec = prompt("규격/사이즈를 입력하세요 (예: M10)", "-");
+    const unit = prompt("단위를 입력하세요 (예: 개, m, box)", "개");
+    const price = prompt("단가를 입력하세요 (숫자만)", "0");
+    const qty = prompt("사용 수량을 입력하세요", "1");
+
+    const numQty = parseInt(qty);
+    if (isNaN(numQty) || numQty <= 0) return alert("수량을 정확히 입력하세요.");
+
+    // 직접 입력한 자재를 selectedMaterials 객체에 강제 삽입
+    selectedMaterials[name] = {
+        category: "직접입력",
+        name: name,
+        spec: spec,
+        unit: unit,
+        price: Number(price) || 0,
+        qty: numQty
+    };
+
+    alert(`'${name}' ${numQty}${unit}이(가) 리스트에 추가되었습니다.\n(전송 시 시트에 기록됩니다)`);
 }
