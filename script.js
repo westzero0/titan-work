@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycby_SL7npPwAqurjNmvKOcKK5GHHZOA3Lki4xTSkBy7M6riTR1h3xJUchOhZ2iEQ5tHq/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwo5p_T99BWcXyz5Mjhhx1K2ELZDuzH3AJSSEnnrv0V92HONZU8CNC19kcleib1g8Je/exec";
 
 
 document.addEventListener('DOMContentLoaded', async () => {
