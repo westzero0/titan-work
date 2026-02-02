@@ -1,8 +1,9 @@
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyG7dVLv1oqEsB3-S4HA7GqBq0w1un3sGiBsvKzB3fOjyzkrbQ5ySFlQD3GliieUu1z/exec";
 
 
+// 💡 1. 통합 초기 로드 로직
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. 스플래시 화면 제어 (빨간 화면)
+    // 스플래시 화면 제어
     setTimeout(() => {
         const splash = document.getElementById('splash-screen');
         if (splash) {
@@ -11,21 +12,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }, 2000);
 
-    // 2. 로그인 상태 확인 (핵심 보안)
+    // 로그인 상태 확인
     const savedName = localStorage.getItem('titan_user_name');
     
     if (!savedName) {
-        // 이름 저장 안 되어 있으면 로그인 창 띄우기
         showLoginScreen();
     } else {
-        // 이름은 있는데, 혹시 그 사이에 퇴사 처리 됐는지 실시간 체크
         const isActive = await checkAuth(savedName);
         if (isActive) {
-            // 재직 중인 정상 사용자면 앱 기능들 시작
             initApp(savedName); 
         }
     }
 });
+
 
 /**
  * 💡 로그인 화면 제어
@@ -117,19 +116,45 @@ async function checkAuth(userName) {
     }
 }
 
+
 /**
  * 💡 앱 초기화 (로그인 성공 후)
  */
 function initApp(name) {
-    document.getElementById('submitter').value = name;
+    // 1. UI 전환
     document.getElementById('login-screen').style.display = 'none';
     document.querySelector('.container').style.display = 'block';
     document.querySelector('.bottom-nav').style.display = 'flex';
+
+    // 2. 데이터 세팅
+    const subEl = document.getElementById('submitter');
+    if (subEl) subEl.value = name;
     
-    // 기존에 만드신 데이터 로딩 함수들 실행
-    if (typeof loadAllData === 'function') loadAllData(); 
+    const dateEl = document.getElementById('date');
+    if (dateEl) dateEl.valueAsDate = new Date();
+    
+    // 3. 필수 함수 실행
+    generateTimeOptions(); // 시간 옵션 생성
+    renderAllChips();      // 로컬 리스트 칩 렌더링
+    loadTitanDataWithBackgroundSync(); // 👈 여기서 거래처/현장을 서버에서 가져옵니다!
+
+    // 4. 검색 이벤트 리스너 등록
+    const searchEl = document.getElementById('siteSearch');
+    if (searchEl) {
+        searchEl.addEventListener('input', (e) => {
+            const term = e.target.value.trim();
+            const filtered = currentSites.filter(s => s.name.includes(term));
+            renderSiteChips(filtered, term);
+        });
+    }
 }
 
+// 현장 검색 핸들러 (분리해서 관리하는 것이 깔끔합니다)
+function siteSearchHandler(e) {
+    const term = e.target.value.trim();
+    const filtered = currentSites.filter(s => s.name.includes(term));
+    renderSiteChips(filtered, term);
+}
 
 
 let currentSites = []; 
