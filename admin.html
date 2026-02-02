@@ -25,6 +25,7 @@
     margin-top: 20px;
 }
 
+        
 .worker-card {
     background: white;
     border-radius: 12px;
@@ -48,6 +49,24 @@
 .card-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 .btn-sm { padding: 8px 0 !important; font-size: 0.75rem !important; }
 
+
+
+        /* 복사 가능한 텍스트 스타일 */
+.copyable {
+    cursor: pointer;
+    color: #475569;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    display: inline-block;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.copyable:hover { background: #e2e8f0; color: #2563eb; }
+.copy-hint { font-size: 0.7rem; color: #94a3b8; margin-bottom: 2px; }
+
         
     .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; display: inline-block; margin: 4px 0; }
     .status-on { background: #dcfce7; color: #166534; }
@@ -58,21 +77,26 @@
     <h2>⚡ 관리자 마스터 패널</h2>
 
     <div class="card">
-        <h3>👤 신규 인원 등록</h3>
-        <input type="text" id="new-name" placeholder="이름 (예: 홍길동)">
-        <select id="new-role"><option value="기공">기공</option><option value="조공">조공</option></select>
-        <input type="number" id="new-rate" placeholder="일당 (숫자만)">
-        <input type="password" id="new-pw" placeholder="초기 비밀번호 (4자리)">
-        <button class="btn-blue" onclick="addWorker()">등록하기</button>
-    </div>
+    <h3>👤 신규 인원 등록</h3>
+    <input type="text" id="new-name" placeholder="이름 (예: 홍길동)">
+    <select id="new-role">
+        <option value="기공">기공</option>
+        <option value="조공">조공</option>
+    </select>
+    <input type="number" id="new-rate" placeholder="일당 (숫자만)">
+    <input type="text" id="new-phone" placeholder="휴대폰 번호 (예: 010-1234-5678)">
+    <input type="text" id="new-address" placeholder="집주소">
+    <input type="password" id="new-pw" placeholder="초기 비밀번호 (4자리)" maxlength="4">
+    <button class="btn-blue" onclick="addWorker()">등록하기</button>
+</div>
 
     <div class="card">
-        <h3>👥 인원 관리 (재직/퇴사/비번)</h3>
+        <h3>👥 직원 관리</h3>
         <div id="worker-list-admin">불러오는 중...</div>
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxaiFhxIBuP91ke8IM8UJYnpqF7NziRPHVf00v2YgAvgCY8ppJCQ1HYEK5qDEcVN32B/exec"; // 👈 꼭 본인 주소로 수정하세요!
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzXxULvY66ZB1AFieQ8tAozI_Wiq_OZ43_5spybvz78yMubmbQFHNld0loy3yk6Zjcc/exec"; // 👈 꼭 본인 주소로 수정하세요!
 
    // 1. 명단 불러오기 (async 키워드가 핵심!)
 async function loadAdminData() {
@@ -89,23 +113,32 @@ async function loadAdminData() {
         const text = await res.text();
         const workers = JSON.parse(text);
         
-       box.innerHTML = workers.map(w => `
+     box.innerHTML = workers.map(w => `
     <div class="worker-card" style="border-top-color: ${w.status === '재직' ? '#2563eb' : '#ef4444'}">
         <div>
-            <div class="name">${w.name}</div>
-            <div class="role">${w.role}</div>
-            <div class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</div>
+            <div style="display:flex; justify-content:space-between; align-items:start;">
+                <div class="name">${w.name} <span style="font-size:0.8rem; font-weight:normal;">(${w.role})</span></div>
+                <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span>
+            </div>
         </div>
         
         <div class="info">
-            <div>일당: <b>${Number(w.rate).toLocaleString()}원</b></div>
-            <div style="margin-top:5px;">비번: <span class="pw-box">${w.pw}</span></div>
+            <div class="copy-hint">📱 휴대폰 (클릭 시 복사)</div>
+            <div class="copyable" onclick="copyText('${w.phone}')">${w.phone || '번호 없음'}</div>
+            
+            <div class="copy-hint" style="margin-top:8px;">🏠 집주소 (클릭 시 복사)</div>
+            <div class="copyable" onclick="copyText('${w.address}')" title="${w.address}">${w.address || '주소 없음'}</div>
+            
+            <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.8rem;">단가: <b>${Number(w.rate).toLocaleString()}</b></span>
+                <span class="pw-box">PW: ${w.pw}</span>
+            </div>
         </div>
 
         <div class="card-btns">
             <button class="btn-outline btn-sm" onclick="changePassword('${w.name}')">비번변경</button>
             <button class="btn-red btn-sm" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">
-                ${w.status === '재직' ? '퇴사처리' : '복구'}
+                ${w.status === '재직' ? '퇴직' : '복구'}
             </button>
         </div>
     </div>
@@ -137,25 +170,31 @@ async function loadAdminData() {
 
         
       // 3. 신규 인원 등록 함수
-        async function addWorker() {
-            const data = {
-                name: document.getElementById('new-name').value,
-                role: document.getElementById('new-role').value,
-                rate: document.getElementById('new-rate').value,
-                pw: document.getElementById('new-pw').value
-            };
-            if(!data.name || !data.pw) return alert("필수 정보를 입력하세요.");
-            
-            try {
-                await fetch(GAS_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify({ action: 'adminAddWorker', data }),
-                    redirect: 'follow' 
-                });
-                alert("✅ 등록 완료!");
-                location.reload();
-            } catch (e) { alert("등록 실패"); }
-        }
+      async function addWorker() {
+    const data = {
+        name: document.getElementById('new-name').value,
+        role: document.getElementById('new-role').value,
+        rate: document.getElementById('new-rate').value,
+        phone: document.getElementById('new-phone').value, // 추가
+        address: document.getElementById('new-address').value, // 추가
+        pw: document.getElementById('new-pw').value
+    };
+
+    if(!data.name || !data.pw) return alert("이름과 비밀번호는 필수입니다.");
+    
+    try {
+        await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'adminAddWorker', data }),
+            redirect: 'follow' 
+        });
+        alert("✅ 등록 완료!");
+        location.reload(); // 새로고침해서 목록 갱신
+    } catch (e) { 
+        alert("등록 실패: " + e.toString()); 
+    }
+}
+        
 
     // 4. 상태 변경 함수 (퇴사/재직)
         async function updateStatus(name, newStatus) {
@@ -171,6 +210,15 @@ async function loadAdminData() {
         }
 
         window.onload = loadAdminData;
+
+        function copyText(text) {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        alert("복사되었습니다: " + text);
+    });
+}
+
+        
     </script>
 </body>
 </html>
