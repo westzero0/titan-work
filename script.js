@@ -903,21 +903,37 @@ function filterMaterial(cat, el) {
     renderMaterialTable(items);
 }
 
-// 중분류 필터링
+// 📍 [Updated] Filter Sub-Category (Remember state securely!)
 function filterSubCat(subCat, el) {
+    // 1. Save the currently selected sub-category to variable (Important!)
+    currentSubCategory = subCat;
+
+    // 2. If el is missing (called from code), find the chip with matching text
+    if (!el) {
+        const chips = document.querySelectorAll('.sub-chip');
+        chips.forEach(c => {
+            if (c.innerText === subCat || (subCat === "ALL" && c.innerText === "All")) el = c;
+        });
+    }
+
+    // 3. Change chip color
     document.querySelectorAll('.sub-chip').forEach(c => {
         c.classList.remove('active');
         c.style.background = 'white'; c.style.color = '#64748b';
     });
-    el.classList.add('active');
-    el.style.background = '#2563eb'; el.style.color = 'white'; 
+    
+    if (el) {
+        el.classList.add('active');
+        el.style.background = '#2563eb'; el.style.color = 'white'; 
+    }
 
+    // 4. Filter list
     const items = allMaterials[currentCategory];
     if (subCat === 'ALL') renderMaterialTable(items);
     else renderMaterialTable(items.filter(i => i.subCat === subCat));
 }
 
-// 🔑 [핵심] 표 그리기 (UID 사용으로 수량 꼬임 방지)
+// Draw Table (UID based)
 function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
     
@@ -930,45 +946,34 @@ function renderMaterialTable(list) {
             </colgroup>
             <thead>
                 <tr>
-                    <th>품목</th>
-                    <th>규격</th>
-                    <th>수량</th>
+                    <th>Item</th>
+                    <th>Spec</th>
+                    <th>Qty</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
     if (list.length === 0) {
-        html += `<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">항목이 없습니다.</td></tr>`;
+        html += `<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">No items found.</td></tr>`;
     }
 
     list.forEach(m => {
-        // UID를 키값으로 사용하여 데이터 매칭
         const currentData = selectedMaterials[m.uid];
         const qty = currentData ? currentData.qty : 0;
         const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : ''; 
-
-        // UID 전달을 위한 문자열 처리
         const clickEvt = `focusQtyInput('${m.uid}')`;
 
         html += `
             <tr ${rowBg}>
                 <td onclick="${clickEvt}"><span style="font-weight:bold;">${m.name}</span></td>
-                
-                <td class="spec-cell" onclick="${clickEvt}">
-                    ${m.spec}<span class="unit-text">(${m.unit})</span>
-                </td>
-
+                <td class="spec-cell" onclick="${clickEvt}">${m.spec}<span class="unit-text">(${m.unit})</span></td>
                 <td>
                     <div class="qty-control-box">
                         <input type="number" id="qty-${m.uid}" class="qty-input-box" value="${qty}" 
-                               inputmode="numeric" 
-                               onmousedown="event.stopPropagation();" 
-                               ontouchstart="event.stopPropagation();" 
-                               onclick="event.stopPropagation();" 
-                               onfocus="this.select()" 
-                               oninput="updateQtyDirectly('${m.uid}', this.value)">
-                        
+                               inputmode="numeric" onmousedown="event.stopPropagation();" 
+                               ontouchstart="event.stopPropagation();" onclick="event.stopPropagation();" 
+                               onfocus="this.select()" oninput="updateQtyDirectly('${m.uid}', this.value)">
                         <div class="qty-btn-col">
                             <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.uid}', 1); event.stopPropagation();">▲</button>
                             <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.uid}', -1); event.stopPropagation();">▼</button>
@@ -978,34 +983,22 @@ function renderMaterialTable(list) {
             </tr>
         `;
     });
-    
     html += `</tbody></table>`;
     container.innerHTML = html;
 }
 
-// ---------------------------------------------------------
-// 4. 수량 변경 로직 (UID 기준)
-// ---------------------------------------------------------
-
-// 직접 타이핑 (UID 기준)
+// Change Quantity (Direct Input)
 function updateQtyDirectly(uid, val) {
     const numVal = parseInt(val);
-    
-    // 아직 선택된 적 없으면 초기화
     if (!selectedMaterials[uid]) {
-        // 현재 카테고리 목록에서 해당 UID를 가진 아이템 찾기
         const item = allMaterials[currentCategory].find(i => i.uid === uid);
-        if(item) {
-            // 원본 데이터 복사 후 qty 추가
-            selectedMaterials[uid] = { ...item, qty: 0, category: currentCategory };
-        }
+        if(item) selectedMaterials[uid] = { ...item, qty: 0, category: currentCategory };
     }
-
     if (isNaN(numVal) || numVal < 0) selectedMaterials[uid].qty = 0;
     else selectedMaterials[uid].qty = numVal;
 }
 
-// 버튼 클릭 (UID 기준)
+// Change Quantity (Button)
 function testChangeQty(uid, val) {
     if (!selectedMaterials[uid]) {
         const item = allMaterials[currentCategory].find(i => i.uid === uid);
@@ -1016,10 +1009,8 @@ function testChangeQty(uid, val) {
     
     let newQty = selectedMaterials[uid].qty + val;
     if (newQty < 0) newQty = 0;
-    
     selectedMaterials[uid].qty = newQty;
     
-    // 화면 즉시 갱신
     const input = document.getElementById(`qty-${uid}`);
     if(input) {
         input.value = newQty;
@@ -1029,42 +1020,42 @@ function testChangeQty(uid, val) {
     }
 }
 
-// 포커스 이동
 function focusQtyInput(uid) {
     const input = document.getElementById(`qty-${uid}`);
     if(input) input.focus();
 }
 
-// 📍 [수정됨] 직접 입력 (선택된 중분류 반영)
+
+// 📍 [Updated] Add Custom Material (Reflect Selected Sub-Category)
 function addCustomMaterialRow() {
-    if (!currentCategory) return alert("대분류를 먼저 선택해주세요.");
+    if (!currentCategory) return alert("Please select a main category first.");
 
-    // 1. 현재 선택된 중분류 가져오기
-    // (만약 '전체'나 선택 안 됨 상태면 -> '기타'로 설정)
-    const targetSubCat = (currentSubCategory && currentSubCategory !== "ALL") ? currentSubCategory : "기타";
+    // 1. Get currently selected sub-category
+    // (If 'All' or not selected -> set to 'Others')
+    const targetSubCat = (currentSubCategory && currentSubCategory !== "ALL") ? currentSubCategory : "Others";
 
-    const name = prompt(`[${currentCategory} > ${targetSubCat}] 자재명 입력:`);
+    const name = prompt(`[${currentCategory} > ${targetSubCat}] Enter Material Name:`);
     if (!name) return;
     
-    const spec = prompt("규격 입력", "-");
+    const spec = prompt("Enter Specification", "-");
     if (spec === null) return; 
     
-    const unit = prompt("단위 입력", "개");
+    const unit = prompt("Enter Unit", "ea");
     if (unit === null) return;
 
-    const qtyStr = prompt("수량 입력", "1");
+    const qtyStr = prompt("Enter Quantity", "1");
     if (qtyStr === null) return;
 
     const numQty = parseInt(qtyStr);
-    if (isNaN(numQty) || numQty <= 0) return alert("수량을 정확히 입력하세요.");
+    if (isNaN(numQty) || numQty <= 0) return alert("Please enter a valid quantity.");
 
-    // 직접 입력 UID 생성
+    // Generate Custom UID
     const customUid = "CUSTOM_" + Date.now();
 
     const newItem = {
         uid: customUid,
         category: currentCategory,
-        subCat: targetSubCat, // 👈 여기서 선택된 중분류가 들어감
+        subCat: targetSubCat, // 👈 Selected sub-category goes here
         name: name,
         spec: spec,
         unit: unit,
@@ -1072,20 +1063,20 @@ function addCustomMaterialRow() {
         qty: numQty
     };
 
-    // 1. 전체 목록에 추가 (맨 위로)
+    // 1. Add to full list (at top)
     if (!allMaterials[currentCategory]) allMaterials[currentCategory] = [];
     allMaterials[currentCategory].unshift(newItem); 
 
-    // 2. 선택 데이터(금고)에 저장
+    // 2. Save to selected data (vault)
     selectedMaterials[customUid] = newItem;
 
-    // 3. 현재 스크롤 위치 기억
+    // 3. Remember current scroll position
     const listContainer = document.getElementById('material-list');
     const scrollPos = listContainer ? listContainer.scrollTop : 0;
 
-    // 4. 화면 다시 그리기 (현재 중분류 상태 유지)
+    // 4. Redraw screen (Maintain current sub-category state)
     filterSubCat(currentSubCategory, null); 
 
-    // 5. 스크롤 위치 복구
+    // 5. Restore scroll position
     if (listContainer) listContainer.scrollTop = scrollPos;
 }
