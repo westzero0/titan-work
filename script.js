@@ -869,75 +869,125 @@ function renderCategoryTabs() {
     }
 }
 
+// 2단계: 대분류 선택 -> 중분류 칩 생성 (여기가 안 나왔던 부분!)
 function filterMaterial(cat, el) {
     currentCategory = cat;
-    document.querySelectorAll('.cat-tab').forEach(t => { if(t && t.style) { t.style.background = '#e2e8f0'; t.style.color = '#475569'; } });
-    if(el && el.style) { el.style.background = '#2563eb'; el.style.color = 'white'; }
-    if (!allMaterials[cat]) return;
+    
+    // 탭 스타일 활성화
+    document.querySelectorAll('.cat-tab').forEach(t => { 
+        if(t.style) { t.style.background = '#e2e8f0'; t.style.color = '#475569'; }
+    });
+    if(el && el.style) { 
+        el.style.background = '#2563eb'; el.style.color = 'white'; 
+    }
 
     const items = allMaterials[cat];
-    // 중분류 정렬 및 중복 제거
+    if (!items) return;
+
+    // 중분류(subCat)만 뽑아서 중복 제거하고 정렬
     const subCats = [...new Set(items.map(i => i.subCat))].sort();
+    
     const subContainer = document.getElementById('sub-category-chips');
     
+    // '전체' 버튼 + 나머지 중분류 버튼 생성
     let html = `<div class="sub-chip active" onclick="filterSubCat('ALL', this)">전체</div>`;
-    html += subCats.map(sub => `<div class="sub-chip" onclick="filterSubCat('${sub}', this)">${sub}</div>`).join('');
+    html += subCats.map(sub => 
+        `<div class="sub-chip" onclick="filterSubCat('${sub}', this)">${sub}</div>`
+    ).join('');
     
     subContainer.innerHTML = html;
+    
+    // 처음엔 전체 리스트 보여주기
     renderMaterialTable(items);
 }
 
+// 3단계: 중분류 칩 누르면 필터링
 function filterSubCat(subCat, el) {
-    document.querySelectorAll('.sub-chip').forEach(c => { c.classList.remove('active'); c.style.background = 'white'; c.style.color = '#64748b'; });
-    el.classList.add('active'); el.style.background = '#2563eb'; el.style.color = 'white';
+    // 칩 스타일 변경
+    document.querySelectorAll('.sub-chip').forEach(c => {
+        c.classList.remove('active');
+        c.style.background = 'white'; c.style.color = '#64748b';
+    });
+    el.classList.add('active');
+    el.style.background = '#2563eb'; el.style.color = 'white'; 
 
     const items = allMaterials[currentCategory];
-    if (subCat === 'ALL') renderMaterialTable(items);
-    else renderMaterialTable(items.filter(i => i.subCat === subCat));
+    
+    if (subCat === 'ALL') {
+        renderMaterialTable(items);
+    } else {
+        const filtered = items.filter(i => i.subCat === subCat);
+        renderMaterialTable(filtered);
+    }
 }
 
-// 🔑 표 그리기 (고유 UID 사용으로 오류 원천 차단)
+// 4단계: 표 그리기 (3칸 분리 + 입력창 충돌 방지)
 function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
+    
     let html = `
         <table class="mat-table">
-            <colgroup><col style="width:35%"><col style="width:35%"><col style="width:30%"></colgroup>
-            <thead><tr><th>품목</th><th>규격</th><th>수량</th></tr></thead>
+            <colgroup>
+                <col style="width: 35%"> 
+                <col style="width: 35%"> 
+                <col style="width: 30%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>품목</th>
+                    <th>규격</th>
+                    <th>수량</th>
+                </tr>
+            </thead>
             <tbody>
     `;
-    if (list.length === 0) html += `<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">항목이 없습니다.</td></tr>`;
+
+    if (list.length === 0) {
+        html += `<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">항목이 없습니다.</td></tr>`;
+    }
 
     list.forEach(m => {
-        // ID(uid)를 기준으로 데이터 조회
+        // UID를 키값으로 사용 (중복 방지)
         const currentData = selectedMaterials[m.uid];
         const qty = currentData ? currentData.qty : 0;
         const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : ''; 
 
-        // m.uid를 따옴표로 감싸서 전달해야 함
+        // 이름이나 규격 누르면 입력창으로 포커스
         const clickEvt = `focusQtyInput('${m.uid}')`;
 
         html += `
             <tr ${rowBg}>
                 <td onclick="${clickEvt}"><span style="font-weight:bold;">${m.name}</span></td>
-                <td class="spec-cell" onclick="${clickEvt}">${m.spec}<span class="unit-text">(${m.unit})</span></td>
+                
+                <td class="spec-cell" onclick="${clickEvt}">
+                    ${m.spec}<span class="unit-text">(${m.unit})</span>
+                </td>
+
                 <td>
                     <div class="qty-control-box">
                         <input type="number" id="qty-${m.uid}" class="qty-input-box" value="${qty}" 
-                               inputmode="numeric" onmousedown="event.stopPropagation();" 
-                               ontouchstart="event.stopPropagation();" onclick="event.stopPropagation();" 
-                               onfocus="this.select()" oninput="updateQtyDirectly('${m.uid}', this.value)">
+                               inputmode="numeric" 
+                               onmousedown="event.stopPropagation();" 
+                               ontouchstart="event.stopPropagation();" 
+                               onclick="event.stopPropagation();" 
+                               onfocus="this.select()" 
+                               oninput="updateQtyDirectly('${m.uid}', '${currentCategory}', '${m.name}', '${m.spec}', '${m.unit}', this.value)">
+                        
                         <div class="qty-btn-col">
-                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.uid}', 1); event.stopPropagation();">▲</button>
-                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.uid}', -1); event.stopPropagation();">▼</button>
+                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.uid}', '${currentCategory}', '${m.name}', '${m.spec}', '${m.unit}', 1); event.stopPropagation();">▲</button>
+                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.uid}', '${currentCategory}', '${m.name}', '${m.spec}', '${m.unit}', -1); event.stopPropagation();">▼</button>
                         </div>
                     </div>
                 </td>
             </tr>
         `;
     });
+    
     html += `</tbody></table>`;
     container.innerHTML = html;
 }
+
+
 
 // 🔑 직접 입력 (UID 기준)
 function updateQtyDirectly(uid, val) {
