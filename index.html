@@ -312,6 +312,27 @@ html { scroll-behavior: smooth; }
     padding: 0; font-size: 0.6rem; color: #64748b;
 }
 .qty-btn-up:active, .qty-btn-down:active { background: #2563eb; color: white; }
+
+
+        /* [수정] 규격(Spec) 칸 전용 스타일 */
+.spec-cell {
+    color: #1e293b;       /* 글자색: 아주 진한 회색 (거의 검정) */
+    font-size: 0.9rem;    /* 글자 크기 살짝 키움 */
+    font-weight: 600;     /* 두께감 추가 (잘 보이게) */
+    text-align: center;   
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+/* [수정] 단위(Unit) 스타일 */
+.unit-text {
+    font-size: 0.8rem;    /* 규격보다 약간 작게 */
+    color: #475569;       /* 규격보다는 살짝 연하지만 식별 가능한 색 */
+    font-weight: normal;  /* 단위는 보통 두께로 */
+    margin-left: 4px;     /* 규격과 단위 사이 간격 */
+}
+
+        
         
     </style>
 </head>
