@@ -817,206 +817,181 @@ async function toggleMaterialUI() {
     }
 }
 
-// 서버에서 자재 데이터 가져오기 (fetch)
+let allMaterials = {}; 
+let selectedMaterials = {}; // key: uid, value: object
+let currentCategory = "";
+let isMatLoaded = false;
+
+async function toggleMaterialUI() {
+    const section = document.getElementById('material-section');
+    const btn = document.getElementById('btn-toggle-mat');
+    if (section.style.display === 'none') {
+        section.style.display = 'block'; btn.innerText = '창 닫기';
+        if (!isMatLoaded) await loadMaterialData();
+        else renderCategoryTabs();
+    } else {
+        section.style.display = 'none'; btn.innerText = '자재창 열기';
+    }
+}
+
 async function loadMaterialData() {
     const listContainer = document.getElementById('material-list');
     const tabContainer = document.getElementById('category-tabs');
-
     tabContainer.innerHTML = "<span style='font-size:0.8rem; padding:10px;'>⏳ 분류 로딩 중...</span>";
-    listContainer.innerHTML = "<p style='text-align:center; padding:20px;'>⏳ 서버에서 자재 목록을 불러오고 있습니다...</p>";
+    listContainer.innerHTML = "<p style='text-align:center; padding:20px;'>⏳ 자재 목록 불러오는 중...</p>";
 
     try {
-        const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: "getMaterialData" })
-        });
-        
+        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: "getMaterialData" }) });
         const text = await res.text();
         allMaterials = JSON.parse(text);
         
         isMatLoaded = true;
-        renderCategoryTabs(); 
-        
-        document.getElementById('sub-category-chips').innerHTML = 
-            "<span style='font-size:0.8rem; color:#94a3b8; padding:5px;'>상단 대분류를 선택하세요.</span>";
+        renderCategoryTabs();
+        document.getElementById('sub-category-chips').innerHTML = "<span style='font-size:0.8rem; color:#94a3b8; padding:5px;'>상단 대분류를 선택하세요.</span>";
         listContainer.innerHTML = "<p style='text-align:center; padding:20px; color:#94a3b8;'>분류를 선택해주세요.</p>";
-
     } catch (e) {
         console.error(e);
-        listContainer.innerHTML = "<p style='text-align:center; color:red;'>⚠️ 데이터 로드 실패. 새로고침 해주세요.</p>";
+        listContainer.innerHTML = "<p style='text-align:center; color:red;'>⚠️ 데이터 로드 실패</p>";
         tabContainer.innerHTML = "";
     }
 }
 
-// 대분류 탭 생성
 function renderCategoryTabs() {
     const cats = Object.keys(allMaterials);
     const container = document.getElementById('category-tabs');
-    
     if(!container) return;
-
     container.innerHTML = cats.map(cat => `
-        <div class="cat-tab" onclick="filterMaterial('${cat}', this)" 
-             style="padding:8px 15px; margin-right:5px; background:#e2e8f0; border-radius:20px; font-weight:bold; white-space:nowrap; cursor:pointer;">
-            ${cat}
-        </div>
+        <div class="cat-tab" onclick="filterMaterial('${cat}', this)" style="padding:8px 15px; margin-right:5px; background:#e2e8f0; border-radius:20px; font-weight:bold; white-space:nowrap; cursor:pointer;">${cat}</div>
     `).join('');
-
-    // 첫 번째 탭 자동 선택
     if(cats.length > 0 && !currentCategory) {
         const firstTab = container.querySelector('.cat-tab');
         if (firstTab) filterMaterial(cats[0], firstTab);
     }
 }
 
-// 대분류 선택 -> 중분류 칩 생성
 function filterMaterial(cat, el) {
     currentCategory = cat;
-    
-    document.querySelectorAll('.cat-tab').forEach(t => { 
-        if(t && t.style) { t.style.background = '#e2e8f0'; t.style.color = '#475569'; }
-    });
-
-    if(el && el.style) { 
-        el.style.background = '#2563eb'; el.style.color = 'white'; 
-    }
-
+    document.querySelectorAll('.cat-tab').forEach(t => { if(t && t.style) { t.style.background = '#e2e8f0'; t.style.color = '#475569'; } });
+    if(el && el.style) { el.style.background = '#2563eb'; el.style.color = 'white'; }
     if (!allMaterials[cat]) return;
 
     const items = allMaterials[cat];
+    // 중분류 정렬 및 중복 제거
     const subCats = [...new Set(items.map(i => i.subCat))].sort();
     const subContainer = document.getElementById('sub-category-chips');
     
     let html = `<div class="sub-chip active" onclick="filterSubCat('ALL', this)">전체</div>`;
-    html += subCats.map(sub => 
-        `<div class="sub-chip" onclick="filterSubCat('${sub}', this)">${sub}</div>`
-    ).join('');
+    html += subCats.map(sub => `<div class="sub-chip" onclick="filterSubCat('${sub}', this)">${sub}</div>`).join('');
     
     subContainer.innerHTML = html;
     renderMaterialTable(items);
 }
 
-// 중분류 필터링
 function filterSubCat(subCat, el) {
-    document.querySelectorAll('.sub-chip').forEach(c => {
-        c.classList.remove('active');
-        c.style.background = 'white'; c.style.color = '#64748b';
-    });
-    el.classList.add('active');
-    el.style.background = '#2563eb'; el.style.color = 'white'; 
+    document.querySelectorAll('.sub-chip').forEach(c => { c.classList.remove('active'); c.style.background = 'white'; c.style.color = '#64748b'; });
+    el.classList.add('active'); el.style.background = '#2563eb'; el.style.color = 'white';
 
     const items = allMaterials[currentCategory];
     if (subCat === 'ALL') renderMaterialTable(items);
     else renderMaterialTable(items.filter(i => i.subCat === subCat));
 }
 
-// 표 그리기 (3칸 분리 + 직접 타이핑 + 버튼)
+// 🔑 표 그리기 (고유 UID 사용으로 오류 원천 차단)
 function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
-    
     let html = `
         <table class="mat-table">
-            <colgroup>
-                <col style="width: 35%"> 
-                <col style="width: 35%"> 
-                <col style="width: 30%">
-            </colgroup>
-            <thead>
-                <tr>
-                    <th>품목</th>
-                    <th>규격</th>
-                    <th>수량</th>
-                </tr>
-            </thead>
+            <colgroup><col style="width:35%"><col style="width:35%"><col style="width:30%"></colgroup>
+            <thead><tr><th>품목</th><th>규격</th><th>수량</th></tr></thead>
             <tbody>
     `;
-
-    if (list.length === 0) {
-        html += `<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">항목이 없습니다.</td></tr>`;
-    }
+    if (list.length === 0) html += `<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">항목이 없습니다.</td></tr>`;
 
     list.forEach(m => {
-        const qty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
+        // ID(uid)를 기준으로 데이터 조회
+        const currentData = selectedMaterials[m.uid];
+        const qty = currentData ? currentData.qty : 0;
         const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : ''; 
+
+        // m.uid를 따옴표로 감싸서 전달해야 함
+        const clickEvt = `focusQtyInput('${m.uid}')`;
 
         html += `
             <tr ${rowBg}>
-                <td onclick="focusQtyInput('${m.name}')">
-                    <span style="font-weight:bold;">${m.name}</span>
-                </td>
-                <td class="spec-cell" onclick="focusQtyInput('${m.name}')">
-                    ${m.spec}<span class="unit-text">(${m.unit})</span>
-                </td>
+                <td onclick="${clickEvt}"><span style="font-weight:bold;">${m.name}</span></td>
+                <td class="spec-cell" onclick="${clickEvt}">${m.spec}<span class="unit-text">(${m.unit})</span></td>
                 <td>
                     <div class="qty-control-box">
-                        <input type="number" id="qty-${m.name}" class="qty-input-box" value="${qty}" 
-                               inputmode="numeric" 
-                               onmousedown="event.stopPropagation();" 
-                               ontouchstart="event.stopPropagation();" 
-                               onclick="event.stopPropagation();" 
-                               onfocus="this.select()" 
-                               oninput="updateQtyDirectly('${m.name}', this.value)">
+                        <input type="number" id="qty-${m.uid}" class="qty-input-box" value="${qty}" 
+                               inputmode="numeric" onmousedown="event.stopPropagation();" 
+                               ontouchstart="event.stopPropagation();" onclick="event.stopPropagation();" 
+                               onfocus="this.select()" oninput="updateQtyDirectly('${m.uid}', this.value)">
                         <div class="qty-btn-col">
-                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.name}', 1); event.stopPropagation();">▲</button>
-                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.name}', -1); event.stopPropagation();">▼</button>
+                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.uid}', 1); event.stopPropagation();">▲</button>
+                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.uid}', -1); event.stopPropagation();">▼</button>
                         </div>
                     </div>
                 </td>
             </tr>
         `;
     });
-    
     html += `</tbody></table>`;
     container.innerHTML = html;
 }
 
-// 수량 업데이트 로직
-function updateQtyDirectly(name, val) {
+// 🔑 직접 입력 (UID 기준)
+function updateQtyDirectly(uid, val) {
     const numVal = parseInt(val);
-    if (!selectedMaterials[name]) {
-        const item = allMaterials[currentCategory].find(i => i.name === name);
-        if(item) selectedMaterials[name] = { ...item, qty: 0 };
+    // 선택된 적 없으면 초기화
+    if (!selectedMaterials[uid]) {
+        const item = allMaterials[currentCategory].find(i => i.uid === uid);
+        if(item) selectedMaterials[uid] = { ...item, qty: 0 };
     }
-    if (isNaN(numVal) || numVal < 0) selectedMaterials[name].qty = 0;
-    else selectedMaterials[name].qty = numVal;
+    
+    if (isNaN(numVal) || numVal < 0) selectedMaterials[uid].qty = 0;
+    else selectedMaterials[uid].qty = numVal;
 }
 
-function focusQtyInput(name) {
-    const input = document.getElementById(`qty-${name}`);
+function focusQtyInput(uid) {
+    const input = document.getElementById(`qty-${uid}`);
     if(input) input.focus();
 }
 
-function testChangeQty(name, val) {
-    if (!selectedMaterials[name]) {
-        const item = allMaterials[currentCategory].find(i => i.name === name);
-        selectedMaterials[name] = { ...item, qty: 0 };
+// 🔑 버튼 입력 (UID 기준)
+function testChangeQty(uid, val) {
+    if (!selectedMaterials[uid]) {
+        const item = allMaterials[currentCategory].find(i => i.uid === uid);
+        if(item) selectedMaterials[uid] = { ...item, qty: 0 };
     }
-    let newQty = selectedMaterials[name].qty + val;
+    let newQty = selectedMaterials[uid].qty + val;
     if (newQty < 0) newQty = 0;
-    selectedMaterials[name].qty = newQty;
-    document.getElementById(`qty-${name}`).value = newQty;
+    selectedMaterials[uid].qty = newQty;
+    
+    // UI 업데이트
+    const input = document.getElementById(`qty-${uid}`);
+    if(input) input.value = newQty;
+    
+    // 행 배경색 업데이트 (선택적)
+    const row = input.closest('tr');
+    if(newQty > 0) row.style.backgroundColor = "#eff6ff";
+    else row.style.backgroundColor = "";
 }
 
 function addCustomMaterialRow() {
-    const name = prompt("자재명을 입력하세요 (예: 전산볼트)");
-    if (!name) return;
-    const spec = prompt("규격/사이즈를 입력하세요 (예: M10)", "-");
-    const unit = prompt("단위를 입력하세요 (예: 개, m, box)", "개");
-    const price = prompt("단가를 입력하세요 (숫자만)", "0");
-    const qty = prompt("사용 수량을 입력하세요", "1");
-
+    const name = prompt("자재명 (예: 전산볼트)"); if (!name) return;
+    const spec = prompt("규격 (예: M10)", "-");
+    const unit = prompt("단위 (예: 개)", "개");
+    const qty = prompt("수량", "1");
     const numQty = parseInt(qty);
-    if (isNaN(numQty) || numQty <= 0) return alert("수량을 정확히 입력하세요.");
+    if (isNaN(numQty) || numQty <= 0) return alert("수량 확인");
 
-    selectedMaterials[name] = {
-        category: "직접입력",
-        name: name,
-        spec: spec,
-        unit: unit,
-        price: Number(price) || 0,
-        qty: numQty
+    // 직접 입력은 uid를 이름+시간으로 생성해 중복 방지
+    const customUid = "CUSTOM_" + Date.now();
+    
+    selectedMaterials[customUid] = {
+        uid: customUid, category: "직접입력", name: name, spec: spec, unit: unit, price: 0, qty: numQty
     };
-    alert(`'${name}' ${numQty}${unit}이(가) 리스트에 추가되었습니다.\n(전송 시 시트에 기록됩니다)`);
+    alert(`'${name}' ${numQty}${unit} 추가됨.`);
 }
 
 
