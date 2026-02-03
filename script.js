@@ -875,23 +875,32 @@ function filterSubCat(subCat, el) {
     }
 }
 
-// 6. 표 그리기 (핵심 UI)
+// 3단계: 표 그리기 (버튼 디자인 적용)
 function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
     
     let html = `
         <table class="mat-table">
+            <colgroup>
+                <col style="width: 65%">
+                <col style="width: 35%">
+            </colgroup>
             <thead>
                 <tr>
-                    <th style="width:60%;">품목 / 규격</th>
-                    <th style="width:40%; text-align:center;">수량</th>
+                    <th>품목 / 규격</th>
+                    <th style="text-align:center;">수량</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
+    if(list.length === 0) {
+        html += `<tr><td colspan="2" style="text-align:center; padding:20px; color:#94a3b8;">해당하는 자재가 없습니다.</td></tr>`;
+    }
+
     list.forEach(m => {
         const qty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
+        // 💡 여기가 핵심: 위 CSS 클래스 구조와 똑같이 HTML을 만듭니다.
         html += `
             <tr>
                 <td>
@@ -899,7 +908,7 @@ function renderMaterialTable(list) {
                     <div style="font-size:0.8rem; color:#64748b; margin-top:2px;">${m.spec} <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.7rem;">${m.unit}</span></div>
                 </td>
                 <td style="text-align:center;">
-                    <div class="qty-control-box" style="margin:auto;">
+                    <div class="qty-control-box">
                         <input type="number" id="qty-${m.name}" class="qty-input-box" value="${qty}" readonly>
                         <div class="qty-btn-col">
                             <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.name}', 1)">▲</button>
