@@ -823,7 +823,6 @@ function toggleMaterialUI() {
 }
 
 // 3단계: 표 그리기 (3칸 분리 + 직접 타이핑 가능)
-// 3단계: 표 그리기 (3칸 분리 + 직접 타이핑 + 버튼)
 function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
     
@@ -861,17 +860,18 @@ function renderMaterialTable(list) {
                     <span style="font-weight:bold;">${m.name}</span>
                 </td>
                 
-                <td onclick="focusQtyInput('${m.name}')">
-                    <span style="color:#64748b; font-size:0.8rem;">${m.spec}</span><br>
-                    <span style="color:#94a3b8; font-size:0.7rem;">(${m.unit})</span>
-                </td>
-
+                <td class="spec-cell" onclick="focusQtyInput('${m.name}')">
+    ${m.spec}<span class="unit-text">(${m.unit})</span>
+</td>
                 <td>
                     <div class="qty-control-box">
-                        <input type="number" id="qty-${m.name}" class="qty-input-box" value="${qty}" 
-                               onclick="event.stopPropagation();" 
-                               onfocus="this.select()" 
-                               oninput="updateQtyDirectly('${m.name}', this.value)">
+                      <input type="number" id="qty-${m.name}" class="qty-input-box" value="${qty}" 
+       inputmode="numeric" 
+       onmousedown="event.stopPropagation();" 
+       ontouchstart="event.stopPropagation();" 
+       onclick="event.stopPropagation();" 
+       onfocus="this.select()" 
+       oninput="updateQtyDirectly('${m.name}', this.value)">
                         
                         <div class="qty-btn-col">
                             <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.name}', 1); event.stopPropagation();">▲</button>
