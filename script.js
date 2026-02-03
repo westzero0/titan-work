@@ -791,31 +791,6 @@ function copyScheduleToLog(s) {
 // 3. 자재 관리 시스템 (신규 - 서버 연결 & 3칸 UI)
 // ==========================================
 
-let allMaterials = {}; // 🛑 중요: 빈 객체로 시작 (서버에서 받음)
-let selectedMaterials = {};
-let currentCategory = "";
-let isMatLoaded = false;
-
-// 자재창 열기 (서버 데이터 로드)
-async function toggleMaterialUI() {
-    const section = document.getElementById('material-section');
-    const btn = document.getElementById('btn-toggle-mat');
-
-    if (section.style.display === 'none') {
-        section.style.display = 'block';
-        btn.innerText = '창 닫기';
-        
-        // 데이터가 아직 없으면 서버에서 가져오기
-        if (!isMatLoaded) {
-            await loadMaterialData();
-        } else {
-            renderCategoryTabs();
-        }
-    } else {
-        section.style.display = 'none';
-        btn.innerText = '자재창 열기';
-    }
-}
 
 let allMaterials = {}; 
 let selectedMaterials = {}; // key: uid, value: object
