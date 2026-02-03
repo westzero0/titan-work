@@ -822,90 +822,18 @@ function toggleMaterialUI() {
     }
 }
 
-// 대분류 탭 생성
-function renderCategoryTabs() {
-    const cats = Object.keys(allMaterials);
-    const container = document.getElementById('category-tabs');
-    
-    if(!container) return;
-
-    container.innerHTML = cats.map(cat => `
-        <div class="cat-tab" onclick="filterMaterial('${cat}', this)" 
-             style="padding:8px 15px; margin-right:5px; background:#e2e8f0; border-radius:20px; font-weight:bold; white-space:nowrap; cursor:pointer;">
-            ${cat}
-        </div>
-    `).join('');
-
-    // [수정 포인트] firstChild 대신 querySelector로 확실하게 요소를 잡습니다.
-    if(cats.length > 0 && !currentCategory) {
-        const firstTab = container.querySelector('.cat-tab'); // 여기가 핵심 수정!
-        if (firstTab) {
-            filterMaterial(cats[0], firstTab);
-        }
-    }
-}
-
-// 3. 대분류 선택 -> 중분류 칩 생성 (수정됨: 스타일 적용 안전장치 추가)
-function filterMaterial(cat, el) {
-    currentCategory = cat;
-    
-    // [수정 포인트] el이 없거나 style 속성이 없는 경우(텍스트 노드 등) 에러 방지
-    document.querySelectorAll('.cat-tab').forEach(t => { 
-        if(t && t.style) {
-            t.style.background = '#e2e8f0'; 
-            t.style.color = '#475569'; 
-        }
-    });
-
-    if(el && el.style) { // 여기가 에러가 났던 847번째 줄 부근입니다. 안전장치 추가!
-        el.style.background = '#2563eb'; 
-        el.style.color = 'white'; 
-    }
-
-    // 데이터 안전 확인
-    if (!allMaterials[cat]) return;
-
-    // 중분류 추출
-    const items = allMaterials[cat];
-    const subCats = [...new Set(items.map(i => i.subCat))].sort();
-
-    const subContainer = document.getElementById('sub-category-chips');
-    
-    // 중분류 칩 HTML
-    let html = `<div class="sub-chip active" onclick="filterSubCat('ALL', this)">전체</div>`;
-    html += subCats.map(sub => 
-        `<div class="sub-chip" onclick="filterSubCat('${sub}', this)">${sub}</div>`
-    ).join('');
-    
-    subContainer.innerHTML = html;
-    
-    // 처음엔 전체 리스트
-    renderMaterialTable(items);
-}
-
-// 중분류 필터링
-function filterSubCat(subCat, el) {
-    document.querySelectorAll('.sub-chip').forEach(c => {
-        c.classList.remove('active');
-        c.style.background = 'white'; c.style.color = '#64748b';
-    });
-    el.classList.add('active');
-    el.style.background = '#3b82f6'; el.style.color = 'white';
-
-    const items = allMaterials[currentCategory];
-    if (subCat === 'ALL') renderMaterialTable(items);
-    else renderMaterialTable(items.filter(i => i.subCat === subCat));
-}
-
-// 3단계: 표 그리기 (3칸 분리 & 수량 외곽선 제거 버전)
+// 3단계: 표 그리기 (3칸 분리 + 직접 타이핑 가능)
 function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
     
-    // 테이블 헤더: 품목 | 규격 | 수량 (3칸 분리)
+    // 테이블 헤더: 품목(35%) | 규격(35%) | 수량(30%)
     let html = `
         <table class="mat-table">
             <colgroup>
-                <col style="width: 40%"> <col style="width: 35%"> <col style="width: 25%"> </colgroup>
+                <col style="width: 35%"> 
+                <col style="width: 35%"> 
+                <col style="width: 30%">
+            </colgroup>
             <thead>
                 <tr>
                     <th>품목</th>
@@ -922,25 +850,27 @@ function renderMaterialTable(list) {
 
     list.forEach(m => {
         const qty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
-        const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : ''; // 선택 시 배경색
+        const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : ''; 
 
         html += `
             <tr ${rowBg}>
-                <td style="font-weight:bold; color:#1e293b; text-align:center;" onclick="focusQty('${m.name}')">
+                <td style="font-weight:bold;" onclick="focusQtyInput('${m.name}')">
                     ${m.name}
                 </td>
                 
-                <td style="color:#64748b; text-align:center; font-size:0.75rem;" onclick="focusQty('${m.name}')">
-                    ${m.spec}<br>
-                    <span style="font-size:0.7rem; color:#94a3b8;">(${m.unit})</span>
+                <td style="color:#64748b; font-size:0.8rem;" onclick="focusQtyInput('${m.name}')">
+                    ${m.spec} <br><span style="color:#94a3b8; font-size:0.7rem;">(${m.unit})</span>
                 </td>
 
-                <td style="text-align:center;">
+                <td>
                     <div class="qty-control-box">
-                        <input type="number" id="qty-${m.name}" class="qty-input-box" value="${qty}" readonly>
+                        <input type="number" id="qty-${m.name}" class="qty-input-box" value="${qty}" 
+                               onfocus="this.select()" 
+                               oninput="updateQtyDirectly('${m.name}', this.value)">
+                        
                         <div class="qty-btn-col">
-                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.name}', 1); event.stopPropagation();">▲</button>
-                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.name}', -1); event.stopPropagation();">▼</button>
+                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.name}', 1)">▲</button>
+                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.name}', -1)">▼</button>
                         </div>
                     </div>
                 </td>
@@ -952,12 +882,31 @@ function renderMaterialTable(list) {
     container.innerHTML = html;
 }
 
-// (편의 기능) 이름 클릭 시 수량 +1
-function focusQty(name) {
-    // 현재 수량이 0일 때만 1로 증가 (이미 입력 중이면 건드리지 않음)
-    if (!selectedMaterials[name] || selectedMaterials[name].qty === 0) {
-        testChangeQty(name, 1);
+// [추가] 키패드로 직접 입력할 때 실행되는 함수
+function updateQtyDirectly(name, val) {
+    const numVal = parseInt(val);
+    
+    if (!selectedMaterials[name]) {
+        // 데이터가 없으면 현재 카테고리에서 찾아 등록
+        const item = allMaterials[currentCategory].find(i => i.name === name);
+        if(item) selectedMaterials[name] = { ...item, qty: 0 };
     }
+
+    // 숫자가 아니거나 음수면 0 처리, 아니면 입력값 적용
+    if (isNaN(numVal) || numVal < 0) {
+        selectedMaterials[name].qty = 0;
+    } else {
+        selectedMaterials[name].qty = numVal;
+    }
+    
+    // (선택사항) 입력 시 배경색 즉시 변경 효과를 주려면 여기서 row 스타일을 건드려야 하는데,
+    // 간단하게는 input의 글자색을 진하게 하는 것으로 충분합니다.
+}
+
+// 이름 클릭 시 입력창으로 포커스 이동 (편의 기능)
+function focusQtyInput(name) {
+    const input = document.getElementById(`qty-${name}`);
+    if(input) input.focus();
 }
 
 // 수량 변경 함수 (테스트용)
