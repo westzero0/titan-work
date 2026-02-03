@@ -788,126 +788,142 @@ function copyScheduleToLog(s) {
 }
 
 
-let allMaterials = {}; // 서버에서 가져온 전체 자재 데이터
-let selectedMaterials = {}; // 수량이 입력된 자재 데이터
-let isMatLoaded = false; // 데이터 중복 로드 방지
+// --- 🧪 UI 테스트용 임시 데이터 및 로직 ---
 
-// ✅ 자재창 온/오프 토글 함수
-function toggleMaterialUI() {
-    const section = document.getElementById('material-section');
-    const btn = document.getElementById('btn-toggle-mat');
+// 1. 임시 데이터 (서버에서 이렇게 온다고 가정)
+let allMaterials = {
+    "배선": [
+        { subCat: "VCTF", name: "VCTF 전선", spec: "1.5sq 2C", unit: "m", price: 800 },
+        { subCat: "VCTF", name: "VCTF 전선", spec: "2.5sq 2C", unit: "m", price: 1200 },
+        { subCat: "VCTF", name: "VCTF 전선", spec: "2.5sq 3C", unit: "m", price: 1500 },
+        { subCat: "HIV", name: "HIV 전선", spec: "2.5sq (적)", unit: "m", price: 600 },
+        { subCat: "HIV", name: "HIV 전선", spec: "2.5sq (청)", unit: "m", price: 600 },
+        { subCat: "통신", name: "UTP 케이블", spec: "CAT5e", unit: "box", price: 120000 }
+    ],
+    "배관": [
+        { subCat: "CD관", name: "CD관 (난연)", spec: "16mm", unit: "roll", price: 15000 },
+        { subCat: "CD관", name: "CD관 (난연)", spec: "22mm", unit: "roll", price: 20000 },
+        { subCat: "PVC", name: "PVC 파이프", spec: "16mm", unit: "본", price: 4000 }
+    ]
+};
 
-    if (section.style.display === 'none') {
-        section.style.display = 'block';
-        btn.innerText = '창 닫기';
-        btn.style.background = '#64748b'; // 닫기일 때 색상 변경
-        
-        // 창을 처음 열 때만 서버에서 데이터를 가져옴
-        if (!isMatLoaded) {
-            loadMaterialData();
-        }
-    } else {
-        section.style.display = 'none';
-        btn.innerText = '자재창 열기';
-        btn.style.background = '#2563eb';
-    }
+let selectedMaterials = {};
+let currentCategory = "";
+
+// 2. 초기화 함수 (자재창 열기 버튼 누르면 실행된다고 가정)
+function loadMaterialData() {
+    renderCategoryTabs();
+    alert("테스트 데이터가 로드되었습니다!");
 }
 
-// 서버에서 자재 마스터 데이터 불러오기 (fetch 방식)
-async function loadMaterialData() {
-    const listContainer = document.getElementById('material-list');
-    listContainer.innerHTML = "<p style='text-align:center; padding:20px;'>⏳ 자재 목록 불러오는 중...</p>";
-
-    try {
-        const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: "getMaterialData" }),
-            redirect: 'follow'
-        });
-        const text = await res.text();
-        allMaterials = JSON.parse(text);
-        isMatLoaded = true;
-        renderCategoryTabs();
-    } catch (e) {
-        listContainer.innerHTML = "<p style='text-align:center; color:red;'>⚠️ 목록 로드 실패</p>";
-        console.error("자재 로드 에러:", e);
-    }
-}
-
-// 대분류 탭 생성
+// 3. 대분류 탭 생성
 function renderCategoryTabs() {
     const cats = Object.keys(allMaterials);
     const container = document.getElementById('category-tabs');
     
     container.innerHTML = cats.map((cat, idx) => `
         <div class="cat-tab" onclick="filterMaterial('${cat}', this)" 
-             style="padding: 6px 14px; background: #e2e8f0; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 0.8rem; font-weight: bold;">
+             style="padding: 8px 16px; background: #e2e8f0; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 0.9rem; font-weight: bold; color:#475569;">
             ${cat}
         </div>
     `).join('');
+    
+    // 첫 번째 탭 자동 선택
+    if(cats.length > 0) filterMaterial(cats[0], container.firstChild);
 }
 
-// 선택한 대분류에 따른 자재 리스트 표시
+// 4. 대분류 선택 -> 중분류 칩 생성
 function filterMaterial(cat, el) {
-    // 탭 강조 효과
-   document.querySelectorAll('.cat-tab').forEach(t => { t.style.background = '#e2e8f0'; t.style.color = '#475569'; });
-    el.style.background = '#2563eb'; el.style.color = '#fff';
+    currentCategory = cat;
+    
+    // 탭 스타일
+    document.querySelectorAll('.cat-tab').forEach(t => { 
+        t.style.background = '#e2e8f0'; t.style.color = '#475569'; 
+    });
+    if(el) { el.style.background = '#2563eb'; el.style.color = '#fff'; }
 
-    const list = allMaterials[cat];
+    // 중분류 추출
+    const items = allMaterials[cat];
+    const subCats = [...new Set(items.map(i => i.subCat))].sort();
+
+    // 중분류 칩 렌더링
+    const subContainer = document.getElementById('sub-category-chips');
+    let chipsHtml = `<div class="sub-chip active" onclick="filterSubCat('ALL', this)">전체</div>`;
+    
+    chipsHtml += subCats.map(sub => 
+        `<div class="sub-chip" onclick="filterSubCat('${sub}', this)">${sub}</div>`
+    ).join('');
+    
+    subContainer.innerHTML = chipsHtml;
+    
+    // 리스트 초기화 (전체 보기)
+    renderMaterialTable(items);
+}
+
+// 5. 중분류 필터링
+function filterSubCat(subCat, el) {
+    document.querySelectorAll('.sub-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+
+    const items = allMaterials[currentCategory];
+    
+    if (subCat === 'ALL') {
+        renderMaterialTable(items);
+    } else {
+        const filtered = items.filter(i => i.subCat === subCat);
+        renderMaterialTable(filtered);
+    }
+}
+
+// 6. 표 그리기 (핵심 UI)
+function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
     
     let html = `
         <table class="mat-table">
             <thead>
                 <tr>
-                    <th>품목/규격</th>
-                    <th style="width:70px; text-align:center;">수량</th>
+                    <th style="width:60%;">품목 / 규격</th>
+                    <th style="width:40%; text-align:center;">수량</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
     list.forEach(m => {
-        const currentQty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
+        const qty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
         html += `
             <tr>
                 <td>
-                    <div style="font-weight:bold;">${m.name}</div>
-                    <div style="font-size:0.7rem; color:gray;">${m.spec} (${m.unit})</div>
+                    <div style="font-weight:bold; color:#1e293b; font-size:0.95rem;">${m.name}</div>
+                    <div style="font-size:0.8rem; color:#64748b; margin-top:2px;">${m.spec} <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.7rem;">${m.unit}</span></div>
                 </td>
-                <td style="display:flex; justify-content:center;">
-                    <div class="qty-wrapper">
-                        <input type="number" id="qty-${m.name}" class="qty-input-table" value="${currentQty}" 
-                               onchange="changeQty('${cat}', '${m.name}', this.value, true)">
-                        <div class="qty-btns">
-                            <button type="button" class="qty-btn-up" onclick="changeQty('${cat}', '${m.name}', 1)">▲</button>
-                            <button type="button" class="qty-btn-down" onclick="changeQty('${cat}', '${m.name}', -1)">▼</button>
+                <td style="text-align:center;">
+                    <div class="qty-control-box" style="margin:auto;">
+                        <input type="number" id="qty-${m.name}" class="qty-input-box" value="${qty}" readonly>
+                        <div class="qty-btn-col">
+                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.name}', 1)">▲</button>
+                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.name}', -1)">▼</button>
                         </div>
                     </div>
                 </td>
             </tr>
         `;
     });
-
+    
     html += `</tbody></table>`;
     container.innerHTML = html;
 }
 
-
-// 수량 변경 함수 (+, - 버튼 및 직접 입력)
-function changeQty(cat, name, val, isDirect = false) {
-    if (!selectedMaterials[name]) {
-        const item = allMaterials[cat].find(i => i.name === name);
-        selectedMaterials[name] = { ...item, category: cat, qty: 0 };
-    }
-
-    if (isDirect) {
-        selectedMaterials[name].qty = Math.max(0, parseInt(val) || 0);
-    } else {
-        selectedMaterials[name].qty = Math.max(0, selectedMaterials[name].qty + val);
-    }
-
-    document.getElementById(`qty-${name}`).value = selectedMaterials[name].qty;
+// 7. 수량 변경 테스트
+function testChangeQty(name, val) {
+    if (!selectedMaterials[name]) selectedMaterials[name] = { qty: 0 };
+    
+    let newQty = selectedMaterials[name].qty + val;
+    if (newQty < 0) newQty = 0;
+    
+    selectedMaterials[name].qty = newQty;
+    document.getElementById(`qty-${name}`).value = newQty;
 }
 
 // 목록에 없는 자재 직접 입력 팝업
