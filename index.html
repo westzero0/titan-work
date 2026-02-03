@@ -237,91 +237,72 @@ html { scroll-behavior: smooth; }
 
 
 
- /* --- [수정본] 자재 UI 스타일 --- */
+/* --- [수정본] 자재 테이블 스타일 (엑셀형) --- */
 
-/* 1. 중분류 칩 (안 보였던 문제 해결) */
-#sub-category-chips {
-    display: flex; 
-    flex-wrap: wrap; /* 줄바꿈 허용 */
-    gap: 6px; 
-    padding: 10px 5px; 
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-    min-height: 40px; /* 높이 확보 */
-}
-.sub-chip {
-    padding: 6px 12px; 
-    border: 1px solid #cbd5e1; 
-    border-radius: 20px; 
-    font-size: 0.85rem; 
-    color: #64748b; 
-    background: white; 
-    cursor: pointer;
-}
-.sub-chip.active {
-    background: #3b82f6; color: white; border-color: #3b82f6; font-weight: bold;
+/* 표 전체 테두리 및 설정 */
+.mat-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 0.8rem; /* 글자 크기 살짝 조정 */
+    margin-top: 5px;
+    border: 1px solid #cbd5e1; /* 외곽선 추가 */
 }
 
-/* 2. 표 스타일 */
-.mat-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0; }
-.mat-table th { position: sticky; top: 0; background: #f1f5f9; padding: 10px 5px; text-align: left; border-bottom: 2px solid #cbd5e1; z-index: 5; }
-.mat-table td { padding: 8px 5px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-
-/* 3. [핵심] 수량 조절 박스 (버튼을 안으로 강제 배치) */
-.qty-control-box {
-    display: flex; /* 가로 배치 필수 */
-    flex-direction: row; /* 좌:입력창, 우:버튼 */
-    align-items: stretch;
-    border: 1.5px solid #94a3b8; 
-    border-radius: 6px; 
-    width: 80px; /* 전체 너비 고정 */
-    height: 40px; /* 높이 고정 */
-    background: white; 
-    overflow: hidden; /* 튀어나감 방지 */
-    margin: 0 auto; /* 셀 중앙 정렬 */
+/* 헤더 스타일 */
+.mat-table th { 
+    position: sticky; 
+    top: 0; 
+    background: #f1f5f9; 
+    padding: 8px 5px; 
+    text-align: center; /* 헤더 가운데 정렬 */
+    border-bottom: 2px solid #94a3b8; 
+    border-right: 1px solid #cbd5e1; /* 세로선 추가 */
+    color: #334155; 
+    font-weight: bold;
+    z-index: 5; 
 }
 
-/* 왼쪽: 숫자 입력칸 */
-.qty-input-box {
-    width: 50px !important; /* 너비 강제 */
-    border: none; 
-    text-align: center; 
-    font-weight: bold; 
-    font-size: 1.1rem; 
-    padding: 0; 
-    margin: 0;
-    outline: none; 
-    -moz-appearance: textfield; /* 파이어폭스 화살표 제거 */
-}
-.qty-input-box::-webkit-inner-spin-button { 
-    -webkit-appearance: none; margin: 0; /* 크롬 화살표 제거 */
+/* 셀 스타일 */
+.mat-table td { 
+    padding: 6px 5px; 
+    border-bottom: 1px solid #e2e8f0; 
+    border-right: 1px solid #e2e8f0; /* 세로선 추가 */
+    vertical-align: middle; 
 }
 
-/* 오른쪽: 위아래 버튼 기둥 */
-.qty-btn-col {
-    display: flex; 
-    flex-direction: column; /* 세로 배치 */
-    width: 30px !important; /* 너비 강제 */
-    border-left: 1.5px solid #94a3b8;
+/* 품목/규격 텍스트 가로 정렬 */
+.item-row {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* 품목과 규격 사이 간격 */
+    flex-wrap: wrap; /* 내용이 너무 길면 줄바꿈 허용 (안전장치) */
+}
+.item-name {
+    font-weight: bold;
+    color: #1e293b;
+    font-size: 0.9rem;
+}
+.item-spec {
+    color: #64748b;
+    font-size: 0.8rem;
     background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
-/* 개별 버튼 */
-.qty-btn-up, .qty-btn-down {
-    flex: 1; /* 높이 반반 */
-    border: none; 
-    background: transparent; 
-    cursor: pointer; 
+/* 수량 조절 박스 (표 안에 딱 맞게 조정) */
+.qty-control-box {
     display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    font-size: 0.7rem; 
-    padding: 0;
-    margin: 0;
-    color: #475569;
+    align-items: stretch;
+    border: 1px solid #94a3b8; 
+    border-radius: 4px; 
+    width: 75px; /* 너비 */
+    height: 34px; /* 높이 줄임 (표에 맞게) */
+    background: white; 
+    overflow: hidden; 
+    margin: 0 auto; 
 }
-.qty-btn-up { border-bottom: 1px solid #cbd5e1; }
-.qty-btn-up:active, .qty-btn-down:active { background: #cbd5e1; color: white; }
+/* ...나머지 qty-input-box, qty-btn-col 등은 기존 유지하거나 아래 JS에 맞게 사용... */
         
     </style>
 </head>
