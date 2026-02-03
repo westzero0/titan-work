@@ -897,39 +897,64 @@ function filterSubCat(subCat, el) {
     else renderMaterialTable(items.filter(i => i.subCat === subCat));
 }
 
-// 표 그리기 (문제 3번 해결 핵심)
+// 표 그리기 (엑셀형 디자인 적용)
 function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
     
-    let html = `<table class="mat-table">
-        <colgroup><col style="width:60%"><col style="width:40%"></colgroup>
-        <thead><tr style="background:#f1f5f9;"><th>품목 / 규격</th><th style="text-align:center;">수량</th></tr></thead>
-        <tbody>`;
+    // 테이블 헤더: 테두리가 있는 꽉 찬 느낌
+    let html = `
+        <table class="mat-table">
+            <colgroup>
+                <col style="width: 70%"> <col style="width: 30%"> </colgroup>
+            <thead>
+                <tr>
+                    <th style="text-align:left; padding-left:10px;">품목 및 규격</th>
+                    <th>수량</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    if (list.length === 0) {
+        html += `<tr><td colspan="2" style="text-align:center; padding:20px; color:#94a3b8;">항목이 없습니다.</td></tr>`;
+    }
 
     list.forEach(m => {
         const qty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
         
-        // 💡 HTML 구조가 CSS와 정확히 매칭되어야 버튼이 안으로 들어갑니다.
+        // 배경색: 수량이 0보다 크면 약한 파란색 틴트 (선택됨 표시)
+        const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : '';
+
         html += `
-            <tr>
-                <td>
-                    <div style="font-weight:bold;">${m.name}</div>
-                    <div style="font-size:0.75rem; color:#64748b;">${m.spec} (${m.unit})</div>
+            <tr ${rowBg}>
+                <td onclick="focusQty('${m.name}')"> <div class="item-row">
+                        <span class="item-name">${m.name}</span>
+                        <span class="item-spec">${m.spec}</span>
+                        </div>
                 </td>
                 <td style="text-align:center;">
                     <div class="qty-control-box">
                         <input type="number" id="qty-${m.name}" class="qty-input-box" value="${qty}" readonly>
                         <div class="qty-btn-col">
-                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.name}', 1)">▲</button>
-                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.name}', -1)">▼</button>
+                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.name}', 1); event.stopPropagation();">▲</button>
+                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.name}', -1); event.stopPropagation();">▼</button>
                         </div>
                     </div>
                 </td>
-            </tr>`;
+            </tr>
+        `;
     });
     
     html += `</tbody></table>`;
     container.innerHTML = html;
+}
+
+// (선택사항) 품목명을 눌렀을 때 수량 1 증가시키는 편의 기능
+function focusQty(name) {
+    // 이미 0이면 1로, 아니면 가만히 (또는 +1)
+    if (!selectedMaterials[name] || selectedMaterials[name].qty === 0) {
+        testChangeQty(name, 1);
+    }
 }
 
 // 수량 변경 함수 (테스트용)
