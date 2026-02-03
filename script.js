@@ -823,10 +823,11 @@ function toggleMaterialUI() {
 }
 
 // 3단계: 표 그리기 (3칸 분리 + 직접 타이핑 가능)
+// 3단계: 표 그리기 (3칸 분리 + 직접 타이핑 + 버튼)
 function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
     
-    // 테이블 헤더: 품목(35%) | 규격(35%) | 수량(30%)
+    // 헤더: 품목(35%) | 규격(35%) | 수량(30%) 비율 고정
     let html = `
         <table class="mat-table">
             <colgroup>
@@ -850,27 +851,31 @@ function renderMaterialTable(list) {
 
     list.forEach(m => {
         const qty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
+        
+        // 선택 시 배경색 변경
         const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : ''; 
 
         html += `
             <tr ${rowBg}>
-                <td style="font-weight:bold;" onclick="focusQtyInput('${m.name}')">
-                    ${m.name}
+                <td onclick="focusQtyInput('${m.name}')">
+                    <span style="font-weight:bold;">${m.name}</span>
                 </td>
                 
-                <td style="color:#64748b; font-size:0.8rem;" onclick="focusQtyInput('${m.name}')">
-                    ${m.spec} <br><span style="color:#94a3b8; font-size:0.7rem;">(${m.unit})</span>
+                <td onclick="focusQtyInput('${m.name}')">
+                    <span style="color:#64748b; font-size:0.8rem;">${m.spec}</span><br>
+                    <span style="color:#94a3b8; font-size:0.7rem;">(${m.unit})</span>
                 </td>
 
                 <td>
                     <div class="qty-control-box">
                         <input type="number" id="qty-${m.name}" class="qty-input-box" value="${qty}" 
+                               onclick="event.stopPropagation();" 
                                onfocus="this.select()" 
                                oninput="updateQtyDirectly('${m.name}', this.value)">
                         
                         <div class="qty-btn-col">
-                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.name}', 1)">▲</button>
-                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.name}', -1)">▼</button>
+                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.name}', 1); event.stopPropagation();">▲</button>
+                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.name}', -1); event.stopPropagation();">▼</button>
                         </div>
                     </div>
                 </td>
