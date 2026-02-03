@@ -1035,17 +1035,17 @@ function focusQtyInput(uid) {
     if(input) input.focus();
 }
 
-// 📍 [업그레이드] 직접 입력: 데이터 보존 + 스크롤 위치 유지
+// 📍 [수정됨] 직접 입력 (선택된 중분류 반영)
 function addCustomMaterialRow() {
     if (!currentCategory) return alert("대분류를 먼저 선택해주세요.");
 
-    // 현재 선택된 중분류가 있으면 그거 쓰고, 없거나 '전체'면 '기타'로 설정
+    // 1. 현재 선택된 중분류 가져오기
+    // (만약 '전체'나 선택 안 됨 상태면 -> '기타'로 설정)
     const targetSubCat = (currentSubCategory && currentSubCategory !== "ALL") ? currentSubCategory : "기타";
 
     const name = prompt(`[${currentCategory} > ${targetSubCat}] 자재명 입력:`);
     if (!name) return;
     
-    // 취소 누르면 중단
     const spec = prompt("규격 입력", "-");
     if (spec === null) return; 
     
@@ -1064,7 +1064,7 @@ function addCustomMaterialRow() {
     const newItem = {
         uid: customUid,
         category: currentCategory,
-        subCat: targetSubCat,
+        subCat: targetSubCat, // 👈 여기서 선택된 중분류가 들어감
         name: name,
         spec: spec,
         unit: unit,
@@ -1072,23 +1072,20 @@ function addCustomMaterialRow() {
         qty: numQty
     };
 
-    // 1. 전체 목록에 추가
+    // 1. 전체 목록에 추가 (맨 위로)
     if (!allMaterials[currentCategory]) allMaterials[currentCategory] = [];
     allMaterials[currentCategory].unshift(newItem); 
 
-    // 2. 선택 데이터(금고)에 저장 -> 여기서 다른 데이터들과 함께 안전하게 보관됨
+    // 2. 선택 데이터(금고)에 저장
     selectedMaterials[customUid] = newItem;
 
-    // 3. [디테일] 현재 스크롤 위치 기억
+    // 3. 현재 스크롤 위치 기억
     const listContainer = document.getElementById('material-list');
-    const scrollPos = listContainer.scrollTop;
+    const scrollPos = listContainer ? listContainer.scrollTop : 0;
 
-    // 4. 화면 다시 그리기 (이때 기존 수량들도 금고에서 다시 꺼내옴)
+    // 4. 화면 다시 그리기 (현재 중분류 상태 유지)
     filterSubCat(currentSubCategory, null); 
 
-    // 5. [디테일] 스크롤 위치 복구 (화면이 튀지 않음)
-    listContainer.scrollTop = scrollPos;
-
-    // 안내 메시지는 생략하거나 짧게 (작업 흐름 끊김 방지)
-    // alert(`'${name}' 추가됨`); 
+    // 5. 스크롤 위치 복구
+    if (listContainer) listContainer.scrollTop = scrollPos;
 }
