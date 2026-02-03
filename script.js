@@ -827,24 +827,43 @@ function renderCategoryTabs() {
     const cats = Object.keys(allMaterials);
     const container = document.getElementById('category-tabs');
     
+    if(!container) return;
+
     container.innerHTML = cats.map(cat => `
         <div class="cat-tab" onclick="filterMaterial('${cat}', this)" 
-             style="padding:8px 15px; margin-right:5px; background:#e2e8f0; border-radius:20px; font-weight:bold; white-space:nowrap;">
+             style="padding:8px 15px; margin-right:5px; background:#e2e8f0; border-radius:20px; font-weight:bold; white-space:nowrap; cursor:pointer;">
             ${cat}
         </div>
     `).join('');
 
-    // 첫 번째 탭 자동 클릭
-    if(cats.length > 0) filterMaterial(cats[0], container.firstChild);
+    // [수정 포인트] firstChild 대신 querySelector로 확실하게 요소를 잡습니다.
+    if(cats.length > 0 && !currentCategory) {
+        const firstTab = container.querySelector('.cat-tab'); // 여기가 핵심 수정!
+        if (firstTab) {
+            filterMaterial(cats[0], firstTab);
+        }
+    }
 }
 
-// 대분류 선택 -> 중분류 칩 생성 (문제 2번 해결 핵심)
+// 3. 대분류 선택 -> 중분류 칩 생성 (수정됨: 스타일 적용 안전장치 추가)
 function filterMaterial(cat, el) {
     currentCategory = cat;
     
-    // 탭 색상 변경
-    document.querySelectorAll('.cat-tab').forEach(t => { t.style.background = '#e2e8f0'; t.style.color = 'black'; });
-    if(el) { el.style.background = '#2563eb'; el.style.color = 'white'; }
+    // [수정 포인트] el이 없거나 style 속성이 없는 경우(텍스트 노드 등) 에러 방지
+    document.querySelectorAll('.cat-tab').forEach(t => { 
+        if(t && t.style) {
+            t.style.background = '#e2e8f0'; 
+            t.style.color = '#475569'; 
+        }
+    });
+
+    if(el && el.style) { // 여기가 에러가 났던 847번째 줄 부근입니다. 안전장치 추가!
+        el.style.background = '#2563eb'; 
+        el.style.color = 'white'; 
+    }
+
+    // 데이터 안전 확인
+    if (!allMaterials[cat]) return;
 
     // 중분류 추출
     const items = allMaterials[cat];
@@ -852,7 +871,7 @@ function filterMaterial(cat, el) {
 
     const subContainer = document.getElementById('sub-category-chips');
     
-    // 중분류 칩 HTML 생성
+    // 중분류 칩 HTML
     let html = `<div class="sub-chip active" onclick="filterSubCat('ALL', this)">전체</div>`;
     html += subCats.map(sub => 
         `<div class="sub-chip" onclick="filterSubCat('${sub}', this)">${sub}</div>`
@@ -860,7 +879,7 @@ function filterMaterial(cat, el) {
     
     subContainer.innerHTML = html;
     
-    // 리스트는 전체 보기로 시작
+    // 처음엔 전체 리스트
     renderMaterialTable(items);
 }
 
