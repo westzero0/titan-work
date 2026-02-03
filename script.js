@@ -897,19 +897,21 @@ function filterSubCat(subCat, el) {
     else renderMaterialTable(items.filter(i => i.subCat === subCat));
 }
 
-// 표 그리기 (엑셀형 디자인 적용)
+// 3단계: 표 그리기 (가로 배치 & 디자인 수정)
 function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
     
-    // 테이블 헤더: 테두리가 있는 꽉 찬 느낌
+    // 테이블 헤더: 칸 너비 조정 (품목 7 : 수량 3)
     let html = `
         <table class="mat-table">
             <colgroup>
-                <col style="width: 70%"> <col style="width: 30%"> </colgroup>
+                <col style="width: 70%"> 
+                <col style="width: 30%">
+            </colgroup>
             <thead>
                 <tr>
-                    <th style="text-align:left; padding-left:10px;">품목 및 규격</th>
-                    <th>수량</th>
+                    <th style="text-align:center;">품목 / 규격</th>
+                    <th style="text-align:center;">수량</th>
                 </tr>
             </thead>
             <tbody>
@@ -922,15 +924,17 @@ function renderMaterialTable(list) {
     list.forEach(m => {
         const qty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
         
-        // 배경색: 수량이 0보다 크면 약한 파란색 틴트 (선택됨 표시)
+        // 수량이 0보다 크면 행 배경색 변경 (시각적 강조)
         const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : '';
 
         html += `
             <tr ${rowBg}>
-                <td onclick="focusQty('${m.name}')"> <div class="item-row">
+                <td onclick="focusQty('${m.name}')">
+                    <div class="item-row">
                         <span class="item-name">${m.name}</span>
                         <span class="item-spec">${m.spec}</span>
-                        </div>
+                        <span style="font-size:0.75rem; color:#94a3b8;">(${m.unit})</span>
+                    </div>
                 </td>
                 <td style="text-align:center;">
                     <div class="qty-control-box">
@@ -949,9 +953,9 @@ function renderMaterialTable(list) {
     container.innerHTML = html;
 }
 
-// (선택사항) 품목명을 눌렀을 때 수량 1 증가시키는 편의 기능
+// (편의 기능) 이름 클릭 시 수량 +1
 function focusQty(name) {
-    // 이미 0이면 1로, 아니면 가만히 (또는 +1)
+    // 현재 수량이 0일 때만 1로 증가 (이미 입력 중이면 건드리지 않음)
     if (!selectedMaterials[name] || selectedMaterials[name].qty === 0) {
         testChangeQty(name, 1);
     }
