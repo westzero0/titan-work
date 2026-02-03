@@ -788,15 +788,15 @@ function copyScheduleToLog(s) {
 }
 
 // ==========================================
-// 3. 자재 관리 시스템 (신규 - 정밀 자재)
+// 3. 자재 관리 시스템 (신규 - 서버 연결 & 3칸 UI)
 // ==========================================
 
-let allMaterials = {}; // 서버 데이터 저장용
+let allMaterials = {}; // 🛑 중요: 빈 객체로 시작 (서버에서 받음)
 let selectedMaterials = {};
 let currentCategory = "";
 let isMatLoaded = false;
 
-// 자재창 열기 (서버 데이터 로드 & 에러 해결된 버전)
+// 자재창 열기 (서버 데이터 로드)
 async function toggleMaterialUI() {
     const section = document.getElementById('material-section');
     const btn = document.getElementById('btn-toggle-mat');
@@ -809,7 +809,6 @@ async function toggleMaterialUI() {
         if (!isMatLoaded) {
             await loadMaterialData();
         } else {
-            // 이미 있으면 그냥 탭 다시 그리기 (혹시 모르니)
             renderCategoryTabs();
         }
     } else {
@@ -836,7 +835,7 @@ async function loadMaterialData() {
         allMaterials = JSON.parse(text);
         
         isMatLoaded = true;
-        renderCategoryTabs(); // 탭 생성 (이제 에러 안 남)
+        renderCategoryTabs(); 
         
         document.getElementById('sub-category-chips').innerHTML = 
             "<span style='font-size:0.8rem; color:#94a3b8; padding:5px;'>상단 대분류를 선택하세요.</span>";
@@ -904,7 +903,7 @@ function filterSubCat(subCat, el) {
         c.style.background = 'white'; c.style.color = '#64748b';
     });
     el.classList.add('active');
-    el.style.background = '#2563eb'; el.style.color = 'white'; // !important 대응
+    el.style.background = '#2563eb'; el.style.color = 'white'; 
 
     const items = allMaterials[currentCategory];
     if (subCat === 'ALL') renderMaterialTable(items);
@@ -1019,7 +1018,6 @@ function addCustomMaterialRow() {
     };
     alert(`'${name}' ${numQty}${unit}이(가) 리스트에 추가되었습니다.\n(전송 시 시트에 기록됩니다)`);
 }
-
 
 
 // 목록에 없는 자재 직접 입력 팝업
