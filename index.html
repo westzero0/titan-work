@@ -237,101 +237,87 @@ html { scroll-behavior: smooth; }
 
 
 /* --- [Final Ver.2] 자재 UI 스타일 --- */
+/* 1. 중분류 칩 (확실한 버튼 모양) */
+        #sub-category-chips {
+            display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 5px;
+            background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+        }
+        .sub-chip {
+            padding: 6px 14px !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 20px !important;
+            background-color: white !important;
+            color: #64748b !important;
+            font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .sub-chip.active {
+            background-color: #2563eb !important;
+            color: white !important;
+            border-color: #2563eb !important;
+        }
 
-/* 1. 중분류 칩 (버튼 모양 강제 적용) */
-#sub-category-chips {
-    display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 5px;
-    background: #f8fafc; border-bottom: 1px solid #e2e8f0;
-}
-.sub-chip {
-    padding: 6px 14px !important;
-    border: 1px solid #cbd5e1 !important;
-    border-radius: 20px !important;
-    background-color: white !important;
-    color: #64748b !important;
-    font-size: 0.85rem; font-weight: 600;
-    cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-.sub-chip.active {
-    background-color: #2563eb !important;
-    color: white !important;
-    border-color: #2563eb !important;
-}
+        /* 2. 자재 리스트 표 (테두리 적용, 3칸 고정) */
+        .mat-table { 
+            width: 100%; border-collapse: collapse; 
+            table-layout: fixed; /* 셀 너비 고정 필수 */
+            margin-top: 0;
+        }
+        .mat-table th {
+            background: #f1f5f9; padding: 8px 2px;
+            font-size: 0.8rem; color: #334155;
+            border: 1px solid #cbd5e1; /* 진한 테두리 */
+            text-align: center;
+        }
+        .mat-table td {
+            padding: 6px 2px;
+            border: 1px solid #cbd5e1; /* 진한 테두리 */
+            vertical-align: middle;
+            font-size: 0.85rem; color: #1e293b;
+            word-break: break-all; text-align: center;
+        }
+        /* 품목과 규격은 왼쪽 정렬 */
+        .mat-table td:nth-child(1), .mat-table td:nth-child(2) {
+            text-align: left; padding-left: 8px;
+        }
 
-/* 2. 표 (3칸 분리, 테두리 적용) */
-.mat-table { 
-    width: 100%; border-collapse: collapse; 
-    table-layout: fixed; /* 셀 너비 고정 필수 */
-    margin-top: 0;
-}
-.mat-table th {
-    background: #f1f5f9; padding: 8px 2px;
-    font-size: 0.8rem; color: #334155;
-    border: 1px solid #cbd5e1; /* 진한 테두리 */
-    text-align: center;
-}
-.mat-table td {
-    padding: 6px 2px;
-    border: 1px solid #cbd5e1; /* 진한 테두리 */
-    vertical-align: middle;
-    font-size: 0.85rem; color: #1e293b;
-    word-break: break-all;
-    text-align: center;
-}
-/* 품목과 규격은 왼쪽 정렬 */
-.mat-table td:nth-child(1), .mat-table td:nth-child(2) {
-    text-align: left; padding-left: 8px;
-}
+        /* 규격(Spec) 칸 전용 스타일 */
+        .spec-cell {
+            color: #1e293b; font-size: 0.9rem; font-weight: 600;
+            text-align: left; cursor: pointer;
+        }
+        /* 단위(Unit) 스타일 */
+        .unit-text {
+            font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 4px;
+        }
 
-/* 3. 수량 조절 (외곽선 제거 & 타이핑 가능) */
-.qty-control-box {
-    display: flex; align-items: stretch; justify-content: center;
-    width: 100%; height: 36px;
-    border: none !important; /* 박스 전체 외곽선 제거 */
-}
-.qty-input-box {
-    width: 40px; /* 너비 확보 */
-    text-align: center; font-weight: bold; font-size: 1.1rem;
-    color: #2563eb;
-    border: 1px solid #e2e8f0; /* 숫자칸만 연한 테두리 */
-    border-radius: 4px;
-    margin-right: 4px; /* 버튼과 간격 */
-    padding: 0; outline: none; background: #fff;
-    -moz-appearance: textfield; /* 화살표 제거 */
-}
-.qty-input-box::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.qty-input-box:focus { background: #f0f9ff; border-color: #2563eb; }
+        /* 3. 수량 조절 (외곽선 제거 & 타이핑 가능) */
+        .qty-control-box {
+            display: flex; align-items: stretch; justify-content: center;
+            width: 100%; height: 36px;
+            border: none !important; /* 박스 전체 외곽선 제거 */
+        }
+        .qty-input-box {
+            width: 100%; /* 공간 채우기 */
+            text-align: center; font-weight: bold; font-size: 1.1rem;
+            color: #2563eb;
+            border: 1px solid #e2e8f0; border-right: none; border-radius: 4px 0 0 4px;
+            padding: 0; outline: none; background: #fff;
+            -moz-appearance: textfield; /* 화살표 제거 */
+        }
+        .qty-input-box::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .qty-input-box:focus { background: #f0f9ff; border-color: #2563eb; }
 
-.qty-btn-col {
-    display: flex; flex-direction: column; width: 28px; gap: 2px;
-}
-.qty-btn-up, .qty-btn-down {
-    flex: 1; border: 1px solid #cbd5e1;
-    background: #fff; cursor: pointer; border-radius: 4px;
-    display: flex; justify-content: center; align-items: center;
-    padding: 0; font-size: 0.6rem; color: #64748b;
-}
-.qty-btn-up:active, .qty-btn-down:active { background: #2563eb; color: white; }
-
-
-        /* [수정] 규격(Spec) 칸 전용 스타일 */
-.spec-cell {
-    color: #1e293b;       /* 글자색: 아주 진한 회색 (거의 검정) */
-    font-size: 0.9rem;    /* 글자 크기 살짝 키움 */
-    font-weight: 600;     /* 두께감 추가 (잘 보이게) */
-    text-align: center;   
-    vertical-align: middle;
-    cursor: pointer;
-}
-
-/* [수정] 단위(Unit) 스타일 */
-.unit-text {
-    font-size: 0.8rem;    /* 규격보다 약간 작게 */
-    color: #475569;       /* 규격보다는 살짝 연하지만 식별 가능한 색 */
-    font-weight: normal;  /* 단위는 보통 두께로 */
-    margin-left: 4px;     /* 규격과 단위 사이 간격 */
-}
-
+        .qty-btn-col {
+            display: flex; flex-direction: column; width: 30px; 
+            flex-shrink: 0; /* 너비 줄어듦 방지 */
+        }
+        .qty-btn-up, .qty-btn-down {
+            flex: 1; border: 1px solid #e2e8f0; background: #f8fafc;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
+            padding: 0; font-size: 0.6rem; color: #64748b;
+        }
+        .qty-btn-up:active, .qty-btn-down:active { background: #2563eb; color: white; }
         
         
     </style>
