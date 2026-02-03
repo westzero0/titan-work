@@ -237,86 +237,39 @@ html { scroll-behavior: smooth; }
 
 
 
-        /* 자재 리스트 표 스타일 */
-.mat-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
-.mat-table th { background: #f1f5f9; padding: 8px; text-align: left; border-bottom: 2px solid #cbd5e1; }
-.mat-table td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-/* --- [신규] 자재 UI 스타일 시작 --- */
+     /* --- 자재 UI 스타일 (수정본) --- */
 
-/* 2단계: 중분류 칩 (배관 > 'CD관', 'PVC' 같은 것) */
-#sub-category-chips {
-    display: flex; 
-    gap: 6px; 
-    padding: 10px 5px; 
-    flex-wrap: wrap; /* 줄바꿈 허용 */
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-}
-.sub-chip {
-    padding: 6px 14px; 
-    border: 1px solid #cbd5e1; 
-    border-radius: 20px;
-    font-size: 0.85rem; 
-    color: #64748b; 
-    background: white; 
-    cursor: pointer;
-    transition: 0.2s;
-}
-.sub-chip.active {
-    background: #3b82f6; 
-    color: white; 
-    border-color: #3b82f6; 
-    font-weight: bold;
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-}
+/* 탭 및 중분류 칩 */
+.cat-tab { padding: 8px 16px; background: #e2e8f0; border-radius: 20px; font-size: 0.9rem; font-weight: bold; color: #475569; white-space: nowrap; cursor: pointer; }
+.sub-chip { padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 16px; font-size: 0.85rem; color: #64748b; background: white; cursor: pointer; }
+.sub-chip.active { background: #3b82f6; color: white; border-color: #3b82f6; font-weight: bold; }
 
-/* 3단계: 자재 리스트 (표 형식) */
-.mat-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    font-size: 0.85rem; 
-    margin-top: 0;
-}
-.mat-table th { 
-    position: sticky; 
-    top: 0; 
-    background: #f1f5f9; 
-    padding: 10px 8px; 
-    text-align: left; 
-    border-bottom: 2px solid #cbd5e1; 
-    color: #475569;
-    z-index: 10; 
-}
-.mat-table td { 
-    padding: 12px 8px; 
-    border-bottom: 1px solid #f1f5f9; 
-    vertical-align: middle; 
-}
+/* 자재 테이블 */
+.mat-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0; }
+.mat-table th { position: sticky; top: 0; background: #f8fafc; padding: 10px 5px; text-align: left; border-bottom: 2px solid #cbd5e1; color: #475569; z-index: 5; }
+.mat-table td { padding: 8px 5px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
 
-/* 수량 조절기 (위아래 버튼) */
+/* [핵심] 수량 조절 박스 (버튼을 안으로 넣는 스타일) */
 .qty-control-box {
     display: flex; 
     align-items: center; 
-    border: 1px solid #94a3b8; /* 테두리 조금 진하게 */
-    border-radius: 8px; 
-    width: 65px; 
-    height: 42px; /* 터치하기 좋은 높이 */
+    border: 1px solid #94a3b8; 
+    border-radius: 6px; 
+    width: 70px; /* 너비 고정 */
+    height: 40px; 
     background: white; 
-    overflow: hidden;
+    overflow: hidden; /* 자식이 튀어나오지 않게 */
+    margin: 0 auto; /* 셀 중앙 정렬 */
 }
 .qty-input-box {
-    width: 35px; 
+    width: 40px; 
     border: none; 
     text-align: center; 
     font-weight: bold; 
-    font-size: 1rem;
-    color: #1e293b;
+    font-size: 1.1rem; 
     padding: 0; 
     outline: none; 
-    -moz-appearance: textfield; /* 파이어폭스 화살표 제거 */
-}
-.qty-input-box::-webkit-inner-spin-button { 
-    -webkit-appearance: none; margin: 0; /* 크롬 화살표 제거 */
+    -moz-appearance: textfield;
 }
 .qty-btn-col {
     display: flex; 
@@ -328,19 +281,17 @@ html { scroll-behavior: smooth; }
 .qty-btn-up, .qty-btn-down {
     flex: 1; 
     border: none; 
-    background: #f8fafc; 
+    background: #f1f5f9; 
     cursor: pointer; 
     display: flex; 
     justify-content: center; 
     align-items: center; 
+    font-size: 0.7rem; 
     padding: 0;
-    font-size: 0.6rem;
     color: #475569;
 }
 .qty-btn-up { border-bottom: 1px solid #cbd5e1; }
-.qty-btn-up:active, .qty-btn-down:active { background: #cbd5e1; }
-
-/* --- 자재 UI 스타일 끝 --- */
+.qty-btn-up:active, .qty-btn-down:active { background: #cbd5e1; color: white; }
         
         
     </style>
