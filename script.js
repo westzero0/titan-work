@@ -897,45 +897,44 @@ function filterSubCat(subCat, el) {
     else renderMaterialTable(items.filter(i => i.subCat === subCat));
 }
 
-// 3단계: 표 그리기 (가로 배치 & 디자인 수정)
+// 3단계: 표 그리기 (3칸 분리 & 수량 외곽선 제거 버전)
 function renderMaterialTable(list) {
     const container = document.getElementById('material-list');
     
-    // 테이블 헤더: 칸 너비 조정 (품목 7 : 수량 3)
+    // 테이블 헤더: 품목 | 규격 | 수량 (3칸 분리)
     let html = `
         <table class="mat-table">
             <colgroup>
-                <col style="width: 70%"> 
-                <col style="width: 30%">
-            </colgroup>
+                <col style="width: 40%"> <col style="width: 35%"> <col style="width: 25%"> </colgroup>
             <thead>
                 <tr>
-                    <th style="text-align:center;">품목 / 규격</th>
-                    <th style="text-align:center;">수량</th>
+                    <th>품목</th>
+                    <th>규격</th>
+                    <th>수량</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
     if (list.length === 0) {
-        html += `<tr><td colspan="2" style="text-align:center; padding:20px; color:#94a3b8;">항목이 없습니다.</td></tr>`;
+        html += `<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">항목이 없습니다.</td></tr>`;
     }
 
     list.forEach(m => {
         const qty = selectedMaterials[m.name] ? selectedMaterials[m.name].qty : 0;
-        
-        // 수량이 0보다 크면 행 배경색 변경 (시각적 강조)
-        const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : '';
+        const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : ''; // 선택 시 배경색
 
         html += `
             <tr ${rowBg}>
-                <td onclick="focusQty('${m.name}')">
-                    <div class="item-row">
-                        <span class="item-name">${m.name}</span>
-                        <span class="item-spec">${m.spec}</span>
-                        <span style="font-size:0.75rem; color:#94a3b8;">(${m.unit})</span>
-                    </div>
+                <td style="font-weight:bold; color:#1e293b; text-align:center;" onclick="focusQty('${m.name}')">
+                    ${m.name}
                 </td>
+                
+                <td style="color:#64748b; text-align:center; font-size:0.75rem;" onclick="focusQty('${m.name}')">
+                    ${m.spec}<br>
+                    <span style="font-size:0.7rem; color:#94a3b8;">(${m.unit})</span>
+                </td>
+
                 <td style="text-align:center;">
                     <div class="qty-control-box">
                         <input type="number" id="qty-${m.name}" class="qty-input-box" value="${qty}" readonly>
