@@ -794,6 +794,7 @@ function copyScheduleToLog(s) {
 let allMaterials = {}; // 서버에서 받아올 객체
 let selectedMaterials = {}; // 사용자 선택 저장 (Key: UID)
 let currentCategory = "";
+let currentSubCategory = "ALL"; // 현재 중분류
 let isMatLoaded = false;
 
 // 자재창 열기/닫기
