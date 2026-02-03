@@ -1034,29 +1034,60 @@ function focusQtyInput(uid) {
     if(input) input.focus();
 }
 
-// 직접 입력 팝업
+// 📍 [업그레이드] 직접 입력: 데이터 보존 + 스크롤 위치 유지
 function addCustomMaterialRow() {
-    const name = prompt("자재명을 입력하세요 (예: 전산볼트)");
-    if (!name) return;
-    const spec = prompt("규격/사이즈를 입력하세요 (예: M10)", "-");
-    const unit = prompt("단위를 입력하세요 (예: 개, m, box)", "개");
-    const qty = prompt("사용 수량을 입력하세요", "1");
+    if (!currentCategory) return alert("대분류를 먼저 선택해주세요.");
 
-    const numQty = parseInt(qty);
+    // 현재 선택된 중분류가 있으면 그거 쓰고, 없거나 '전체'면 '기타'로 설정
+    const targetSubCat = (currentSubCategory && currentSubCategory !== "ALL") ? currentSubCategory : "기타";
+
+    const name = prompt(`[${currentCategory} > ${targetSubCat}] 자재명 입력:`);
+    if (!name) return;
+    
+    // 취소 누르면 중단
+    const spec = prompt("규격 입력", "-");
+    if (spec === null) return; 
+    
+    const unit = prompt("단위 입력", "개");
+    if (unit === null) return;
+
+    const qtyStr = prompt("수량 입력", "1");
+    if (qtyStr === null) return;
+
+    const numQty = parseInt(qtyStr);
     if (isNaN(numQty) || numQty <= 0) return alert("수량을 정확히 입력하세요.");
 
-    // 직접 입력은 UID를 시간 기반으로 생성하여 중복 방지
+    // 직접 입력 UID 생성
     const customUid = "CUSTOM_" + Date.now();
 
-    selectedMaterials[customUid] = {
+    const newItem = {
         uid: customUid,
-        category: "직접입력",
+        category: currentCategory,
+        subCat: targetSubCat,
         name: name,
         spec: spec,
         unit: unit,
-        price: 0, // 단가는 0 또는 추후 입력
+        price: 0, 
         qty: numQty
     };
 
-    alert(`'${name}' ${numQty}${unit}이(가) 리스트에 추가되었습니다.`);
+    // 1. 전체 목록에 추가
+    if (!allMaterials[currentCategory]) allMaterials[currentCategory] = [];
+    allMaterials[currentCategory].unshift(newItem); 
+
+    // 2. 선택 데이터(금고)에 저장 -> 여기서 다른 데이터들과 함께 안전하게 보관됨
+    selectedMaterials[customUid] = newItem;
+
+    // 3. [디테일] 현재 스크롤 위치 기억
+    const listContainer = document.getElementById('material-list');
+    const scrollPos = listContainer.scrollTop;
+
+    // 4. 화면 다시 그리기 (이때 기존 수량들도 금고에서 다시 꺼내옴)
+    filterSubCat(currentSubCategory, null); 
+
+    // 5. [디테일] 스크롤 위치 복구 (화면이 튀지 않음)
+    listContainer.scrollTop = scrollPos;
+
+    // 안내 메시지는 생략하거나 짧게 (작업 흐름 끊김 방지)
+    // alert(`'${name}' 추가됨`); 
 }
