@@ -1123,49 +1123,55 @@ function addCustomMaterialRow() {
 // 🔍 [신규] 자재 전체 검색 기능
 // ==========================================
 function searchMaterial(keyword) {
-    keyword = keyword.trim().toLowerCase();
-    
+    if (!allMaterials) return; // 데이터 로드 전이면 중단
+
+    const val = keyword.trim().toLowerCase();
     const subChipContainer = document.getElementById('sub-category-chips');
+    const listContainer = document.getElementById('material-list');
     
-    // 1. 검색어가 없으면 -> 원래 보던 화면으로 복구
-    if (keyword === "") {
-        // 현재 선택된 중분류 탭이 있다면 복구, 없으면 초기화 상태
+    // 1. 검색어가 비어있을 때 -> 원래 카테고리 화면으로 복구
+    if (val === "") {
+        subChipContainer.style.display = 'flex'; 
         if (currentCategory) {
-            subChipContainer.style.display = 'flex'; // 칩 다시 보이기
-            filterSubCat(currentSubCategory, null);  // 원래 리스트 복구
+            filterSubCat(currentSubCategory, null);
         } else {
-            document.getElementById('material-list').innerHTML = "<p style='text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 20px;'>분류를 선택하세요.</p>";
+            listContainer.innerHTML = "<p style='text-align: center; color: #94a3b8; padding: 20px;'>분류를 선택하세요.</p>";
         }
         return;
     }
 
-    // 2. 검색어가 있으면 -> 중분류 칩 숨기고 검색 결과 표시
-    subChipContainer.style.display = 'none'; // 칩 숨김 (검색 모드)
+    // 2. 검색 중에는 중분류 칩 숨기기
+    subChipContainer.style.display = 'none';
 
     let searchResults = [];
 
-    // 모든 대분류(allMaterials)를 순회하며 검색
-    Object.keys(allMaterials).forEach(cat => {
-        const items = allMaterials[cat];
-        items.forEach(item => {
-            // 자재명이나 규격에 검색어가 포함되어 있으면 추가
-            if (item.name.toLowerCase().includes(keyword) || item.spec.toLowerCase().includes(keyword)) {
-                searchResults.push(item);
-            }
-        });
+    // 3. 모든 대분류를 순회하며 검색 (중요: 여기서 누락되는 데이터가 없도록 함)
+    Object.keys(allMaterials).forEach(catName => {
+        const items = allMaterials[catName];
+        if (Array.isArray(items)) {
+            items.forEach(item => {
+                const nameMatch = item.name && item.name.toLowerCase().includes(val);
+                const specMatch = item.spec && item.spec.toLowerCase().includes(val);
+                const subMatch = item.subCat && item.subCat.toLowerCase().includes(val);
+
+                if (nameMatch || specMatch || subMatch) {
+                    // 검색 결과임을 알 수 있도록 대분류 정보를 살짝 추가해서 넘김
+                    searchResults.push({ ...item, category: catName });
+                }
+            });
+        }
     });
 
-    // 3. 결과 테이블 그리기
-    renderMaterialTable(searchResults);
-    
-    // 검색 결과가 없을 때 안내 메시지 변경
-    if (searchResults.length === 0) {
-        document.getElementById('material-list').innerHTML = `
+    // 4. 결과 테이블 그리기
+    if (searchResults.length > 0) {
+        renderMaterialTable(searchResults);
+    } else {
+        listContainer.innerHTML = `
             <div style="text-align:center; padding:30px; color:#64748b;">
-                <p>'${keyword}' 검색 결과가 없습니다.</p>
+                <p>'${keyword}'에 대한 검색 결과가 없습니다.</p>
                 <button onclick="addCustomMaterialRow()" 
-                        style="margin-top:10px; padding:8px 15px; background:#2563eb; color:white; border:none; border-radius:5px; font-weight:bold;">
-                    + 직접 입력하기
+                        style="margin-top:10px; padding:10px 20px; background:#2563eb; color:white; border:none; border-radius:8px; font-weight:bold;">
+                    + 직접 입력해서 추가하기
                 </button>
             </div>
         `;
