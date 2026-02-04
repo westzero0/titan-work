@@ -1196,3 +1196,26 @@ function searchMaterial(keyword) {
 
 
 
+// 관리자 리스트 렌더링 부분 예시
+function renderAdminWorkerList(workers) {
+    const container = document.getElementById('admin-worker-list');
+  // 1. 복사할 텍스트를 변수로 미리 만듭니다 (이름 + 공백 + 데이터)
+    const phoneWithName = `${w.name} ${w.phone || '번호없음'}`;
+    const addressWithName = `${w.name} ${w.address || '주소없음'}`;
+
+    return `
+        <div class="admin-card">
+            <b>${w.name}</b>
+            <div class="info-row">
+                <span>📱 ${w.phone || '-'}</span>
+                <button onclick="copyToClipboard('${phoneWithName}')">번호 복사</button>
+            </div>
+            <div class="info-row">
+                <span>🏠 ${w.address || '-'}</span>
+                <button onclick="copyToClipboard('${addressWithName}')">주소 복사</button>
+            </div>
+        </div>
+    `;
+}).join('');
+}
+
