@@ -1195,27 +1195,31 @@ function searchMaterial(keyword) {
 }
 
 
-
-// 관리자 리스트 렌더링 부분 예시
 function renderAdminWorkerList(workers) {
-    const container = document.getElementById('admin-worker-list');
-  // 1. 복사할 텍스트를 변수로 미리 만듭니다 (이름 + 공백 + 데이터)
-const phoneToCopy = `${w.name} ${w.phone || ''}`.trim(); 
-  const addressToCopy = `${w.name} ${w.address || ''}`.trim();
-    
-    return `
-        <div class="admin-card">
-            <b>${w.name}</b>
-            <div class="info-row">
-                <span>📱 ${w.phone || '-'}</span>
-                <button onclick="copyToClipboard('${phoneWithName}')">번호 복사</button>
-            </div>
-            <div class="info-row">
-                <span>🏠 ${w.address || '-'}</span>
-                <button onclick="copyToClipboard('${addressWithName}')">주소 복사</button>
-            </div>
-        </div>
-    `;
-}).join('');
-}
+  const container = document.getElementById('admin-worker-list');
+  if (!container) return;
 
+  container.innerHTML = workers.map(w => {
+    // 💡 [핵심] 복사할 텍스트를 "이름 + 데이터" 형태로 미리 조립합니다.
+    const phoneToCopy = `${w.name} ${w.phone || '번호없음'}`;
+    const addressToCopy = `${w.name} ${w.address || '주소없음'}`;
+
+    return `
+      <div class="admin-card" style="border-bottom:1px solid #eee; padding:10px 0;">
+        <div style="font-weight:bold;">${w.name} <small>(${w.role})</small></div>
+        
+        <div style="font-size:0.9rem; margin-top:5px; color:#555;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <span>📱 ${w.phone || '미등록'}</span>
+            <button onclick="copyToClipboard('${phoneToCopy}')" style="padding:2px 8px; font-size:0.75rem;">복사</button>
+          </div>
+          
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.8rem;">🏠 ${w.address || '미등록'}</span>
+            <button onclick="copyToClipboard('${addressWithName}')" style="padding:2px 8px; font-size:0.75rem;">복사</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
