@@ -1200,9 +1200,9 @@ function searchMaterial(keyword) {
 function renderAdminWorkerList(workers) {
     const container = document.getElementById('admin-worker-list');
   // 1. 복사할 텍스트를 변수로 미리 만듭니다 (이름 + 공백 + 데이터)
-    const phoneWithName = `${w.name} ${w.phone || '번호없음'}`;
-    const addressWithName = `${w.name} ${w.address || '주소없음'}`;
-
+const phoneToCopy = `${w.name} ${w.phone || ''}`.trim(); 
+  const addressToCopy = `${w.name} ${w.address || ''}`.trim();
+    
     return `
         <div class="admin-card">
             <b>${w.name}</b>
