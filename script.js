@@ -1169,11 +1169,7 @@ function searchMaterial(keyword) {
         listContainer.innerHTML = `
             <div style="text-align:center; padding:30px; color:#64748b;">
                 <p>'${keyword}'에 대한 검색 결과가 없습니다.</p>
-                <button onclick="addCustomMaterialRow()" 
-                        style="margin-top:10px; padding:10px 20px; background:#2563eb; color:white; border:none; border-radius:8px; font-weight:bold;">
-                    + 직접 입력해서 추가하기
-                </button>
-            </div>
+                    </div>
         `;
     }
 }
