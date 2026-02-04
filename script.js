@@ -1,3 +1,30 @@
+const APP_VERSION = "1.5"; // 👈 기능 수정할 때마다 이 숫자를 1.6, 1.7로 올리세요!
+
+document.addEventListener('DOMContentLoaded', () => {
+    const savedVer = localStorage.getItem('titan_app_version');
+
+    // 버전이 바뀌었으면 옛날 캐시 데이터 삭제 (로그인 정보는 유지)
+    if (savedVer !== APP_VERSION) {
+        console.log("새 버전 감지! 데이터 초기화 중...");
+        
+        // 1. 자재 데이터, 현장 데이터 등 꼬일 수 있는 것들 삭제
+        localStorage.removeItem('titan_full_data_cache'); 
+        localStorage.removeItem('titan_custom_lists'); // 목록도 초기화 필요하면 삭제
+        
+        // 2. 새 버전 번호 저장
+        localStorage.setItem('titan_app_version', APP_VERSION);
+        
+        // 3. 안내 메시지 (선택 사항)
+        alert(`⚡ 타이탄 앱이 업데이트되었습니다! (v${APP_VERSION})\n새로운 기능을 불러옵니다.`);
+        
+        // 4. 페이지 새로고침하여 새 코드 적용
+        location.reload();
+        return; 
+    }
+});
+
+
+
 const GAS_URL = "https://script.google.com/macros/s/AKfycby6jI-g4YUueGPd_WcrN0OUf0uE5nj4AeM0KhdACfIoXPXBJ54vAzYk7sZLnLoeMivo/exec";
 
 
@@ -805,6 +832,15 @@ async function toggleMaterialUI() {
     if (section.style.display === 'none') {
         section.style.display = 'block';
         btn.innerText = '창 닫기';
+
+        // 💡 [추가] 검색창 초기화
+        const searchInput = document.getElementById('mat-search-input');
+        if(searchInput) searchInput.value = "";
+        
+        // 💡 [추가] 칩 다시 보이기 (혹시 숨겨져 있었다면)
+        const subChipContainer = document.getElementById('sub-category-chips');
+        if(subChipContainer) subChipContainer.style.display = 'flex';
+
         
         // 데이터가 없으면 서버에서 로드
         if (!isMatLoaded) {
@@ -1080,3 +1116,61 @@ function addCustomMaterialRow() {
     // 5. Restore scroll position
     if (listContainer) listContainer.scrollTop = scrollPos;
 }
+
+
+
+// ==========================================
+// 🔍 [신규] 자재 전체 검색 기능
+// ==========================================
+function searchMaterial(keyword) {
+    keyword = keyword.trim().toLowerCase();
+    
+    const subChipContainer = document.getElementById('sub-category-chips');
+    
+    // 1. 검색어가 없으면 -> 원래 보던 화면으로 복구
+    if (keyword === "") {
+        // 현재 선택된 중분류 탭이 있다면 복구, 없으면 초기화 상태
+        if (currentCategory) {
+            subChipContainer.style.display = 'flex'; // 칩 다시 보이기
+            filterSubCat(currentSubCategory, null);  // 원래 리스트 복구
+        } else {
+            document.getElementById('material-list').innerHTML = "<p style='text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 20px;'>분류를 선택하세요.</p>";
+        }
+        return;
+    }
+
+    // 2. 검색어가 있으면 -> 중분류 칩 숨기고 검색 결과 표시
+    subChipContainer.style.display = 'none'; // 칩 숨김 (검색 모드)
+
+    let searchResults = [];
+
+    // 모든 대분류(allMaterials)를 순회하며 검색
+    Object.keys(allMaterials).forEach(cat => {
+        const items = allMaterials[cat];
+        items.forEach(item => {
+            // 자재명이나 규격에 검색어가 포함되어 있으면 추가
+            if (item.name.toLowerCase().includes(keyword) || item.spec.toLowerCase().includes(keyword)) {
+                searchResults.push(item);
+            }
+        });
+    });
+
+    // 3. 결과 테이블 그리기
+    renderMaterialTable(searchResults);
+    
+    // 검색 결과가 없을 때 안내 메시지 변경
+    if (searchResults.length === 0) {
+        document.getElementById('material-list').innerHTML = `
+            <div style="text-align:center; padding:30px; color:#64748b;">
+                <p>'${keyword}' 검색 결과가 없습니다.</p>
+                <button onclick="addCustomMaterialRow()" 
+                        style="margin-top:10px; padding:8px 15px; background:#2563eb; color:white; border:none; border-radius:5px; font-weight:bold;">
+                    + 직접 입력하기
+                </button>
+            </div>
+        `;
+    }
+}
+
+
+
