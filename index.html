@@ -422,7 +422,15 @@ html { scroll-behavior: smooth; }
     </div>
 
  <div id="material-section" style="display: none; margin-top: 15px; border-top: 1px solid #dee2e6;">
-    
+
+
+     <div style="padding: 0 15px 10px 15px;">
+    <input type="text" id="mat-search-input" placeholder="🔍 자재명 또는 규격 검색 (예: CD관, 2.5sq)" 
+           oninput="searchMaterial(this.value)"
+           style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 1rem;">
+</div>
+
+     
     <div id="category-tabs" style="display: flex; overflow-x: auto; gap: 8px; padding: 15px 10px; border-bottom: 1px solid #eee; scrollbar-width: none;">
         </div>
 
