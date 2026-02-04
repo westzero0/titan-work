@@ -318,6 +318,40 @@ html { scroll-behavior: smooth; }
             padding: 0; font-size: 0.6rem; color: #64748b;
         }
         .qty-btn-up:active, .qty-btn-down:active { background: #2563eb; color: white; }
+
+        /* --- [신규] 자재 직접 입력 팝업 스타일 --- */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5); z-index: 10000;
+    display: none; justify-content: center; align-items: center;
+}
+.modal-box {
+    background: white; width: 85%; max-width: 350px;
+    padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+.modal-title {
+    font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; color: #1e293b;
+}
+.modal-subtitle {
+    font-size: 0.85rem; color: #2563eb; margin-bottom: 15px; font-weight: 600;
+}
+.modal-input {
+    width: 100%; padding: 10px; margin-bottom: 10px;
+    border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem;
+    box-sizing: border-box; /* 중요: 패딩 포함 너비 계산 */
+}
+.modal-btn-group {
+    display: flex; gap: 10px; margin-top: 10px;
+}
+.modal-btn-cancel {
+    flex: 1; padding: 12px; border: 1px solid #cbd5e1; background: #f1f5f9;
+    border-radius: 8px; font-weight: bold; color: #64748b; cursor: pointer;
+}
+.modal-btn-confirm {
+    flex: 1; padding: 12px; border: none; background: #2563eb;
+    border-radius: 8px; font-weight: bold; color: white; cursor: pointer;
+}
+        
         
         
     </style>
@@ -495,6 +529,26 @@ html { scroll-behavior: smooth; }
     </div>
     
     <script src="script.js"></script>
- 
+
+    <div id="custom-material-modal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-title">📦 자재 직접 입력</div>
+        <div id="modal-category-display" class="modal-subtitle">분류: -</div>
+        
+        <input type="text" id="modal-name" class="modal-input" placeholder="품명 (예: 전산볼트)">
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="modal-spec" class="modal-input" placeholder="규격 (예: 3/8)" value="-">
+            <input type="text" id="modal-unit" class="modal-input" placeholder="단위" value="개" style="width:80px;">
+        </div>
+        <input type="number" id="modal-qty" class="modal-input" placeholder="수량" value="1">
+        
+        <div class="modal-btn-group">
+            <button onclick="closeCustomModal()" class="modal-btn-cancel">취소</button>
+            <button onclick="confirmCustomMaterial()" class="modal-btn-confirm">추가하기</button>
+        </div>
+    </div>
+</div>
+
+    
 </body>
 </html>
