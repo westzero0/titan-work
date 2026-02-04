@@ -722,7 +722,18 @@ function renderCalendar() {
         const jobs = allSchedules.filter(s => s.date === dStr);
         html += `<div style="background:white; min-height:80px; padding:2px; border:1px solid #eee;">
             <span style="font-size:0.8rem; font-weight:bold;">${d}</span>
-            ${jobs.map(j => `<div onclick="jumpToCard('${j.date}','${j.site}')" style="background:${j.shift==='야'?'#333':'#007bff'}; color:white; font-size:0.6rem; padding:2px; margin-top:2px; border-radius:3px;">${j.site}</div>`).join('')}
+       ${jobs.map(j => {
+                // 💡 인원수 계산 (workers 배열의 길이를 가져옴)
+                const workerCount = (j.workers && Array.isArray(j.workers)) ? j.workers.length : 0;
+                
+                // 💡 표시 텍스트 조립: 현장이름(인원수)
+                const displayTitle = `${j.site}(${workerCount})`;
+
+                return `<div onclick="jumpToCard('${j.date}','${j.site}')" 
+                             style="background:${j.shift==='야'?'#333':'#007bff'}; color:white; font-size:0.6rem; padding:2px; margin-top:2px; border-radius:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                             ${displayTitle}
+                        </div>`;
+            }).join('')}
         </div>`;
     }
     html += `</div></div>`;
