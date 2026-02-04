@@ -1062,61 +1062,81 @@ function focusQtyInput(uid) {
 }
 
 
-// 📍 [Updated] Add Custom Material (Reflect Selected Sub-Category)
+// ==========================================
+// 📍 [업그레이드] 자재 직접 입력 (팝업창 방식)
+// ==========================================
+
+// 1. 팝업창 열기 (기존 addCustomMaterialRow 대체)
 function addCustomMaterialRow() {
-    if (!currentCategory) return alert("Please select a main category first.");
+    if (!currentCategory) return alert("대분류를 먼저 선택해주세요.");
 
-    // 1. Get currently selected sub-category
-    // (If 'All' or not selected -> set to 'Others')
-    const targetSubCat = (currentSubCategory && currentSubCategory !== "ALL") ? currentSubCategory : "Others";
+    const modal = document.getElementById('custom-material-modal');
+    const catDisplay = document.getElementById('modal-category-display');
+    const targetSubCat = (currentSubCategory && currentSubCategory !== "ALL") ? currentSubCategory : "기타";
 
-    const name = prompt(`[${currentCategory} > ${targetSubCat}] Enter Material Name:`);
-    if (!name) return;
+    // 현재 보고 있는 카테고리 표시
+    catDisplay.innerText = `분류: ${currentCategory} > ${targetSubCat}`;
     
-    const spec = prompt("Enter Specification", "-");
-    if (spec === null) return; 
+    // 입력창 초기화
+    document.getElementById('modal-name').value = "";
+    document.getElementById('modal-spec').value = "-";
+    document.getElementById('modal-unit').value = "개";
+    document.getElementById('modal-qty').value = "1";
+
+    // 팝업 보여주기
+    modal.style.display = 'flex';
     
-    const unit = prompt("Enter Unit", "ea");
-    if (unit === null) return;
+    // 품명 입력창에 바로 커서 두기
+    setTimeout(() => document.getElementById('modal-name').focus(), 100);
+}
 
-    const qtyStr = prompt("Enter Quantity", "1");
-    if (qtyStr === null) return;
+// 2. 팝업창 닫기
+function closeCustomModal() {
+    document.getElementById('custom-material-modal').style.display = 'none';
+}
 
+// 3. 추가하기 버튼 눌렀을 때 실행
+function confirmCustomMaterial() {
+    const name = document.getElementById('modal-name').value.trim();
+    const spec = document.getElementById('modal-spec').value.trim();
+    const unit = document.getElementById('modal-unit').value.trim();
+    const qtyStr = document.getElementById('modal-qty').value;
     const numQty = parseInt(qtyStr);
-    if (isNaN(numQty) || numQty <= 0) return alert("Please enter a valid quantity.");
 
-    // Generate Custom UID
+    if (!name) return alert("품명을 입력해주세요.");
+    if (isNaN(numQty) || numQty <= 0) return alert("수량을 확인해주세요.");
+
+    // 보고 있던 중분류 가져오기
+    const targetSubCat = (currentSubCategory && currentSubCategory !== "ALL") ? currentSubCategory : "기타";
     const customUid = "CUSTOM_" + Date.now();
 
     const newItem = {
         uid: customUid,
         category: currentCategory,
-        subCat: targetSubCat, // 👈 Selected sub-category goes here
+        subCat: targetSubCat,
         name: name,
         spec: spec,
         unit: unit,
-        price: 0, 
+        price: 0,
         qty: numQty
     };
 
-    // 1. Add to full list (at top)
+    // 데이터 저장 (전체 목록 & 선택 목록)
     if (!allMaterials[currentCategory]) allMaterials[currentCategory] = [];
-    allMaterials[currentCategory].unshift(newItem); 
-
-    // 2. Save to selected data (vault)
+    allMaterials[currentCategory].unshift(newItem); // 맨 앞에 추가
     selectedMaterials[customUid] = newItem;
 
-    // 3. Remember current scroll position
+    // 화면 갱신
     const listContainer = document.getElementById('material-list');
     const scrollPos = listContainer ? listContainer.scrollTop : 0;
-
-    // 4. Redraw screen (Maintain current sub-category state)
-    filterSubCat(currentSubCategory, null); 
-
-    // 5. Restore scroll position
+    
+    filterSubCat(currentSubCategory, null);
+    
     if (listContainer) listContainer.scrollTop = scrollPos;
-}
 
+    // 팝업 닫기
+    closeCustomModal();
+}
 
 
 // ==========================================
