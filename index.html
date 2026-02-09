@@ -406,19 +406,21 @@ html { scroll-behavior: smooth; }
                 <div id="site-chips" class="chip-container"></div>
             </div>
 
-            <div class="card">
-                <label>🛠️ 작업 내용</label>
-                <textarea id="work" rows="3" placeholder="오늘 작업 내용을 입력하세요"></textarea>
-                <div class="row">
-                    <div class="col"><label>⏰ 시작</label><select id="start"></select></div>
-                    <div class="col"><label>⏰ 종료</label><select id="end"></select></div>
-                </div>
-                <label>🍱 석식 여부</label>
-                <select id="dinner"><option value="X">안먹음 (X)</option><option value="O">먹음 (O)</option></select>
-            </div>
-            <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 15px;">
-  <span style="font-weight: bold; color: #666;">🍴 석식 여부 (오늘 먹었나요?)</span>
-  <input type="checkbox" id="dinner-yn" style="width: 24px; height: 24px;">
+        <div class="card">
+    <label>🛠️ 작업 내용</label>
+    <textarea id="work" rows="3" placeholder="오늘 작업 내용을 입력하세요"></textarea>
+
+    <div class="row" style="display: flex; gap: 10px; margin-top: 10px;">
+        <div class="col" style="flex: 1;"><label>⏰ 시작</label><select id="start" style="width: 100%;"></select></div>
+        <div class="col" style="flex: 1;"><label>⏰ 종료</label><select id="end" style="width: 100%;"></select></div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 15px; margin-top: 15px; border-top: 1px solid #eee;">
+        <label for="dinner-yn" style="font-weight: bold; color: #475569; cursor: pointer; flex: 1; margin: 0;">
+            🍴 석식 여부 (오늘 먹었나요?)
+        </label>
+        <input type="checkbox" id="dinner-yn" style="width: 26px; height: 26px; cursor: pointer; accent-color: #2563eb;">
+    </div>
 </div>
             
 
