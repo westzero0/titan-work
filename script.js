@@ -313,6 +313,30 @@ function renderSiteChips(sites = currentSites, term = "") {
     });
 }
 
+
+/**
+ * 💡 현장 검색창 입력 시 칩 선택 상태를 동기화하는 함수
+ */
+function syncSiteSelection() {
+    const searchTerm = document.getElementById('siteSearch').value.trim();
+    const chips = document.querySelectorAll('#site-chips .chip');
+    
+    // 모든 칩의 활성화 상태를 일단 해제
+    chips.forEach(chip => chip.classList.remove('active'));
+
+    // 입력한 글자와 정확히 일치하는 칩이 있다면 파란색(active)으로 변경
+    if (searchTerm !== "") {
+        chips.forEach(chip => {
+            // [완료] 표시가 붙은 경우도 고려하여 체크
+            const chipName = chip.innerText.replace('[완료] ', '').trim();
+            if (chipName === searchTerm) {
+                chip.classList.add('active');
+            }
+        });
+    }
+}
+
+
 function renderAllChips() { ['member', 'car', 'material', 'payer'].forEach(type => renderChips(type)); }
 
 function renderChips(type) {
