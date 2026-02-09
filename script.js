@@ -406,7 +406,7 @@ function generateTimeOptions() {
     s.value = "08:00"; e.value = "17:00";
 }
 
-// 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송 
+// 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송 (최종 완성본)
 // 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송 (최종 완성본)
 async function send() {
     const btn = document.getElementById('sBtn');
@@ -510,7 +510,16 @@ async function send() {
             resetFormOnlyInputs();
 
         } else {
-            // 서버
+            // 서버가 에러 메시지를 보낸 경우
+            throw new Error(jsonResult.message || jsonResult.msg || "저장 실패");
+        }
+
+    } catch (e) {
+        alert("🚨 에러 발생:\n" + e.message);
+        btn.innerText = "🚀 저장 및 카톡 공유"; // 버튼 원상복구
+        btn.disabled = false;
+    }
+}
 
 // 💡 사진을 초경량으로 압축해서 서버로 보낼 수 있게 만드는 함수 (수정본)
 async function compressImage(file) {
