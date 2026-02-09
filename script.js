@@ -407,28 +407,26 @@ function generateTimeOptions() {
 }
 
 // 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송 
+// 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송 (최종 완성본)
 async function send() {
     const btn = document.getElementById('sBtn');
     
-    // 1. 입력값 가져오기
+    // --- 1. 입력값 가져오기 ---
     const work = document.getElementById('work').value.trim();
-    // ★ 석식 여부 체크 (체크되면 O, 아니면 X)
+    // 석식 여부 (체크=O, 해제=X)
     const dinnerValue = document.getElementById('dinner-yn').checked ? "O" : "X"; 
     
-    // 칩 선택된 값 가져오기
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
     let site = document.querySelector('#site-chips .chip.active')?.innerText;
-    // 칩 선택 안 했으면 직접 입력값 사용
-    if (!site) site = document.getElementById('siteSearch').value.trim();
+    if (!site) site = document.getElementById('siteSearch').value.trim(); // 칩 없으면 검색창 값 사용
     
     // 필수값 체크
-    if (!client || !site || !work) return alert("⚠️ 거래처, 현장, 작업내용은 필수입니다!");
+    if (!client || !site || !work) return alert("⚠️ 필수 정보(거래처, 현장, 작업내용)를 입력해주세요.");
 
-    // 버튼 잠그기 (중복 전송 방지)
     btn.disabled = true; 
-    btn.innerText = "🕵️ 범인 잡는 중...";
+    btn.innerText = "⏳ 저장 중...";
 
-    // 2. 데이터 포장 (Payload)
+    // --- 2. 데이터 포장 ---
     const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     
     const payload = {
@@ -442,41 +440,77 @@ async function send() {
             end: document.getElementById('end').value,
             members: getSel('#member-chips'),
             car: getSel('#car-chips'),
-            dinner: dinnerValue, // ★ 여기에 석식 값이 들어갑니다
+            dinner: dinnerValue, // ★ 석식 데이터
             materials: document.getElementById('materialExtra')?.value.trim() || "없음",
-            selectedMaterials: [], // 자재 객체 (일단 빈 배열)
+            selectedMaterials: Object.values(selectedMaterials), // 자재 객체 배열 전송
             expAmount: document.getElementById('expAmount')?.value || 0,
             expDetail: document.getElementById('expDetail')?.value || "",
             expPayer: getSel('#payer-chips'),
-            files: [],
+            files: [], // 사진 기능은 별도 함수로 처리됨
             submitter: document.getElementById('submitter').value
         }
     };
 
     try {
-        // 3. 서버로 전송 (가장 중요한 부분!)
+        // --- 3. 서버 전송 ---
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            redirect: 'follow', // ★ 서버가 가라는 곳으로 따라감
+            redirect: 'follow',
             body: JSON.stringify(payload)
         });
 
-        // 4. 서버 응답을 글자(Text) 그대로 받기
         const textResult = await res.text();
         
-        // 5. ★ 결과 팝업 띄우기 (이 내용을 알려주세요!)
-        alert("🔍 서버 응답 내용:\n----------------\n" + textResult.substring(0, 400));
-        
-        // (성공이든 실패든 여기서 일단 멈춤)
-        btn.disabled = false;
-        btn.innerText = "🚀 저장 및 카톡 공유";
+        // JSON 파싱 시도
+        let jsonResult;
+        try {
+            jsonResult = JSON.parse(textResult);
+        } catch (e) {
+            // HTML 에러 페이지 등이 왔을 경우
+            throw new Error("서버 응답 오류: " + textResult.substring(0, 50));
+        }
 
-    } catch (e) {
-        alert("🚨 전송 실패 (네트워크 에러):\n" + e.message);
-        btn.disabled = false;
-        btn.innerText = "🚀 다시 시도";
-    }
-}
+        // --- 4. 결과 처리 ---
+        // 서버가 "SUCCESS" 문자열만 보내거나, {result: "SUCCESS"} 객체를 보낼 경우 모두 처리
+        if (jsonResult === "SUCCESS" || jsonResult.result === "SUCCESS" || jsonResult.res === "SUCCESS") {
+            
+            alert("✅ 저장되었습니다!");
+            
+            // 성공 후 UI 변경
+            btn.innerText = "💬 카톡 공유하기";
+            btn.style.backgroundColor = "#FEE500"; // 카톡 노란색
+            btn.style.color = "#000000";
+            
+            // 버튼 클릭 시 카톡 공유 기능으로 변경
+            btn.onclick = () => {
+                const materialTxt = payload.data.materials !== "없음" ? payload.data.materials : "";
+                const matListTxt = payload.data.selectedMaterials.map(m => `${m.name} ${m.qty}${m.unit}`).join(', ');
+                const finalMat = [materialTxt, matListTxt].filter(t => t).join(', ') || "없음";
+
+                // 카톡 전송용 텍스트 만들기
+                let msg = `[${payload.data.date}] 작업일보\n`;
+                msg += `🏢 ${client} / ${site}\n`;
+                msg += `🛠 ${work}\n`;
+                msg += `👥 ${payload.data.members}\n`;
+                if(payload.data.dinner === "O") msg += `🍚 석식: O\n`; // 석식 있을 때만 표시하려면 조건문 사용
+                if(finalMat !== "없음") msg += `📦 자재: ${finalMat}\n`;
+                if(payload.data.car) msg += `🚗 차량: ${payload.data.car}\n`;
+                
+                // 클립보드 복사 후 카톡 실행
+                navigator.clipboard.writeText(msg).then(() => {
+                    alert("내용이 복사되었습니다.\n카톡을 열어 붙여넣기 하세요.");
+                    location.href = "kakaolink://"; // 카톡 앱 열기 시도
+                });
+                
+                // 공유 후 완전 초기화
+                setTimeout(resetFormFull, 1000);
+            };
+
+            // 입력창들 비우기 (연속 입력을 위해)
+            resetFormOnlyInputs();
+
+        } else {
+            // 서버
 
 // 💡 사진을 초경량으로 압축해서 서버로 보낼 수 있게 만드는 함수 (수정본)
 async function compressImage(file) {
