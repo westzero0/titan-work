@@ -1,4 +1,4 @@
-const APP_VERSION = "1.5"; // 👈 기능 수정할 때마다 이 숫자를 1.6, 1.7로 올리세요!
+const APP_VERSION = "1.6"; // 👈 기능 수정할 때마다 이 숫자를 1.6, 1.7로 올리세요!
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedVer = localStorage.getItem('titan_app_version');
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwT-Z0o8WEBRPUUUqoHU5BmVQWxshauEI32b83chPHspVML5_1ZCVf4Wf0eg38nQXTS/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzGZZlJndPy8p9u4sEK5mOTH8MzfYFdr7YGYQWTpZ4DsYh48LW_jJ0mCDM50ClCTYB_/exec";
 
 
 // 💡 1. 통합 초기 로드 로직
@@ -388,7 +388,7 @@ async function send() {
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
     const site = document.querySelector('#site-chips .chip.active')?.innerText || document.getElementById('siteSearch').value.trim();
     const matListForServer = Object.values(selectedMaterials).filter(m => m.qty > 0);
-
+    const dinnerValue = document.getElementById('dinner-yn').checked ? "O" : "X";
     
 // 💡 신규 시스템에서 수량이 1개 이상인 항목만 추출
     const matList = Object.values(selectedMaterials).filter(m => m.qty > 0);
@@ -409,8 +409,7 @@ const materials = [
 ].filter(Boolean).join(', ') || "없음";    let expenseLine = expAmount > 0 ? `\n💰 경비: ${expAmount.toLocaleString()}원${expDetail ? ` (${expDetail})` : ''}` : "";
 
     // 카톡 메시지 미리 생성 (백업)
-    const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${document.getElementById('start').value} ~ ${document.getElementById('end').value}\n👥 인원: ${getSel('#member-chips') || "없음"}\n🚗 차량: ${getSel('#car-chips') || "없음"}\n🍱 석식: ${document.getElementById('dinner').value}\n📦 자재: ${materials}${expenseLine}`;
-
+const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${document.getElementById('start').value} ~ ${document.getElementById('end').value}\n👥 인원: ${getSel('#member-chips') || "없음"}\n🚗 차량: ${getSel('#car-chips') || "없음"}\n🍱 석식: ${dinnerValue}\n📦 자재: ${materials}${expenseLine}`;
     // 이미지 처리
     const receiptInput = document.getElementById('receipt');
     let filesData = [];
@@ -435,7 +434,7 @@ const materials = [
             end: document.getElementById('end').value,
             members: getSel('#member-chips'),
             car: getSel('#car-chips'),
-            dinner: document.getElementById('dinner').value,
+            dinner: dinnerValue,
             
             // 1. 기존 방식 (텍스트 메모)
             materials: document.getElementById('materialExtra').value.trim() || "없음",
@@ -555,6 +554,9 @@ function resetFormOnlyInputs() {
     const matListContainer = document.getElementById('material-list');
     if (matListContainer) matListContainer.innerHTML = "<p style='text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 20px;'>대분류를 선택하면 자재 목록이 나옵니다.</p>";
 }
+
+const dinnerCheck = document.getElementById('dinner-yn');
+    if (dinnerCheck) dinnerCheck.checked = false;
 
 
 // 💡 공유까지 끝난 후 완전 초기화하는 함수
