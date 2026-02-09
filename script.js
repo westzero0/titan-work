@@ -477,7 +477,7 @@ const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementByI
         // 💡 핵심 수리: 'no-cors' 모드를 사용해 차단 에러를 회피하고 강제 성공 처리
         await fetch(GAS_URL, { 
             method: 'POST', 
-            mode: 'no-cors', // 응답을 못 들어도 전송은 성공하게 만듦
+          //  mode: 'no-cors', // 응답을 못 들어도 전송은 성공하게 만듦
             body: JSON.stringify(payload) 
         });
 
