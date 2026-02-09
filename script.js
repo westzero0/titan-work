@@ -70,6 +70,7 @@ async function showLoginScreen() {
 const res = await fetch(GAS_URL, {
     method: 'POST',
     // mode: 'cors' 혹은 'no-cors'가 있다면 지우세요! (기본값으로 두는게 안전함)
+    redirect: 'follow',  // ★ 이 줄을 꼭 추가하세요! (서버가 가라는 곳으로 따라가라는 뜻)
     body: JSON.stringify({ action: "getWorkerList" }),
     
     // 🔑 구글 서버의 리다이렉션을 따라가도록 만드는 핵심 옵션
