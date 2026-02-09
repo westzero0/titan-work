@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycby5-tyksIC8BjNACY9Tzi7lthgbk_p9l_XOl0VQMY3vl4HsEUWgEOfV15QPSUHrRCt-/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwzPMdoF0FczYaxc14O0aUV3INoxn1lOIMRKcPirf6DUQDhFLTP-T99Nsd2SW3mxo8p/exec";
 
 
 // 💡 1. 통합 초기 로드 로직
@@ -406,27 +406,57 @@ function generateTimeOptions() {
     s.value = "08:00"; e.value = "17:00";
 }
 
-// 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송 (최종 완성본)
-// 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송 (최종 완성본)
+// 6. [전송 및 공유] 통합 완성본 (사진압축 + 서버저장 + 카톡공유)
 async function send() {
     const btn = document.getElementById('sBtn');
     
     // --- 1. 입력값 가져오기 ---
     const work = document.getElementById('work').value.trim();
-    // 석식 여부 (체크=O, 해제=X)
+    // 석식 여부
     const dinnerValue = document.getElementById('dinner-yn').checked ? "O" : "X"; 
     
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
     let site = document.querySelector('#site-chips .chip.active')?.innerText;
-    if (!site) site = document.getElementById('siteSearch').value.trim(); // 칩 없으면 검색창 값 사용
+    if (!site) site = document.getElementById('siteSearch').value.trim();
     
     // 필수값 체크
     if (!client || !site || !work) return alert("⚠️ 필수 정보(거래처, 현장, 작업내용)를 입력해주세요.");
 
     btn.disabled = true; 
-    btn.innerText = "⏳ 저장 중...";
 
-    // --- 2. 데이터 포장 ---
+    // --- 2. 자재 텍스트 정리 (카톡 공유용) ---
+    // 기존 텍스트 자재
+    const matText = document.getElementById('materialExtra')?.value.trim();
+    // 신규 선택 자재 (수량 있는 것만)
+    const matList = Object.values(selectedMaterials).filter(m => m.qty > 0);
+    // "품명(3개)" 형식으로 변환
+    const matListTxt = matList.map(m => `${m.name}(${m.qty}${m.unit})`).join(', ');
+    
+    // 두 가지 방식 합치기
+    const finalMaterialString = [matText, matListTxt].filter(t => t).join(', ') || "없음";
+
+
+    // --- 3. 사진 압축 및 처리 (이 부분이 복구되었습니다!) ---
+    const receiptInput = document.getElementById('receipt');
+    let filesData = [];
+    
+    if (receiptInput.files.length > 0) {
+        for (let i = 0; i < receiptInput.files.length; i++) {
+            btn.innerText = `📸 사진 압축 중 (${i + 1}/${receiptInput.files.length})`;
+            try {
+                // compressImage 함수는 script.js 어딘가에 있어야 합니다!
+                const data = await compressImage(receiptInput.files[i]); 
+                filesData.push({ content: data.base64, type: data.mimeType, name: data.name });
+            } catch (e) {
+                console.error("사진 압축 실패:", e);
+                alert("일부 사진 압축에 실패했습니다. 제외하고 진행합니다.");
+            }
+        }
+    }
+
+    btn.innerText = "⏳ 서버 전송 중...";
+
+    // --- 4. 데이터 포장 (Payload) ---
     const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     
     const payload = {
@@ -440,86 +470,92 @@ async function send() {
             end: document.getElementById('end').value,
             members: getSel('#member-chips'),
             car: getSel('#car-chips'),
-            dinner: dinnerValue, // ★ 석식 데이터
-            materials: document.getElementById('materialExtra')?.value.trim() || "없음",
-            selectedMaterials: Object.values(selectedMaterials), // 자재 객체 배열 전송
+            dinner: dinnerValue,
+            materials: matText || "없음", // 기존 텍스트 방식
+            selectedMaterials: matList, // 신규 방식 (객체 배열)
             expAmount: document.getElementById('expAmount')?.value || 0,
             expDetail: document.getElementById('expDetail')?.value || "",
             expPayer: getSel('#payer-chips'),
-            files: [], // 사진 기능은 별도 함수로 처리됨
+            files: filesData, // ★ 압축된 사진 데이터
             submitter: document.getElementById('submitter').value
         }
     };
 
     try {
-        // --- 3. 서버 전송 ---
+        // --- 5. 서버 전송 (redirect: follow 필수!) ---
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            redirect: 'follow',
+            redirect: 'follow', // ★ 중요: 서버 응답 따라가기
             body: JSON.stringify(payload)
         });
 
         const textResult = await res.text();
         
-        // JSON 파싱 시도
+        // JSON 파싱 확인
         let jsonResult;
         try {
             jsonResult = JSON.parse(textResult);
         } catch (e) {
-            // HTML 에러 페이지 등이 왔을 경우
-            throw new Error("서버 응답 오류: " + textResult.substring(0, 50));
+            throw new Error("서버 응답 오류 (HTML 반환됨)");
         }
 
-        // --- 4. 결과 처리 ---
-        // 서버가 "SUCCESS" 문자열만 보내거나, {result: "SUCCESS"} 객체를 보낼 경우 모두 처리
+        // --- 6. 성공 처리 ---
         if (jsonResult === "SUCCESS" || jsonResult.result === "SUCCESS" || jsonResult.res === "SUCCESS") {
             
             alert("✅ 저장되었습니다!");
+
+            // 카톡 공유 메시지 만들기
+            let msg = `[${payload.data.date}] 작업일보\n`;
+            msg += `🏢 ${client} / ${site}\n`;
+            msg += `🛠 ${work}\n`;
+            msg += `👥 ${payload.data.members}\n`;
+            if(dinnerValue === "O") msg += `🍚 석식: O\n`;
+            if(finalMaterialString !== "없음") msg += `📦 자재: ${finalMaterialString}\n`;
+            if(payload.data.car) msg += `🚗 차량: ${payload.data.car}\n`;
             
-            // 성공 후 UI 변경
+            // 경비가 있을 때만 표시
+            if(payload.data.expAmount > 0) {
+                 msg += `💰 경비: ${Number(payload.data.expAmount).toLocaleString()}원 (${payload.data.expDetail}/${payload.data.expPayer})`;
+            }
+
+            // 버튼 UI 변경
             btn.innerText = "💬 카톡 공유하기";
-            btn.style.backgroundColor = "#FEE500"; // 카톡 노란색
+            btn.style.backgroundColor = "#FEE500"; 
             btn.style.color = "#000000";
             
-            // 버튼 클릭 시 카톡 공유 기능으로 변경
-            btn.onclick = () => {
-                const materialTxt = payload.data.materials !== "없음" ? payload.data.materials : "";
-                const matListTxt = payload.data.selectedMaterials.map(m => `${m.name} ${m.qty}${m.unit}`).join(', ');
-                const finalMat = [materialTxt, matListTxt].filter(t => t).join(', ') || "없음";
-
-                // 카톡 전송용 텍스트 만들기
-                let msg = `[${payload.data.date}] 작업일보\n`;
-                msg += `🏢 ${client} / ${site}\n`;
-                msg += `🛠 ${work}\n`;
-                msg += `👥 ${payload.data.members}\n`;
-                if(payload.data.dinner === "O") msg += `🍚 석식: O\n`; // 석식 있을 때만 표시하려면 조건문 사용
-                if(finalMat !== "없음") msg += `📦 자재: ${finalMat}\n`;
-                if(payload.data.car) msg += `🚗 차량: ${payload.data.car}\n`;
+            // 공유 버튼 클릭 이벤트 재정의
+            btn.onclick = async () => {
+                // 모바일 기본 공유 기능 (navigator.share) 우선 시도
+                if (navigator.share) {
+                    try {
+                        await navigator.share({ text: msg });
+                    } catch (err) {
+                        // 취소하거나 에러나면 클립보드 복사로 대체
+                        copyToClipboard(msg);
+                    }
+                } else {
+                    // PC 등에서는 클립보드 복사
+                    copyToClipboard(msg);
+                }
                 
-                // 클립보드 복사 후 카톡 실행
-                navigator.clipboard.writeText(msg).then(() => {
-                    alert("내용이 복사되었습니다.\n카톡을 열어 붙여넣기 하세요.");
-                    location.href = "kakaolink://"; // 카톡 앱 열기 시도
-                });
-                
-                // 공유 후 완전 초기화
+                // 공유 후 초기화
                 setTimeout(resetFormFull, 1000);
             };
 
-            // 입력창들 비우기 (연속 입력을 위해)
+            // 입력창만 비우기 (연속 입력 대기)
             resetFormOnlyInputs();
 
         } else {
-            // 서버가 에러 메시지를 보낸 경우
-            throw new Error(jsonResult.message || jsonResult.msg || "저장 실패");
+            throw new Error(jsonResult.message || "저장 실패");
         }
 
     } catch (e) {
         alert("🚨 에러 발생:\n" + e.message);
-        btn.innerText = "🚀 저장 및 카톡 공유"; // 버튼 원상복구
+        btn.innerText = "🚀 저장 및 카톡 공유";
         btn.disabled = false;
     }
 }
+
 
 // 💡 사진을 초경량으로 압축해서 서버로 보낼 수 있게 만드는 함수 (수정본)
 async function compressImage(file) {
