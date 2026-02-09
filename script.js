@@ -407,48 +407,30 @@ function generateTimeOptions() {
 }
 
 // 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송 
+// [디버깅용] send 함수 (에러 원인 추적 버전)
 async function send() {
     const btn = document.getElementById('sBtn');
+    
+    // --- 1. 입력값 가져오기 ---
     const work = document.getElementById('work').value.trim();
+    // (중요) 체크박스 값 가져오기
+    const dinnerValue = document.getElementById('dinner-yn').checked ? "O" : "X"; 
+    
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
     const site = document.querySelector('#site-chips .chip.active')?.innerText || document.getElementById('siteSearch').value.trim();
-    const matListForServer = Object.values(selectedMaterials).filter(m => m.qty > 0);
-    const dinnerValue = document.getElementById('dinner-yn').checked ? "O" : "X";
     
-// 💡 신규 시스템에서 수량이 1개 이상인 항목만 추출
-    const matList = Object.values(selectedMaterials).filter(m => m.qty > 0);
-const matDetailedString = matList.map(m => `${m.name}(${m.qty}${m.unit})`).join(', ');
-    
+    // 필수값 체크
     if (!client || !site || !work) return alert("⚠️ 필수 정보를 입력해주세요.");
 
-    btn.disabled = true; btn.innerText = "⏳ 데이터 전송 중...";
+    btn.disabled = true; 
+    btn.innerText = "⏳ 서버에 물어보는 중...";
+
+    // --- 2. 데이터 포장 (Payload) ---
+    // (중요) 자재, 멤버 등 다른 데이터 수집 로직은 기존 유지하거나 아래처럼 간략히 가져옴
+    // 여기서는 핵심인 dinnerValue가 잘 들어가는지만 확인합니다.
     const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     
-    // 데이터 정리
-    const expAmount = Number(document.getElementById('expAmount').value) || 0; 
-    const expDetail = document.getElementById('expDetail').value.trim();
-const materials = [
-    getSel('#material-chips'), 
-    document.getElementById('materialExtra').value.trim(),
-    matDetailedString // 신규 정밀 자재 추가
-].filter(Boolean).join(', ') || "없음";    let expenseLine = expAmount > 0 ? `\n💰 경비: ${expAmount.toLocaleString()}원${expDetail ? ` (${expDetail})` : ''}` : "";
-
-    // 카톡 메시지 미리 생성 (백업)
-const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementById('date').value}\n🏢 거래처: ${client}\n🏗️ 현장명: ${site}\n🛠️ 작업내용: ${work}\n⏰ 시간: ${document.getElementById('start').value} ~ ${document.getElementById('end').value}\n👥 인원: ${getSel('#member-chips') || "없음"}\n🚗 차량: ${getSel('#car-chips') || "없음"}\n🍱 석식: ${dinnerValue}\n📦 자재: ${materials}${expenseLine}`;
-    // 이미지 처리
-    const receiptInput = document.getElementById('receipt');
-    let filesData = [];
-    if (receiptInput.files.length > 0) {
-        for (let i = 0; i < receiptInput.files.length; i++) {
-            btn.innerText = `📸 압축 중 (${i + 1}/${receiptInput.files.length})`;
-            const data = await compressImage(receiptInput.files[i]);
-            filesData.push({ content: data.base64, type: data.mimeType, name: data.name });
-        }
-    }
-
-    try {
-        btn.innerText = "🚀 서버 전송 중..."; 
-     const payload = {
+    const payload = {
         action: "saveLog",
         data: {
             date: document.getElementById('date').value,
@@ -459,53 +441,53 @@ const msg = `⚡ [타이탄 작업일보]\n📅 날짜: ${document.getElementByI
             end: document.getElementById('end').value,
             members: getSel('#member-chips'),
             car: getSel('#car-chips'),
-            dinner: dinnerValue,
-            
-            // 1. 기존 방식 (텍스트 메모)
-            materials: document.getElementById('materialExtra').value.trim() || "없음",
-            
-            // 2. 신규 방식 (선택된 자재 리스트 전송)
-            selectedMaterials: matList, 
-
-            expAmount: Number(document.getElementById('expAmount').value) || 0,
-            expDetail: document.getElementById('expDetail').value.trim(),
-            expPayer: getSel('#payer-chips'),
-            files: filesData,
+            dinner: dinnerValue, // ★ 석식 데이터 확인!
+            materials: document.getElementById('materialExtra')?.value.trim() || "없음",
+            selectedMaterials: [], // 일단 빈 배열 (테스트용)
+            expAmount: 0,
+            expDetail: "",
+            expPayer: "",
+            files: [],
             submitter: document.getElementById('submitter').value
         }
     };
 
-        // 💡 핵심 수리: 'no-cors' 모드를 사용해 차단 에러를 회피하고 강제 성공 처리
-        await fetch(GAS_URL, { 
-            method: 'POST', 
-          //  mode: 'no-cors', // 응답을 못 들어도 전송은 성공하게 만듦
-            body: JSON.stringify(payload) 
+    try {
+        // --- 3. 서버로 전송 (진짜 에러 확인용 설정) ---
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            redirect: 'follow', // 리다이렉트 따라가기
+            body: JSON.stringify(payload)
         });
 
-        // 💡 전송 후 1.5초 뒤에 무조건 노란 버튼으로 전환 (데이터 들어가는 시간 확보)
-        setTimeout(() => {
-            const tempMsg = msg;
-            resetFormOnlyInputs(); // 입력칸 비우기
+        // --- 4. 서버 응답 뜯어보기 ---
+        const textResult = await res.text(); // 일단 글자로 받음
+        console.log("서버 응답 원본:", textResult); // F12 콘솔에 찍힘
 
-            btn.disabled = false;
-            btn.style.setProperty("background-color", "#fee500", "important");
-            btn.style.setProperty("color", "#3c1e1e", "important");
-            btn.innerText = "➡️ 지금 카톡으로 공유하기";
+        // JSON으로 변환 시도
+        let jsonResult;
+        try {
+            jsonResult = JSON.parse(textResult);
+        } catch (e) {
+            // JSON이 아니라면(HTML 에러페이지 등) 여기서 걸림
+            alert("🚨 서버 에러 (HTML 반환됨):\n" + textResult.substring(0, 100) + "...");
+            throw new Error("서버가 JSON이 아닌 이상한 걸 보냈습니다.");
+        }
 
-            btn.onclick = async () => {
-                if (navigator.share) {
-                    await navigator.share({ text: tempMsg }).catch(() => {});
-                } else {
-                    await copyToClipboard(tempMsg);
-                }
-                resetFormFull();
-            };
-            alert("✅ 저장 완료! 노란색 버튼을 눌러 공유하세요.");
-        }, 1500);
+        // --- 5. 서버가 '실패'라고 했는지 확인 ---
+        if (jsonResult.status === "ERROR") {
+            alert("🚨 저장 실패!\n이유: " + jsonResult.message);
+            throw new Error(jsonResult.message);
+        } else {
+            alert("✅ 저장 성공! (이제 시트 확인해보세요)");
+            // 성공 후 초기화 로직 등 실행...
+        }
 
     } catch (e) {
-        alert("⚠️ 전송 시도 중 오류가 발생했습니다. (시트 확인 요망)");
-        btn.disabled = false; btn.innerText = "🚀 다시 시도";
+        console.error(e);
+        btn.innerText = "❌ 실패 (다시 시도)";
+        btn.disabled = false;
+        // alert("최종 에러: " + e.message); // 필요하면 주석 해제
     }
 }
 
