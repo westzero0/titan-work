@@ -407,27 +407,28 @@ function generateTimeOptions() {
 }
 
 // 6. [전송 및 공유] 데이터 서버 저장 및 카톡 전송 
-// [디버깅용] send 함수 (에러 원인 추적 버전)
 async function send() {
     const btn = document.getElementById('sBtn');
     
-    // --- 1. 입력값 가져오기 ---
+    // 1. 입력값 가져오기
     const work = document.getElementById('work').value.trim();
-    // (중요) 체크박스 값 가져오기
+    // ★ 석식 여부 체크 (체크되면 O, 아니면 X)
     const dinnerValue = document.getElementById('dinner-yn').checked ? "O" : "X"; 
     
+    // 칩 선택된 값 가져오기
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
-    const site = document.querySelector('#site-chips .chip.active')?.innerText || document.getElementById('siteSearch').value.trim();
+    let site = document.querySelector('#site-chips .chip.active')?.innerText;
+    // 칩 선택 안 했으면 직접 입력값 사용
+    if (!site) site = document.getElementById('siteSearch').value.trim();
     
     // 필수값 체크
-    if (!client || !site || !work) return alert("⚠️ 필수 정보를 입력해주세요.");
+    if (!client || !site || !work) return alert("⚠️ 거래처, 현장, 작업내용은 필수입니다!");
 
+    // 버튼 잠그기 (중복 전송 방지)
     btn.disabled = true; 
-    btn.innerText = "⏳ 서버에 물어보는 중...";
+    btn.innerText = "🕵️ 범인 잡는 중...";
 
-    // --- 2. 데이터 포장 (Payload) ---
-    // (중요) 자재, 멤버 등 다른 데이터 수집 로직은 기존 유지하거나 아래처럼 간략히 가져옴
-    // 여기서는 핵심인 dinnerValue가 잘 들어가는지만 확인합니다.
+    // 2. 데이터 포장 (Payload)
     const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     
     const payload = {
@@ -441,53 +442,39 @@ async function send() {
             end: document.getElementById('end').value,
             members: getSel('#member-chips'),
             car: getSel('#car-chips'),
-            dinner: dinnerValue, // ★ 석식 데이터 확인!
+            dinner: dinnerValue, // ★ 여기에 석식 값이 들어갑니다
             materials: document.getElementById('materialExtra')?.value.trim() || "없음",
-            selectedMaterials: [], // 일단 빈 배열 (테스트용)
-            expAmount: 0,
-            expDetail: "",
-            expPayer: "",
+            selectedMaterials: [], // 자재 객체 (일단 빈 배열)
+            expAmount: document.getElementById('expAmount')?.value || 0,
+            expDetail: document.getElementById('expDetail')?.value || "",
+            expPayer: getSel('#payer-chips'),
             files: [],
             submitter: document.getElementById('submitter').value
         }
     };
 
     try {
-        // --- 3. 서버로 전송 (진짜 에러 확인용 설정) ---
+        // 3. 서버로 전송 (가장 중요한 부분!)
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            redirect: 'follow', // 리다이렉트 따라가기
+            redirect: 'follow', // ★ 서버가 가라는 곳으로 따라감
             body: JSON.stringify(payload)
         });
 
-        // --- 4. 서버 응답 뜯어보기 ---
-        const textResult = await res.text(); // 일단 글자로 받음
-        console.log("서버 응답 원본:", textResult); // F12 콘솔에 찍힘
-
-        // JSON으로 변환 시도
-        let jsonResult;
-        try {
-            jsonResult = JSON.parse(textResult);
-        } catch (e) {
-            // JSON이 아니라면(HTML 에러페이지 등) 여기서 걸림
-            alert("🚨 서버 에러 (HTML 반환됨):\n" + textResult.substring(0, 100) + "...");
-            throw new Error("서버가 JSON이 아닌 이상한 걸 보냈습니다.");
-        }
-
-        // --- 5. 서버가 '실패'라고 했는지 확인 ---
-        if (jsonResult.status === "ERROR") {
-            alert("🚨 저장 실패!\n이유: " + jsonResult.message);
-            throw new Error(jsonResult.message);
-        } else {
-            alert("✅ 저장 성공! (이제 시트 확인해보세요)");
-            // 성공 후 초기화 로직 등 실행...
-        }
+        // 4. 서버 응답을 글자(Text) 그대로 받기
+        const textResult = await res.text();
+        
+        // 5. ★ 결과 팝업 띄우기 (이 내용을 알려주세요!)
+        alert("🔍 서버 응답 내용:\n----------------\n" + textResult.substring(0, 400));
+        
+        // (성공이든 실패든 여기서 일단 멈춤)
+        btn.disabled = false;
+        btn.innerText = "🚀 저장 및 카톡 공유";
 
     } catch (e) {
-        console.error(e);
-        btn.innerText = "❌ 실패 (다시 시도)";
+        alert("🚨 전송 실패 (네트워크 에러):\n" + e.message);
         btn.disabled = false;
-        // alert("최종 에러: " + e.message); // 필요하면 주석 해제
+        btn.innerText = "🚀 다시 시도";
     }
 }
 
