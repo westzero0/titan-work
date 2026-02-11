@@ -1,81 +1,55 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>타이탄 관리자 패널</title>
-    <style>
-               body { font-family: sans-serif; padding: 20px; background: #f1f5f9; }
-    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-    button { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    .btn-blue { background: #2563eb; color: white; }
-    .btn-red { background: #ef4444; color: white; margin-top: 5px; }
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>타이탄 관리자 패널</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary-color: #2563eb; --bg-color: #f8f9fa; }
+    body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg-color); margin: 0; padding: 0; overflow: hidden; }
 
-    /* 💡 비번변경 버튼과 레이아웃을 위한 추가 스타일 */
-    .btn-outline { background: white; color: #64748b; border: 1px solid #cbd5e1; font-size: 0.8rem; padding: 6px; margin-bottom: 4px; border-radius: 4px; }
-    .btn-outline:hover { background: #f8f9fa; }
-    .btn-group { display: flex; flex-direction: column; width: 90px; }
-    
-    /* 💡 카드뷰 전용 그리드 레이아웃 */
-#worker-list-admin {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); /* 화면 크기에 맞게 자동 배치 */
-    gap: 15px;
-    margin-top: 20px;
+      button:active {
+    opacity: 0.8;
+    transform: scale(0.98);
 }
+      
+    /* 헤더 */
+    .header { background: #fff; padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #ddd; position: fixed; top:0; width: 100%; z-index: 100; }
 
-        
-.worker-card {
-    background: white;
-    border-radius: 12px;
-    padding: 15px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    border-top: 5px solid #2563eb; /* 상단에 파란색 포인트 */
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    transition: transform 0.2s;
-}
+    /* 메인 스와이프 영역 */
+    .swiper { width: 100%; height: calc(100vh - 120px); margin-top: 55px; }
+    .swiper-slide { overflow-y: auto; padding: 20px; box-sizing: border-box; padding-bottom: 80px; }
 
-.worker-card:hover { transform: translateY(-5px); } /* 마우스 올리면 살짝 들림 */
+    /* 카드 스타일 */
+    .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px; }
 
-.worker-card .name { font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; }
-.worker-card .role { color: #64748b; font-size: 0.85rem; }
-.worker-card .info { margin: 10px 0; font-size: 0.85rem; border-top: 1px solid #f1f5f9; padding-top: 10px; }
+    /* 입력 폼 스타일 */
+    label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #444; }
+    input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+    button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
 
-.worker-card .pw-box { background: #f8fafc; padding: 4px 8px; border-radius: 4px; color: #2563eb; font-weight: bold; }
-
-.card-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-.btn-sm { padding: 8px 0 !important; font-size: 0.75rem !important; }
-
-
-
-        /* 복사 가능한 텍스트 스타일 */
-.copyable {
-    cursor: pointer;
-    color: #475569;
-    padding: 2px 4px;
-    border-radius: 4px;
-    transition: background 0.2s;
-    display: inline-block;
-    width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.copyable:hover { background: #e2e8f0; color: #2563eb; }
-.copy-hint { font-size: 0.7rem; color: #94a3b8; margin-bottom: 2px; }
-
-        
-    .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; display: inline-block; margin: 4px 0; }
-    .status-on { background: #dcfce7; color: #166534; }
-    .status-off { background: #fee2e2; color: #991b1b; }
-    </style>
+    /* 하단 고정 탭 바 */
+    .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #fff; display: flex; border-top: 1px solid #ddd; z-index: 100; }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888; font-size: 11px; cursor: pointer; }
+    .nav-item.active { color: var(--primary-color); }
+    .nav-item i { font-size: 20px; margin-bottom: 4px; }
+  </style>
 </head>
-<body>
-    <h2>⚡ 관리자 마스터 패널</h2>
 
+
+    
+<body>
+  <div class="header">⚡ 타이탄 통합 관리자</div>
+
+
+    <div class="swiper">
+  <div class="swiper-wrapper">
+    <div class="swiper-slide">
+
+        
     <div class="card">
     <h3>👤 신규 인원 등록</h3>
     <input type="text" id="new-name" placeholder="이름 (예: 홍길동)">
@@ -89,15 +63,142 @@
     <input type="password" id="new-pw" placeholder="초기 비밀번호 (4자리)" maxlength="4">
     <button class="btn-blue" onclick="addWorker()">등록하기</button>
 </div>
+   
 
     <div class="card">
         <h3>👥 직원 관리</h3>
         <div id="worker-list-admin">불러오는 중...</div>
     </div>
+     </div>
 
+      <div class="swiper-slide">
+      <div class="card">
+        <h3>🏢 거래처/주소 등록</h3>
+        <label>거래처명</label><input type="text" id="c_client">
+        <label>현장명</label><input type="text" id="c_site">
+        <label>현장 주소</label><input type="text" id="c_addr">
+        <button onclick="saveClient()">거래처 등록</button>
+      </div>
+    </div>
+
+    <div class="swiper-slide">
+      <div class="card">
+        <h3>📦 자재 마스터 등록</h3>
+        <label>대분류</label><input type="text" id="m_cat">
+        <label>품목</label><input type="text" id="m_name">
+        <label>규격</label><input type="text" id="m_spec">
+        <label>단위</label><input type="text" id="m_unit">
+        <label>단가</label><input type="number" id="m_price">
+        <button onclick="saveMaterial()">자재 품목 등록</button>
+      </div>
+    </div>
+
+    <div class="swiper-slide">
+      <div class="card">
+        <h3>📅 작업 일정 등록</h3>
+        <label>날짜</label><input type="date" id="s_date">
+        <label>거래처</label><input type="text" id="s_client">
+        <label>현장명</label><input type="text" id="s_site">
+        <button onclick="saveSchedule()">일정 등록</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="jumpTo(0)">👥 <span>인원</span></div>
+  <div class="nav-item" onclick="jumpTo(1)">🏢 <span>거래처</span></div>
+  <div class="nav-item" onclick="jumpTo(2)">📦 <span>자재</span></div>
+  <div class="nav-item" onclick="jumpTo(3)">📅 <span>일정</span></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+    
+      
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzrf4FyAodis1tr42qXpiYfSgkBfpS5t8YYfBatQ84GZGtdH1i5U623n4kPnWVkCVAi/exec"; // 👈 꼭 본인 주소로 수정하세요!
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxtQQMC9fe7EEicnjToJukaicFnevLasg0nRNPspKTrmEz4e5xLRk0nhN7TrdE2m1uG/exec"; // 👈 꼭 본인 주소로 수정하세요!
 
+
+        // 1. 오늘 날짜 기본 세팅
+  document.getElementById('s_date').valueAsDate = new Date();
+
+  // 2. Swiper 초기화 (스와이프 기능)
+  const swiper = new Swiper('.swiper', {
+    speed: 400,
+    on: {
+      slideChange: function () {
+        updateNav(this.activeIndex);
+      }
+    }
+  });
+
+  // 3. 탭 클릭 시 이동
+  function jumpTo(index) {
+    swiper.slideTo(index);
+  }
+
+  // 4. 하단 네비게이션 활성화 표시
+  function updateNav(index) {
+    document.querySelectorAll('.nav-item').forEach((item, i) => {
+      if(i === index) item.classList.add('active');
+      else item.classList.remove('active');
+    });
+  }
+
+  // 5. 서버 전송 공통 함수
+  async function sendToGas(action, data) {
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action, data })
+          redirect: 'follow' // redirect 설정 추가
+      });
+      alert("✅ 등록 완료!");
+      location.reload();
+    } catch(e) { alert("🚨 에러: " + e.message); }
+  }
+
+
+
+
+ // 거래처 등록 버튼용
+function saveClient() {
+    const data = {
+        client: document.getElementById('c_client').value,
+        site: document.getElementById('c_site').value,
+        address: document.getElementById('c_addr').value
+    };
+    if(!data.client || !data.site) return alert("거래처와 현장명은 필수입니다.");
+    sendToGas('adminAddClient', data);
+}
+
+// 자재 등록 버튼용
+function saveMaterial() {
+    const data = {
+        cat: document.getElementById('m_cat').value,
+        name: document.getElementById('m_name').value,
+        spec: document.getElementById('m_spec').value,
+        unit: document.getElementById('m_unit').value,
+        price: document.getElementById('m_price').value
+    };
+    if(!data.name) return alert("품목명은 필수입니다.");
+    sendToGas('adminAddMaterial', data);
+}
+
+// 일정 등록 버튼용
+function saveSchedule() {
+    const data = {
+        date: document.getElementById('s_date').value,
+        client: document.getElementById('s_client').value,
+        site: document.getElementById('s_site').value
+    };
+    if(!data.client || !data.site) return alert("날짜와 현장 정보를 입력하세요.");
+    sendToGas('saveSchedule', data);
+}
+
+        
+        
    // 1. 명단 불러오기 (async 키워드가 핵심!)
 async function loadAdminData() {
     const box = document.getElementById('worker-list-admin');
