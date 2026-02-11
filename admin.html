@@ -322,7 +322,17 @@ let swiper = null; // 초기값을 null로 설정
             const text = await res.text();
             if (text.includes("SUCCESS")) {
                 alert("✅ 등록 완료!");
-                location.reload();
+
+              // ✅ 대신 현재 탭을 유지하면서 데이터만 새로고침합니다.
+            if (action === 'adminAddClient' || action === 'updateSiteStatus' || action === 'updateSiteAddress') {
+                loadClientManagement(); // 거래처 리스트만 갱신
+            } else if (action === 'adminAddWorker' || action === 'adminUpdateStatus' || action === 'adminUpdatePassword') {
+                loadAdminData(); // 직원 리스트만 갱신
+            }
+            
+            // 입력창 비우기 (선택 사항)
+            clearInputs(action);
+              
             } else {
                 alert("⚠️ 결과: " + text);
             }
@@ -330,6 +340,35 @@ let swiper = null; // 초기값을 null로 설정
             alert("🚨 통신 에러: " + e.message);
         }
     }
+
+      function clearInputs(action) {
+    if (action === 'adminAddClient') {
+        document.getElementById('c_client').value = "";
+        document.getElementById('c_site').value = "";
+        document.getElementById('c_addr').value = "";
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    }
+    // 필요한 다른 입력창들도 여기에 추가 가능
+}
+
+      async function saveClient() {
+    const btn = event.target; // 클릭한 버튼
+    const data = {
+        client: document.getElementById('c_client').value,
+        site: document.getElementById('c_site').value,
+        address: document.getElementById('c_addr').value
+    };
+    if(!data.client || !data.site) return alert("거래처와 현장명은 필수입니다.");
+
+    btn.disabled = true; // 버튼 비활성화 (중복 클릭 방지)
+    btn.innerText = "⏳ 등록 중...";
+    
+    await sendToGas('adminAddClient', data);
+    
+    btn.disabled = false;
+    btn.innerText = "현장 등록하기";
+}
+      
 
  // 거래처 등록 버튼용
 function saveClient() {
