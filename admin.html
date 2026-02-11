@@ -38,6 +38,51 @@
     .nav-item i { font-size: 20px; margin-bottom: 4px; }
 
 
+
+    /* 칩 스타일 */
+.chip {
+    padding: 6px 12px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.chip.active {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+}
+
+/* 현장 관리 리스트 스타일 */
+.site-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+.site-item.status-done {
+    opacity: 0.4; /* 2-2. 완료된 건 흐리게 */
+    background: #f9f9f9;
+}
+.site-info { flex: 1; }
+.site-name { font-weight: bold; font-size: 0.95rem; }
+.site-addr { font-size: 0.8rem; color: #666; text-decoration: underline; cursor: pointer; }
+
+/* 상태 버튼 스타일 */
+.status-toggle {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+}
+.status-ing { background: #dcfce7; color: #166534; } /* 진행중 (초록계열) */
+.status-completed { background: #e2e8f0; color: #475569; } /* 완료 (회색계열) */
+
+    
     /* 직원 관리 카드 전체 컨테이너 */
 #worker-list-admin {
     display: flex;
@@ -159,13 +204,36 @@
      </div>
 
       <div class="swiper-slide">
-      <div class="card">
-        <h3>🏢 거래처/주소 등록</h3>
-        <label>거래처명</label><input type="text" id="c_client">
-        <label>현장명</label><input type="text" id="c_site">
-        <label>현장 주소</label><input type="text" id="c_addr">
-        <button onclick="saveClient()">거래처 등록</button>
-      </div>
+     <div class="card">
+    <h3>🏢 거래처 및 현장 등록</h3>
+    
+    <div class="copy-hint" style="margin-bottom:8px;">기존 거래처 선택 (또는 직접 입력)</div>
+    <div id="client-chips" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        </div>
+    
+    <div class="input-group">
+        <label>거래처명</label>
+        <input type="text" id="c_client" placeholder="칩을 선택하거나 직접 입력하세요">
+    </div>
+    
+    <div class="input-group">
+        <label>현장명</label>
+        <input type="text" id="c_site" placeholder="현장명을 입력하세요">
+    </div>
+    
+    <div class="input-group">
+        <label>현장 주소</label>
+        <input type="text" id="c_addr" placeholder="주소를 입력하세요 (D열 저장)">
+    </div>
+    
+    <button class="btn-blue" onclick="saveClient()" style="width:100%">현장 등록하기</button>
+</div>
+
+<div class="card" style="margin-top:20px;">
+    <h3>📋 현장 현황 관리</h3>
+    <div id="client-management-list">
+        </div>
+</div>
     </div>
 
     <div class="swiper-slide">
@@ -204,7 +272,7 @@
     
       
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxtQQMC9fe7EEicnjToJukaicFnevLasg0nRNPspKTrmEz4e5xLRk0nhN7TrdE2m1uG/exec"; // 👈 꼭 본인 주소로 수정하세요!
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbw_zKyCAuCOpdr2oHD0wxL9iAJ_d5ALkP4zA6G7B0rnaAXAF4wE4_mSZ_4bY7j0PUMp/exec"; // 👈 꼭 본인 주소로 수정하세요!
 
 let swiper = null; // 초기값을 null로 설정
 
@@ -226,15 +294,26 @@ let swiper = null; // 초기값을 null로 설정
         console.log("스와이퍼 준비 완료");
     }
 
-    // 페이지 로드 시 실행
+  // 페이지 로드 시 실행 (정리된 버전)
     window.addEventListener('DOMContentLoaded', () => {
+        // 1. 스와이퍼 실행
         initSwiper();
-        // 날짜 설정
+        
+        // 2. 날짜 설정
         const sDateInput = document.getElementById('s_date');
         if (sDateInput) sDateInput.valueAsDate = new Date();
-        // 데이터 로드
-        if (typeof loadAdminData === 'function') loadAdminData();
-    });
+        
+        // 3. 직원 데이터 로드
+        if (typeof loadAdminData === 'function') {
+            loadAdminData();
+        }
+        
+        // 4. 거래처 관리 데이터 로드 (함수 안으로 안전하게 포함)
+        if (typeof loadClientManagement === 'function') {
+            loadClientManagement();
+        }
+    }); // <--- 여기서 한 번만 닫으면 됩니다.
+      
 
     // 탭 클릭 시 이동 (준비 안됐으면 다시 한번 초기화 시도)
     function jumpTo(index) {
@@ -431,6 +510,70 @@ async function loadAdminData() {
         alert("복사되었습니다: " + text);
     });
 }
+
+      // 1. 거래처 데이터를 불러와서 칩 생성 및 리스트 출력
+async function loadClientManagement() {
+    const chipBox = document.getElementById('client-chips');
+    const listBox = document.getElementById('client-management-list');
+    
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'getClientListData' }) // 서버에서 C, D열 포함 데이터 가져오기
+        });
+        const data = await res.json(); // [{client, site, status, address}, ...]
+
+        // 칩 생성 (중복 제거)
+        const uniqueClients = [...new Set(data.map(item => item.client))];
+        chipBox.innerHTML = uniqueClients.map(client => 
+            `<div class="chip" onclick="selectClientChip(this, '${client}')">${client}</div>`
+        ).join('');
+
+        // 현장 리스트 생성 (2-1, 2-2, 2-3 반영)
+        listBox.innerHTML = data.map((item, index) => `
+            <div class="site-item ${item.status === '완료' ? 'status-done' : ''}">
+                <div class="site-info">
+                    <div class="site-name">[${item.client}] ${item.site}</div>
+                    <div class="site-addr" onclick="editAddress('${item.client}', '${item.site}', '${item.address || ''}')">
+                        📍 ${item.address || '주소 등록 필요'}
+                    </div>
+                </div>
+                <button class="status-toggle ${item.status === '완료' ? 'status-completed' : 'status-ing'}" 
+                        onclick="toggleSiteStatus('${item.client}', '${item.site}', '${item.status}')">
+                    ${item.status || '진행중'}
+                </button>
+            </div>
+        `).join('');
+    } catch (e) { console.error("데이터 로드 실패", e); }
+}
+
+// 칩 선택 함수
+function selectClientChip(el, name) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('c_client').value = name; // 1. 거래처명 자동 입력
+}
+
+// 2-2. 현장 상태 변경 (진행중 <-> 완료)
+async function toggleSiteStatus(client, site, currentStatus) {
+    const newStatus = currentStatus === '완료' ? '진행중' : '완료';
+    if(!confirm(`[${site}] 현장을 ${newStatus} 상태로 변경할까요?`)) return;
+    
+    await sendToGas('updateSiteStatus', { client, site, status: newStatus });
+    loadClientManagement(); // 새로고침
+}
+
+// 2-3. 주소 수정 기능
+async function editAddress(client, site, oldAddr) {
+    const newAddr = prompt(`[${site}]의 새 주소를 입력하세요:`, oldAddr);
+    if (newAddr === null || newAddr === oldAddr) return;
+    
+    await sendToGas('updateSiteAddress', { client, site, address: newAddr });
+    loadClientManagement();
+}
+      
+
+      
 
         
     </script>
