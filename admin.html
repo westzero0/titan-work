@@ -120,47 +120,61 @@
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxtQQMC9fe7EEicnjToJukaicFnevLasg0nRNPspKTrmEz4e5xLRk0nhN7TrdE2m1uG/exec"; // 👈 꼭 본인 주소로 수정하세요!
 
 
-        // 1. 오늘 날짜 기본 세팅
-  document.getElementById('s_date').valueAsDate = new Date();
+    // 전역 변수 선언
+    let swiper;
 
-  // 2. Swiper 초기화 (스와이프 기능)
-  const swiper = new Swiper('.swiper', {
-    speed: 400,
-    on: {
-      slideChange: function () {
-        updateNav(this.activeIndex);
-      }
+    // 2. 초기화 로직 (페이지 로드 완료 후 실행)
+    window.onload = function() {
+        // 날짜 기본값 설정
+        const sDateInput = document.getElementById('s_date');
+        if (sDateInput) sDateInput.valueAsDate = new Date();
+
+        // Swiper 초기화
+        swiper = new Swiper('.swiper', {
+            speed: 400,
+            on: {
+                slideChange: function () {
+                    updateNav(this.activeIndex);
+                }
+            }
+        });
+
+        // 직원 데이터 로드
+        loadAdminData();
+    };
+
+    // 3. 하단 탭 이동 함수
+    function jumpTo(index) {
+        if (swiper) swiper.slideTo(index);
     }
-  });
 
-  // 3. 탭 클릭 시 이동
-  function jumpTo(index) {
-    swiper.slideTo(index);
-  }
+    // 4. 네비게이션 활성화 표시
+    function updateNav(index) {
+        document.querySelectorAll('.nav-item').forEach((item, i) => {
+            if (i === index) item.classList.add('active');
+            else item.classList.remove('active');
+        });
+    }
 
-  // 4. 하단 네비게이션 활성화 표시
-  function updateNav(index) {
-    document.querySelectorAll('.nav-item').forEach((item, i) => {
-      if(i === index) item.classList.add('active');
-      else item.classList.remove('active');
-    });
-  }
-
-  // 5. 서버 전송 공통 함수
-  async function sendToGas(action, data) {
-    try {
-      const res = await fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action, data })
-          redirect: 'follow' // redirect 설정 추가
-      });
-      alert("✅ 등록 완료!");
-      location.reload();
-    } catch(e) { alert("🚨 에러: " + e.message); }
-  }
-
-
-
+    // 5. [핵심 수정] 서버 전송 공통 함수 (async 위치 확인)
+    async function sendToGas(action, data) {
+        try {
+            const res = await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: action, data: data }),
+                redirect: 'follow'
+            });
+            const text = await res.text();
+            if (text.includes("SUCCESS")) {
+                alert("✅ 등록 완료!");
+                location.reload();
+            } else {
+                alert("⚠️ 결과: " + text);
+            }
+        } catch (e) {
+            alert("🚨 통신 에러: " + e.message);
+        }
+    }
 
  // 거래처 등록 버튼용
 function saveClient() {
