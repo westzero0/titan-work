@@ -18,9 +18,9 @@
    /* --- 기본 레이아웃 및 공통 요소 --- */
 .header { background: #fff; padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #ddd; position: fixed; top:0; width: 100%; z-index: 100; }
 
-.swiper { width: 100%; height: calc(100vh - 120px); margin-top: 55px; }
+.swiper { width: 100%; height: calc(100vh - 120px); margin-top: 50px; }
 /* 메인 슬라이드: 내부 카드가 꽉 차도록 패딩 조절 */
-.swiper-slide { overflow-y: auto; padding: 12px; box-sizing: border-box; padding-bottom: 80px; background-color: #f1f5f9; }
+.swiper-slide { overflow-y: auto; padding: 0 12px; box-sizing: border-box; padding-bottom: 80px; background-color: #f1f5f9; }
 
 .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
 h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px; }
@@ -35,9 +35,13 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 .nav-item i { font-size: 20px; margin-bottom: 4px; }
 
 /* --- [핵심] 현장 현황 관리 (중첩 스와이퍼 스타일) --- */
-#client-management-list { width: 100%; padding: 10px 0; }
+#client-management-list { width: 100%; padding: 0; }
 
-.client-management-swiper { width: 100%; padding-bottom: 45px !important; }
+.client-management-swiper { 
+    width: 100%; 
+    padding-top: 5px !important; /* ⬅️ 카드 머리가 너무 붙는게 싫으면 5px 정도만 */
+    padding-bottom: 45px !important; 
+}
 
 .client-slide { width: 94% !important; display: flex; align-items: stretch; }
 
