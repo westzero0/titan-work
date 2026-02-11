@@ -119,41 +119,50 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxtQQMC9fe7EEicnjToJukaicFnevLasg0nRNPspKTrmEz4e5xLRk0nhN7TrdE2m1uG/exec"; // 👈 꼭 본인 주소로 수정하세요!
 
+let swiper = null; // 초기값을 null로 설정
 
-    // 전역 변수 선언
-    let swiper;
+    // 스와이퍼를 초기화하는 함수를 별도로 만듭니다.
+    function initSwiper() {
+        const swiperContainer = document.querySelector('.swiper');
+        if (!swiperContainer) return;
 
-    // 2. 초기화 로직 (페이지 로드 완료 후 실행)
-   window.onload = function() {
-        // 오늘 날짜 설정
-        const sDateInput = document.getElementById('s_date');
-        if (sDateInput) sDateInput.valueAsDate = new Date();
-
-        // Swiper 초기화 (전역 변수에 할당)
         swiper = new Swiper('.swiper', {
             speed: 400,
-            allowTouchMove: true, // 스와이프 허용
+            loop: false,
+            allowTouchMove: true, // 손가락 스와이프 허용
             on: {
                 slideChange: function () {
                     updateNav(this.activeIndex);
                 }
             }
         });
+        console.log("스와이퍼 준비 완료");
+    }
 
-        // 직원 데이터 로드
+    // 페이지 로드 시 실행
+    window.addEventListener('DOMContentLoaded', () => {
+        initSwiper();
+        // 날짜 설정
+        const sDateInput = document.getElementById('s_date');
+        if (sDateInput) sDateInput.valueAsDate = new Date();
+        // 데이터 로드
         if (typeof loadAdminData === 'function') loadAdminData();
-    };
+    });
 
-    // 3. 탭 클릭 시 이동 함수 (swiper가 정의되었는지 확인 후 이동)
+    // 탭 클릭 시 이동 (준비 안됐으면 다시 한번 초기화 시도)
     function jumpTo(index) {
+        if (!swiper) {
+            console.log("스와이퍼 재연결 시도 중...");
+            initSwiper();
+        }
+        
         if (swiper) {
             swiper.slideTo(index);
         } else {
-            console.error("스와이퍼가 아직 준비되지 않았습니다.");
+            alert("화면 초기화 오류가 발생했습니다. 새로고침 후 다시 시도해 주세요.");
         }
     }
 
-    // 4. 하단 네비게이션 활성화 표시
     function updateNav(index) {
         document.querySelectorAll('.nav-item').forEach((item, i) => {
             if (i === index) item.classList.add('active');
