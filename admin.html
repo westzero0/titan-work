@@ -329,32 +329,30 @@ async function loadAdminData() {
         const text = await res.text();
         const workers = JSON.parse(text);
         
-     box.innerHTML = workers.map(w => `
+   box.innerHTML = workers.map(w => `
     <div class="worker-card" style="border-top-color: ${w.status === '재직' ? '#2563eb' : '#ef4444'}">
-        <div>
-            <div style="display:flex; justify-content:space-between; align-items:start;">
-                <div class="name">${w.name} <span style="font-size:0.8rem; font-weight:normal;">(${w.role})</span></div>
-                <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span>
-            </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="name">${w.name} <span style="font-size:0.8rem; font-weight:normal;">(${w.role})</span></div>
+            <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span>
         </div>
         
         <div class="info">
-            <div class="copy-hint">📱 휴대폰 (클릭 시 복사)</div>
+            <div class="copy-hint">📱 휴대폰</div>
             <div class="copyable" onclick="copyText('${w.phone}')">${w.phone || '번호 없음'}</div>
             
-            <div class="copy-hint" style="margin-top:8px;">🏠 집주소 (클릭 시 복사)</div>
-            <div class="copyable" onclick="copyText('${w.address}')" title="${w.address}">${w.address || '주소 없음'}</div>
+            <div class="copy-hint" style="margin-top:8px;">🏠 집주소</div>
+            <div class="copyable" onclick="copyText('${w.address}')">${w.address || '주소 없음'}</div>
             
-            <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.8rem;">단가: <b>${Number(w.rate).toLocaleString()}</b></span>
-                <span class="pw-box">PW: ${w.pw}</span>
+            <div style="margin-top:10px; display:flex; justify-content:space-between;">
+                <span>💰 단가: <b>${Number(w.rate).toLocaleString()}</b></span>
+                <span style="background:#eee; padding:2px 5px; border-radius:4px;">🔑 PW: ${w.pw}</span>
             </div>
         </div>
 
         <div class="card-btns">
-            <button class="btn-outline btn-sm" onclick="changePassword('${w.name}')">비번변경</button>
-            <button class="btn-red btn-sm" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">
-                ${w.status === '재직' ? '퇴직' : '복구'}
+            <button class="btn-sm btn-outline" onclick="changePassword('${w.name}')">비번변경</button>
+            <button class="btn-sm btn-red" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">
+                ${w.status === '재직' ? '퇴직처리' : '복구하기'}
             </button>
         </div>
     </div>
