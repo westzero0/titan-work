@@ -508,13 +508,16 @@ async function send() {
 
             
             // 카톡 공유 메시지 만들기
-            let msg = `[${payload.data.date}] 작업일보\n`;
-            msg += `🏢 ${client} / ${site}\n`;
-            msg += `🛠 ${work}\n`;
-            msg += `👥 ${payload.data.members}\n`;
-            if(dinnerValue === "O") msg += `🍚 석식: O\n`;
-            if(finalMaterialString !== "없음") msg += `📦 자재: ${finalMaterialString}\n`;
-            if(payload.data.car) msg += `🚗 차량: ${payload.data.car}\n`;
+         let msg = `⚡ [타이탄 작업일보]\n`;
+            msg += `📅 날짜: ${payload.data.date}\n`;
+            msg += `🏢 거래처: ${client}\n`;
+            msg += `🏗️ 현장명: ${site}\n`;
+            msg += `🛠️ 작업내용: ${work}\n`;
+            msg += `⏰ 시간: ${payload.data.start} ~ ${payload.data.end}\n`;
+            msg += `👥 인원: ${payload.data.members}\n`;
+            msg += `🚗 차량: ${payload.data.car || "없음"}\n`;
+            msg += `🍱 석식: ${dinnerValue}\n`; // X면 X라고 나옵니다
+            msg += `📦 자재: ${finalMaterialString}\n`;
             
             // 경비가 있을 때만 표시
             if(payload.data.expAmount > 0) {
