@@ -38,6 +38,38 @@
     .nav-item i { font-size: 20px; margin-bottom: 4px; }
 
 
+    /* 거래처 관리 전용 스와이퍼 컨테이너 */
+.client-management-swiper {
+    width: 100%;
+    padding: 10px 0 30px 0; /* 하단 페이지네이션 공간 */
+}
+
+/* 개별 거래처 카드 (스와이프 슬라이드) */
+.client-slide {
+    width: 85% !important; /* 다음 카드가 살짝 보이게 설정 */
+    height: auto;
+    margin-right: 15px;
+}
+
+.client-card {
+    height: 100%;
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+}
+
+/* 현장 리스트 영역에 스크롤 허용 (현장이 많을 경우 대비) */
+.site-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+    
 /* 거래처 그룹 카드 */
 .client-card {
     background: #fff;
@@ -613,9 +645,10 @@ async function loadAdminData() {
 }
 
       // 1. 거래처 데이터를 불러와서 칩 생성 및 리스트 출력
+let clientSwiper = null; // 거래처 스와이퍼 전역 변수
+
 async function loadClientManagement() {
     const listBox = document.getElementById('client-management-list');
-    const chipBox = document.getElementById('client-chips');
     
     try {
         const res = await fetch(GAS_URL, { 
@@ -624,47 +657,60 @@ async function loadClientManagement() {
         });
         const data = await res.json(); 
 
-        // 1. 거래처 칩 생성 (상단 선택용)
-        const uniqueClients = [...new Set(data.map(item => item.client))];
-        chipBox.innerHTML = uniqueClients.map(client => 
-            `<div class="chip" onclick="selectClientChip(this, '${client}')">${client}</div>`
-        ).join('');
-
-        // 2. 데이터를 거래처별로 그룹화
+        // 데이터 그룹화 (거래처별)
         const grouped = data.reduce((acc, curr) => {
             if (!acc[curr.client]) acc[curr.client] = [];
             acc[curr.client].push(curr);
             return acc;
         }, {});
 
-        // 3. 그룹별 카드 생성
-        let html = '';
+        // 스와이퍼 구조 생성 (Swiper-wrapper / Swiper-slide)
+        let html = `
+            <div class="swiper client-management-swiper">
+                <div class="swiper-wrapper">`;
+        
         for (const client in grouped) {
             html += `
-                <div class="client-card">
-                    <div class="client-header">🏢 ${client}</div>
-                    <div class="site-list">
-                        ${grouped[client].map(item => `
-                            <div class="site-row ${item.status === '완료' ? 'status-done' : ''}">
-                                <div class="site-content">
-                                    <div class="site-name">${item.site}</div>
-                                    <div class="site-addr" onclick="editAddress('${item.client}', '${item.site}', '${item.address || ''}')">
-                                        📍 ${item.address || '주소 등록 필요'}
+                <div class="swiper-slide client-slide">
+                    <div class="client-card">
+                        <div class="client-header">🏢 ${client}</div>
+                        <div class="site-list">
+                            ${grouped[client].map(item => `
+                                <div class="site-row ${item.status === '완료' ? 'status-done' : ''}">
+                                    <div class="site-content">
+                                        <div class="site-name">${item.site}</div>
+                                        <div class="site-addr" onclick="editAddress('${item.client}', '${item.site}', '${item.address || ''}')">
+                                            📍 ${item.address || '주소 등록'}
+                                        </div>
+                                    </div>
+                                    <div class="site-action">
+                                        <button class="status-btn ${item.status === '완료' ? 'completed' : 'ing'}" 
+                                                onclick="toggleSiteStatus('${item.client}', '${item.site}', '${item.status}')">
+                                            ${item.status || '진행중'}
+                                        </button>
                                     </div>
                                 </div>
-                                <div class="site-action">
-                                    <button class="status-btn ${item.status === '완료' ? 'completed' : 'ing'}" 
-                                            onclick="toggleSiteStatus('${item.client}', '${item.site}', '${item.status}')">
-                                        ${item.status || '진행중'}
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
+                            `).join('')}
+                        </div>
                     </div>
-                </div>
-            `;
+                </div>`;
         }
+        
+        html += `</div>
+                <div class="swiper-pagination"></div> </div>`;
+        
         listBox.innerHTML = html;
+
+        // 내부 스와이퍼 초기화
+        if (clientSwiper) clientSwiper.destroy(); // 기존꺼 있으면 삭제
+        clientSwiper = new Swiper('.client-management-swiper', {
+            slidesPerView: 'auto',
+            centeredSlides: true,
+            spaceBetween: 10,
+            pagination: { el: '.swiper-pagination', clickable: true },
+            nested: true, // ⭐ 중요: 메인 스와이퍼와 충돌 방지
+        });
+
     } catch (e) { listBox.innerHTML = "데이터 로딩 실패"; }
 }
 
