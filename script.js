@@ -501,9 +501,12 @@ async function send() {
 
         // --- 6. 성공 처리 ---
         if (jsonResult === "SUCCESS" || jsonResult.result === "SUCCESS" || jsonResult.res === "SUCCESS") {
-            
-            alert("✅ 저장되었습니다!");
+        alert("✅ 저장되었습니다!\n아래 [카톡 공유] 버튼을 눌러주세요.");
 
+            // ★★★ 핵심: 버튼 잠금 해제 (이거 없으면 클릭 안됨) ★★★
+            btn.disabled = false;
+
+            
             // 카톡 공유 메시지 만들기
             let msg = `[${payload.data.date}] 작업일보\n`;
             msg += `🏢 ${client} / ${site}\n`;
@@ -557,10 +560,10 @@ async function send() {
             throw new Error(jsonResult.message || "저장 실패");
         }
 
-    } catch (e) {
-        alert("🚨 에러 발생:\n" + e.message);
-        btn.innerText = "🚀 저장 및 카톡 공유";
-        btn.disabled = false;
+} catch (e) {
+        alert("🚨 실패: " + e.message);
+        btn.innerText = "🚀 다시 시도";
+        btn.disabled = false; // 에러나면 버튼 다시 풀어줘야 함
     }
 }
 
