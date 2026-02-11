@@ -124,14 +124,15 @@
     let swiper;
 
     // 2. 초기화 로직 (페이지 로드 완료 후 실행)
-    window.onload = function() {
-        // 날짜 기본값 설정
+   window.onload = function() {
+        // 오늘 날짜 설정
         const sDateInput = document.getElementById('s_date');
         if (sDateInput) sDateInput.valueAsDate = new Date();
 
-        // Swiper 초기화
+        // Swiper 초기화 (전역 변수에 할당)
         swiper = new Swiper('.swiper', {
             speed: 400,
+            allowTouchMove: true, // 스와이프 허용
             on: {
                 slideChange: function () {
                     updateNav(this.activeIndex);
@@ -140,15 +141,19 @@
         });
 
         // 직원 데이터 로드
-        loadAdminData();
+        if (typeof loadAdminData === 'function') loadAdminData();
     };
 
-    // 3. 하단 탭 이동 함수
+    // 3. 탭 클릭 시 이동 함수 (swiper가 정의되었는지 확인 후 이동)
     function jumpTo(index) {
-        if (swiper) swiper.slideTo(index);
+        if (swiper) {
+            swiper.slideTo(index);
+        } else {
+            console.error("스와이퍼가 아직 준비되지 않았습니다.");
+        }
     }
 
-    // 4. 네비게이션 활성화 표시
+    // 4. 하단 네비게이션 활성화 표시
     function updateNav(index) {
         document.querySelectorAll('.nav-item').forEach((item, i) => {
             if (i === index) item.classList.add('active');
