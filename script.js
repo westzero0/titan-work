@@ -523,22 +523,30 @@ async function send() {
             btn.style.backgroundColor = "#FEE500"; 
             btn.style.color = "#000000";
             
-            // 공유 버튼 클릭 이벤트 재정의
+         // ★ 핵심: 공유 로직 (네이티브 공유 -> 실패시 클립보드)
             btn.onclick = async () => {
-                // 모바일 기본 공유 기능 (navigator.share) 우선 시도
-                if (navigator.share) {
-                    try {
-                        await navigator.share({ text: msg });
-                    } catch (err) {
-                        // 취소하거나 에러나면 클립보드 복사로 대체
-                        copyToClipboard(msg);
+                try {
+                    // 1. 모바일 공유창 띄우기 시도
+                    if (navigator.share) {
+                        await navigator.share({
+                            title: '타이탄 작업일보',
+                            text: msg
+                        });
+                    } else {
+                        // PC 등 지원 안 하면 에러 발생시켜서 catch로 보냄
+                        throw new Error("공유 미지원");
                     }
-                } else {
-                    // PC 등에서는 클립보드 복사
-                    copyToClipboard(msg);
+                } catch (err) {
+                    // 2. 공유 실패(또는 취소) 시 클립보드 복사로 전환
+                    try {
+                        await navigator.clipboard.writeText(msg);
+                        alert("📋 내용이 복사되었습니다.\n카톡방에 '붙여넣기' 하세요.");
+                    } catch (clipErr) {
+                        prompt("복사 실패. 아래 텍스트를 직접 복사하세요:", msg);
+                    }
                 }
                 
-                // 공유 후 초기화
+                // 3. 잠시 후 초기화
                 setTimeout(resetFormFull, 1000);
             };
 
