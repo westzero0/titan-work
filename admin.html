@@ -38,7 +38,77 @@
     .nav-item i { font-size: 20px; margin-bottom: 4px; }
 
 
+/* 거래처별 그룹 카드 */
+.client-group-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
 
+/* 거래처 이름 헤더 */
+.group-header {
+    background: #f8fafc;
+    padding: 12px 15px;
+    font-weight: bold;
+    font-size: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    color: #1e293b;
+}
+
+/* 현장별 한 줄 로직 (이게 중요!) */
+.site-row {
+    display: flex;             /* 가로로 배치 */
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f5f9;
+    width: 100%;               /* 전체 폭 사용 */
+    box-sizing: border-box;    /* 패딩 포함 폭 계산 */
+}
+
+.site-main {
+    flex: 1;                   /* 글자 영역이 최대한 넓게 차지 */
+    min-width: 0;              /* 글자 넘침 방지 */
+    margin-right: 10px;
+}
+
+.site-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    white-space: nowrap;       /* 줄바꿈 방지 */
+    overflow: hidden;
+    text-overflow: ellipsis;   /* 너무 길면 ... 처리 */
+}
+
+.site-addr {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 4px;
+    cursor: pointer;
+}
+
+/* 완료된 현장 흐리게 */
+.status-done {
+    background: #f1f5f9;
+    opacity: 0.6;
+}
+
+/* 상태 버튼 스타일 */
+.status-toggle-btn {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    border: none;
+    cursor: pointer;
+    min-width: 60px;          /* 버튼 폭 고정 */
+}
+.is-ing { background: #dcfce7; color: #166534; }
+.is-completed { background: #cbd5e1; color: #475569; }
+
+    
     /* 칩 스타일 */
 .chip {
     padding: 6px 12px;
@@ -513,38 +583,56 @@ async function loadAdminData() {
 
       // 1. 거래처 데이터를 불러와서 칩 생성 및 리스트 출력
 async function loadClientManagement() {
-    const chipBox = document.getElementById('client-chips');
     const listBox = document.getElementById('client-management-list');
+    const chipBox = document.getElementById('client-chips');
     
     try {
         const res = await fetch(GAS_URL, { 
             method: 'POST', 
-            body: JSON.stringify({ action: 'getClientListData' }) // 서버에서 C, D열 포함 데이터 가져오기
+            body: JSON.stringify({ action: 'getClientListData' }) 
         });
-        const data = await res.json(); // [{client, site, status, address}, ...]
+        const data = await res.json(); 
 
-        // 칩 생성 (중복 제거)
+        // 1. 거래처명 칩 생성 (중복 제거)
         const uniqueClients = [...new Set(data.map(item => item.client))];
         chipBox.innerHTML = uniqueClients.map(client => 
             `<div class="chip" onclick="selectClientChip(this, '${client}')">${client}</div>`
         ).join('');
 
-        // 현장 리스트 생성 (2-1, 2-2, 2-3 반영)
-        listBox.innerHTML = data.map((item, index) => `
-            <div class="site-item ${item.status === '완료' ? 'status-done' : ''}">
-                <div class="site-info">
-                    <div class="site-name">[${item.client}] ${item.site}</div>
-                    <div class="site-addr" onclick="editAddress('${item.client}', '${item.site}', '${item.address || ''}')">
-                        📍 ${item.address || '주소 등록 필요'}
+        // 2. 데이터를 거래처별로 그룹화
+        const grouped = data.reduce((acc, curr) => {
+            if (!acc[curr.client]) acc[curr.client] = [];
+            acc[curr.client].push(curr);
+            return acc;
+        }, {});
+
+        // 3. 그룹별로 카드 생성
+        let html = '';
+        for (const client in grouped) {
+            html += `
+                <div class="client-group-card">
+                    <div class="group-header">🏢 ${client}</div>
+                    <div class="group-body">
+                        ${grouped[client].map(item => `
+                            <div class="site-row ${item.status === '완료' ? 'status-done' : ''}">
+                                <div class="site-main">
+                                    <div class="site-name">${item.site}</div>
+                                    <div class="site-addr" onclick="editAddress('${item.client}', '${item.site}', '${item.address || ''}')">
+                                        📍 ${item.address || '주소 입력'}
+                                    </div>
+                                </div>
+                                <button class="status-toggle-btn ${item.status === '완료' ? 'is-completed' : 'is-ing'}" 
+                                        onclick="toggleSiteStatus('${item.client}', '${item.site}', '${item.status}')">
+                                    ${item.status || '진행중'}
+                                </button>
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
-                <button class="status-toggle ${item.status === '완료' ? 'status-completed' : 'status-ing'}" 
-                        onclick="toggleSiteStatus('${item.client}', '${item.site}', '${item.status}')">
-                    ${item.status || '진행중'}
-                </button>
-            </div>
-        `).join('');
-    } catch (e) { console.error("데이터 로드 실패", e); }
+            `;
+        }
+        listBox.innerHTML = html;
+    } catch (e) { listBox.innerHTML = "데이터 로딩 실패"; }
 }
 
 // 칩 선택 함수
