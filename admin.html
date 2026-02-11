@@ -112,6 +112,35 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 .copyable { color: #2563eb; text-decoration: underline; cursor: pointer; word-break: break-all; }
 .card-btns { margin-top: 15px; display: flex; gap: 8px; }
 
+
+    /* 칩이 가로로 나열되도록 설정 */
+#client-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+    padding: 0 5px;
+}
+
+.chip {
+    padding: 8px 14px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: #555;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+
+/* 칩 클릭 시 파란색으로 변경 */
+.chip.active {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+}
+
     
   </style>
   
@@ -462,6 +491,7 @@ let clientSwiper = null; // 거래처 스와이퍼 전역 변수
 
 async function loadClientManagement() {
     const listBox = document.getElementById('client-management-list');
+    const chipBox = document.getElementById('client-chips'); // 칩이 들어갈 영역
     
     try {
         const res = await fetch(GAS_URL, { 
@@ -470,14 +500,23 @@ async function loadClientManagement() {
         });
         const data = await res.json(); 
 
-        // 데이터 그룹화 (거래처별)
+        // 1. 거래처 칩 생성 (중복 제거)
+        const uniqueClients = [...new Set(data.map(item => item.client))];
+        if (chipBox) {
+            chipBox.innerHTML = uniqueClients.map(client => 
+                // 칩 클릭 시 selectClientChip 함수 실행 (입력창 자동완성용)
+                `<div class="chip" onclick="selectClientChip(this, '${client}')">${client}</div>`
+            ).join('');
+        }
+
+        // 2. 데이터 그룹화
         const grouped = data.reduce((acc, curr) => {
             if (!acc[curr.client]) acc[curr.client] = [];
             acc[curr.client].push(curr);
             return acc;
         }, {});
 
-        // 스와이퍼 구조 생성 (Swiper-wrapper / Swiper-slide)
+        // 3. 스와이퍼 HTML 생성
         let html = `
             <div class="swiper client-management-swiper">
                 <div class="swiper-wrapper">`;
@@ -510,22 +549,37 @@ async function loadClientManagement() {
         }
         
         html += `</div>
-                <div class="swiper-pagination"></div> </div>`;
+                <div class="swiper-pagination"></div>
+            </div>`;
         
         listBox.innerHTML = html;
 
-        // 내부 스와이퍼 초기화
-        if (clientSwiper) clientSwiper.destroy(); // 기존꺼 있으면 삭제
-        clientSwiper = new Swiper('.client-management-swiper', {
+        // 4. 스와이퍼 초기화 (이동 기능 없이 레이아웃만 유지)
+        if (window.clientSwiper) window.clientSwiper.destroy();
+        window.clientSwiper = new Swiper('.client-management-swiper', {
             slidesPerView: 'auto',
             centeredSlides: true,
-          nested: true,
-            spaceBetween: 10,
-            pagination: { el: '.swiper-pagination', clickable: true },
-            nested: true, // ⭐ 중요: 메인 스와이퍼와 충돌 방지
+            spaceBetween: 15,
+            nested: true,
+            pagination: { el: '.swiper-pagination', clickable: true }
         });
 
-    } catch (e) { listBox.innerHTML = "데이터 로딩 실패"; }
+    } catch (e) { console.error(e); }
+}
+
+// 칩 선택 시 입력창에 이름 넣어주는 함수
+function selectClientChip(el, name) {
+    // 1. 거래처 등록 입력란에 값 넣기
+    const clientInput = document.getElementById('c_client');
+    if (clientInput) {
+        clientInput.value = name;
+        // 입력창으로 화면 스크롤 (필요할 경우만)
+        clientInput.focus();
+    }
+
+    // 2. 칩 선택 표시 (색상 변경)
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
 }
 
 // 칩 선택 함수
