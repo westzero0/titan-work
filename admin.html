@@ -582,13 +582,6 @@ function selectClientChip(el, name) {
     el.classList.add('active');
 }
 
-// 칩 선택 함수
-function selectClientChip(el, name) {
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('c_client').value = name; // 1. 거래처명 자동 입력
-}
-
 // 2-2. 현장 상태 변경 (진행중 <-> 완료)
 async function toggleSiteStatus(client, site, currentStatus) {
     const newStatus = currentStatus === '완료' ? '진행중' : '완료';
