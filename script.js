@@ -517,11 +517,11 @@ async function send() {
             msg += `👥 인원: ${payload.data.members}\n`;
             msg += `🚗 차량: ${payload.data.car || "없음"}\n`;
             msg += `🍱 석식: ${dinnerValue}\n`; // X면 X라고 나옵니다
-            msg += `📦 자재: ${finalMaterialString}\n`;
+            msg += `📦 자재: ${finalMaterialString}`;
             
             // 경비가 있을 때만 표시
             if(payload.data.expAmount > 0) {
-                 msg += `💰 경비: ${Number(payload.data.expAmount).toLocaleString()}원 (${payload.data.expDetail}/${payload.data.expPayer})`;
+                 msg += `\n💰 경비: ${Number(payload.data.expAmount).toLocaleString()}원 (${payload.data.expDetail}/${payload.data.expPayer})`;
             }
 
             // 버튼 UI 변경
@@ -535,7 +535,6 @@ async function send() {
                     // 1. 모바일 공유창 띄우기 시도
                     if (navigator.share) {
                         await navigator.share({
-                            title: '타이탄 작업일보',
                             text: msg
                         });
                     } else {
