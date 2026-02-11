@@ -38,63 +38,94 @@
     .nav-item i { font-size: 20px; margin-bottom: 4px; }
 
 
-/* 거래처별 그룹 카드 */
-.client-group-card {
+/* 거래처 그룹 카드 */
+.client-card {
     background: #fff;
-    border: 1px solid #e2e8f0;
     border-radius: 12px;
     margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid #eef2f7;
     overflow: hidden;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    width: 100%; /* 부모 너비에 맞춤 */
 }
 
-/* 거래처 이름 헤더 */
-.group-header {
+/* 거래처 헤더 (사진 2의 파란 아이콘 부분) */
+.client-header {
     background: #f8fafc;
     padding: 12px 15px;
     font-weight: bold;
-    font-size: 1rem;
-    border-bottom: 1px solid #e2e8f0;
-    color: #1e293b;
-}
-
-/* 현장별 한 줄 로직 (이게 중요!) */
-.site-row {
-    display: flex;             /* 가로로 배치 */
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 15px;
+    color: #334155;
     border-bottom: 1px solid #f1f5f9;
-    width: 100%;               /* 전체 폭 사용 */
-    box-sizing: border-box;    /* 패딩 포함 폭 계산 */
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.site-main {
-    flex: 1;                   /* 글자 영역이 최대한 넓게 차지 */
-    min-width: 0;              /* 글자 넘침 방지 */
-    margin-right: 10px;
+/* 현장 리스트 컨테이너 */
+.site-list {
+    width: 100%;
+}
+
+/* 현장 한 줄 (핵심 수정!) */
+.site-row {
+    display: flex !important;   /* 가로 배치 강제 */
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border-bottom: 1px solid #f8fafc;
+    width: 100% !important;     /* 100% 채우기 */
+    box-sizing: border-box;
+}
+
+/* 현장 이름과 주소가 들어가는 왼쪽 영역 */
+.site-content {
+    flex: 1;                    /* 남는 가로 공간을 모두 차지 */
+    min-width: 0;               /* 중요: 글자 뭉침 방지 */
+    text-align: left;           /* 왼쪽 정렬 */
 }
 
 .site-name {
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 500;
-    white-space: nowrap;       /* 줄바꿈 방지 */
-    overflow: hidden;
-    text-overflow: ellipsis;   /* 너무 길면 ... 처리 */
+    color: #1e293b;
+    white-space: normal;        /* 세로로 안 잘리게 */
+    word-break: break-all;      /* 너무 길면 단어 끊기 */
+    margin-bottom: 4px;
 }
 
 .site-addr {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: #64748b;
-    margin-top: 4px;
     cursor: pointer;
 }
 
-/* 완료된 현장 흐리게 */
-.status-done {
-    background: #f1f5f9;
-    opacity: 0.6;
+/* 상태 버튼 영역 */
+.site-action {
+    margin-left: 10px;
+    min-width: 80px;            /* 버튼 최소 폭 확보 */
 }
+
+.status-btn {
+    width: 100%;                /* 영역 안에서 꽉 차게 */
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+}
+
+/* 진행중 (초록색) */
+.status-btn.ing { background: #dcfce7; color: #166534; }
+/* 완료 (회색) */
+.status-btn.completed { background: #e2e8f0; color: #475569; opacity: 0.8; }
+
+/* 완료된 행 전체 흐리게 */
+.status-done {
+    background: #fcfcfc;
+}
+.status-done .site-name { color: #94a3b8; }
 
 /* 상태 버튼 스타일 */
 .status-toggle-btn {
@@ -593,7 +624,7 @@ async function loadClientManagement() {
         });
         const data = await res.json(); 
 
-        // 1. 거래처명 칩 생성 (중복 제거)
+        // 1. 거래처 칩 생성 (상단 선택용)
         const uniqueClients = [...new Set(data.map(item => item.client))];
         chipBox.innerHTML = uniqueClients.map(client => 
             `<div class="chip" onclick="selectClientChip(this, '${client}')">${client}</div>`
@@ -606,25 +637,27 @@ async function loadClientManagement() {
             return acc;
         }, {});
 
-        // 3. 그룹별로 카드 생성
+        // 3. 그룹별 카드 생성
         let html = '';
         for (const client in grouped) {
             html += `
-                <div class="client-group-card">
-                    <div class="group-header">🏢 ${client}</div>
-                    <div class="group-body">
+                <div class="client-card">
+                    <div class="client-header">🏢 ${client}</div>
+                    <div class="site-list">
                         ${grouped[client].map(item => `
                             <div class="site-row ${item.status === '완료' ? 'status-done' : ''}">
-                                <div class="site-main">
+                                <div class="site-content">
                                     <div class="site-name">${item.site}</div>
                                     <div class="site-addr" onclick="editAddress('${item.client}', '${item.site}', '${item.address || ''}')">
-                                        📍 ${item.address || '주소 입력'}
+                                        📍 ${item.address || '주소 등록 필요'}
                                     </div>
                                 </div>
-                                <button class="status-toggle-btn ${item.status === '완료' ? 'is-completed' : 'is-ing'}" 
-                                        onclick="toggleSiteStatus('${item.client}', '${item.site}', '${item.status}')">
-                                    ${item.status || '진행중'}
-                                </button>
+                                <div class="site-action">
+                                    <button class="status-btn ${item.status === '완료' ? 'completed' : 'ing'}" 
+                                            onclick="toggleSiteStatus('${item.client}', '${item.site}', '${item.status}')">
+                                        ${item.status || '진행중'}
+                                    </button>
+                                </div>
                             </div>
                         `).join('')}
                     </div>
