@@ -15,289 +15,98 @@
     transform: scale(0.98);
 }
       
-    /* 헤더 */
-    .header { background: #fff; padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #ddd; position: fixed; top:0; width: 100%; z-index: 100; }
+   /* --- 기본 레이아웃 및 공통 요소 --- */
+.header { background: #fff; padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #ddd; position: fixed; top:0; width: 100%; z-index: 100; }
 
-    /* 메인 스와이프 영역 */
-    .swiper { width: 100%; height: calc(100vh - 120px); margin-top: 55px; }
-    .swiper-slide { overflow-y: auto; padding: 20px; box-sizing: border-box; padding-bottom: 80px; }
+.swiper { width: 100%; height: calc(100vh - 120px); margin-top: 55px; }
+/* 메인 슬라이드: 내부 카드가 꽉 차도록 패딩 조절 */
+.swiper-slide { overflow-y: auto; padding: 12px; box-sizing: border-box; padding-bottom: 80px; background-color: #f1f5f9; }
 
-    /* 카드 스타일 */
-    .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+.card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px; }
 
-    /* 입력 폼 스타일 */
-    label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #444; }
-    input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-    button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
+label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #444; }
+input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
 
-    /* 하단 고정 탭 바 */
-    .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #fff; display: flex; border-top: 1px solid #ddd; z-index: 100; }
-    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888; font-size: 11px; cursor: pointer; }
-    .nav-item.active { color: var(--primary-color); }
-    .nav-item i { font-size: 20px; margin-bottom: 4px; }
+.bottom-nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #fff; display: flex; border-top: 1px solid #ddd; z-index: 100; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888; font-size: 11px; cursor: pointer; }
+.nav-item.active { color: var(--primary-color); }
+.nav-item i { font-size: 20px; margin-bottom: 4px; }
 
+/* --- [핵심] 현장 현황 관리 (중첩 스와이퍼 스타일) --- */
+#client-management-list { width: 100%; padding: 10px 0; }
 
-    /* 거래처 관리 전용 스와이퍼 컨테이너 */
-.client-management-swiper {
-    width: 100%;
-    padding: 10px 0 30px 0; /* 하단 페이지네이션 공간 */
-}
+.client-management-swiper { width: 100%; padding-bottom: 45px !important; }
 
-/* 개별 거래처 카드 (스와이프 슬라이드) */
-.client-slide {
-    width: 85% !important; /* 다음 카드가 살짝 보이게 설정 */
-    height: auto;
-    margin-right: 15px;
-}
+.client-slide { width: 94% !important; display: flex; align-items: stretch; }
 
 .client-card {
-    height: 100%;
-    min-height: 250px;
+    width: 100%;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+    border: none;
     display: flex;
     flex-direction: column;
-    background: #fff;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    border: 1px solid #e2e8f0;
+    min-height: 480px; /* 카드가 작아 보이지 않게 최소 높이 고정 */
 }
 
-/* 현장 리스트 영역에 스크롤 허용 (현장이 많을 경우 대비) */
-.site-list {
-    flex: 1;
-    overflow-y: auto;
-    max-height: 400px;
-}
-
-    
-/* 거래처 그룹 카드 */
-.client-card {
-    background: #fff;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border: 1px solid #eef2f7;
-    overflow: hidden;
-    width: 100%; /* 부모 너비에 맞춤 */
-}
-
-/* 거래처 헤더 (사진 2의 파란 아이콘 부분) */
 .client-header {
-    background: #f8fafc;
-    padding: 12px 15px;
-    font-weight: bold;
-    color: #334155;
+    background: #ffffff;
+    padding: 20px;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #1e293b;
     border-bottom: 1px solid #f1f5f9;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
 }
 
-/* 현장 리스트 컨테이너 */
-.site-list {
-    width: 100%;
-}
+.site-list { flex: 1; overflow-y: auto; padding: 5px 0; }
 
-/* 현장 한 줄 (핵심 수정!) */
 .site-row {
-    display: flex !important;   /* 가로 배치 강제 */
-    flex-direction: row !important;
+    display: flex !important;
     align-items: center;
     justify-content: space-between;
-    padding: 15px;
+    padding: 20px;
     border-bottom: 1px solid #f8fafc;
-    width: 100% !important;     /* 100% 채우기 */
-    box-sizing: border-box;
 }
 
-/* 현장 이름과 주소가 들어가는 왼쪽 영역 */
-.site-content {
-    flex: 1;                    /* 남는 가로 공간을 모두 차지 */
-    min-width: 0;               /* 중요: 글자 뭉침 방지 */
-    text-align: left;           /* 왼쪽 정렬 */
-}
+.site-content { flex: 1; text-align: left; min-width: 0; }
+.site-name { font-size: 1.05rem; font-weight: 700; color: #334155; margin-bottom: 4px; }
+.site-addr { font-size: 0.85rem; color: #64748b; text-decoration: underline; cursor: pointer; }
 
-.site-name {
-    font-size: 1rem;
-    font-weight: 500;
-    color: #1e293b;
-    white-space: normal;        /* 세로로 안 잘리게 */
-    word-break: break-all;      /* 너무 길면 단어 끊기 */
-    margin-bottom: 4px;
-}
-
-.site-addr {
-    font-size: 0.85rem;
-    color: #64748b;
-    cursor: pointer;
-}
-
-/* 상태 버튼 영역 */
-.site-action {
-    margin-left: 10px;
-    min-width: 80px;            /* 버튼 최소 폭 확보 */
-}
-
+/* 진행/완료 상태 버튼 */
 .status-btn {
-    width: 100%;                /* 영역 안에서 꽉 차게 */
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-}
-
-/* 진행중 (초록색) */
-.status-btn.ing { background: #dcfce7; color: #166534; }
-/* 완료 (회색) */
-.status-btn.completed { background: #e2e8f0; color: #475569; opacity: 0.8; }
-
-/* 완료된 행 전체 흐리게 */
-.status-done {
-    background: #fcfcfc;
-}
-.status-done .site-name { color: #94a3b8; }
-
-/* 상태 버튼 스타일 */
-.status-toggle-btn {
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    border: none;
-    cursor: pointer;
-    min-width: 60px;          /* 버튼 폭 고정 */
-}
-.is-ing { background: #dcfce7; color: #166534; }
-.is-completed { background: #cbd5e1; color: #475569; }
-
-    
-    /* 칩 스타일 */
-.chip {
-    padding: 6px 12px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
+    padding: 10px 16px;
+    border-radius: 10px;
     font-size: 0.85rem;
-    cursor: pointer;
-    transition: 0.2s;
-}
-.chip.active {
-    background: #2563eb;
-    color: #fff;
-    border-color: #2563eb;
-}
-
-/* 현장 관리 리스트 스타일 */
-.site-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-}
-.site-item.status-done {
-    opacity: 0.4; /* 2-2. 완료된 건 흐리게 */
-    background: #f9f9f9;
-}
-.site-info { flex: 1; }
-.site-name { font-weight: bold; font-size: 0.95rem; }
-.site-addr { font-size: 0.8rem; color: #666; text-decoration: underline; cursor: pointer; }
-
-/* 상태 버튼 스타일 */
-.status-toggle {
-    font-size: 0.75rem;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
+    font-weight: bold;
     border: none;
+    min-width: 80px;
+    cursor: pointer;
 }
-.status-ing { background: #dcfce7; color: #166534; } /* 진행중 (초록계열) */
-.status-completed { background: #e2e8f0; color: #475569; } /* 완료 (회색계열) */
+.status-btn.ing { background: #eefdf3; color: #16a34a; }
+.status-btn.completed { background: #f1f5f9; color: #94a3b8; }
 
-    
-    /* 직원 관리 카드 전체 컨테이너 */
-#worker-list-admin {
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* 카드 사이 간격 */
-    padding-bottom: 20px;
-}
+/* 완료된 현장 처리 */
+.status-done { opacity: 0.7; background-color: #fcfcfc; }
+.status-done .site-name { text-decoration: line-through; color: #94a3b8; }
 
-/* 개별 직원 카드 스타일 */
-.worker-card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 15px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    border-top: 4px solid #ddd; /* 기본 상태 바 */
-    position: relative;
-    display: block; /* 가로 꽉 차게 */
-}
+.swiper-pagination-bullet-active { background: #2563eb !important; }
 
-/* 재직/퇴사 상태별 상단 바 색상 */
-.worker-card[style*="#2563eb"] { border-top-color: #2563eb !important; }
-.worker-card[style*="#ef4444"] { border-top-color: #ef4444 !important; }
-
-/* 카드 상단 이름 및 상태 */
-.worker-card .name {
-    font-size: 1.1rem;
-    font-weight: bold;
-    color: #333;
-}
-
-/* 상태 배지 */
-.status-badge {
-    font-size: 0.75rem;
-    padding: 3px 8px;
-    border-radius: 20px;
-    color: #fff;
-    font-weight: bold;
-}
+/* --- 직원 관리 카드 스타일 --- */
+#worker-list-admin { display: flex; flex-direction: column; gap: 15px; padding-bottom: 20px; }
+.worker-card { background: #fff; border-radius: 12px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border-top: 4px solid #ddd; position: relative; display: block; }
+.worker-card .name { font-size: 1.1rem; font-weight: bold; color: #333; }
+.status-badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 20px; color: #fff; font-weight: bold; }
 .status-on { background: #2563eb; }
 .status-off { background: #ef4444; }
-
-/* 정보 텍스트 영역 */
-.info {
-    margin-top: 10px;
-    font-size: 0.9rem;
-    line-height: 1.6;
-    color: #555;
-}
-
-.copy-hint { font-size: 0.75rem; color: #999; margin-bottom: 2px; }
-.copyable { 
-    color: #2563eb; 
-    text-decoration: underline; 
-    cursor: pointer; 
-    word-break: break-all; /* 주소 길 때 줄바꿈 */
-}
-
-/* 카드 하단 버튼 영역 */
-.card-btns {
-    margin-top: 15px;
-    display: flex;
-    gap: 8px;
-}
-
-.btn-sm {
-    flex: 1;
-    padding: 8px !important;
-    font-size: 0.85rem !important;
-    margin-top: 0 !important; /* 기존 버튼 margin 제거 */
-}
-
-.btn-outline {
-    background: #fff !important;
-    color: #666 !important;
-    border: 1px solid #ddd !important;
-}
-
-.btn-red {
-    background: #fee2e2 !important;
-    color: #ef4444 !important;
-}
-
+.info { margin-top: 10px; font-size: 0.9rem; line-height: 1.6; color: #555; }
+.copyable { color: #2563eb; text-decoration: underline; cursor: pointer; word-break: break-all; }
+.card-btns { margin-top: 15px; display: flex; gap: 8px; }
 
     
   </style>
@@ -706,6 +515,7 @@ async function loadClientManagement() {
         clientSwiper = new Swiper('.client-management-swiper', {
             slidesPerView: 'auto',
             centeredSlides: true,
+          nested: true,
             spaceBetween: 10,
             pagination: { el: '.swiper-pagination', clickable: true },
             nested: true, // ⭐ 중요: 메인 스와이퍼와 충돌 방지
