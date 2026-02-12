@@ -369,20 +369,14 @@ let globalScheduleData = [];
       
         console.log("데이터 로드 완료! 달력과 리스트를 생성합니다.");
 
-        // 4. 모든 데이터가 준비된 후 달력과 리스트를 그립니다.
-        // 이 시점에는 globalScheduleData가 확실히 정의되어 있습니다.
+       // 4. 데이터가 왔을 때만 달력과 리스트 그리기
         initCalendar(); 
-        
-        if (typeof renderScheduleList === 'function') {
-            renderScheduleList(); 
-        }
-
-        // ❌ 밑에 중복되었던 loadAdminData(), loadClientManagement() 호출은 삭제했습니다.
-        // 위 Promise.all에서 이미 한 번에 다 처리했기 때문입니다.
-
+        renderScheduleList();
+        console.log("데이터 로딩 및 화면 구성 완료");
     } catch (e) {
-        console.error("데이터 로드 중 오류 발생:", e);
-        alert("데이터를 불러오는 중 에러가 발생했습니다. 새로고침을 해주세요.");
+        console.error("데이터 로드 중 일부 실패:", e);
+        // 에러가 나면 달력을 빈 상태로라도 그려서 기절 방지
+        initCalendar(); 
     }
 });
       
