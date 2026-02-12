@@ -6,6 +6,7 @@
   <title>타이탄 관리자 패널</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
   <style>
     :root { --primary-color: #2563eb; --bg-color: #f8f9fa; }
     body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg-color); margin: 0; padding: 0; overflow: hidden; }
@@ -141,6 +142,40 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     border-color: #2563eb;
 }
 
+
+    /* 일정등록 팝업 모달 배경 */
+.modal {
+    display: none; 
+    position: fixed; z-index: 1000; left: 0; top: 0;
+    width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
+}
+
+/* 팝업창 본체 */
+.modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.close {
+    color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;
+}
+
+/* 간단한 달력 스타일 */
+#calendar-container {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    background: #fff;
+    min-height: 300px;
+    text-align: center;
+}
+
+    
     
   </style>
   
@@ -224,13 +259,49 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     </div>
 
     <div class="swiper-slide">
-      <div class="card">
-        <h3>📅 작업 일정 등록</h3>
-        <label>날짜</label><input type="date" id="s_date">
-        <label>거래처</label><input type="text" id="s_client">
-        <label>현장명</label><input type="text" id="s_site">
-        <button onclick="saveSchedule()">일정 등록</button>
-      </div>
+   <div id="schedule-admin" class="card">
+    <h3>📅 작업 일정 등록</h3>
+    <div id="calendar-container"></div> </div>
+
+<div id="schedule-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3 id="selected-date-title">0000-00-00 일정 등록</h3>
+        
+        <form id="schedule-form">
+            <input type="hidden" id="sched-date"> <label>거래처</label>
+            <input type="text" id="sched-client" placeholder="거래처명 입력" required>
+            
+            <label>현장명</label>
+            <input type="text" id="sched-site" placeholder="현장명 입력" required>
+            
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label>인원</label>
+                    <input type="number" id="sched-workers" placeholder="명">
+                </div>
+                <div style="flex: 1;">
+                    <label>주/야</label>
+                    <select id="sched-shift">
+                        <option value="주간">주간</option>
+                        <option value="야간">야간</option>
+                    </select>
+                </div>
+            </div>
+            
+            <label>차량</label>
+            <input type="text" id="sched-car" placeholder="차량 정보">
+            
+            <label>작업내용</label>
+            <textarea id="sched-content" rows="3" placeholder="작업 내용 입력"></textarea>
+            
+            <label>특이사항</label>
+            <textarea id="sched-note" rows="2" placeholder="전달 사항 및 특이사항"></textarea>
+            
+            <button type="button" onclick="saveSchedule()">작업 일정 저장하기</button>
+        </form>
+    </div>
+</div>
     </div>
   </div>
 </div>
@@ -247,8 +318,8 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     
       
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbw_zKyCAuCOpdr2oHD0wxL9iAJ_d5ALkP4zA6G7B0rnaAXAF4wE4_mSZ_4bY7j0PUMp/exec"; // 👈 꼭 본인 주소로 수정하세요!
-
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzcll0GTBw6lCmjKpWluX7QQQUzE7AJJT0PovAgYfU2QBIA3-YeJuQIed4avP7hVYE/exec"; // 👈 꼭 본인 주소로 수정하세요!
+let calendar = null;
 let swiper = null; // 초기값을 null로 설정
 
     // 스와이퍼를 초기화하는 함수를 별도로 만듭니다.
@@ -269,10 +340,28 @@ let swiper = null; // 초기값을 null로 설정
         console.log("스와이퍼 준비 완료");
     }
 
+      // 3. 달력 초기화 (일정 탭)
+    function initCalendar() {
+        const calendarEl = document.getElementById('calendar-container');
+        if (!calendarEl) return;
+
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ko',
+            height: 'auto',
+            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+            dateClick: function(info) {
+                openScheduleModal(info.dateStr);
+            }
+        });
+        calendar.render();
+      
+
   // 페이지 로드 시 실행 (정리된 버전)
     window.addEventListener('DOMContentLoaded', () => {
         // 1. 스와이퍼 실행
         initSwiper();
+      initCalendar(); // 달력 초기화 추가
         
         // 2. 날짜 설정
         const sDateInput = document.getElementById('s_date');
@@ -638,7 +727,42 @@ async function editAddress(client, site, oldAddr) {
     await sendToGas('updateSiteAddress', { client, site, address: newAddr });
     loadClientManagement();
 }
-      
+
+
+      // 달력 날짜 클릭 시 팝업 열기
+function openScheduleModal(date) {
+    document.getElementById('sched-date').value = date;
+    document.getElementById('selected-date-title').innerText = date + " 일정 등록";
+    document.getElementById('schedule-modal').style.display = "block";
+}
+
+function closeModal() {
+    document.getElementById('schedule-modal').style.display = "none";
+}
+
+// 작업 일정 시트로 저장
+async function saveSchedule() {
+    const data = {
+        date: document.getElementById('sched-date').value,
+        client: document.getElementById('sched-client').value,
+        site: document.getElementById('sched-site').value,
+        workers: document.getElementById('sched-workers').value,
+        shift: document.getElementById('sched-shift').value,
+        car: document.getElementById('sched-car').value,
+        content: document.getElementById('sched-content').value,
+        note: document.getElementById('sched-note').value
+    };
+
+    if(!data.client || !data.site) return alert("거래처와 현장명은 필수입니다.");
+
+    // GAS_URL로 데이터 전송 (action을 'addSchedule'로 설정)
+    await sendToGas('addSchedule', data);
+    
+    closeModal();
+    document.getElementById('schedule-form').reset();
+}
+
+
 
       
 
