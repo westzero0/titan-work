@@ -259,49 +259,75 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     </div>
 
     <div class="swiper-slide">
-   <div id="schedule-admin" class="card">
-    <h3>📅 작업 일정 등록</h3>
-    <div id="calendar-container"></div> </div>
-
-<div id="schedule-modal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal()">&times;</span>
-        <h3 id="selected-date-title">0000-00-00 일정 등록</h3>
-        
-        <form id="schedule-form">
-            <input type="hidden" id="sched-date"> <label>거래처</label>
-            <input type="text" id="sched-client" placeholder="거래처명 입력" required>
+<div class="swiper-slide">
+        <div id="schedule-admin" class="card">
+            <h3>📅 작업 일정 <span style="font-size:0.8rem; color:#666; font-weight:normal;">(날짜를 클릭하여 등록)</span></h3>
             
-            <label>현장명</label>
-            <input type="text" id="sched-site" placeholder="현장명 입력" required>
+            <div id="calendar-container"></div>
             
-            <div style="display: flex; gap: 10px;">
-                <div style="flex: 1;">
-                    <label>인원</label>
-                    <input type="number" id="sched-workers" placeholder="명">
-                </div>
-                <div style="flex: 1;">
-                    <label>주/야</label>
-                    <select id="sched-shift">
-                        <option value="주간">주간</option>
-                        <option value="야간">야간</option>
-                    </select>
-                </div>
+            <h4 style="margin-top:20px; border-bottom:1px solid #eee; padding-bottom:10px;">📋 다가오는 일정</h4>
+            <div id="schedule-list-container" style="max-height: 400px; overflow-y: auto;">
+                <div style="text-align:center; padding:20px; color:#999;">로딩 중...</div>
             </div>
-            
-            <label>차량</label>
-            <input type="text" id="sched-car" placeholder="차량 정보">
-            
-            <label>작업내용</label>
-            <textarea id="sched-content" rows="3" placeholder="작업 내용 입력"></textarea>
-            
-            <label>특이사항</label>
-            <textarea id="sched-note" rows="2" placeholder="전달 사항 및 특이사항"></textarea>
-            
-            <button type="button" onclick="saveSchedule()">작업 일정 저장하기</button>
-        </form>
+        </div>
+
+        <div id="schedule-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; margin-bottom:15px; padding-bottom:10px;">
+                    <h3 id="modal-date-title" style="margin:0; color:#2563eb;">일정 등록</h3>
+                    <span style="cursor:pointer; font-size:24px;" onclick="closeModal()">&times;</span>
+                </div>
+                
+                <form id="schedule-form">
+                    <input type="hidden" id="sched-row-id">
+                    <input type="hidden" id="sched-date">
+                    <input type="hidden" id="sched-client">
+                    <input type="hidden" id="sched-site">
+
+                    <div class="input-group">
+                        <label>🏢 거래처 선택</label>
+                        <div id="sched-client-chips-area" class="chip-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px; margin-top:5px;">
+                            </div>
+
+                        <label>🏗️ 현장 선택</label>
+                        <div id="sched-site-chips-area" class="chip-container" style="min-height:40px; background:#f8f9fa; border-radius:8px; padding:10px; display:flex; flex-wrap:wrap; gap:8px; margin-top:5px;">
+                            <span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top:15px;">
+                            <div style="flex: 1;">
+                                <label>인원</label>
+                                <input type="number" id="sched-workers" placeholder="명" value="1">
+                            </div>
+                            <div style="flex: 1;">
+                                <label>주/야</label>
+                                <select id="sched-shift">
+                                    <option value="주간">주간</option>
+                                    <option value="야간">야간</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <label>차량</label>
+                        <input type="text" id="sched-car" placeholder="차량 정보">
+                        
+                        <label>작업내용</label>
+                        <textarea id="sched-content" rows="2" placeholder="작업 내용 입력"></textarea>
+                        
+                        <label>특이사항</label>
+                        <textarea id="sched-note" rows="2" placeholder="전달 사항 및 특이사항"></textarea>
+                        
+                        <div id="modal-btn-group" style="margin-top:20px; display:flex; gap:10px;">
+                            <button type="button" id="btn-save" class="btn-blue" onclick="saveSchedule('add')" style="flex:1;">일정 저장</button>
+                            
+                            <button type="button" id="btn-update" class="btn-blue" onclick="saveSchedule('update')" style="flex:1; display:none; background:#2563eb;">수정</button>
+                            <button type="button" id="btn-delete" class="btn-red" onclick="deleteSchedule()" style="flex:1; display:none; background:#ef4444; color:white;">삭제</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-</div>
     </div>
   </div>
 </div>
