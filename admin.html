@@ -435,6 +435,204 @@ let swiper = null; // 초기값을 null로 설정
         });
     }
 
+      // 4. [핵심] 일정 데이터 불러오기
+    async function loadScheduleData() {
+        try {
+            const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getScheduleList' }) });
+            globalScheduleData = await res.json();
+            return globalScheduleData;
+        } catch (e) { console.error("일정 로드 실패", e); }
+    }
+
+    // 5. [핵심] 달력 초기화 & 이벤트 렌더링
+    function initCalendar() {
+        const el = document.getElementById('calendar-container');
+        if(!el) return;
+        
+        // 데이터 변환: 서버 데이터 -> FullCalendar 이벤트 형식
+        const events = globalScheduleData.map(item => ({
+            id: item.rowId,
+            title: `${item.site} (${item.workers}명)`, // 가로 바에 표시될 내용
+            start: item.date,
+            extendedProps: item, // 상세 정보 담아두기
+            backgroundColor: item.shift === '야간' ? '#475569' : '#3b82f6', // 야간은 회색, 주간은 파란색
+            borderColor: 'transparent'
+        }));
+
+        calendar = new FullCalendar.Calendar(el, {
+            initialView: 'dayGridMonth',
+            locale: 'ko',
+            height: 'auto',
+            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+            events: events,
+            
+            // 1) 빈 날짜 클릭 -> 일정 추가 팝업
+            dateClick: function(info) { 
+                openModal('add', info.dateStr); 
+            },
+            
+            // 2) 일정 바 클릭 -> 수정/삭제 팝업
+            eventClick: function(info) {
+                openModal('edit', null, info.event.extendedProps);
+            }
+        });
+        calendar.render();
+    }
+
+    // 6. [핵심] 달력 아래 리스트 렌더링 (오늘 이후 일정만)
+    function renderScheduleList() {
+        const box = document.getElementById('schedule-list-container');
+        const today = new Date().toISOString().split('T')[0];
+        
+        // 날짜순 정렬 및 오늘 이후 필터링
+        const futureList = globalScheduleData
+            .filter(item => item.date >= today)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        if (futureList.length === 0) {
+            box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">예정된 일정이 없습니다.</div>';
+            return;
+        }
+
+        box.innerHTML = futureList.map(item => `
+            <div class="card" style="margin-bottom:10px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':'#2563eb'};" onclick="openModal('edit', null, {rowId:${item.rowId}, date:'${item.date}', client:'${item.client}', site:'${item.site}', workers:'${item.workers}', shift:'${item.shift}', car:'${item.car}', content:'${item.content}', note:'${item.note}'})">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <div style="font-weight:bold; font-size:1.1rem;">${item.date}</div>
+                    <span style="font-size:0.8rem; background:#f1f5f9; padding:2px 6px; border-radius:4px;">${item.shift}</span>
+                </div>
+                <div style="font-size:1rem; color:#333;">${item.site} <span style="color:#666; font-size:0.9rem;">(${item.client})</span></div>
+                <div style="font-size:0.9rem; color:#666; margin-top:5px;">
+                    👷 ${item.workers}명 / 🚛 ${item.car || '차량X'}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // 7. 모달 열기 (통합: 추가/수정)
+    function openModal(mode, dateStr, data) {
+        const modal = document.getElementById('schedule-modal');
+        modal.style.display = 'block';
+
+        // 버튼 표시 제어
+        if (mode === 'add') {
+            document.getElementById('modal-date-title').innerText = dateStr + " 일정 등록";
+            document.getElementById('sched-date').value = dateStr;
+            document.getElementById('btn-save').style.display = 'block';
+            document.getElementById('btn-update').style.display = 'none';
+            document.getElementById('btn-delete').style.display = 'none';
+            
+            // 폼 초기화
+            resetForm();
+            renderChips(''); // 칩 초기화
+        } else {
+            // 수정 모드
+            document.getElementById('modal-date-title').innerText = "일정 수정/삭제";
+            document.getElementById('sched-row-id').value = data.rowId;
+            document.getElementById('sched-date').value = data.date;
+            
+            document.getElementById('sched-workers').value = data.workers;
+            document.getElementById('sched-shift').value = data.shift;
+            document.getElementById('sched-car').value = data.car;
+            document.getElementById('sched-content').value = data.content;
+            document.getElementById('sched-note').value = data.note;
+
+            // 칩 상태 복구 (여기가 중요)
+            renderChips(data.client, data.site);
+            
+            document.getElementById('btn-save').style.display = 'none';
+            document.getElementById('btn-update').style.display = 'block';
+            document.getElementById('btn-delete').style.display = 'block';
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('schedule-modal').style.display = "none";
+    }
+
+      // 8. 칩 렌더링 및 선택 상태 복구 로직
+    function renderChips(selectedClient, selectedSite) {
+        const clientBox = document.getElementById('sched-client-chips-area');
+        const siteBox = document.getElementById('sched-site-chips-area');
+        const uniques = [...new Set(globalClientData.map(i => i.client))];
+
+        // 거래처 칩 생성
+        clientBox.innerHTML = uniques.map(c => 
+            `<div class="chip ${c === selectedClient ? 'active' : ''}" onclick="clickSchedClient(this, '${c}')">${c}</div>`
+        ).join('');
+        
+        // 값 세팅
+        document.getElementById('sched-client').value = selectedClient || "";
+
+        // 현장 칩 생성 (선택된 거래처가 있을 때만)
+        if (selectedClient) {
+            const sites = globalClientData.filter(i => i.client === selectedClient);
+            siteBox.innerHTML = sites.map(s => 
+                `<div class="chip ${s.site === selectedSite ? 'active' : ''}" onclick="clickSchedSite(this, '${s.site}')">${s.site}</div>`
+            ).join('');
+            document.getElementById('sched-site').value = selectedSite || "";
+        } else {
+            siteBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>';
+            document.getElementById('sched-site').value = "";
+        }
+    }
+
+    function clickSchedClient(el, clientName) {
+        document.getElementById('sched-client').value = clientName;
+        // 스타일
+        const siblings = document.getElementById('sched-client-chips-area').children;
+        for(let s of siblings) s.classList.remove('active');
+        el.classList.add('active');
+
+        // 현장 칩 갱신
+        renderChips(clientName, ''); 
+    }
+
+    function clickSchedSite(el, siteName) {
+        document.getElementById('sched-site').value = siteName;
+        const siblings = document.getElementById('sched-site-chips-area').children;
+        for(let s of siblings) s.classList.remove('active');
+        el.classList.add('active');
+    }
+    
+    function resetForm() {
+        document.getElementById('sched-client').value = "";
+        document.getElementById('sched-site').value = "";
+        document.getElementById('sched-workers').value = "1";
+        document.getElementById('sched-car').value = "";
+        document.getElementById('sched-content').value = "";
+        document.getElementById('sched-note').value = "";
+    }
+
+    // 9. 저장 / 수정 / 삭제 실행 함수
+    async function saveSchedule(mode) {
+        const data = {
+            rowId: document.getElementById('sched-row-id').value,
+            date: document.getElementById('sched-date').value,
+            client: document.getElementById('sched-client').value,
+            site: document.getElementById('sched-site').value,
+            workers: document.getElementById('sched-workers').value,
+            shift: document.getElementById('sched-shift').value,
+            car: document.getElementById('sched-car').value,
+            content: document.getElementById('sched-content').value,
+            note: document.getElementById('sched-note').value
+        };
+
+        if(!data.client || !data.site) return alert("거래처와 현장을 선택해주세요.");
+
+        const action = mode === 'add' ? 'addSchedule' : 'updateSchedule';
+        await sendToGas(action, data);
+        closeModal();
+    }
+
+    async function deleteSchedule() {
+        if(!confirm("정말 이 일정을 삭제하시겠습니까?")) return;
+        const rowId = document.getElementById('sched-row-id').value;
+        await sendToGas('deleteSchedule', { rowId: rowId });
+        closeModal();
+    }
+
+      
+      
     // 5. [핵심 수정] 서버 전송 공통 함수 (async 위치 확인)
     async function sendToGas(action, data) {
         try {
@@ -654,6 +852,8 @@ async function loadAdminData() {
 let clientSwiper = null; // 거래처 스와이퍼 전역 변수
 
 async function loadClientManagement() {
+
+  
     const listBox = document.getElementById('client-management-list');
     const chipBox = document.getElementById('client-chips'); // 칩이 들어갈 영역
     
