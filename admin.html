@@ -30,7 +30,25 @@ label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; co
 input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
 button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
 
-.bottom-nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #fff; display: flex; border-top: 1px solid #ddd; z-index: 100; }
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 65px;
+    background: #fff;
+    display: flex;
+    border-top: 1px solid #ddd;
+    /* 🟢 다른 무엇보다 위에 보이게 함 */
+    z-index: 9999 !important; 
+}
+
+/* active 클래스가 붙었을 때 색깔이 확실히 변하게 설정 */
+.nav-item.active {
+    color: #2563eb !important;
+    font-weight: bold;
+}
+
+    
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888; font-size: 11px; cursor: pointer; }
 .nav-item.active { color: var(--primary-color); }
 .nav-item i { font-size: 20px; margin-bottom: 4px; }
@@ -422,13 +440,20 @@ let globalScheduleData = [];
 
     
 
-    function updateNav(index) {
-        document.querySelectorAll('.nav-item').forEach((item, i) => {
-            if (i === index) item.classList.add('active');
-            else item.classList.remove('active');
-        });
-    }
-
+   function updateNav(index) {
+    // 모든 내비 아이템을 가져옵니다.
+    const navItems = document.querySelectorAll('.nav-item');
+    
+    navItems.forEach((item, i) => {
+        // 현재 슬라이드 번호와 아이콘 번호가 같으면 active 추가
+        if (i === index) {
+            item.classList.add('active');
+            console.log(i + "번 내비 활성화"); // 개발자 도구에서 확인용
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
 // [3] 일정 데이터 로드 (서버 통신) - 안전장치 보강
 async function loadScheduleData() {
     try {
