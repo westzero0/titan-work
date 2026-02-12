@@ -435,54 +435,71 @@ let globalScheduleData = [];
         });
     }
 
-// 4. [핵심] 일정 데이터 불러오기
+// [3] 일정 데이터 로드 (서버 통신) - 안전장치 보강
 async function loadScheduleData() {
     try {
         const res = await fetch(GAS_URL, { 
             method: 'POST', 
             body: JSON.stringify({ action: 'getScheduleList' }) 
         });
-        const data = await res.json();
         
-        // 🟢 전역 변수에 데이터를 담습니다.
-        globalScheduleData = data; 
-        return data;
+        // 서버 응답을 텍스트로 먼저 받아서 확인
+        const text = await res.text();
+        let data;
+        
+        try {
+            data = JSON.parse(text); // JSON으로 변환 시도
+        } catch (e) {
+            console.error("서버 응답이 JSON 형식이 아닙니다:", text);
+            data = []; // 변환 실패 시 빈 리스트로 초기화
+        }
+
+        // ⭐ 핵심: 데이터가 리스트(Array)인지 확인하고 아니면 빈 리스트[] 대입
+        globalScheduleData = Array.isArray(data) ? data : [];
+        return globalScheduleData;
+
     } catch (e) { 
-        console.error("일정 로드 실패", e); 
-        globalScheduleData = []; // 에러 시 빈 배열로 초기화
+        console.error("네트워크 통신 실패:", e); 
+        globalScheduleData = []; // 통신 에러 시 빈 리스트로 초기화
         return [];
     }
 }
 
-      
-    // 5. [핵심] 달력 초기화 & 이벤트 렌더링
- function initCalendar() {
+// [4] 달력 설정 (이벤트 바 형태 표시) - 안전장치 추가
+function initCalendar() {
     const el = document.getElementById('calendar-container');
     if (!el) return;
 
-    // 🟢 globalScheduleData를 달력용 이벤트로 변환
-    const events = globalScheduleData.map(item => ({
-        id: item.rowId,
-        title: `${item.site} (${item.workers}명)`, // 달력 바에 표시될 글자
-        start: item.date,
-        backgroundColor: item.shift === '야간' ? '#475569' : '#3b82f6', // 주/야 색상 구분
-        borderColor: 'transparent',
-        extendedProps: item // 수정 시 사용하기 위해 데이터 전체를 담아둠
-    }));
+    // 🟢 안전장치: globalScheduleData가 리스트가 아니면 여기서 중단 (에러 방지)
+    if (!Array.isArray(globalScheduleData)) {
+        console.warn("일정 데이터가 리스트 형식이 아닙니다. 빈 화면을 표시합니다.");
+        globalScheduleData = [];
+    }
 
-    if (calendar) calendar.destroy(); // 기존 달력이 있으면 지우고 새로 생성
+    const events = globalScheduleData.map(item => {
+        // 데이터 한 줄 한 줄이 정상인지 확인
+        if (!item || !item.date) return null;
+        
+        return {
+            id: item.rowId,
+            title: `${item.site} (${item.shift ? item.shift.charAt(0) : '주'})`,
+            start: item.date,
+            backgroundColor: item.shift === '야간' ? '#475569' : '#3b82f6',
+            borderColor: 'transparent',
+            extendedProps: item
+        };
+    }).filter(e => e !== null); // 비정상 데이터는 걸러냄
 
+    if (calendar) calendar.destroy();
+    
     calendar = new FullCalendar.Calendar(el, {
         initialView: 'dayGridMonth',
         locale: 'ko',
         height: 'auto',
-        events: events, // 🟢 변환한 데이터 삽입
-        dateClick: function(info) {
-            openModal('add', info.dateStr); // 빈 날짜 클릭 시 등록 팝업
-        },
-        eventClick: function(info) {
-            openModal('edit', null, info.event.extendedProps); // 일정 클릭 시 수정 팝업
-        }
+        headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+        events: events,
+        dateClick: (info) => openModal('add', info.dateStr),
+        eventClick: (info) => openModal('edit', null, info.event.extendedProps)
     });
     calendar.render();
 }
