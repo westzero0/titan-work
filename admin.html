@@ -322,42 +322,22 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 let calendar = null;
 let swiper = null; // 초기값을 null로 설정
 
-    // 스와이퍼를 초기화하는 함수를 별도로 만듭니다.
-    function initSwiper() {
-        const swiperContainer = document.querySelector('.swiper');
-        if (!swiperContainer) return;
-
-        swiper = new Swiper('.swiper', {
-            speed: 400,
-            loop: false,
-            allowTouchMove: true, // 손가락 스와이프 허용
-            on: {
-                slideChange: function () {
-                    updateNav(this.activeIndex);
-                }
-            }
-        });
-        console.log("스와이퍼 준비 완료");
+      
+      // 탭 클릭 시 이동 (준비 안됐으면 다시 한번 초기화 시도)
+    function jumpTo(index) {
+        if (!swiper) {
+            console.log("스와이퍼 재연결 시도 중...");
+            initSwiper();
+        }
+        
+        if (swiper) {
+            swiper.slideTo(index);
+        } else {
+            alert("화면 초기화 오류가 발생했습니다. 새로고침 후 다시 시도해 주세요.");
+        }
     }
 
-      // 3. 달력 초기화 (일정 탭)
-    function initCalendar() {
-        const calendarEl = document.getElementById('calendar-container');
-        if (!calendarEl) return;
-
-        calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'ko',
-            height: 'auto',
-            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-            dateClick: function(info) {
-                openScheduleModal(info.dateStr);
-            }
-        });
-        calendar.render();
-      
-
-  // 페이지 로드 시 실행 (정리된 버전)
+      // 페이지 로드 시 실행 (정리된 버전)
     window.addEventListener('DOMContentLoaded', () => {
         // 1. 스와이퍼 실행
         initSwiper();
@@ -377,21 +357,50 @@ let swiper = null; // 초기값을 null로 설정
             loadClientManagement();
         }
     }); // <--- 여기서 한 번만 닫으면 됩니다.
+
+
       
 
-    // 탭 클릭 시 이동 (준비 안됐으면 다시 한번 초기화 시도)
-    function jumpTo(index) {
-        if (!swiper) {
-            console.log("스와이퍼 재연결 시도 중...");
-            initSwiper();
-        }
-        
-        if (swiper) {
-            swiper.slideTo(index);
-        } else {
-            alert("화면 초기화 오류가 발생했습니다. 새로고침 후 다시 시도해 주세요.");
-        }
+    // 스와이퍼를 초기화하는 함수를 별도로 만듭니다.
+    function initSwiper() {
+        const swiperContainer = document.querySelector('.swiper');
+        if (!swiperContainer) return;
+
+        swiper = new Swiper('.swiper', {
+            speed: 400,
+            loop: false,
+            allowTouchMove: true, // 손가락 스와이프 허용
+            on: {
+                slideChange: function () {
+                    updateNav(this.activeIndex);
+                }
+            }
+        });
+        console.log("스와이퍼 준비 완료");
     }
+
+      
+
+      // 3. 달력 초기화 (일정 탭)
+    function initCalendar() {
+        const calendarEl = document.getElementById('calendar-container');
+        if (!calendarEl) return;
+
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ko',
+            height: 'auto',
+            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+            dateClick: function(info) {
+                openScheduleModal(info.dateStr);
+            }
+        });
+        calendar.render();
+    }
+
+  
+
+    
 
     function updateNav(index) {
         document.querySelectorAll('.nav-item').forEach((item, i) => {
@@ -606,6 +615,7 @@ async function loadAdminData() {
         }
 
         window.onload = loadAdminData;
+      
 
         function copyText(text) {
     if (!text) return;
@@ -762,7 +772,7 @@ async function saveSchedule() {
     document.getElementById('schedule-form').reset();
 }
 
-    }
+    
 
       
 
