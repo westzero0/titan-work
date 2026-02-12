@@ -258,16 +258,15 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
       </div>
     </div>
 
-    <div class="swiper-slide">
-<div class="swiper-slide">
+   <div class="swiper-slide">
         <div id="schedule-admin" class="card">
-            <h3>📅 작업 일정 <span style="font-size:0.8rem; color:#666; font-weight:normal;">(날짜를 클릭하여 등록)</span></h3>
+            <h3>📅 작업 일정 <span style="font-size:0.8rem; color:#666; font-weight:normal;">(날짜 클릭: 등록 / 바 클릭: 수정)</span></h3>
             
             <div id="calendar-container"></div>
             
-            <h4 style="margin-top:20px; border-bottom:1px solid #eee; padding-bottom:10px;">📋 다가오는 일정</h4>
-            <div id="schedule-list-container" style="max-height: 400px; overflow-y: auto;">
-                <div style="text-align:center; padding:20px; color:#999;">로딩 중...</div>
+            <h4 style="margin-top:25px; border-bottom:2px solid #f1f5f9; padding-bottom:10px; color:#1e293b;">📋 다가오는 상세 일정</h4>
+            <div id="schedule-list-container" style="padding-top:10px;">
+                <div style="text-align:center; padding:30px; color:#999;">일정을 불러오는 중...</div>
             </div>
         </div>
 
@@ -286,8 +285,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
                     <div class="input-group">
                         <label>🏢 거래처 선택</label>
-                        <div id="sched-client-chips-area" class="chip-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px; margin-top:5px;">
-                            </div>
+                        <div id="sched-client-chips-area" class="chip-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px; margin-top:5px;"></div>
 
                         <label>🏗️ 현장 선택</label>
                         <div id="sched-site-chips-area" class="chip-container" style="min-height:40px; background:#f8f9fa; border-radius:8px; padding:10px; display:flex; flex-wrap:wrap; gap:8px; margin-top:5px;">
@@ -295,42 +293,27 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
                         </div>
 
                         <div style="display: flex; gap: 10px; margin-top:15px;">
-                            <div style="flex: 1;">
-                                <label>인원</label>
-                                <input type="number" id="sched-workers" placeholder="명" value="1">
-                            </div>
+                            <div style="flex: 1;"><label>인원</label><input type="number" id="sched-workers" value="1"></div>
                             <div style="flex: 1;">
                                 <label>주/야</label>
-                                <select id="sched-shift">
-                                    <option value="주간">주간</option>
-                                    <option value="야간">야간</option>
-                                </select>
+                                <select id="sched-shift"><option value="주간">주간</option><option value="야간">야간</option></select>
                             </div>
                         </div>
                         
-                        <label>차량</label>
-                        <input type="text" id="sched-car" placeholder="차량 정보">
-                        
-                        <label>작업내용</label>
-                        <textarea id="sched-content" rows="2" placeholder="작업 내용 입력"></textarea>
-                        
-                        <label>특이사항</label>
-                        <textarea id="sched-note" rows="2" placeholder="전달 사항 및 특이사항"></textarea>
+                        <label>차량</label><input type="text" id="sched-car" placeholder="차량 정보">
+                        <label>작업내용</label><textarea id="sched-content" rows="2"></textarea>
+                        <label>특이사항</label><textarea id="sched-note" rows="2"></textarea>
                         
                         <div id="modal-btn-group" style="margin-top:20px; display:flex; gap:10px;">
                             <button type="button" id="btn-save" class="btn-blue" onclick="saveSchedule('add')" style="flex:1;">일정 저장</button>
-                            
-                            <button type="button" id="btn-update" class="btn-blue" onclick="saveSchedule('update')" style="flex:1; display:none; background:#2563eb;">수정</button>
-                            <button type="button" id="btn-delete" class="btn-red" onclick="deleteSchedule()" style="flex:1; display:none; background:#ef4444; color:white;">삭제</button>
+                            <button type="button" id="btn-update" class="btn-blue" onclick="saveSchedule('update')" style="flex:1; display:none;">수정 완료</button>
+                            <button type="button" id="btn-delete" class="btn-red" onclick="deleteSchedule()" style="flex:1; display:none; background:#fee2e2; color:#ef4444;">삭제</button>
                         </div>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    </div>
-  </div>
-</div>
 
 <div class="bottom-nav">
   <div class="nav-item active" onclick="jumpTo(0)">👥 <span>인원</span></div>
@@ -347,7 +330,8 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcll0GTBw6lCmjKpWluX7QQQUzE7AJJT0PovAgYfU2QBIA3-YeJuQIed4avP7hVYE/exec"; // 👈 꼭 본인 주소로 수정하세요!
 let calendar = null;
 let swiper = null; // 초기값을 null로 설정
-
+let globalScheduleData = [];
+      let globalClientData = [];
       
       // 탭 클릭 시 이동 (준비 안됐으면 다시 한번 초기화 시도)
     function jumpTo(index) {
@@ -363,28 +347,44 @@ let swiper = null; // 초기값을 null로 설정
         }
     }
 
-      // 페이지 로드 시 실행 (정리된 버전)
-    window.addEventListener('DOMContentLoaded', () => {
-        // 1. 스와이퍼 실행
-        initSwiper();
-      initCalendar(); // 달력 초기화 추가
-        
-        // 2. 날짜 설정
-        const sDateInput = document.getElementById('s_date');
-        if (sDateInput) sDateInput.valueAsDate = new Date();
-        
-        // 3. 직원 데이터 로드
-        if (typeof loadAdminData === 'function') {
-            loadAdminData();
-        }
-        
-        // 4. 거래처 관리 데이터 로드 (함수 안으로 안전하게 포함)
-        if (typeof loadClientManagement === 'function') {
-            loadClientManagement();
-        }
-    }); // <--- 여기서 한 번만 닫으면 됩니다.
+      
+    window.addEventListener('DOMContentLoaded', async () => { // 🟢 앞에 async가 붙어야 합니다!
+    // 1. 스와이퍼(탭 메뉴) 실행
+    initSwiper();
+    
+    // 2. 날짜 설정
+    const sDateInput = document.getElementById('s_date');
+    if (sDateInput) sDateInput.valueAsDate = new Date();
 
+    // 3. ⚠️ 데이터 로드 및 달력 생성
+    try {
+        console.log("데이터를 불러오는 중...");
+        
+        // 서버에서 데이터를 다 가져올 때까지 기다립니다 (await)
+        await Promise.all([
+            loadAdminData(),         // 직원 목록
+            loadClientManagement(),  // 거래처 목록
+            loadScheduleData()       // 일정 데이터 (globalScheduleData를 채움)
+        ]);
+      
+        console.log("데이터 로드 완료! 달력과 리스트를 생성합니다.");
 
+        // 4. 모든 데이터가 준비된 후 달력과 리스트를 그립니다.
+        // 이 시점에는 globalScheduleData가 확실히 정의되어 있습니다.
+        initCalendar(); 
+        
+        if (typeof renderScheduleList === 'function') {
+            renderScheduleList(); 
+        }
+
+        // ❌ 밑에 중복되었던 loadAdminData(), loadClientManagement() 호출은 삭제했습니다.
+        // 위 Promise.all에서 이미 한 번에 다 처리했기 때문입니다.
+
+    } catch (e) {
+        console.error("데이터 로드 중 오류 발생:", e);
+        alert("데이터를 불러오는 중 에러가 발생했습니다. 새로고침을 해주세요.");
+    }
+});
       
 
     // 스와이퍼를 초기화하는 함수를 별도로 만듭니다.
@@ -435,49 +435,58 @@ let swiper = null; // 초기값을 null로 설정
         });
     }
 
-      // 4. [핵심] 일정 데이터 불러오기
-    async function loadScheduleData() {
-        try {
-            const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getScheduleList' }) });
-            globalScheduleData = await res.json();
-            return globalScheduleData;
-        } catch (e) { console.error("일정 로드 실패", e); }
-    }
-
-    // 5. [핵심] 달력 초기화 & 이벤트 렌더링
-    function initCalendar() {
-        const el = document.getElementById('calendar-container');
-        if(!el) return;
-        
-        // 데이터 변환: 서버 데이터 -> FullCalendar 이벤트 형식
-        const events = globalScheduleData.map(item => ({
-            id: item.rowId,
-            title: `${item.site} (${item.workers}명)`, // 가로 바에 표시될 내용
-            start: item.date,
-            extendedProps: item, // 상세 정보 담아두기
-            backgroundColor: item.shift === '야간' ? '#475569' : '#3b82f6', // 야간은 회색, 주간은 파란색
-            borderColor: 'transparent'
-        }));
-
-        calendar = new FullCalendar.Calendar(el, {
-            initialView: 'dayGridMonth',
-            locale: 'ko',
-            height: 'auto',
-            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-            events: events,
-            
-            // 1) 빈 날짜 클릭 -> 일정 추가 팝업
-            dateClick: function(info) { 
-                openModal('add', info.dateStr); 
-            },
-            
-            // 2) 일정 바 클릭 -> 수정/삭제 팝업
-            eventClick: function(info) {
-                openModal('edit', null, info.event.extendedProps);
-            }
+// 4. [핵심] 일정 데이터 불러오기
+async function loadScheduleData() {
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'getScheduleList' }) 
         });
-        calendar.render();
+        const data = await res.json();
+        
+        // 🟢 전역 변수에 데이터를 담습니다.
+        globalScheduleData = data; 
+        return data;
+    } catch (e) { 
+        console.error("일정 로드 실패", e); 
+        globalScheduleData = []; // 에러 시 빈 배열로 초기화
+        return [];
     }
+}
+
+      
+    // 5. [핵심] 달력 초기화 & 이벤트 렌더링
+ function initCalendar() {
+    const el = document.getElementById('calendar-container');
+    if (!el) return;
+
+    // 🟢 globalScheduleData를 달력용 이벤트로 변환
+    const events = globalScheduleData.map(item => ({
+        id: item.rowId,
+        title: `${item.site} (${item.workers}명)`, // 달력 바에 표시될 글자
+        start: item.date,
+        backgroundColor: item.shift === '야간' ? '#475569' : '#3b82f6', // 주/야 색상 구분
+        borderColor: 'transparent',
+        extendedProps: item // 수정 시 사용하기 위해 데이터 전체를 담아둠
+    }));
+
+    if (calendar) calendar.destroy(); // 기존 달력이 있으면 지우고 새로 생성
+
+    calendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth',
+        locale: 'ko',
+        height: 'auto',
+        events: events, // 🟢 변환한 데이터 삽입
+        dateClick: function(info) {
+            openModal('add', info.dateStr); // 빈 날짜 클릭 시 등록 팝업
+        },
+        eventClick: function(info) {
+            openModal('edit', null, info.event.extendedProps); // 일정 클릭 시 수정 팝업
+        }
+    });
+    calendar.render();
+}
+      
 
     // 6. [핵심] 달력 아래 리스트 렌더링 (오늘 이후 일정만)
     function renderScheduleList() {
