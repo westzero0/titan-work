@@ -605,7 +605,6 @@ async function loadScheduleData() {
         `).join('');
     }
 
- // 팝업창 열기 함수 (하루/연속 모두 대응, 석식 제거 완료)
 // 팝업창 열기 함수 (수정 완료)
 function openModal(mode, dateStr, data, endStr = null) {
     const modal = document.getElementById('schedule-modal');
@@ -653,7 +652,6 @@ function openModal(mode, dateStr, data, endStr = null) {
         document.getElementById('sched-date').value = data.date;
         document.getElementById('sched-end-date').value = ""; 
 
-        document.getElementById('sched-workers').value = data.workers; // (필요 없다면 삭제 가능)
         document.getElementById('sched-shift').value = data.shift;
         document.getElementById('sched-car').value = data.car;
         document.getElementById('sched-content').value = data.content;
