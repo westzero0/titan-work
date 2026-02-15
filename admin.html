@@ -189,14 +189,40 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
 /* 간단한 달력 스타일 */
 #calendar-container {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
+  padding: 0;                   /* 🟢 여백 0으로 설정 (꽉 차게) */
     background: #fff;
     min-height: 300px;
     text-align: center;
 }
 
+    /* --- 달력 테두리 제거 및 공간 확장 --- */
+
+/* 1. 달력 전체를 감싸는 '겉 테두리' 제거 (핵심!) */
+.fc-theme-standard .fc-scrollgrid {
+    border: none !important;
+}
+
+/* 2. 요일(일,월,화...) 박스 테두리 제거 */
+.fc-theme-standard th {
+    border: none !important;
+    border-bottom: 1px solid #f0f0f0 !important; /* 요일 아래에만 아주 연한 줄 남김 */
+}
+
+/* 3. 날짜 칸(셀) 테두리 아주 연하게 변경 (완전 없애면 구분이 안 갈 수 있음) */
+.fc-theme-standard td {
+    border: 1px solid #f8fafc !important; /* 배경색과 거의 비슷한 연회색 */
+    border-top: none !important; /* 윗줄 제거해서 시원하게 */
+}
+
+/* 4. 달력 맨 아래쪽 불필요한 여백 제거 */
+.fc-view-harness {
+    background-color: #fff; /* 배경 흰색 */
+}
+
+/* 5. (선택사항) 오늘 날짜 배경색을 연한 파랑으로 칠해서 테두리 없이도 구분되게 함 */
+.fc-day-today {
+    background-color: #eff6ff !important; 
+}
     
     
   </style>
@@ -291,56 +317,66 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
                 <div style="text-align:center; padding:30px; color:#999;">일정을 불러오는 중...</div>
             </div>
         </div>
-
-        <div id="schedule-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; margin-bottom:15px; padding-bottom:10px;">
-                    <h3 id="modal-date-title" style="margin:0; color:#2563eb;">일정 등록</h3>
-                    <span style="cursor:pointer; font-size:24px;" onclick="closeModal()">&times;</span>
-                </div>
-                
-                <form id="schedule-form">
-                    <input type="hidden" id="sched-row-id">
-                    <input type="hidden" id="sched-date">
-                    <input type="hidden" id="sched-client">
-                    <input type="hidden" id="sched-site">
-
-                    <div class="input-group">
-                        <label>🏢 거래처 선택</label>
-                        <div id="sched-client-chips-area" class="chip-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px; margin-top:5px;"></div>
-
-                        <label>🏗️ 현장 선택</label>
-                        <div id="sched-site-chips-area" class="chip-container" style="min-height:40px; background:#f8f9fa; border-radius:8px; padding:10px; display:flex; flex-wrap:wrap; gap:8px; margin-top:5px;">
-                            <span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>
-                        </div>
-
-                        <div style="display: flex; gap: 10px; margin-top:15px;">
-                            <div style="flex: 1;"><label>인원</label><input type="number" id="sched-workers" value="1"></div>
-                            <div style="flex: 1;">
-                                <label>주/야</label>
-                                <select id="sched-shift"><option value="주간">주간</option><option value="야간">야간</option></select>
-                            </div>
-                        </div>
-                        
-                        <label>차량</label><input type="text" id="sched-car" placeholder="차량 정보">
-                        <label>작업내용</label><textarea id="sched-content" rows="2"></textarea>
-                        <label>특이사항</label><textarea id="sched-note" rows="2"></textarea>
-                        
-                        <div id="modal-btn-group" style="margin-top:20px; display:flex; gap:10px;">
-                            <button type="button" id="btn-save" class="btn-blue" onclick="saveSchedule('add')" style="flex:1;">일정 저장</button>
-                            <button type="button" id="btn-update" class="btn-blue" onclick="saveSchedule('update')" style="flex:1; display:none;">수정 완료</button>
-                            <button type="button" id="btn-delete" class="btn-red" onclick="deleteSchedule()" style="flex:1; display:none; background:#fee2e2; color:#ef4444;">삭제</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
+<div id="schedule-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; margin-bottom:15px; padding-bottom:10px;">
+            <h3 id="modal-date-title" style="margin:0; color:#2563eb;">일정 등록</h3>
+            <span style="cursor:pointer; font-size:24px;" onclick="closeModal()">&times;</span>
         </div>
+        
+        <form id="schedule-form">
+            <input type="hidden" id="sched-row-id">
+            <input type="hidden" id="sched-date">
+            <input type="hidden" id="sched-end-date"> <input type="hidden" id="sched-client">
+            <input type="hidden" id="sched-site">
+            <input type="hidden" id="sched-shift" value="주간"> <div class="input-group">
+                <label>🏢 거래처 선택</label>
+                <div id="sched-client-chips-area" class="chip-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px; margin-top:5px;"></div>
+
+                <label>🏗️ 현장 선택</label>
+                <div id="sched-site-chips-area" class="chip-container" style="min-height:40px; background:#f8f9fa; border-radius:8px; padding:10px; display:flex; flex-wrap:wrap; gap:8px; margin-top:5px; margin-bottom:15px;">
+                    <span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label>⏰ 근무 형태 (클릭해서 변경)</label>
+                    <div id="shift-toggle-btn" 
+                         onclick="toggleShift()" 
+                         style="background:#3b82f6; color:white; padding:10px; text-align:center; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:5px;">
+                        🌞 주간
+                    </div>
+                </div>
+
+                <label>👷 투입 인원 <span id="worker-count-display" style="color:#2563eb; font-weight:bold;">(0명)</span></label>
+                <input type="text" id="sched-workers-text" placeholder="직접 입력하거나 아래에서 선택" style="margin-bottom:8px;">
+                <div id="worker-chips-area" style="display:flex; flex-wrap:wrap; gap:6px; max-height:150px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:8px; border:1px solid #eee;">
+                    </div>
+
+                <label style="margin-top:15px;">🚛 차량 선택</label>
+                <input type="text" id="sched-car" placeholder="차량 직접 입력">
+                <div id="car-chips-area" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:5px;">
+                    <div class="chip" onclick="selectCar('1호차')">1호차</div>
+                    <div class="chip" onclick="selectCar('2호차')">2호차</div>
+                    <div class="chip" onclick="selectCar('3호차')">3호차</div>
+                    <div class="chip" onclick="selectCar('본인차')">본인차</div>
+                </div>
+
+                <label>작업내용</label><textarea id="sched-content" rows="2"></textarea>
+                <label>특이사항</label><textarea id="sched-note" rows="2"></textarea>
+                
+                <div id="modal-btn-group" style="margin-top:20px; display:flex; gap:10px;">
+                    <button type="button" id="btn-save" class="btn-blue" onclick="saveSchedule('add')" style="flex:1;">일정 저장</button>
+                    <button type="button" id="btn-update" class="btn-blue" onclick="saveSchedule('update')" style="flex:1; display:none;">수정 완료</button>
+                    <button type="button" id="btn-delete" class="btn-red" onclick="deleteSchedule()" style="flex:1; display:none; background:#fee2e2; color:#ef4444;">삭제</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+      
     </div>
 
-        </div>
-
-          </div>
-
+       
 
 
 <div class="bottom-nav">
@@ -355,7 +391,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     
       
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwnTs1jNcjn4bipKjAiCBASQzpMj1_unUIsVpdvLO1xe1f3VwYeowNUMJjWYAUKWkdX/exec"; // 👈 꼭 본인 주소로 수정하세요!
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxoi8Nrg1pkOtKv50nS1b1q7UkxjW0vSf2JGki2Yc2yH_QWoqnhp5NifGPX_JHM4ZVq/exec"; // 👈 꼭 본인 주소로 수정하세요!
 let calendar = null;
 let swiper = null; // 초기값을 null로 설정
 let globalScheduleData = [];
@@ -429,23 +465,67 @@ let globalScheduleData = [];
 
       
 
-      // 3. 달력 초기화 (일정 탭)
-    function initCalendar() {
-        const calendarEl = document.getElementById('calendar-container');
-        if (!calendarEl) return;
+  // 3. 달력 초기화 및 설정 (완성본)
+function initCalendar() {
+    const el = document.getElementById('calendar-container');
+    if (!el) return;
 
-        calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'ko',
-            height: 'auto',
-            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-            dateClick: function(info) {
-                openScheduleModal(info.dateStr);
-            }
-        });
-        calendar.render();
-    }
+    // [1] 데이터 매핑: 서버에서 가져온 데이터(globalScheduleData)를 달력 형식으로 변환
+    // 데이터가 없을 경우를 대비해 빈 배열([]) 처리
+    const safeData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
 
+    const events = safeData.map(item => ({
+        id: item.rowId,
+        // 제목: 현장명 + (인원)
+        title: `${item.site} (${item.workers}명)`, 
+        start: item.date,
+        // 색상: 야간이면 어두운색, 주간이면 파란색
+        backgroundColor: item.shift === '야간' ? '#475569' : '#3b82f6',
+        borderColor: 'transparent',
+        extendedProps: item // 수정할 때 쓰려고 전체 데이터를 담아둠
+    }));
+
+    // 혹시 기존에 그려진 달력이 있으면 삭제(초기화)
+    if (calendar) calendar.destroy(); 
+
+    calendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth',
+        locale: 'ko',
+        height: 'auto',
+        
+        // 🎨 [디자인] 상단 툴바
+        headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+
+        // 🎨 [디자인] "1일" -> "1"로 변경 (공간 확보)
+        dayCellContent: function(info) {
+            return { html: info.dayNumberText.replace('일', '') };
+        },
+
+        // ✨ [핵심] 드래그 선택 기능 활성화
+        selectable: true, 
+        selectMirror: true, // 드래그하는 동안 영역 색칠됨
+
+        // 📅 [행동 1] 빈 날짜(또는 범위)를 클릭/드래그 했을 때 -> 등록 팝업
+        select: function(info) {
+            // info.startStr : 시작일 (예: 2026-02-01)
+            // info.endStr   : 종료일 (예: 2026-02-06, *주의: 5일까지 선택하면 6일로 들어옴)
+            
+            // 등록 모드('add')로 모달 열기 + 종료일 정보도 같이 넘김
+            openModal('add', info.startStr, null, info.endStr); 
+        },
+
+        // ✏️ [행동 2] 이미 등록된 일정 바(Bar)를 클릭했을 때 -> 수정 팝업
+        eventClick: function(info) {
+            // 수정 모드('edit')로 모달 열기 + 기존 데이터(extendedProps) 넘김
+            openModal('edit', null, info.event.extendedProps);
+        },
+
+        // 📌 데이터 연결
+        events: events
+    });
+
+    calendar.render();
+}
   
 
     
@@ -494,45 +574,7 @@ async function loadScheduleData() {
     }
 }
 
-// [4] 달력 설정 (이벤트 바 형태 표시) - 안전장치 추가
-function initCalendar() {
-    const el = document.getElementById('calendar-container');
-    if (!el) return;
 
-    // 🟢 안전장치: globalScheduleData가 리스트가 아니면 여기서 중단 (에러 방지)
-    if (!Array.isArray(globalScheduleData)) {
-        console.warn("일정 데이터가 리스트 형식이 아닙니다. 빈 화면을 표시합니다.");
-        globalScheduleData = [];
-    }
-
-    const events = globalScheduleData.map(item => {
-        // 데이터 한 줄 한 줄이 정상인지 확인
-        if (!item || !item.date) return null;
-        
-        return {
-            id: item.rowId,
-            title: `${item.site} (${item.shift ? item.shift.charAt(0) : '주'})`,
-            start: item.date,
-            backgroundColor: item.shift === '야간' ? '#475569' : '#3b82f6',
-            borderColor: 'transparent',
-            extendedProps: item
-        };
-    }).filter(e => e !== null); // 비정상 데이터는 걸러냄
-
-    if (calendar) calendar.destroy();
-    
-    calendar = new FullCalendar.Calendar(el, {
-        initialView: 'dayGridMonth',
-        locale: 'ko',
-        height: 'auto',
-        headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-        events: events,
-        dateClick: (info) => openModal('add', info.dateStr),
-        eventClick: (info) => openModal('edit', null, info.event.extendedProps)
-    });
-    calendar.render();
-}
-      
 
     // 6. [핵심] 달력 아래 리스트 렌더링 (오늘 이후 일정만)
     function renderScheduleList() {
@@ -563,42 +605,87 @@ function initCalendar() {
         `).join('');
     }
 
-    // 7. 모달 열기 (통합: 추가/수정)
-    function openModal(mode, dateStr, data) {
-        const modal = document.getElementById('schedule-modal');
-        modal.style.display = 'block';
+ // 팝업창 열기 함수 (하루/연속 모두 대응, 석식 제거 완료)
+function openModal(mode, dateStr, data, endStr = null) {
+    const modal = document.getElementById('schedule-modal');
+    modal.style.display = 'block';
 
-        // 버튼 표시 제어
-        if (mode === 'add') {
-            document.getElementById('modal-date-title').innerText = dateStr + " 일정 등록";
-            document.getElementById('sched-date').value = dateStr;
-            document.getElementById('btn-save').style.display = 'block';
-            document.getElementById('btn-update').style.display = 'none';
-            document.getElementById('btn-delete').style.display = 'none';
-            
-            // 폼 초기화
-            resetForm();
-            renderChips(''); // 칩 초기화
-        } else {
-            // 수정 모드
-            document.getElementById('modal-date-title').innerText = "일정 수정/삭제";
-            document.getElementById('sched-row-id').value = data.rowId;
-            document.getElementById('sched-date').value = data.date;
-            
-            document.getElementById('sched-workers').value = data.workers;
-            document.getElementById('sched-shift').value = data.shift;
-            document.getElementById('sched-car').value = data.car;
-            document.getElementById('sched-content').value = data.content;
-            document.getElementById('sched-note').value = data.note;
+    if (mode === 'add') {
+        // [1] 등록 모드
+        document.getElementById('sched-date').value = dateStr;
+        document.getElementById('sched-end-date').value = endStr ? endStr : ""; // 종료일 숨겨서 저장
 
-            // 칩 상태 복구 (여기가 중요)
-            renderChips(data.client, data.site);
-            
-            document.getElementById('btn-save').style.display = 'none';
-            document.getElementById('btn-update').style.display = 'block';
-            document.getElementById('btn-delete').style.display = 'block';
+      // 🟢 직원 칩 초기화
+        document.getElementById('sched-workers-text').value = "";
+        renderWorkerChips(""); 
+        
+        // 🟢 주/야 초기화
+        currentShiftIndex = 0; // 주간으로 리셋
+        // (화면 표시도 주간으로 강제 업데이트 필요하면 toggleShift 로직 활용)
+      
+        // --- 제목 표시 로직 (하루 vs 여러 날 구분) ---
+        let titleText = dateStr + " 일정 등록"; // 기본 제목
+
+        if (endStr) {
+            const start = new Date(dateStr);
+            const end = new Date(endStr);
+            const diffTime = end - start;
+            const diffDays = diffTime / (1000 * 60 * 60 * 24); // 일수 계산
+
+            // 1일 초과일 때만 '~' 표시
+            if (diffDays > 1) {
+                titleText = `${dateStr} ~ (총 ${diffDays}일간 연속 등록)`;
+            }
+        }
+        document.getElementById('modal-date-title').innerText = titleText;
+        // ------------------------------------------
+
+        // 폼 및 칩 초기화
+        resetForm();
+        renderChips(''); 
+        
+        // 버튼 표시 설정 (저장 버튼만 표시)
+        document.getElementById('btn-save').style.display = 'block';
+        document.getElementById('btn-update').style.display = 'none';
+        document.getElementById('btn-delete').style.display = 'none';
+
+    } else {
+        // [2] 수정 모드
+        document.getElementById('modal-date-title').innerText = "일정 수정/삭제";
+        document.getElementById('sched-row-id').value = data.rowId;
+        document.getElementById('sched-date').value = data.date;
+        document.getElementById('sched-end-date').value = ""; // 수정은 하루씩 하므로 비움
+
+        document.getElementById('sched-workers').value = data.workers;
+        document.getElementById('sched-shift').value = data.shift;
+        document.getElementById('sched-car').value = data.car;
+        document.getElementById('sched-content').value = data.content;
+        document.getElementById('sched-note').value = data.note;
+
+      // 🟢 직원 칩 복구
+        // data.workers에 "홍길동, 김철수" 같은 문자열이 있다고 가정
+        document.getElementById('sched-workers-text').value = data.workers;
+        renderWorkerChips(data.workers);
+
+        // 🟢 주/야 상태 복구 (data.shift 값에 맞춰서 인덱스 찾기)
+        const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
+        if (shiftIdx >= 0) {
+            currentShiftIndex = shiftIdx - 1; // toggleShift() 한번 호출하면 +1 되므로
+            toggleShift();
         }
     }
+}
+      
+        // 칩 상태 복구
+        renderChips(data.client, data.site);
+        
+        // 버튼 표시 설정 (수정/삭제 버튼 표시)
+        document.getElementById('btn-save').style.display = 'none';
+        document.getElementById('btn-update').style.display = 'block';
+        document.getElementById('btn-delete').style.display = 'block';
+    }
+}
+      
 
     function closeModal() {
         document.getElementById('schedule-modal').style.display = "none";
@@ -659,25 +746,56 @@ function initCalendar() {
     }
 
     // 9. 저장 / 수정 / 삭제 실행 함수
-    async function saveSchedule(mode) {
-        const data = {
+async function saveSchedule(mode) {
+    // 공통 데이터
+    const client = document.getElementById('sched-client').value;
+    const site = document.getElementById('sched-site').value;
+    // 🟢 인원: 칩으로 선택된 텍스트값 가져오기 (숫자 아님!)
+    const workers = document.getElementById('sched-workers-text').value; 
+    const shift = document.getElementById('sched-shift').value;
+    const car = document.getElementById('sched-car').value;
+    const content = document.getElementById('sched-content').value;
+    const note = document.getElementById('sched-note').value;
+
+    if (!client || !site) return alert("거래처와 현장을 선택해주세요.");
+
+    // 날짜 처리 (연속 등록 지원)
+    const startDateStr = document.getElementById('sched-date').value;
+    const endDateStr = document.getElementById('sched-end-date').value;
+
+    let action = '';
+    let payload = null;
+
+    if (mode === 'add') {
+        // --- 신규 (일괄) 등록 ---
+        const dataList = [];
+        let curDate = new Date(startDateStr);
+        const limitDate = endDateStr ? new Date(endDateStr) : new Date(startDateStr);
+        if (!endDateStr) limitDate.setDate(limitDate.getDate() + 1);
+
+        while (curDate < limitDate) {
+            dataList.push({
+                date: curDate.toISOString().split('T')[0],
+                client, site, workers, shift, car, content, note
+            });
+            curDate.setDate(curDate.getDate() + 1);
+        }
+        action = 'addScheduleBatch';
+        payload = dataList;
+
+    } else {
+        // --- 수정 ---
+        action = 'updateSchedule';
+        payload = {
             rowId: document.getElementById('sched-row-id').value,
-            date: document.getElementById('sched-date').value,
-            client: document.getElementById('sched-client').value,
-            site: document.getElementById('sched-site').value,
-            workers: document.getElementById('sched-workers').value,
-            shift: document.getElementById('sched-shift').value,
-            car: document.getElementById('sched-car').value,
-            content: document.getElementById('sched-content').value,
-            note: document.getElementById('sched-note').value
+            date: startDateStr,
+            client, site, workers, shift, car, content, note
         };
-
-        if(!data.client || !data.site) return alert("거래처와 현장을 선택해주세요.");
-
-        const action = mode === 'add' ? 'addSchedule' : 'updateSchedule';
-        await sendToGas(action, data);
-        closeModal();
     }
+
+    await sendToGas(action, payload);
+    closeModal();
+}
 
     async function deleteSchedule() {
         if(!confirm("정말 이 일정을 삭제하시겠습니까?")) return;
@@ -771,19 +889,10 @@ function saveMaterial() {
     sendToGas('adminAddMaterial', data);
 }
 
-// 일정 등록 버튼용
-function saveSchedule() {
-    const data = {
-        date: document.getElementById('s_date').value,
-        client: document.getElementById('s_client').value,
-        site: document.getElementById('s_site').value
-    };
-    if(!data.client || !data.site) return alert("날짜와 현장 정보를 입력하세요.");
-    sendToGas('saveSchedule', data);
-}
 
         
-        
+        let globalWorkerData = []; // 🟢 맨 위에 이거 한 줄 추가하세요!
+      
    // 1. 명단 불러오기 (async 키워드가 핵심!)
 async function loadAdminData() {
     const box = document.getElementById('worker-list-admin');
@@ -794,10 +903,10 @@ async function loadAdminData() {
             body: JSON.stringify({ action: 'getAllWorkerInfo' }),
             redirect: 'follow' 
         });
-        
-        // 💡 텍스트로 먼저 받고 JSON으로 변환 (CORS 안정성 확보)
         const text = await res.text();
         const workers = JSON.parse(text);
+        
+        globalWorkerData = workers; // 🟢 데이터를 전역 변수에 저장 (팝업에서 쓰려고)
         
    box.innerHTML = workers.map(w => `
     <div class="worker-card" style="border-top-color: ${w.status === '재직' ? '#2563eb' : '#ef4444'}">
@@ -1020,40 +1129,66 @@ async function editAddress(client, site, oldAddr) {
 }
 
 
-      // 달력 날짜 클릭 시 팝업 열기
-function openScheduleModal(date) {
-    document.getElementById('sched-date').value = date;
-    document.getElementById('selected-date-title').innerText = date + " 일정 등록";
-    document.getElementById('schedule-modal').style.display = "block";
-}
 
-function closeModal() {
-    document.getElementById('schedule-modal').style.display = "none";
-}
-
-// 작업 일정 시트로 저장
-async function saveSchedule() {
-    const data = {
-        date: document.getElementById('sched-date').value,
-        client: document.getElementById('sched-client').value,
-        site: document.getElementById('sched-site').value,
-        workers: document.getElementById('sched-workers').value,
-        shift: document.getElementById('sched-shift').value,
-        car: document.getElementById('sched-car').value,
-        content: document.getElementById('sched-content').value,
-        note: document.getElementById('sched-note').value
-    };
-
-    if(!data.client || !data.site) return alert("거래처와 현장명은 필수입니다.");
-
-    // GAS_URL로 데이터 전송 (action을 'addSchedule'로 설정)
-    await sendToGas('addSchedule', data);
+  // [기능 1] 직원 칩 생성 함수
+function renderWorkerChips(selectedNamesString = "") {
+    const container = document.getElementById('worker-chips-area');
+    // 문자열("홍길동, 김철수")을 배열로 변환
+    const selectedList = selectedNamesString.split(',').map(s => s.trim()).filter(s => s);
     
-    closeModal();
-    document.getElementById('schedule-form').reset();
+    container.innerHTML = globalWorkerData.map(w => {
+        const isSelected = selectedList.includes(w.name);
+        return `<div class="chip ${isSelected ? 'active' : ''}" 
+                    onclick="toggleWorkerSelection(this, '${w.name}')"
+                    style="font-size:0.8rem; padding:5px 10px;">
+                    ${w.name}
+                </div>`;
+    }).join('');
+    
+    // 카운트 업데이트
+    updateWorkerCount();
 }
 
+// [기능 2] 직원 선택/해제 로직
+function toggleWorkerSelection(el, name) {
+    el.classList.toggle('active');
     
+    // 현재 선택된 칩들을 모두 찾아서 input에 넣기
+    const activeChips = document.querySelectorAll('#worker-chips-area .chip.active');
+    const names = Array.from(activeChips).map(chip => chip.innerText).join(', ');
+    
+    document.getElementById('sched-workers-text').value = names;
+    updateWorkerCount();
+}
+
+function updateWorkerCount() {
+    const count = document.querySelectorAll('#worker-chips-area .chip.active').length;
+    document.getElementById('worker-count-display').innerText = `(${count}명)`;
+}
+
+// [기능 3] 주/야/조출 토글 로직
+const SHIFT_TYPES = ['주간', '야간', '조출'];
+let currentShiftIndex = 0;
+
+function toggleShift() {
+    currentShiftIndex = (currentShiftIndex + 1) % SHIFT_TYPES.length;
+    const nextShift = SHIFT_TYPES[currentShiftIndex];
+    
+    document.getElementById('sched-shift').value = nextShift;
+    const btn = document.getElementById('shift-toggle-btn');
+    
+    btn.innerText = (nextShift === '주간' ? '🌞 ' : nextShift === '야간' ? '🌙 ' : '🌅 ') + nextShift;
+    
+    // 색상 변경
+    if(nextShift === '주간') btn.style.backgroundColor = '#3b82f6';
+    else if(nextShift === '야간') btn.style.backgroundColor = '#475569';
+    else btn.style.backgroundColor = '#f59e0b'; // 조출(오렌지)
+}
+
+// [기능 4] 차량 칩 선택
+function selectCar(carName) {
+    document.getElementById('sched-car').value = carName;
+}
 
       
 
