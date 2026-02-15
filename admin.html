@@ -606,6 +606,7 @@ async function loadScheduleData() {
     }
 
  // 팝업창 열기 함수 (하루/연속 모두 대응, 석식 제거 완료)
+// 팝업창 열기 함수 (수정 완료)
 function openModal(mode, dateStr, data, endStr = null) {
     const modal = document.getElementById('schedule-modal');
     modal.style.display = 'block';
@@ -613,38 +614,34 @@ function openModal(mode, dateStr, data, endStr = null) {
     if (mode === 'add') {
         // [1] 등록 모드
         document.getElementById('sched-date').value = dateStr;
-        document.getElementById('sched-end-date').value = endStr ? endStr : ""; // 종료일 숨겨서 저장
+        document.getElementById('sched-end-date').value = endStr ? endStr : ""; 
 
-      // 🟢 직원 칩 초기화
+        // 🟢 직원 칩 초기화
         document.getElementById('sched-workers-text').value = "";
         renderWorkerChips(""); 
         
         // 🟢 주/야 초기화
-        currentShiftIndex = 0; // 주간으로 리셋
-        // (화면 표시도 주간으로 강제 업데이트 필요하면 toggleShift 로직 활용)
-      
-        // --- 제목 표시 로직 (하루 vs 여러 날 구분) ---
-        let titleText = dateStr + " 일정 등록"; // 기본 제목
-
+        currentShiftIndex = 0; 
+        
+        // 제목 표시 로직
+        let titleText = dateStr + " 일정 등록"; 
         if (endStr) {
             const start = new Date(dateStr);
             const end = new Date(endStr);
             const diffTime = end - start;
-            const diffDays = diffTime / (1000 * 60 * 60 * 24); // 일수 계산
+            const diffDays = diffTime / (1000 * 60 * 60 * 24); 
 
-            // 1일 초과일 때만 '~' 표시
             if (diffDays > 1) {
                 titleText = `${dateStr} ~ (총 ${diffDays}일간 연속 등록)`;
             }
         }
         document.getElementById('modal-date-title').innerText = titleText;
-        // ------------------------------------------
 
-        // 폼 및 칩 초기화
+        // 폼 초기화
         resetForm();
         renderChips(''); 
         
-        // 버튼 표시 설정 (저장 버튼만 표시)
+        // 버튼 표시 설정
         document.getElementById('btn-save').style.display = 'block';
         document.getElementById('btn-update').style.display = 'none';
         document.getElementById('btn-delete').style.display = 'none';
@@ -654,32 +651,29 @@ function openModal(mode, dateStr, data, endStr = null) {
         document.getElementById('modal-date-title').innerText = "일정 수정/삭제";
         document.getElementById('sched-row-id').value = data.rowId;
         document.getElementById('sched-date').value = data.date;
-        document.getElementById('sched-end-date').value = ""; // 수정은 하루씩 하므로 비움
+        document.getElementById('sched-end-date').value = ""; 
 
-        document.getElementById('sched-workers').value = data.workers;
+        document.getElementById('sched-workers').value = data.workers; // (필요 없다면 삭제 가능)
         document.getElementById('sched-shift').value = data.shift;
         document.getElementById('sched-car').value = data.car;
         document.getElementById('sched-content').value = data.content;
         document.getElementById('sched-note').value = data.note;
 
-      // 🟢 직원 칩 복구
-        // data.workers에 "홍길동, 김철수" 같은 문자열이 있다고 가정
+        // 🟢 직원 칩 복구
         document.getElementById('sched-workers-text').value = data.workers;
         renderWorkerChips(data.workers);
 
-        // 🟢 주/야 상태 복구 (data.shift 값에 맞춰서 인덱스 찾기)
+        // 🟢 주/야 상태 복구
         const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
         if (shiftIdx >= 0) {
-            currentShiftIndex = shiftIdx - 1; // toggleShift() 한번 호출하면 +1 되므로
+            currentShiftIndex = shiftIdx - 1; 
             toggleShift();
         }
-    }
-}
-      
-        // 칩 상태 복구
+
+        // 🟢 칩 상태 복구 (여기가 짤려있었음)
         renderChips(data.client, data.site);
         
-        // 버튼 표시 설정 (수정/삭제 버튼 표시)
+        // 버튼 표시 설정
         document.getElementById('btn-save').style.display = 'none';
         document.getElementById('btn-update').style.display = 'block';
         document.getElementById('btn-delete').style.display = 'block';
