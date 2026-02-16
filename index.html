@@ -107,19 +107,51 @@
 /* 💡 화면 전체에 부드러운 스크롤 적용 */
 html { scroll-behavior: smooth; }
 
-/* 💡 타임라인 막대 글자색 및 시인성 보강 */
+        /* 요일 또는 날짜 칸 전체 */
+.date-column {
+    flex: 0 0 100px;    /* 늘어나지도(grow), 줄어들지도(shrink) 말고 딱 100px 유지 */
+    min-width: 100px;   /* 최소 너비 보장 */
+    text-align: center;
+}
+
+        /* 현장명 바(Bar) 처리 */
+.site-bar {
+    width: 100%;
+    white-space: nowrap;    /* 글자를 한 줄로만 표시 */
+    overflow: hidden;       /* 칸을 넘어가는 글자는 숨김 */
+    text-overflow: ellipsis; /* 넘치는 부분 끝에 '...' 표시 */
+    padding: 4px 8px;
+    box-sizing: border-box;
+}
+
+        /* 요일 칸들을 감싸는 전체 박스 */
+.schedule-grid {
+    display: flex;
+    overflow-x: auto;   /* 가로 내용이 많으면 스크롤바 생성 */
+    gap: 10px;          /* 칸 사이 간격 */
+    padding-bottom: 5px;
+}
+        
+        
+        
+/* 💡 2. 타임라인 내부 현장명 막대 (말줄임 처리) */
 .job-bar {
-    width: 90%;
-    font-size: 0.85rem;
-    padding: 8px 4px;
+    width: 100%;        /* 부모(90px) 너비에 맞춤 */
+    font-size: 0.8rem;
+    padding: 6px 4px;
     margin: 3px 0;
     border-radius: 6px;
-    color: white !important; /* 무조건 흰색 */
+    color: white !important;
     text-align: center;
-    font-weight: 900;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* 글자 테두리 효과 */
-    cursor: pointer;
+    font-weight: 700;
+    
+    /* 🟢 가로 고정 및 말줄임 핵심 코드 */
+    white-space: nowrap;    /* 줄바꿈 금지 */
+    overflow: hidden;       /* 넘치는 글자 숨김 */
+    text-overflow: ellipsis; /* 끝에 ... 표시 */
+    box-sizing: border-box;
 }
+        
 
 .bar-day { background: #2563eb; }    /* 주간: 파랑 */
 .bar-night { background: #1e293b; }  /* 야간: 검정 */
@@ -179,13 +211,11 @@ html { scroll-behavior: smooth; }
     width: 100%;
 }
 
-/* 💡 4. 달력 내부 격자 및 칸 최적화 (가로폭 확보) */
+/* 💡 4. 달력 요일 칸(1/7) 고정 */
 #schedule-container div[style*="grid-template-columns"] {
-    gap: 1px !important; 
-    background: #cbd5e1; 
-    border: 1px solid #cbd5e1;
+    grid-template-columns: repeat(7, 1fr) !important;
+    table-layout: fixed; /* 테이블처럼 너비 고정 효과 */
 }
-
 .calendar-day-cell {
     background: #ffffff;
     min-height: 95px !important; 
@@ -194,20 +224,20 @@ html { scroll-behavior: smooth; }
     flex-direction: column;
 }
 
-/* 💡 5. 현장명 막대 가독성 (자간/아이콘 효과) */
+/* 💡 3. 달력 모드 현장명 막대 (말줄임 처리) */
 .calendar-event-bar {
-    font-size: 0.55rem !important; 
-    letter-spacing: -0.9px; 
-    line-height: 1.1;
+    width: 100%;
+    font-size: 0.55rem !important;
     padding: 3px 2px !important;
-    border-radius: 3px !important;
     margin-bottom: 2px !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
+    border-radius: 3px !important;
+    box-sizing: border-box;
+
+    /* 🟢 가로 고정 및 말줄임 핵심 코드 */
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    display: block !important; /* flex 해제하여 말줄임 작동 보장 */
 }
 
 /* 야간/주간 포인트 배선 */
