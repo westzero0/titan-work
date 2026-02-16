@@ -802,29 +802,31 @@ function renderCalendar() {
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
             <button onclick="changeMonth(-1)">◀</button> <b>${year}.${month+1}</b> <button onclick="changeMonth(1)">▶</button>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:#ddd;">
+        <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:1px; background:#ddd;">
             ${['일','월','화','수','목','금','토'].map(d=>`<div style="background:#f8f9fa; text-align:center; font-size:0.8rem; padding:5px;">${d}</div>`).join('')}
     `;
     
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
     
+    // 빈 칸 생성
     for(let i=0; i<firstDay; i++) html += `<div style="background:white; min-height:80px;"></div>`;
     
     for(let d=1; d<=lastDate; d++) {
         const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         const jobs = allSchedules.filter(s => s.date === dStr);
-        html += `<div style="background:white; min-height:80px; padding:2px; border:1px solid #eee;">
+        
+        // 🟢 2. 여기에 class="calendar-day-cell"을 추가해서 CSS와 연결했습니다
+        html += `<div class="calendar-day-cell" style="background:white; min-height:80px; padding:2px; border:1px solid #eee;">
             <span style="font-size:0.8rem; font-weight:bold;">${d}</span>
        ${jobs.map(j => {
-                // 💡 인원수 계산 (workers 배열의 길이를 가져옴)
                 const workerCount = (j.workers && Array.isArray(j.workers)) ? j.workers.length : 0;
-                
-                // 💡 표시 텍스트 조립: 현장이름(인원수)
                 const displayTitle = `${j.site}(${workerCount})`;
 
+                // 🟢 3. 여기에 class="calendar-event-bar"와 필요한 스타일 클래스를 추가했습니다
                 return `<div onclick="jumpToCard('${j.date}','${j.site}')" 
-                             style="background:${j.shift==='야'?'#333':'#007bff'}; color:white; font-size:0.6rem; padding:2px; margin-top:2px; border-radius:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                             class="calendar-event-bar ${j.shift==='야'?'bar-night':'bar-day'}" 
+                             style="color:white; font-size:0.6rem; padding:2px; margin-top:2px; border-radius:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;">
                              ${displayTitle}
                         </div>`;
             }).join('')}
@@ -833,6 +835,7 @@ function renderCalendar() {
     html += `</div></div>`;
     container.innerHTML = html;
 }
+
 
 function toggleView() {
     currentView = (currentView === 'list') ? 'calendar' : 'list';
