@@ -646,12 +646,25 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
     // 6-4. 공정 (태그 방식)
     const WORK_PRESETS = ["양중", "포설", "단말", "트레이", "입선", "결선", "스틸배관", "레이스웨이", "철거", "자재정리", "청소"];
-    function initWorkPresets(currentVal) {
+function initWorkPresets(currentVal) {
         selectedWorkSet.clear();
-        if(currentVal) currentVal.split(',').map(s=>s.trim()).forEach(t => { if(t) selectedWorkSet.add(t); });
-        document.getElementById('new-work-input').value = "";
+        
+        // 데이터가 있으면 칩으로 만들기
+        if(currentVal) {
+            currentVal.split(',').map(s=>s.trim()).forEach(t => { 
+                if(t) selectedWorkSet.add(t); 
+            });
+        }
+        
+        // 🟢 [수정] 입력창이 진짜 있는지 확인하고 값을 비움 (에러 원천 차단)
+        const inp = document.getElementById('new-work-input');
+        if (inp) {
+            inp.value = ""; 
+        }
+        
         renderWorkPresets();
     }
+      
     function renderWorkPresets() {
         const pBox = document.getElementById('work-preset-list');
         const sBox = document.getElementById('selected-work-box');
