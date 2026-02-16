@@ -798,6 +798,9 @@ function renderCalendar() {
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
     
+    // 🟢 1. 현재 선택된 직원이 누구인지 가져옵니다.
+    const selectedWorker = document.getElementById('worker-select').value;
+    
     let html = `<div class="card calendar-card" style="padding:10px;">
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
             <button onclick="changeMonth(-1)">◀</button> <b>${year}.${month+1}</b> <button onclick="changeMonth(1)">▶</button>
@@ -809,21 +812,24 @@ function renderCalendar() {
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
     
-    // 빈 칸 생성
     for(let i=0; i<firstDay; i++) html += `<div style="background:white; min-height:80px;"></div>`;
     
     for(let d=1; d<=lastDate; d++) {
         const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const jobs = allSchedules.filter(s => s.date === dStr);
         
-        // 🟢 2. 여기에 class="calendar-day-cell"을 추가해서 CSS와 연결했습니다
+        // 🟢 2. [핵심 수정] 날짜만 체크하는 게 아니라, 선택된 직원이 포함된 일정만 필터링합니다.
+        const jobs = allSchedules.filter(s => {
+            const isSameDate = s.date === dStr;
+            const isWorkerMatched = (selectedWorker === "전체" || (s.workers && s.workers.includes(selectedWorker)));
+            return isSameDate && isWorkerMatched;
+        });
+        
         html += `<div class="calendar-day-cell" style="background:white; min-height:80px; padding:2px; border:1px solid #eee;">
             <span style="font-size:0.8rem; font-weight:bold;">${d}</span>
        ${jobs.map(j => {
                 const workerCount = (j.workers && Array.isArray(j.workers)) ? j.workers.length : 0;
                 const displayTitle = `${j.site}(${workerCount})`;
 
-                // 🟢 3. 여기에 class="calendar-event-bar"와 필요한 스타일 클래스를 추가했습니다
                 return `<div onclick="jumpToCard('${j.date}','${j.site}')" 
                              class="calendar-event-bar ${j.shift==='야'?'bar-night':'bar-day'}" 
                              style="color:white; font-size:0.6rem; padding:2px; margin-top:2px; border-radius:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;">
@@ -835,6 +841,7 @@ function renderCalendar() {
     html += `</div></div>`;
     container.innerHTML = html;
 }
+
 
 
 function toggleView() {
