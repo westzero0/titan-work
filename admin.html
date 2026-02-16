@@ -631,58 +631,48 @@ async function loadScheduleData() {
     }
 
 
-   // [1] 통합 팝업 열기 함수
+// [5] 모달 열기
     function openModal(mode, dateStr, data, endStr = null) {
         const modal = document.getElementById('schedule-modal');
-        if (!modal) return;
         modal.style.display = 'block';
 
         if (mode === 'add') {
             document.getElementById('sched-date').value = dateStr;
             document.getElementById('sched-end-date').value = endStr || "";
-            
-            let titleText = dateStr + " 일정 등록";
+            let title = dateStr + " 일정 등록";
             if (endStr) {
-                const s = new Date(dateStr);
-                const e = new Date(endStr);
-                const diff = (e - s) / (1000 * 60 * 60 * 24);
-                if (diff > 1) titleText = `${dateStr} ~ (${Math.ceil(diff)}일간 연속)`;
+                const diff = (new Date(endStr) - new Date(dateStr)) / (1000 * 60 * 60 * 24);
+                if (diff > 1) title = `${dateStr} ~ (${Math.ceil(diff)}일간)`;
             }
-            document.getElementById('modal-date-title').innerText = titleText;
-
+            document.getElementById('modal-date-title').innerText = title;
             resetForm();
             
-            // 🟢 칩 초기화 (빈 값으로 시작)
-            renderChips('', '');          // 거래처/현장
-            renderWorkerChips("");        // 인원
-            renderVehicleChips("");       // 차량
-            renderWorkPresets();          // 작업내용 프리셋
-
+            // 🟢 모든 칩 렌더러 호출 (빈 값으로)
+            renderChips('', '');
+            renderWorkerChips("");
+            renderVehicleChips("");
+            initWorkPresets("");
             currentShiftIndex = 0; updateShiftBtn();
 
             document.getElementById('btn-save').style.display = 'block';
             document.getElementById('btn-update').style.display = 'none';
             document.getElementById('btn-delete').style.display = 'none';
-
         } else {
             document.getElementById('modal-date-title').innerText = "일정 수정";
             document.getElementById('sched-row-id').value = data.rowId;
             document.getElementById('sched-date').value = data.date;
             document.getElementById('sched-end-date').value = "";
-
-            document.getElementById('sched-car').value = data.car || "";
-            document.getElementById('sched-content').value = data.content || "";
             document.getElementById('sched-note').value = data.note || "";
 
             const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
             currentShiftIndex = shiftIdx >= 0 ? shiftIdx : 0;
             updateShiftBtn();
 
-            // 🟢 데이터 복구 (기존 값 넣기)
+            // 🟢 데이터 채워서 칩 렌더링
             renderChips(data.client, data.site);
             renderWorkerChips(data.workers || "");
             renderVehicleChips(data.car || "");
-            renderWorkPresets();
+            initWorkPresets(data.content || ""); // 작업내용은 content 필드 사용
 
             document.getElementById('btn-save').style.display = 'none';
             document.getElementById('btn-update').style.display = 'block';
@@ -691,8 +681,14 @@ async function loadScheduleData() {
     }
 
     function closeModal() { document.getElementById('schedule-modal').style.display = "none"; }
-
       
+    function resetForm() {
+        ['sched-client', 'sched-site', 'sched-workers-text', 'sched-car', 'sched-content', 'sched-note', 'worker-search-input', 'new-work-input'].forEach(id => {
+            const el = document.getElementById(id); if(el) el.value = "";
+        });
+        selectedWorkerSet.clear();
+        selectedWorkSet.clear();
+    }
 
 
       
@@ -793,34 +789,7 @@ async function loadScheduleData() {
         el.classList.add('active');
     }
     
-   function resetForm() {
-        // 1. 기본 텍스트 입력창 초기화 (안전하게 있는지 확인하고 지움)
-        const ids = ['sched-client', 'sched-site', 'sched-car', 'sched-content', 'sched-note'];
-        ids.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = "";
-        });
-
-        // 2. 인원 관련 초기화 (업그레이드된 칩 로직 반영)
-        // (1) 숨겨진 저장값 초기화
-        const hiddenInput = document.getElementById('sched-workers-text');
-        if (hiddenInput) hiddenInput.value = "";
-
-        // (2) 검색창 초기화
-        const searchInput = document.getElementById('worker-search-input');
-        if (searchInput) searchInput.value = "";
-
-        // (3) 선택된 명단(Set) 비우기 및 화면 갱신
-        if (typeof selectedWorkerSet !== 'undefined') {
-            selectedWorkerSet.clear(); // 메모리에 저장된 선택 명단 삭제
-        }
-        
-        // (4) 칩 화면 다시 그리기 (빈 상태로)
-        if (typeof renderWorkerChips === 'function') {
-            renderWorkerChips(""); 
-        }
-    }
-
+ 
   // [저장 로직 - 하루/연속 자동 분기]
     async function saveSchedule(mode) {
         const payload = {
