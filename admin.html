@@ -388,11 +388,11 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
             </div>
         </div>
 
- <div id="schedule-modal" class="modal">
+<div id="schedule-modal" class="modal">
     <div class="modal-content">
-        <div class="modal-header" style="margin-bottom:15px; display:flex; justify-content:space-between;">
-            <h3 id="modal-date-title" style="margin:0; color:#2563eb;">일정 등록</h3>
-            <span class="close" onclick="closeModal()">&times;</span>
+        <div class="modal-header" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+            <h3 id="modal-date-title" style="margin:0; color:#2563eb;">일정 수정</h3>
+            <span class="close" onclick="closeModal()" style="font-size:2rem;">&times;</span>
         </div>
         
         <input type="hidden" id="sched-row-id">
@@ -400,47 +400,53 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         <input type="hidden" id="sched-end-date">
         <input type="hidden" id="sched-client">
         <input type="hidden" id="sched-site">
-        <input type="hidden" id="sched-shift" value="주간">
+        <input type="hidden" id="sched-shift">
         <input type="hidden" id="sched-workers-text">
-        <input type="hidden" id="sched-content"> <div class="input-group">
-            <label>🏢 거래처 (진행중 현장)</label>
-            <div id="sched-client-chips-area" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
+        <input type="hidden" id="sched-car">
+        <input type="hidden" id="sched-content">
+
+        <div class="input-group">
+            <label>🏢 거래처 (진행중인 현장)</label>
+            <div id="sched-client-chips-area" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
 
             <label>🏗️ 현장 선택</label>
-            <div id="sched-site-chips-area" style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:10px; min-height:40px;">
-                <span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>
+            <div id="sched-site-chips-area" style="min-height:40px; margin-bottom:15px; display:flex; flex-wrap:wrap;">
+                <span style="color:#aaa; font-size:0.9rem;">거래처를 먼저 선택하세요.</span>
             </div>
 
             <label>⏰ 근무 형태</label>
-            <div id="shift-toggle-btn" onclick="toggleShift()" style="background:#3b82f6; color:white; padding:10px; text-align:center; border-radius:8px; font-weight:bold; cursor:pointer;">
+            <div id="shift-toggle-btn" onclick="toggleShift()" style="background:#3b82f6; color:white; padding:12px; text-align:center; border-radius:8px; font-weight:bold; cursor:pointer; font-size:1.1rem; margin-bottom:20px;">
                 🌞 주간
             </div>
 
-            <label style="margin-top:15px;">👷 투입 인원 <span id="worker-count-display">(0명)</span></label>
-            <div id="selected-workers-box" style="min-height:40px; border:1px solid #ddd; border-radius:8px; padding:8px; display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px; background:#fff;"></div>
-            <input type="text" id="worker-search-input" placeholder="🔍 이름 검색 (초성 가능)" onkeyup="filterWorkerChips()" style="margin-bottom:5px;">
-            <div id="worker-chips-area" style="max-height:150px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:8px; display:flex; flex-wrap:wrap; gap:5px;"></div>
+            <label>👷 투입 인원 <span id="worker-count-display">(0명)</span></label>
+            <div id="worker-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; padding:10px 0;">
+                </div>
 
-            <label style="margin-top:15px;">🚛 차량 (중복 선택 가능)</label>
-            <input type="text" id="sched-car" placeholder="차량 직접 입력">
-            <div id="car-chips-area" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;"></div>
+            <div class="header-row">
+                <label style="margin:0;">🚛 사용 차량 (중복 가능)</label>
+                <div class="delete-toggle" onclick="toggleDeleteMode('car')">🗑️ 삭제</div>
+            </div>
+            <div class="input-with-btn">
+                <input type="text" id="new-car-input" placeholder="차량 추가">
+                <button class="btn-add-chip" onclick="addPreset('car')">추가</button>
+            </div>
+            <div id="car-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
 
-            <label>📝 작업내용 (공정 선택)</label>
-            <div id="selected-work-box" style="min-height:40px; border:1px solid #ddd; border-radius:8px; padding:8px; display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px; background:#fff;">
-                <span style="color:#aaa; font-size:0.8rem; padding:5px;">공정을 선택하면 여기에 추가됩니다.</span>
+            <div class="header-row">
+                <label style="margin:0;">📝 작업 내용 (공정 선택)</label>
+                <div class="delete-toggle" onclick="toggleDeleteMode('work')">🗑️ 삭제</div>
             </div>
-            
-            <div style="display:flex; gap:5px; margin-bottom:10px;">
-                <input type="text" id="new-work-input" placeholder="직접 입력 후 추가" onkeypress="if(event.keyCode==13){addNewWorkTag(); return false;}">
-                <button type="button" onclick="addNewWorkTag()" style="width:60px; padding:0; margin:0; background:#64748b; color:white; border-radius:5px;">추가</button>
+            <div class="input-with-btn">
+                <input type="text" id="new-work-input" placeholder="공정 추가 (예: 배관)">
+                <button class="btn-add-chip" onclick="addPreset('work')">추가</button>
             </div>
-            
-            <div id="work-preset-list" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px;"></div>
+            <div id="work-preset-list" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
             
             <label>특이사항</label>
-            <textarea id="sched-note" rows="1" placeholder="특이사항"></textarea>
+            <textarea id="sched-note" rows="2" placeholder="특이사항 입력"></textarea>
             
-            <div style="display:flex; gap:10px; margin-top:20px;">
+            <div style="display:flex; gap:10px; margin-top:30px;">
                 <button type="button" id="btn-save" onclick="saveSchedule('add')" style="flex:2;">저장</button>
                 <button type="button" id="btn-update" onclick="saveSchedule('update')" style="flex:2; display:none;">수정</button>
                 <button type="button" id="btn-delete" onclick="deleteSchedule()" style="flex:1; display:none; background:#fee2e2; color:#ef4444;">삭제</button>
@@ -649,30 +655,32 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         el.classList.add('active');
     }
 
-    // 6-2. 인원 (재직자만 + 검색)
+  // [2] 인원 선택 (검색창 없이 칩으로만 구성)
     function renderWorkerChips(namesStr) {
         const container = document.getElementById('worker-chips-area');
+        const countDisplay = document.getElementById('worker-count-display');
         selectedWorkerSet.clear();
         if (namesStr) namesStr.split(',').map(s=>s.trim()).forEach(n => { if(n) selectedWorkerSet.add(n); });
-        
+
+        countDisplay.innerText = `(${selectedWorkerSet.size}명)`;
+        document.getElementById('sched-workers-text').value = Array.from(selectedWorkerSet).join(', ');
+
         if(container) {
             container.innerHTML = globalWorkerData.filter(w => w.status === '재직').map(w => {
                 const isSelected = selectedWorkerSet.has(w.name);
-                return `<div class="chip worker-candidate" data-name="${w.name}" onclick="addWorkerToSelection('${w.name}')" style="background:#fff; border:1px solid #ddd; display:${isSelected?'none':'inline-flex'}">${w.name}</div>`;
+                return `<div class="chip ${isSelected ? 'active' : ''}" 
+                             onclick="toggleWorkerSelection('${w.name}')">
+                            ${w.name}${isSelected ? ' ✕' : ''}
+                        </div>`;
             }).join('');
         }
-        renderSelectedBox();
     }
-
-      function toggleWorkerSelection(name) {
-        if (selectedWorkerSet.has(name)) {
-            selectedWorkerSet.delete(name);
-        } else {
-            selectedWorkerSet.add(name);
-        }
-        // 화면 갱신 (현재 선택 상태를 문자열로 만들어 재호출)
+    function toggleWorkerSelection(name) {
+        if (selectedWorkerSet.has(name)) selectedWorkerSet.delete(name);
+        else selectedWorkerSet.add(name);
         renderWorkerChips(Array.from(selectedWorkerSet).join(', '));
     }
+      
 
       
     function filterWorkerChips() {
@@ -706,14 +714,20 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         else box.innerHTML = list.map(n => `<div class="chip" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; gap:5px;">${n} <span onclick="removeWorkerFromSelection('${n}')" style="cursor:pointer; font-weight:bold;">&times;</span></div>`).join('');
     }
 
-    // 6-3. 차량 (중복 선택)
-    const VEHICLE_LIST = ["1호차", "2호차", "3호차", "4호차", "본인차"];
+  // [3] 차량 & 공정 칩 렌더링 (추가/삭제 UI 통합)
     function renderVehicleChips(currentVal) {
         const box = document.getElementById('car-chips-area');
         const selected = currentVal ? currentVal.split(',').map(s=>s.trim()) : [];
-        if(box) box.innerHTML = VEHICLE_LIST.map(c => `<div class="chip ${selected.includes(c)?'active':''}" onclick="toggleCar(this, '${c}')">${c}</div>`).join('');
-        document.getElementById('sched-car').value = currentVal;
+        box.innerHTML = vehicleList.map(item => {
+            const isActive = selected.includes(item);
+            const modeClass = deleteMode.car ? 'delete-mode' : (isActive ? 'active' : '');
+            const action = deleteMode.car ? `removePreset('car', '${item}')` : `toggleSelection('car', '${item}')`;
+            return `<div class="chip ${modeClass}" onclick="${action}">${item}${deleteMode.car ? ' ❌' : (isActive ? ' ✕' : '')}</div>`;
+        }).join('');
+        document.getElementById('sched-car').value = selected.join(', ');
     }
+
+      
     function toggleCar(el, name) {
         el.classList.toggle('active');
         const all = document.querySelectorAll('#car-chips-area .chip.active');
@@ -741,19 +755,20 @@ function initWorkPresets(currentVal) {
         renderWorkPresets();
     }
       
-    function renderWorkPresets() {
-        const pBox = document.getElementById('work-preset-list');
-        const sBox = document.getElementById('selected-work-box');
-        document.getElementById('sched-content').value = Array.from(selectedWorkSet).join(', ');
-
-        if (selectedWorkSet.size === 0) sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem; padding:5px;">공정을 선택하면 여기에 추가됩니다.</span>';
-        else sBox.innerHTML = Array.from(selectedWorkSet).map(t => `<div class="chip" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; gap:5px;">${t} <span onclick="removeWorkTag('${t}')" style="cursor:pointer; font-weight:bold;">&times;</span></div>`).join('');
-
-        if(pBox) pBox.innerHTML = WORK_PRESETS.map(t => {
-            const isSel = selectedWorkSet.has(t);
-            return `<div class="chip" onclick="addWorkTag('${t}')" style="background:#f3f4f6; color:#555; display:${isSel?'none':'inline-flex'}">+ ${t}</div>`;
+   function renderWorkPresets(currentVal) {
+        const box = document.getElementById('work-preset-list');
+        const selected = currentVal ? currentVal.split(',').map(s=>s.trim()) : [];
+        box.innerHTML = workList.map(item => {
+            const isActive = selected.includes(item);
+            const modeClass = deleteMode.work ? 'delete-mode' : (isActive ? 'active' : '');
+            const action = deleteMode.work ? `removePreset('work', '${item}')` : `toggleSelection('work', '${item}')`;
+            return `<div class="chip ${modeClass}" onclick="${action}">${item}${deleteMode.work ? ' ❌' : (isActive ? ' ✕' : '')}</div>`;
         }).join('');
+        document.getElementById('sched-content').value = selected.join(', ');
     }
+      
+
+      
     function addWorkTag(t) { selectedWorkSet.add(t); renderWorkPresets(); }
     function removeWorkTag(t) { selectedWorkSet.delete(t); renderWorkPresets(); }
     function addNewWorkTag() {
@@ -1009,68 +1024,42 @@ function initWorkPresets(currentVal) {
         input.value = selected.join(', ');
     }
 
-    // [기능 1] 항목 추가 (Add 버튼)
+  // [4] 항목 추가/삭제/모드변경 함수
     function addPreset(type) {
-        const inputId = type === 'car' ? 'new-car-input' : 'new-work-input';
-        const input = document.getElementById(inputId);
+        const input = document.getElementById(type === 'car' ? 'new-car-input' : 'new-work-input');
         const val = input.value.trim();
         const list = type === 'car' ? vehicleList : workList;
-
         if (val && !list.includes(val)) {
-            list.push(val); // 리스트에 추가
-            input.value = ""; // 입력창 비움
-            
-            // 화면 갱신
+            list.push(val); input.value = "";
             if(type === 'car') renderVehicleChips(document.getElementById('sched-car').value);
             else renderWorkPresets(document.getElementById('sched-content').value);
         }
     }
-
-    // [기능 2] 항목 삭제 (칩 클릭 시)
     function removePreset(type, item) {
-        if (!confirm(`'${item}' 항목을 목록에서 삭제할까요?`)) return;
-
+        if (!confirm(`'${item}' 항목을 영구 삭제할까요?`)) return;
         if (type === 'car') {
             vehicleList = vehicleList.filter(i => i !== item);
-            // 선택된 값에서도 제거
-            let current = document.getElementById('sched-car').value.split(',').map(s=>s.trim());
-            current = current.filter(i => i !== item);
-            renderVehicleChips(current.join(', '));
+            renderVehicleChips(document.getElementById('sched-car').value.split(',').filter(i => i !== item).join(', '));
         } else {
             workList = workList.filter(i => i !== item);
-            let current = document.getElementById('sched-content').value.split(',').map(s=>s.trim());
-            current = current.filter(i => i !== item);
-            renderWorkPresets(current.join(', '));
+            renderWorkPresets(document.getElementById('sched-content').value.split(',').filter(i => i !== item).join(', '));
         }
     }
-
-    // [기능 3] 삭제 모드 토글 (쓰레기통 아이콘)
     function toggleDeleteMode(type) {
-        deleteMode[type] = !deleteMode[type]; // 상태 반전
-        
-        // 버튼 텍스트 변경 (삭제 중... 표시)
-        const btns = document.querySelectorAll('.delete-toggle');
-        // (간단히 다시 그리기 호출)
+        deleteMode[type] = !deleteMode[type];
         if(type === 'car') renderVehicleChips(document.getElementById('sched-car').value);
         else renderWorkPresets(document.getElementById('sched-content').value);
     }
-
-    // [기능 4] 선택/해제 토글 (일반 모드)
     function toggleSelection(type, item) {
         const inputId = type === 'car' ? 'sched-car' : 'sched-content';
         const input = document.getElementById(inputId);
-        
         let selected = input.value ? input.value.split(',').map(s=>s.trim()) : [];
-        
-        if (selected.includes(item)) {
-            selected = selected.filter(i => i !== item); // 해제
-        } else {
-            selected.push(item); // 선택
-        }
-        
+        if (selected.includes(item)) selected = selected.filter(i => i !== item);
+        else selected.push(item);
         if(type === 'car') renderVehicleChips(selected.join(', '));
         else renderWorkPresets(selected.join(', '));
     }
+      
 
       
 
