@@ -313,7 +313,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     </div>
 
    <div class="swiper-slide">
-        <div id="schedule-admin" class="card">
+        <div id="schedule-admin" class="card swiper-no-swiping">
             <h3>📅 작업 일정 <span style="font-size:0.8rem; color:#666; font-weight:normal;">(날짜 클릭: 등록 / 바 클릭: 수정)</span></h3>
             
             <div id="calendar-container"></div>
@@ -460,6 +460,11 @@ let globalScheduleData = [];
             speed: 400,
             loop: false,
             allowTouchMove: true, // 손가락 스와이프 허용
+
+          // 🟢 [핵심 1] 이 옵션을 켜야 "swiper-no-swiping" 클래스가 작동합니다!
+            noSwiping: true, 
+            noSwipingClass: 'swiper-no-swiping',
+          
             on: {
                 slideChange: function () {
                     updateNav(this.activeIndex);
@@ -493,8 +498,17 @@ let globalScheduleData = [];
         if (calendar) calendar.destroy();
         calendar = new FullCalendar.Calendar(el, {
             initialView: 'dayGridMonth', locale: 'ko', height: 'auto',
+          locale: 'ko',
+            height: 'auto',
+
+          // 🟢 [핵심 3] 터치 민감도 최대로 설정 (즉시 반응)
+            longPressDelay: 0, 
+            eventLongPressDelay: 0,
+            selectLongPressDelay: 0,
+          
             headerToolbar: { left: 'prev', center: 'title', right: 'next' },
             dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
+          
             
             selectable: true,  // 드래그 허용
             selectMirror: true, 
@@ -503,7 +517,8 @@ let globalScheduleData = [];
             select: (info) => openModal('add', info.startStr, null, info.endStr),
             
             // 기존 일정 클릭 시 실행
-            eventClick: (info) => openModal('edit', null, info.event.extendedProps)
+            eventClick: (info) => openModal('edit', null, info.event.extendedProps),
+     events: events
         });
         calendar.render();
     }
