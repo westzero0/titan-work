@@ -401,26 +401,21 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
       
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbx0r8IPhDytW9knWTEbsFRVK4HmFj5CynrD9TlXzIbOe_aSDotaATcnSzouC845NIBx/exec"; // 👈 꼭 본인 주소로 수정하세요!
-let calendar = null;
+// 전역 변수 선언 (에러 방지용)
+    let calendar = null;
     let swiper = null;
     let globalScheduleData = [];
     let globalClientData = [];
     let globalWorkerData = [];
-    
-    // 🟢 선택 데이터 관리용 Set 변수 (매우 중요)
-    let selectedWorkerSet = new Set();
-    let selectedWorkSet = new Set();
+    let selectedWorkerSet = new Set(); // 인원 선택용
+    let selectedWorkSet = new Set();   // 공정 선택용
 
-    // [1] 초기화 실행
+    // [1] 초기화
     window.addEventListener('DOMContentLoaded', async () => {
         initSwiper();
         try {
-            console.log("데이터 로드 중...");
-            await Promise.all([
-                loadAdminData(),
-                loadClientManagement(),
-                loadScheduleData()
-            ]);
+            console.log("데이터 로드 시작...");
+            await Promise.all([loadAdminData(), loadClientManagement(), loadScheduleData()]);
             console.log("데이터 로드 완료");
             initCalendar();
             renderScheduleList();
@@ -430,7 +425,7 @@ let calendar = null;
         }
     });
 
-    // [2] 스와이퍼 설정
+    // [2] 스와이퍼
     function initSwiper() {
         const el = document.querySelector('.swiper');
         if (!el) return;
@@ -447,32 +442,25 @@ let calendar = null;
         });
     }
 
-    // [3] 달력 설정
+    // [3] 달력
     function initCalendar() {
         const el = document.getElementById('calendar-container');
         if (!el) return;
-
-        const events = globalScheduleData.map(item => {
-            let title = item.site;
-            if(item.workers) {
-                const count = item.workers.split(',').length;
-                title += ` (${count}명)`;
-            }
-            return {
-                id: item.rowId, title: title, start: item.date,
-                backgroundColor: item.shift === '야간' ? '#475569' : '#3b82f6',
-                borderColor: 'transparent', extendedProps: item
-            };
-        });
+        const events = globalScheduleData.map(item => ({
+            id: item.rowId,
+            title: `${item.site} (${item.workers ? item.workers.split(',').length : 0}명)`,
+            start: item.date,
+            backgroundColor: item.shift === '야간' ? '#475569' : '#3b82f6',
+            borderColor: 'transparent', extendedProps: item
+        }));
 
         if (calendar) calendar.destroy();
         calendar = new FullCalendar.Calendar(el, {
             initialView: 'dayGridMonth', locale: 'ko', height: 'auto',
-            longPressDelay: 0, eventLongPressDelay: 0, selectLongPressDelay: 0, // 즉시 반응
+            longPressDelay: 0, eventLongPressDelay: 0, selectLongPressDelay: 0,
             headerToolbar: { left: 'prev', center: 'title', right: 'next' },
             dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
             selectable: true, selectMirror: true,
-            
             select: (info) => openModal('add', info.startStr, null, info.endStr),
             eventClick: (info) => openModal('edit', null, info.event.extendedProps),
             events: events
@@ -480,7 +468,7 @@ let calendar = null;
         calendar.render();
     }
 
-    // [4] 일정 리스트 (오늘 이후)
+    // [4] 일정 리스트
     function renderScheduleList() {
         const box = document.getElementById('schedule-list-container');
         const today = new Date().toISOString().split('T')[0];
@@ -493,59 +481,66 @@ let calendar = null;
         box.innerHTML = list.map(item => `
             <div class="card" style="margin-bottom:10px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':'#2563eb'}; cursor:pointer;" 
                  onclick='openModal("edit", null, ${JSON.stringify(item).replace(/'/g, "&#39;")})'>
-                <div style="font-weight:bold; font-size:1.1rem; color:#333;">${item.date} <span style="font-size:0.8rem; background:#eee; padding:2px 5px; border-radius:4px;">${item.shift}</span> ${item.date===today?'<span style="background:#ef4444; color:#fff; font-size:0.7rem; padding:2px 6px; border-radius:4px;">Today</span>':''}</div>
+                <div style="font-weight:bold; font-size:1.1rem; color:#333;">
+                    ${item.date} <span style="font-size:0.8rem; background:#eee; padding:2px 5px; border-radius:4px;">${item.shift}</span> ${item.date===today?'<span style="background:#ef4444; color:#fff; font-size:0.7rem; padding:2px 6px; border-radius:4px;">Today</span>':''}
+                </div>
                 <div style="font-size:1.05rem; margin-top:8px; font-weight:bold; color:#1e293b;">${item.site} <span style="color:#64748b; font-weight:normal; font-size:0.9rem;">(${item.client})</span></div>
                 <div style="font-size:0.9rem; color:#666; margin-top:6px;">👷 ${item.workers || '미정'} | 🚛 ${item.car || '-'}</div>
             </div>
         `).join('');
     }
 
-    // [5] 모달 열기
+    // [5] 모달 열기 (핵심 로직 통합)
     function openModal(mode, dateStr, data, endStr = null) {
         const modal = document.getElementById('schedule-modal');
+        if (!modal) return;
         modal.style.display = 'block';
 
-        if (mode === 'add') {
-            document.getElementById('sched-date').value = dateStr;
-            document.getElementById('sched-end-date').value = endStr || "";
-            let title = dateStr + " 일정 등록";
-            if (endStr) {
-                const diff = (new Date(endStr) - new Date(dateStr)) / (1000 * 60 * 60 * 24);
-                if (diff > 1) title = `${dateStr} ~ (${Math.ceil(diff)}일간)`;
+        try {
+            if (mode === 'add') {
+                document.getElementById('sched-date').value = dateStr;
+                document.getElementById('sched-end-date').value = endStr || "";
+                let title = dateStr + " 일정 등록";
+                if (endStr) {
+                    const diff = (new Date(endStr) - new Date(dateStr)) / (1000 * 60 * 60 * 24);
+                    if (diff > 1) title = `${dateStr} ~ (${Math.ceil(diff)}일간)`;
+                }
+                document.getElementById('modal-date-title').innerText = title;
+                resetForm();
+                
+                // 모든 칩 초기화
+                renderChips('', '');
+                renderWorkerChips("");
+                renderVehicleChips("");
+                initWorkPresets("");
+                currentShiftIndex = 0; updateShiftBtn();
+
+                document.getElementById('btn-save').style.display = 'block';
+                document.getElementById('btn-update').style.display = 'none';
+                document.getElementById('btn-delete').style.display = 'none';
+            } else {
+                document.getElementById('modal-date-title').innerText = "일정 수정";
+                document.getElementById('sched-row-id').value = data.rowId;
+                document.getElementById('sched-date').value = data.date;
+                document.getElementById('sched-end-date').value = "";
+                document.getElementById('sched-note').value = data.note || "";
+
+                const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
+                currentShiftIndex = shiftIdx >= 0 ? shiftIdx : 0;
+                updateShiftBtn();
+
+                renderChips(data.client, data.site);
+                renderWorkerChips(data.workers || "");
+                renderVehicleChips(data.car || "");
+                initWorkPresets(data.content || "");
+
+                document.getElementById('btn-save').style.display = 'none';
+                document.getElementById('btn-update').style.display = 'block';
+                document.getElementById('btn-delete').style.display = 'block';
             }
-            document.getElementById('modal-date-title').innerText = title;
-            resetForm();
-            
-            // 🟢 모든 칩 렌더러 호출 (빈 값으로)
-            renderChips('', '');
-            renderWorkerChips("");
-            renderVehicleChips("");
-            initWorkPresets("");
-            currentShiftIndex = 0; updateShiftBtn();
-
-            document.getElementById('btn-save').style.display = 'block';
-            document.getElementById('btn-update').style.display = 'none';
-            document.getElementById('btn-delete').style.display = 'none';
-        } else {
-            document.getElementById('modal-date-title').innerText = "일정 수정";
-            document.getElementById('sched-row-id').value = data.rowId;
-            document.getElementById('sched-date').value = data.date;
-            document.getElementById('sched-end-date').value = "";
-            document.getElementById('sched-note').value = data.note || "";
-
-            const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
-            currentShiftIndex = shiftIdx >= 0 ? shiftIdx : 0;
-            updateShiftBtn();
-
-            // 🟢 데이터 채워서 칩 렌더링
-            renderChips(data.client, data.site);
-            renderWorkerChips(data.workers || "");
-            renderVehicleChips(data.car || "");
-            initWorkPresets(data.content || ""); // 작업내용은 content 필드 사용
-
-            document.getElementById('btn-save').style.display = 'none';
-            document.getElementById('btn-update').style.display = 'block';
-            document.getElementById('btn-delete').style.display = 'block';
+        } catch (err) {
+            console.error("Modal Error:", err);
+            alert("팝업을 여는 중 오류가 발생했습니다. 새로고침 해주세요.");
         }
     }
 
@@ -558,23 +553,25 @@ let calendar = null;
         selectedWorkSet.clear();
     }
 
-    // [6] 칩 렌더링 로직들
-    // 6-1. 거래처/현장 (진행중만)
+    // [6] 칩 로직들
+    // 6-1. 거래처 (진행중만)
     function renderChips(sClient, sSite) {
         const cBox = document.getElementById('sched-client-chips-area');
         const sBox = document.getElementById('sched-site-chips-area');
+        if(!cBox || !sBox) return;
+
         const activeData = globalClientData.filter(item => item.status !== '완료' || (item.client === sClient && item.site === sSite));
         const uniques = [...new Set(activeData.map(i => i.client))];
 
-        if (cBox) cBox.innerHTML = uniques.map(c => `<div class="chip ${c === sClient ? 'active' : ''}" onclick="clkClient(this, '${c}')">${c}</div>`).join('');
+        cBox.innerHTML = uniques.map(c => `<div class="chip ${c === sClient ? 'active' : ''}" onclick="clkClient(this, '${c}')">${c}</div>`).join('');
         document.getElementById('sched-client').value = sClient || "";
 
         if (sClient) {
             const sites = activeData.filter(i => i.client === sClient);
-            if (sBox) sBox.innerHTML = sites.map(s => `<div class="chip ${s.site === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.site}')">${s.site}</div>`).join('');
+            sBox.innerHTML = sites.map(s => `<div class="chip ${s.site === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.site}')">${s.site}</div>`).join('');
             document.getElementById('sched-site').value = sSite || "";
         } else {
-            if (sBox) sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>';
+            sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>';
         }
     }
     function clkClient(el, name) { document.getElementById('sched-client').value = name; renderChips(name, ''); }
@@ -584,15 +581,12 @@ let calendar = null;
         el.classList.add('active');
     }
 
-    // 6-2. 인원 선택 (검색 + 재직자만)
+    // 6-2. 인원 (재직자만 + 검색)
     function renderWorkerChips(namesStr) {
         const container = document.getElementById('worker-chips-area');
-        const sInput = document.getElementById('worker-search-input');
-        if(sInput) sInput.value = "";
-        
         selectedWorkerSet.clear();
         if (namesStr) namesStr.split(',').map(s=>s.trim()).forEach(n => { if(n) selectedWorkerSet.add(n); });
-
+        
         if(container) {
             container.innerHTML = globalWorkerData.filter(w => w.status === '재직').map(w => {
                 const isSelected = selectedWorkerSet.has(w.name);
@@ -611,7 +605,8 @@ let calendar = null;
     }
     function addWorkerToSelection(name) {
         selectedWorkerSet.add(name);
-        document.querySelector(`.worker-candidate[data-name="${name}"]`).style.display = "none";
+        const cand = document.querySelector(`.worker-candidate[data-name="${name}"]`);
+        if(cand) cand.style.display = "none";
         renderSelectedBox();
     }
     function removeWorkerFromSelection(name) {
@@ -624,7 +619,7 @@ let calendar = null;
         const box = document.getElementById('selected-workers-box');
         const cnt = document.getElementById('worker-count-display');
         const list = Array.from(selectedWorkerSet);
-        cnt.innerText = `(${list.length}명)`;
+        if(cnt) cnt.innerText = `(${list.length}명)`;
         document.getElementById('sched-workers-text').value = list.join(', ');
         
         if (list.length === 0) box.innerHTML = '<span style="color:#aaa; font-size:0.8rem; padding:5px;">아래 목록에서 선택하거나 검색하세요.</span>';
@@ -674,7 +669,7 @@ let calendar = null;
         if(val) { selectedWorkSet.add(val); inp.value = ""; renderWorkPresets(); }
     }
 
-    // [7] 저장/삭제 및 기타
+    // 7. 저장/삭제
     async function saveSchedule(mode) {
         const payload = {
             date: document.getElementById('sched-date').value,
@@ -764,7 +759,6 @@ let calendar = null;
         window.clientSwiper = new Swiper('.client-management-swiper', { slidesPerView:'auto', centeredSlides:true, spaceBetween:15, nested:true });
     }
 
-    // 기타 기능 함수
     function addWorker() { const d = { name: document.getElementById('new-name').value, role: document.getElementById('new-role').value, rate: document.getElementById('new-rate').value, pw: document.getElementById('new-pw').value, phone: document.getElementById('new-phone').value, address: document.getElementById('new-address').value }; sendToGas('adminAddWorker', d); }
     function saveClient() { const d = { client: document.getElementById('c_client').value, site: document.getElementById('c_site').value, address: document.getElementById('c_addr').value }; sendToGas('adminAddClient', d); }
     function selectClientChip(el, name) { document.getElementById('c_client').value = name; }
