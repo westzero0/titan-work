@@ -865,14 +865,13 @@ function initWorkPresets(currentVal) {
         
         box.innerHTML = html;
 
-        // 3. 내부 스와이퍼 가동 (중첩 스와이퍼 설정)
+     // 스와이퍼 재설정 (100% 뷰)
         if(window.clientSwiper) window.clientSwiper.destroy();
         
         window.clientSwiper = new Swiper('.client-management-swiper', {
-            slidesPerView: 'auto',  // 카드 크기에 맞게
-            centeredSlides: true,   // 가운데 정렬
-            spaceBetween: 15,       // 카드 사이 간격
-            nested: true,           // 🟢 [중요] 부모 스와이퍼와 충돌 방지
+            slidesPerView: 1,       // 🟢 화면에 딱 1개만 (꽉 차게)
+            spaceBetween: 0,        // 간격 없음
+            nested: true,           // 부모 스와이퍼 간섭 방지
             pagination: {
                 el: '.swiper-pagination',
                 clickable: true
