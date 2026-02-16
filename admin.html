@@ -324,7 +324,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
             </div>
         </div>
 
-   <div id="schedule-modal" class="modal">
+ <div id="schedule-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header" style="margin-bottom:15px; display:flex; justify-content:space-between;">
             <h3 id="modal-date-title" style="margin:0; color:#2563eb;">일정 등록</h3>
@@ -337,13 +337,13 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         <input type="hidden" id="sched-client">
         <input type="hidden" id="sched-site">
         <input type="hidden" id="sched-shift" value="주간">
-
-        <div class="input-group">
-            <label>🏢 거래처 선택 (진행중인 현장만 표시)</label>
+        <input type="hidden" id="sched-workers-text">
+        <input type="hidden" id="sched-content"> <div class="input-group">
+            <label>🏢 거래처 (진행중 현장)</label>
             <div id="sched-client-chips-area" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
 
             <label>🏗️ 현장 선택</label>
-            <div id="sched-site-chips-area" style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:10px;">
+            <div id="sched-site-chips-area" style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:10px; min-height:40px;">
                 <span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>
             </div>
 
@@ -353,22 +353,25 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
             </div>
 
             <label style="margin-top:15px;">👷 투입 인원 <span id="worker-count-display">(0명)</span></label>
-            <input type="hidden" id="sched-workers-text">
-            
-            <div id="selected-workers-box" style="min-height:40px; border:1px solid #ddd; border-radius:8px; padding:8px; display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px; background:#fff;">
-                <span style="color:#aaa; font-size:0.8rem; padding:5px;">아래 목록에서 선택하거나 검색하세요.</span>
-            </div>
-            <input type="text" id="worker-search-input" placeholder="🔍 이름 검색" onkeyup="filterWorkerChips()" style="margin-bottom:5px;">
+            <div id="selected-workers-box" style="min-height:40px; border:1px solid #ddd; border-radius:8px; padding:8px; display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px; background:#fff;"></div>
+            <input type="text" id="worker-search-input" placeholder="🔍 이름 검색 (초성 가능)" onkeyup="filterWorkerChips()" style="margin-bottom:5px;">
             <div id="worker-chips-area" style="max-height:150px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:8px; display:flex; flex-wrap:wrap; gap:5px;"></div>
 
             <label style="margin-top:15px;">🚛 차량 (중복 선택 가능)</label>
             <input type="text" id="sched-car" placeholder="차량 직접 입력">
-            <div id="car-chips-area" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;">
-                </div>
+            <div id="car-chips-area" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;"></div>
 
-            <label>📝 작업내용 (터치해서 추가)</label>
-            <div id="work-content-chips" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px;"></div>
-            <textarea id="sched-content" rows="2" placeholder="작업 내용"></textarea>
+            <label>📝 작업내용 (공정 선택)</label>
+            <div id="selected-work-box" style="min-height:40px; border:1px solid #ddd; border-radius:8px; padding:8px; display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px; background:#fff;">
+                <span style="color:#aaa; font-size:0.8rem; padding:5px;">공정을 선택하면 여기에 추가됩니다.</span>
+            </div>
+            
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <input type="text" id="new-work-input" placeholder="직접 입력 후 추가" onkeypress="if(event.keyCode==13){addNewWorkTag(); return false;}">
+                <button type="button" onclick="addNewWorkTag()" style="width:60px; padding:0; margin:0; background:#64748b; color:white; border-radius:5px;">추가</button>
+            </div>
+            
+            <div id="work-preset-list" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px;"></div>
             
             <label>특이사항</label>
             <textarea id="sched-note" rows="1" placeholder="특이사항"></textarea>
@@ -381,6 +384,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         </div>
     </div>
   </div>
+     
      
       
     </div>
