@@ -134,21 +134,17 @@ html { scroll-behavior: smooth; }
         
         
         
-/* 💡 2. 타임라인 내부 현장명 막대 (말줄임 처리) */
+/* 2. 타임라인 내부 현장명 막대 (말줄임 처리) */
 .job-bar {
-    width: 100%;        /* 부모(90px) 너비에 맞춤 */
+    width: 95%; /* 기둥 너비 안에서 꽉 차게 */
+    white-space: nowrap;    /* 🟢 줄바꿈 금지 */
+    overflow: hidden;       /* 🟢 넘치는 부분 숨김 */
+    text-overflow: ellipsis; /* 🟢 끝에 ... 표시 */
+    margin: 3px auto;
     font-size: 0.8rem;
     padding: 6px 4px;
-    margin: 3px 0;
     border-radius: 6px;
-    color: white !important;
     text-align: center;
-    font-weight: 700;
-    
-    /* 🟢 가로 고정 및 말줄임 핵심 코드 */
-    white-space: nowrap;    /* 줄바꿈 금지 */
-    overflow: hidden;       /* 넘치는 글자 숨김 */
-    text-overflow: ellipsis; /* 끝에 ... 표시 */
     box-sizing: border-box;
 }
         
@@ -211,11 +207,13 @@ html { scroll-behavior: smooth; }
     width: 100%;
 }
 
-/* 💡 4. 달력 요일 칸(1/7) 고정 */
+/* 3. 달력 모드 (📅 버튼 눌렀을 때) 가로폭 강제 고정 */
 #schedule-container div[style*="grid-template-columns"] {
-    grid-template-columns: repeat(7, 1fr) !important;
-    table-layout: fixed; /* 테이블처럼 너비 고정 효과 */
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important; /* 7칸을 정확히 1/7씩 나눔 */
+    table-layout: fixed; /* 테이블처럼 고정 너비 적용 */
 }
+        
 .calendar-day-cell {
     background: #ffffff;
     min-height: 95px !important; 
@@ -224,22 +222,17 @@ html { scroll-behavior: smooth; }
     flex-direction: column;
 }
 
-/* 💡 3. 달력 모드 현장명 막대 (말줄임 처리) */
+/* 4. 달력 내부 현장명 막대 (말줄임 처리) */
 .calendar-event-bar {
     width: 100%;
-    font-size: 0.55rem !important;
-    padding: 3px 2px !important;
-    margin-bottom: 2px !important;
-    border-radius: 3px !important;
+    white-space: nowrap;    /* 🟢 줄바꿈 금지 */
+    overflow: hidden;       /* 🟢 넘치는 부분 숨김 */
+    text-overflow: ellipsis; /* 🟢 끝에 ... 표시 */
+    display: block !important; /* flex 해제하여 말줄임 기능 작동 보장 */
+    padding: 2px 1px !important;
     box-sizing: border-box;
-
-    /* 🟢 가로 고정 및 말줄임 핵심 코드 */
-    white-space: nowrap; 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    display: block !important; /* flex 해제하여 말줄임 작동 보장 */
 }
-
+        
 /* 야간/주간 포인트 배선 */
 .calendar-event-bar.bar-night { background: #1e293b !important; border-left: 3px solid #facc15 !important; }
 .calendar-event-bar.bar-day { background: #2563eb !important; border-left: 3px solid #60a5fa !important; }
