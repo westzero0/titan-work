@@ -134,19 +134,7 @@ html { scroll-behavior: smooth; }
         
         
         
-/* 2. 타임라인 내부 현장명 막대 (말줄임 처리) */
-.job-bar {
-    width: 95%; /* 기둥 너비 안에서 꽉 차게 */
-    white-space: nowrap;    /* 🟢 줄바꿈 금지 */
-    overflow: hidden;       /* 🟢 넘치는 부분 숨김 */
-    text-overflow: ellipsis; /* 🟢 끝에 ... 표시 */
-    margin: 3px auto;
-    font-size: 0.8rem;
-    padding: 6px 4px;
-    border-radius: 6px;
-    text-align: center;
-    box-sizing: border-box;
-}
+
         
 
 .bar-day { background: #2563eb; }    /* 주간: 파랑 */
@@ -190,15 +178,7 @@ html { scroll-behavior: smooth; }
     box-sizing: border-box; /* 테두리 포함 크기 고정 */
 }
 
-/* 💡 2. [캘린더 전용] 캘린더일 때만 화면 끝까지 확장 */
-#schedule-container .calendar-card { 
-    padding: 8px 2px !important; 
-    margin-left: -5px !important; 
-    margin-right: -5px !important;
-    width: calc(100% + 10px) !important;
-    border-radius: 0; /* 끝까지 꽉 채움 */
-    box-shadow: none;
-}
+
 
 /* 💡 3. 리스트 모드(카드뷰)일 때 중복 간섭 차단 */
 #schedule-container .card:not(.calendar-card) {
@@ -207,31 +187,7 @@ html { scroll-behavior: smooth; }
     width: 100%;
 }
 
-/* 3. 달력 모드 (📅 버튼 눌렀을 때) 가로폭 강제 고정 */
-#schedule-container div[style*="grid-template-columns"] {
-    display: grid !important;
-    grid-template-columns: repeat(7, 1fr) !important; /* 7칸을 정확히 1/7씩 나눔 */
-    table-layout: fixed; /* 테이블처럼 고정 너비 적용 */
-}
-        
-.calendar-day-cell {
-    background: #ffffff;
-    min-height: 95px !important; 
-    padding: 2px 1px !important; 
-    display: flex;
-    flex-direction: column;
-}
 
-/* 4. 달력 내부 현장명 막대 (말줄임 처리) */
-.calendar-event-bar {
-    width: 100%;
-    white-space: nowrap;    /* 🟢 줄바꿈 금지 */
-    overflow: hidden;       /* 🟢 넘치는 부분 숨김 */
-    text-overflow: ellipsis; /* 🟢 끝에 ... 표시 */
-    display: block !important; /* flex 해제하여 말줄임 기능 작동 보장 */
-    padding: 2px 1px !important;
-    box-sizing: border-box;
-}
         
 /* 야간/주간 포인트 배선 */
 .calendar-event-bar.bar-night { background: #1e293b !important; border-left: 3px solid #facc15 !important; }
@@ -375,6 +331,65 @@ html { scroll-behavior: smooth; }
     border-radius: 8px; font-weight: bold; color: white; cursor: pointer;
 }
         
+
+        /* 2. 타임라인 내부 현장명 막대 (말줄임 처리) */
+.job-bar {
+    width: 95%; /* 기둥 너비 안에서 꽉 차게 */
+    white-space: nowrap;    /* 🟢 줄바꿈 금지 */
+    overflow: hidden;       /* 🟢 넘치는 부분 숨김 */
+    text-overflow: ellipsis; /* 🟢 끝에 ... 표시 */
+    margin: 3px auto;
+    font-size: 0.8rem;
+    padding: 6px 4px;
+    border-radius: 6px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+        /* 💡 [달력 모드] 7칸 너비 완전 고정 */
+
+/* 1. 달력 그리드 컨테이너 (7등분 강제 고정) */
+#schedule-container .calendar-card > div[style*="grid-template-columns"] {
+    display: grid !important;
+    /* 🟢 핵심: minmax(0, 1fr)을 써야 긴 글자가 있어도 칸이 안 늘어납니다 */
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important; 
+    width: 100% !important;
+    table-layout: fixed !important; /* 브라우저 하위 호환성 */
+    box-sizing: border-box !important;
+}
+
+/* 2. 요일 헤더 (일~토) 너비 고정 */
+#schedule-container .calendar-card div[style*="background:#f8f9fa"] {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* 3. 날짜 칸 (Cell) 설정 */
+.calendar-day-cell {
+    background: #ffffff;
+    min-height: 95px !important; 
+    padding: 2px 1px !important; 
+    display: flex;
+    flex-direction: column;
+    /* 🟢 칸 안에서 내용이 넘쳐도 옆 칸을 침범하지 못하게 차단 */
+    overflow: hidden !important; 
+    box-sizing: border-box !important;
+}
+
+/* 4. 달력 내부 현장명 막대 (말줄임 처리 완성) */
+.calendar-event-bar {
+    width: 100% !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;   /* 줄바꿈 금지 */
+    overflow: hidden !important;      /* 넘치는 부분 숨김 */
+    text-overflow: ellipsis !important; /* 끝에 ... 표시 */
+    display: block !important;        /* block이어야 ellipsis가 작동함 */
+    padding: 2px 1px !important;
+    box-sizing: border-box !important;
+    font-size: 0.6rem !important;     /* 글자가 너무 크면 잘리니 살짝 조절 */
+}
+
         
         
     </style>
