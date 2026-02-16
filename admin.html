@@ -74,71 +74,63 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
 .client-slide { width: 94% !important; display: flex; align-items: stretch; }
 
-/* [현장 현황 관리 디자인 개선] */
+/* [거래처 현황 - 스와이퍼형 넓은 디자인] */
     
-    /* 1. 내부 카드 테두리/그림자 제거 -> 넓게 보이게 */
-    .client-card {
-        background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-        padding: 0 !important;
-        margin-bottom: 30px; /* 거래처 간 간격 */
+    /* 1. 스와이퍼 슬라이드 간격 조정 */
+    .client-management-swiper .swiper-slide {
+        width: 95% !important; /* 화면 꽉 차게 */
+        margin: 0 auto;
+        background: transparent; 
+        padding-bottom: 30px !important;
     }
 
-    /* 2. 거래처 이름 헤더 */
+    /* 2. 카드 디자인 (테두리 제거 -> 넓어 보임) */
+    .client-card {
+        background: #fff;
+        border-radius: 15px; /* 둥근 모서리만 살림 */
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05); /* 은은한 그림자 */
+        padding: 0; /* 내부 여백 제거 */
+        overflow: hidden;
+        min-height: 400px; /* 높이 확보 */
+        border: none !important; /* 테두리 제거 */
+    }
+
+    /* 3. 거래처 헤더 (파란색 바) */
     .client-header {
+        background: #f8fafc;
+        padding: 15px 20px;
         font-size: 1.2rem;
         font-weight: 800;
         color: #1e293b;
-        border-bottom: 2px solid #333; /* 굵은 줄로 구분 */
-        padding: 10px 0;
-        margin-bottom: 5px;
-        background: transparent;
-    }
-
-    /* 3. 현장 한 줄 (주소 포함) */
-    .site-row {
-        display: flex !important;
-        justify-content: space-between;
-        align-items: flex-start; /* 위쪽 정렬 */
-        padding: 15px 0; /* 좌우 패딩 없애서 꽉 차게 */
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    /* 4. 현장 이름 */
-    .site-name {
-        font-size: 1.05rem;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 4px;
-    }
-
-    /* 5. 주소 (다시 추가됨) */
-    .site-addr {
-        font-size: 0.85rem;
-        color: #64748b;
-        cursor: pointer;
+        border-bottom: 1px solid #e2e8f0;
         display: flex;
         align-items: center;
-        gap: 3px;
+        gap: 10px;
     }
-    .site-addr:active { color: #2563eb; } /* 클릭 시 파란색 */
 
-    /* 6. 완료된 현장 흐리게 */
-    .status-done .site-name { text-decoration: line-through; color: #cbd5e1; }
-    .status-done .site-addr { color: #e2e8f0; }
+    /* 4. 현장 리스트 한 줄 */
+    .site-row {
+        padding: 15px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    /* 5. 현장 이름 & 주소 */
+    .site-name { font-size: 1.1rem; font-weight: bold; color: #333; margin-bottom: 5px; }
+    .site-addr { font-size: 0.9rem; color: #64748b; cursor: pointer; display:flex; align-items:center; gap:4px; }
     
-
-/* 진행/완료 상태 버튼 */
-.status-btn {
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-size: 0.85rem;
-    font-weight: bold;
-    border: none;
-    min-width: 80px;
-    cursor: pointer;
-}
+    /* 6. 상태 버튼 */
+    .status-btn {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        border: none;
+        cursor: pointer;
+    }
+    
 .status-btn.ing { background: #eefdf3; color: #16a34a; }
 .status-btn.completed { background: #f1f5f9; color: #94a3b8; }
 
@@ -827,47 +819,72 @@ function initWorkPresets(currentVal) {
         renderClientList(globalClientData);
     }
     
-// [현장 현황 리스트 렌더링 - 주소 복구 및 디자인 개선]
+// [현장 현황 - 스와이퍼 + 주소 표시 복구]
     function renderClientList(data) {
         const box = document.getElementById('client-management-list');
         
-        // 데이터 그룹화 (거래처별로 묶기)
+        // 1. 데이터 그룹화 (거래처별)
         const grouped = data.reduce((acc, curr) => { 
             if (!acc[curr.client]) acc[curr.client] = []; 
             acc[curr.client].push(curr); 
             return acc; 
         }, {});
 
-        // HTML 생성
-        box.innerHTML = Object.keys(grouped).map(client => `
-            <div class="client-card">
-                <div class="client-header">🏢 ${client}</div>
-                
-                <div class="site-list">
-                    ${grouped[client].map(s => `
-                        <div class="site-row ${s.status === '완료' ? 'status-done' : ''}">
-                            <div class="site-content" style="flex:1;">
-                                <div class="site-name">${s.site}</div>
-                                
-                                <div class="site-addr" onclick="editAddress('${client}', '${s.site}', '${s.address || ''}')">
-                                    📍 ${s.address || '주소 등록 (클릭)'} ✎
-                                </div>
-                            </div>
-                            
-                            <div class="site-action" style="margin-left:10px;">
-                                <button class="status-btn ${s.status==='완료'?'completed':'ing'}" 
-                                        style="padding:8px 12px; font-size:0.8rem; border-radius:8px; border:none; font-weight:bold; cursor:pointer; background:${s.status==='완료'?'#f1f5f9':'#dcfce7'}; color:${s.status==='완료'?'#94a3b8':'#166534'};"
-                                        onclick="toggleSiteStatus('${client}','${s.site}','${s.status}')">
-                                    ${s.status||'진행중'}
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `).join('');
+        // 2. 스와이퍼 구조 생성 (HTML)
+        let html = `
+            <div class="swiper client-management-swiper">
+                <div class="swiper-wrapper">`;
         
-        // (참고: 기존 스와이퍼 로직은 이 디자인에선 굳이 필요 없어서 제거하여 더 넓게 씁니다)
+        // 거래처별 슬라이드 생성
+        for (const client in grouped) {
+            html += `
+                <div class="swiper-slide">
+                    <div class="client-card">
+                        <div class="client-header">🏢 ${client}</div>
+                        
+                        <div class="site-list">
+                            ${grouped[client].map(s => `
+                                <div class="site-row ${s.status === '완료' ? 'status-done' : ''}">
+                                    <div class="site-content" style="flex:1;">
+                                        <div class="site-name">${s.site}</div>
+                                        
+                                        <div class="site-addr" onclick="editAddress('${client}', '${s.site}', '${s.address || ''}')">
+                                            📍 ${s.address || '주소 등록 (터치)'} ✎
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="site-action" style="margin-left:10px;">
+                                        <button class="status-btn" 
+                                                style="background:${s.status==='완료'?'#f1f5f9':'#dcfce7'}; color:${s.status==='완료'?'#94a3b8':'#166534'};"
+                                                onclick="toggleSiteStatus('${client}','${s.site}','${s.status}')">
+                                            ${s.status||'진행중'}
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>`;
+        }
+        
+        html += `   </div>
+                    <div class="swiper-pagination"></div> </div>`;
+        
+        box.innerHTML = html;
+
+        // 3. 내부 스와이퍼 가동 (중첩 스와이퍼 설정)
+        if(window.clientSwiper) window.clientSwiper.destroy();
+        
+        window.clientSwiper = new Swiper('.client-management-swiper', {
+            slidesPerView: 'auto',  // 카드 크기에 맞게
+            centeredSlides: true,   // 가운데 정렬
+            spaceBetween: 15,       // 카드 사이 간격
+            nested: true,           // 🟢 [중요] 부모 스와이퍼와 충돌 방지
+            pagination: {
+                el: '.swiper-pagination',
+                clickable: true
+            }
+        });
     }
       
 
