@@ -324,7 +324,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
             </div>
         </div>
 
-     <div id="schedule-modal" class="modal">
+   <div id="schedule-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header" style="margin-bottom:15px; display:flex; justify-content:space-between;">
             <h3 id="modal-date-title" style="margin:0; color:#2563eb;">일정 등록</h3>
@@ -339,7 +339,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         <input type="hidden" id="sched-shift" value="주간">
 
         <div class="input-group">
-            <label>🏢 거래처 선택</label>
+            <label>🏢 거래처 선택 (진행중인 현장만 표시)</label>
             <div id="sched-client-chips-area" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
 
             <label>🏗️ 현장 선택</label>
@@ -353,19 +353,24 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
             </div>
 
             <label style="margin-top:15px;">👷 투입 인원 <span id="worker-count-display">(0명)</span></label>
-            <input type="text" id="sched-workers-text" placeholder="선택된 인원" readonly style="background:#eee;">
-            <div id="worker-chips-area" style="max-height:150px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:8px; margin-top:5px; display:flex; flex-wrap:wrap; gap:5px;"></div>
-
-            <label style="margin-top:15px;">🚛 차량</label>
-            <input type="text" id="sched-car" placeholder="차량 정보">
-            <div style="display:flex; gap:5px; margin-top:5px;">
-                <div class="chip" onclick="selectCar('1호차')">1호차</div>
-                <div class="chip" onclick="selectCar('2호차')">2호차</div>
-                <div class="chip" onclick="selectCar('본인차')">본인차</div>
+            <input type="hidden" id="sched-workers-text">
+            
+            <div id="selected-workers-box" style="min-height:40px; border:1px solid #ddd; border-radius:8px; padding:8px; display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px; background:#fff;">
+                <span style="color:#aaa; font-size:0.8rem; padding:5px;">아래 목록에서 선택하거나 검색하세요.</span>
             </div>
+            <input type="text" id="worker-search-input" placeholder="🔍 이름 검색" onkeyup="filterWorkerChips()" style="margin-bottom:5px;">
+            <div id="worker-chips-area" style="max-height:150px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:8px; display:flex; flex-wrap:wrap; gap:5px;"></div>
 
-            <label>📝 내용/비고</label>
-            <textarea id="sched-content" rows="1" placeholder="작업 내용"></textarea>
+            <label style="margin-top:15px;">🚛 차량 (중복 선택 가능)</label>
+            <input type="text" id="sched-car" placeholder="차량 직접 입력">
+            <div id="car-chips-area" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;">
+                </div>
+
+            <label>📝 작업내용 (터치해서 추가)</label>
+            <div id="work-content-chips" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:5px;"></div>
+            <textarea id="sched-content" rows="2" placeholder="작업 내용"></textarea>
+            
+            <label>특이사항</label>
             <textarea id="sched-note" rows="1" placeholder="특이사항"></textarea>
             
             <div style="display:flex; gap:10px; margin-top:20px;">
@@ -376,6 +381,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         </div>
     </div>
   </div>
+     
       
     </div>
 
@@ -501,7 +507,7 @@ let globalScheduleData = [];
           // 🟢 [핵심 3] 터치 민감도 최대로 설정 (즉시 반응)
             longPressDelay: 0, 
             eventLongPressDelay: 0,
-            selectLongPressDelay: 0,
+            selectLongPressDelay: 200,
           
             headerToolbar: { left: 'prev', center: 'title', right: 'next' },
             dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
@@ -569,67 +575,96 @@ async function loadScheduleData() {
 
 
 
-    // 6. [핵심] 달력 아래 리스트 렌더링 (오늘 이후 일정만)
+   // [4] 일정 리스트 렌더링 (오늘 날짜 기준 필터링 적용)
     function renderScheduleList() {
         const box = document.getElementById('schedule-list-container');
-        const today = new Date().toISOString().split('T')[0];
+        if (!box) return;
+
+        // 1. 오늘 날짜 구하기 (YYYY-MM-DD 포맷)
+        const d = new Date();
+        const today = d.getFullYear() + "-" + 
+                      String(d.getMonth() + 1).padStart(2, '0') + "-" + 
+                      String(d.getDate()).padStart(2, '0');
         
-        // 날짜순 정렬 및 오늘 이후 필터링
-        const futureList = globalScheduleData
-            .filter(item => item.date >= today)
+        // 2. 필터링: 오늘 날짜보다 크거나 같은(>=) 일정만 남김
+        // 3. 정렬: 가까운 날짜부터 먼 날짜 순으로 정렬
+        const list = (Array.isArray(globalScheduleData) ? globalScheduleData : [])
+            .filter(item => item.date >= today) 
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        if (futureList.length === 0) {
-            box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">예정된 일정이 없습니다.</div>';
+        // 일정이 없을 때 표시
+        if (list.length === 0) {
+            box.innerHTML = '<div style="padding:40px; text-align:center; color:#999;">📅 오늘 이후 예정된 일정이 없습니다.</div>';
             return;
         }
 
-        box.innerHTML = futureList.map(item => `
-            <div class="card" style="margin-bottom:10px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':'#2563eb'};" onclick="openModal('edit', null, {rowId:${item.rowId}, date:'${item.date}', client:'${item.client}', site:'${item.site}', workers:'${item.workers}', shift:'${item.shift}', car:'${item.car}', content:'${item.content}', note:'${item.note}'})">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <div style="font-weight:bold; font-size:1.1rem;">${item.date}</div>
-                    <span style="font-size:0.8rem; background:#f1f5f9; padding:2px 6px; border-radius:4px;">${item.shift}</span>
+        // 리스트 그리기
+        box.innerHTML = list.map(item => {
+            // 오늘 일정인지 확인해서 '오늘' 뱃지 달아주기
+            const isToday = item.date === today;
+            const todayBadge = isToday ? '<span style="background:#ef4444; color:white; font-size:0.7rem; padding:2px 6px; border-radius:4px; margin-left:5px;">Today</span>' : '';
+
+            return `
+            <div class="card" style="margin-bottom:10px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':'#2563eb'}; cursor:pointer;" 
+                 onclick='openModal("edit", null, ${JSON.stringify(item).replace(/'/g, "&#39;")})'>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-weight:bold; font-size:1.1rem; color:#333;">
+                        ${item.date} 
+                        <span style="font-size:0.8rem; background:#eee; padding:2px 5px; border-radius:4px; font-weight:normal; color:#555;">${item.shift}</span>
+                        ${todayBadge}
+                    </div>
                 </div>
-                <div style="font-size:1rem; color:#333;">${item.site} <span style="color:#666; font-size:0.9rem;">(${item.client})</span></div>
-                <div style="font-size:0.9rem; color:#666; margin-top:5px;">
-                    👷 ${item.workers}명 / 🚛 ${item.car || '차량X'}
+
+                <div style="font-size:1.05rem; margin-top:8px; font-weight:bold; color:#1e293b;">
+                    ${item.site} <span style="color:#64748b; font-weight:normal; font-size:0.9rem;">(${item.client})</span>
+                </div>
+
+                <div style="font-size:0.9rem; color:#666; margin-top:6px; display:flex; gap:10px;">
+                    <span>👷 ${item.workers || '미정'}</span>
+                    <span style="color:#ddd;">|</span>
+                    <span>🚛 ${item.car || '-'}</span>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
 
-      // [통합 팝업 열기 함수]
+   // [1] 통합 팝업 열기 함수
     function openModal(mode, dateStr, data, endStr = null) {
         const modal = document.getElementById('schedule-modal');
-        if(!modal) return; 
+        if (!modal) return;
         modal.style.display = 'block';
 
         if (mode === 'add') {
             document.getElementById('sched-date').value = dateStr;
             document.getElementById('sched-end-date').value = endStr || "";
             
-            // 제목 설정 (드래그 여부 판단)
-            let title = dateStr + " 일정 등록";
+            let titleText = dateStr + " 일정 등록";
             if (endStr) {
                 const s = new Date(dateStr);
                 const e = new Date(endStr);
                 const diff = (e - s) / (1000 * 60 * 60 * 24);
-                if (diff > 1) title = `${dateStr} ~ (${Math.ceil(diff)}일간 연속)`;
+                if (diff > 1) titleText = `${dateStr} ~ (${Math.ceil(diff)}일간 연속)`;
             }
-            document.getElementById('modal-date-title').innerText = title;
+            document.getElementById('modal-date-title').innerText = titleText;
 
-            // 초기화
-            resetForm(); 
-            renderChips('', ''); 
-            renderWorkerChips("");
+            resetForm();
+            
+            // 🟢 칩 초기화 (빈 값으로 시작)
+            renderChips('', '');          // 거래처/현장
+            renderWorkerChips("");        // 인원
+            renderVehicleChips("");       // 차량
+            renderWorkPresets();          // 작업내용 프리셋
+
             currentShiftIndex = 0; updateShiftBtn();
 
             document.getElementById('btn-save').style.display = 'block';
             document.getElementById('btn-update').style.display = 'none';
             document.getElementById('btn-delete').style.display = 'none';
+
         } else {
-            // 수정 모드
             document.getElementById('modal-date-title').innerText = "일정 수정";
             document.getElementById('sched-row-id').value = data.rowId;
             document.getElementById('sched-date').value = data.date;
@@ -639,13 +674,15 @@ async function loadScheduleData() {
             document.getElementById('sched-content').value = data.content || "";
             document.getElementById('sched-note').value = data.note || "";
 
-            // 칩/버튼 상태 복구
             const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
             currentShiftIndex = shiftIdx >= 0 ? shiftIdx : 0;
             updateShiftBtn();
 
+            // 🟢 데이터 복구 (기존 값 넣기)
             renderChips(data.client, data.site);
             renderWorkerChips(data.workers || "");
+            renderVehicleChips(data.car || "");
+            renderWorkPresets();
 
             document.getElementById('btn-save').style.display = 'none';
             document.getElementById('btn-update').style.display = 'block';
@@ -662,44 +699,93 @@ async function loadScheduleData() {
       
 
 
-      // 8. 칩 렌더링 및 선택 상태 복구 로직
-    function renderChips(selectedClient, selectedSite) {
-        const clientBox = document.getElementById('sched-client-chips-area');
-        const siteBox = document.getElementById('sched-site-chips-area');
-        const uniques = [...new Set(globalClientData.map(i => i.client))];
-
-        // 거래처 칩 생성
-        clientBox.innerHTML = uniques.map(c => 
-            `<div class="chip ${c === selectedClient ? 'active' : ''}" onclick="clickSchedClient(this, '${c}')">${c}</div>`
-        ).join('');
+     // [2] 거래처/현장 칩 (진행중인 현장만 필터링!)
+    function renderChips(sClient, sSite) {
+        const cBox = document.getElementById('sched-client-chips-area');
+        const sBox = document.getElementById('sched-site-chips-area');
         
-        // 값 세팅
-        document.getElementById('sched-client').value = selectedClient || "";
+        // 🟢 '진행중' 상태이거나, 현재 선택된(수정 모드) 현장만 포함
+        const activeData = globalClientData.filter(item => 
+            item.status !== '완료' || (item.client === sClient && item.site === sSite)
+        );
 
-        // 현장 칩 생성 (선택된 거래처가 있을 때만)
-        if (selectedClient) {
-            const sites = globalClientData.filter(i => i.client === selectedClient);
-            siteBox.innerHTML = sites.map(s => 
-                `<div class="chip ${s.site === selectedSite ? 'active' : ''}" onclick="clickSchedSite(this, '${s.site}')">${s.site}</div>`
+        const uniques = [...new Set(activeData.map(i => i.client))];
+
+        if (cBox) {
+            cBox.innerHTML = uniques.map(c => 
+                `<div class="chip ${c === sClient ? 'active' : ''}" onclick="clkClient(this, '${c}')">${c}</div>`
             ).join('');
-            document.getElementById('sched-site').value = selectedSite || "";
+        }
+        document.getElementById('sched-client').value = sClient || "";
+
+        if (sClient) {
+            // 선택된 거래처의 현장 중 '진행중'인 것만
+            const sites = activeData.filter(i => i.client === sClient);
+            if (sBox) {
+                sBox.innerHTML = sites.map(s => 
+                    `<div class="chip ${s.site === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.site}')">${s.site}</div>`
+                ).join('');
+            }
+            document.getElementById('sched-site').value = sSite || "";
         } else {
-            siteBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>';
-            document.getElementById('sched-site').value = "";
+            if (sBox) sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>';
+        }
+    }
+      
+
+      // [3] 차량 중복 선택 로직
+    const VEHICLE_LIST = ["봉고", "스타렉스", "스타리아", "M4"]; // 👈 사장님 차 종류 수정 가능
+
+    function renderVehicleChips(currentVal) {
+        const box = document.getElementById('car-chips-area');
+        // 현재 입력된 값 ("1호차, 2호차")을 배열로 분리
+        const selected = currentVal ? currentVal.split(',').map(s=>s.trim()) : [];
+        
+        if(box) {
+            box.innerHTML = VEHICLE_LIST.map(car => {
+                const isActive = selected.includes(car);
+                return `<div class="chip ${isActive ? 'active' : ''}" onclick="toggleCar(this, '${car}')">${car}</div>`;
+            }).join('');
+        }
+        document.getElementById('sched-car').value = currentVal;
+    }
+
+      function toggleCar(el, carName) {
+        el.classList.toggle('active');
+        
+        // 현재 선택된 모든 차량 칩을 찾아서 텍스트로 합침
+        const activeChips = document.querySelectorAll('#car-chips-area .chip.active');
+        const result = Array.from(activeChips).map(c => c.innerText).join(', ');
+        
+        // 입력창에 반영 (수기 입력도 가능하도록 덮어쓰기보다는 갱신)
+        document.getElementById('sched-car').value = result;
+    }
+
+      // [4] 작업내용 프리셋 (반복 공정)
+    // 👈 여기에 자주 쓰는 작업 내용을 추가하세요!
+    const WORK_PRESETS = ["양중", "포설", "단말", "트레이", "입선", "결선", "스틸배관", "레이스웨이", "철거", "자재정리"];
+
+    function renderWorkPresets() {
+        const box = document.getElementById('work-content-chips');
+        if(box) {
+            box.innerHTML = WORK_PRESETS.map(text => 
+                `<div class="chip" style="background:#f3f4f6; color:#555; border:1px solid #ddd;" onclick="addWorkContent('${text}')">+ ${text}</div>`
+            ).join('');
         }
     }
 
-    function clickSchedClient(el, clientName) {
-        document.getElementById('sched-client').value = clientName;
-        // 스타일
-        const siblings = document.getElementById('sched-client-chips-area').children;
-        for(let s of siblings) s.classList.remove('active');
-        el.classList.add('active');
-
-        // 현장 칩 갱신
-        renderChips(clientName, ''); 
+    function addWorkContent(text) {
+        const input = document.getElementById('sched-content');
+        if(input.value) {
+            input.value += ", " + text; // 이미 글자가 있으면 콤마 찍고 추가
+        } else {
+            input.value = text;
+        }
     }
+      
 
+      
+      
     function clickSchedSite(el, siteName) {
         document.getElementById('sched-site').value = siteName;
         const siblings = document.getElementById('sched-site-chips-area').children;
@@ -1131,20 +1217,47 @@ async function editAddress(client, site, oldAddr) {
         document.getElementById('sched-car').value = val; 
     }
 
-    // 3. 직원 칩 생성 및 선택 로직
+// [수정된 칩 렌더링 함수] - '재직' 필터링 추가
     function renderWorkerChips(namesStr) {
         const container = document.getElementById('worker-chips-area');
-        // "홍길동, 김철수" 문자열을 배열로 변환
-        const selected = namesStr ? namesStr.split(',').map(s=>s.trim()) : [];
         
-        if(container) {
-            container.innerHTML = globalWorkerData.map(w => {
-                // 이미 선택된 사람은 'active' 클래스 추가 (파란색)
-                const active = selected.includes(w.name) ? 'active' : '';
-                return `<div class="chip ${active}" onclick="toggleWorker(this, '${w.name}')">${w.name}</div>`;
-            }).join('');
+        // 1. 메모리 초기화
+        selectedWorkerSet.clear(); 
+
+        // 2. 기존 선택된 인원 복구
+        if (namesStr) {
+            namesStr.split(',').map(s => s.trim()).forEach(name => {
+                if(name) selectedWorkerSet.add(name);
+            });
         }
-        updateWorkerCount();
+        
+        // 3. 검색창 초기화
+        const searchInput = document.getElementById('worker-search-input');
+        if(searchInput) searchInput.value = "";
+
+        // 4. 전체 직원(후보군) 그리기 - 🟢 여기서 '재직'만 걸러냅니다!
+        if(container) {
+            container.innerHTML = globalWorkerData
+                .filter(w => w.status === '재직') // 👈 [핵심] 상태가 '재직'인 사람만 통과!
+                .map(w => {
+                    // 이미 선택된 사람은 목록에서 숨김
+                    const isSelected = selectedWorkerSet.has(w.name);
+                    const displayStyle = isSelected ? "display:none;" : ""; 
+                    
+                    return `<div class="chip worker-candidate" 
+                                 data-name="${w.name}" 
+                                 onclick="addWorkerToSelection('${w.name}')"
+                                 style="background:#fff; border:1px solid #ddd; padding:5px 10px; ${displayStyle}">
+                                ${w.name}
+                            </div>`;
+                }).join('');
+        }
+        
+        // 5. 선택된 영역 그리기
+        renderSelectedBox();
+        
+        // 6. 데이터 동기화
+        updateWorkerInput();
     }
     
     // 직원 칩 클릭 시 (선택/해제 토글)
