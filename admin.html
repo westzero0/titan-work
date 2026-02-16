@@ -74,42 +74,60 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
 .client-slide { width: 94% !important; display: flex; align-items: stretch; }
 
-.client-card {
-    width: 100%;
-    background: #fff;
-    border-radius: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.06);
-    border: none;
-    display: flex;
-    flex-direction: column;
-    min-height: 480px; /* 카드가 작아 보이지 않게 최소 높이 고정 */
-}
+/* [현장 현황 관리 디자인 개선] */
+    
+    /* 1. 내부 카드 테두리/그림자 제거 -> 넓게 보이게 */
+    .client-card {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin-bottom: 30px; /* 거래처 간 간격 */
+    }
 
-.client-header {
-    background: #ffffff;
-    padding: 20px;
-    font-size: 1.15rem;
-    font-weight: 800;
-    color: #1e293b;
-    border-bottom: 1px solid #f1f5f9;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
+    /* 2. 거래처 이름 헤더 */
+    .client-header {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #1e293b;
+        border-bottom: 2px solid #333; /* 굵은 줄로 구분 */
+        padding: 10px 0;
+        margin-bottom: 5px;
+        background: transparent;
+    }
 
-.site-list { flex: 1; overflow-y: auto; padding: 5px 0; }
+    /* 3. 현장 한 줄 (주소 포함) */
+    .site-row {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: flex-start; /* 위쪽 정렬 */
+        padding: 15px 0; /* 좌우 패딩 없애서 꽉 차게 */
+        border-bottom: 1px solid #f1f5f9;
+    }
 
-.site-row {
-    display: flex !important;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px;
-    border-bottom: 1px solid #f8fafc;
-}
+    /* 4. 현장 이름 */
+    .site-name {
+        font-size: 1.05rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 4px;
+    }
 
-.site-content { flex: 1; text-align: left; min-width: 0; }
-.site-name { font-size: 1.05rem; font-weight: 700; color: #334155; margin-bottom: 4px; }
-.site-addr { font-size: 0.85rem; color: #64748b; text-decoration: underline; cursor: pointer; }
+    /* 5. 주소 (다시 추가됨) */
+    .site-addr {
+        font-size: 0.85rem;
+        color: #64748b;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+    }
+    .site-addr:active { color: #2563eb; } /* 클릭 시 파란색 */
+
+    /* 6. 완료된 현장 흐리게 */
+    .status-done .site-name { text-decoration: line-through; color: #cbd5e1; }
+    .status-done .site-addr { color: #e2e8f0; }
+    
 
 /* 진행/완료 상태 버튼 */
 .status-btn {
@@ -124,9 +142,6 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 .status-btn.ing { background: #eefdf3; color: #16a34a; }
 .status-btn.completed { background: #f1f5f9; color: #94a3b8; }
 
-/* 완료된 현장 처리 */
-.status-done { opacity: 0.7; background-color: #fcfcfc; }
-.status-done .site-name { text-decoration: line-through; color: #94a3b8; }
 
 .swiper-pagination-bullet-active { background: #2563eb !important; }
 
@@ -812,15 +827,49 @@ function initWorkPresets(currentVal) {
         renderClientList(globalClientData);
     }
     
+// [현장 현황 리스트 렌더링 - 주소 복구 및 디자인 개선]
     function renderClientList(data) {
         const box = document.getElementById('client-management-list');
-        const grouped = data.reduce((acc, curr) => { if (!acc[curr.client]) acc[curr.client] = []; acc[curr.client].push(curr); return acc; }, {});
-        box.innerHTML = '<div class="swiper client-management-swiper"><div class="swiper-wrapper">' + 
-            Object.keys(grouped).map(c => `<div class="swiper-slide client-slide"><div class="client-card"><div class="client-header">🏢 ${c}</div><div class="site-list">${grouped[c].map(s=>`<div class="site-row"><div class="site-name">${s.site}</div><div class="site-action"><button class="status-btn ${s.status==='완료'?'completed':'ing'}" onclick="toggleSiteStatus('${c}','${s.site}','${s.status}')">${s.status||'진행중'}</button></div></div>`).join('')}</div></div></div>`).join('') + 
-            '</div></div>';
-        if(window.clientSwiper) window.clientSwiper.destroy();
-        window.clientSwiper = new Swiper('.client-management-swiper', { slidesPerView:'auto', centeredSlides:true, spaceBetween:15, nested:true });
+        
+        // 데이터 그룹화 (거래처별로 묶기)
+        const grouped = data.reduce((acc, curr) => { 
+            if (!acc[curr.client]) acc[curr.client] = []; 
+            acc[curr.client].push(curr); 
+            return acc; 
+        }, {});
+
+        // HTML 생성
+        box.innerHTML = Object.keys(grouped).map(client => `
+            <div class="client-card">
+                <div class="client-header">🏢 ${client}</div>
+                
+                <div class="site-list">
+                    ${grouped[client].map(s => `
+                        <div class="site-row ${s.status === '완료' ? 'status-done' : ''}">
+                            <div class="site-content" style="flex:1;">
+                                <div class="site-name">${s.site}</div>
+                                
+                                <div class="site-addr" onclick="editAddress('${client}', '${s.site}', '${s.address || ''}')">
+                                    📍 ${s.address || '주소 등록 (클릭)'} ✎
+                                </div>
+                            </div>
+                            
+                            <div class="site-action" style="margin-left:10px;">
+                                <button class="status-btn ${s.status==='완료'?'completed':'ing'}" 
+                                        style="padding:8px 12px; font-size:0.8rem; border-radius:8px; border:none; font-weight:bold; cursor:pointer; background:${s.status==='완료'?'#f1f5f9':'#dcfce7'}; color:${s.status==='완료'?'#94a3b8':'#166534'};"
+                                        onclick="toggleSiteStatus('${client}','${s.site}','${s.status}')">
+                                    ${s.status||'진행중'}
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+        
+        // (참고: 기존 스와이퍼 로직은 이 디자인에선 굳이 필요 없어서 제거하여 더 넓게 씁니다)
     }
+      
 
     function addWorker() { const d = { name: document.getElementById('new-name').value, role: document.getElementById('new-role').value, rate: document.getElementById('new-rate').value, pw: document.getElementById('new-pw').value, phone: document.getElementById('new-phone').value, address: document.getElementById('new-address').value }; sendToGas('adminAddWorker', d); }
     function saveClient() { const d = { client: document.getElementById('c_client').value, site: document.getElementById('c_site').value, address: document.getElementById('c_addr').value }; sendToGas('adminAddClient', d); }
