@@ -779,13 +779,19 @@ function renderCards() {
                 <div><b>${s.date}</b> (${s.shift})</div>
                 <div style="color:#666; font-size:0.9rem;">${s.client}</div>
                 <div style="font-size:1.2rem; font-weight:bold;">${s.site}</div>
-                <div style="margin-top:5px;">${s.workers.map(w=>`<span class="worker-chip">${w}</span>`).join('')}</div>
+                
+                <div style="margin-top:5px; display:flex; align-items:center; flex-wrap:wrap; gap:5px;">
+                    ${s.workers.map(w=>`<span class="worker-chip">${w}</span>`).join('')}
+                    ${s.car ? `<span style="margin-left:5px; font-size:0.9rem; color:#2563eb; font-weight:bold;">| 🚛 ${s.car}</span>` : ''}
+                </div>
+                
                 ${s.address ? `<div onclick="copyAddr('${s.address}')" style="margin-top:5px; color:blue; cursor:pointer;">📍 ${s.address}</div>` : ''}
             </div>
         `).join('');
     }
     container.innerHTML = html;
 }
+
 
 function renderCalendar() {
     const container = document.getElementById('schedule-container');
