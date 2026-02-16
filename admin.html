@@ -402,92 +402,59 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbx0r8IPhDytW9knWTEbsFRVK4HmFj5CynrD9TlXzIbOe_aSDotaATcnSzouC845NIBx/exec"; // 👈 꼭 본인 주소로 수정하세요!
 let calendar = null;
-let swiper = null; // 초기값을 null로 설정
-let globalScheduleData = [];
-      let globalClientData = [];
-      
-      // 탭 클릭 시 이동 (준비 안됐으면 다시 한번 초기화 시도)
-    function jumpTo(index) {
-        if (!swiper) {
-            console.log("스와이퍼 재연결 시도 중...");
-            initSwiper();
-        }
-        
-        if (swiper) {
-            swiper.slideTo(index);
-        } else {
-            alert("화면 초기화 오류가 발생했습니다. 새로고침 후 다시 시도해 주세요.");
-        }
-    }
-
-      
-    window.addEventListener('DOMContentLoaded', async () => { // 🟢 앞에 async가 붙어야 합니다!
-    // 1. 스와이퍼(탭 메뉴) 실행
-    initSwiper();
+    let swiper = null;
+    let globalScheduleData = [];
+    let globalClientData = [];
+    let globalWorkerData = [];
     
-    // 2. 날짜 설정
-    const sDateInput = document.getElementById('s_date');
-    if (sDateInput) sDateInput.valueAsDate = new Date();
+    // 🟢 선택 데이터 관리용 Set 변수 (매우 중요)
+    let selectedWorkerSet = new Set();
+    let selectedWorkSet = new Set();
 
-    // 3. ⚠️ 데이터 로드 및 달력 생성
-    try {
-        console.log("데이터를 불러오는 중...");
-        
-        // 서버에서 데이터를 다 가져올 때까지 기다립니다 (await)
-        await Promise.all([
-            loadAdminData(),         // 직원 목록
-            loadClientManagement(),  // 거래처 목록
-            loadScheduleData()       // 일정 데이터 (globalScheduleData를 채움)
-        ]);
-      
-        console.log("데이터 로드 완료! 달력과 리스트를 생성합니다.");
+    // [1] 초기화 실행
+    window.addEventListener('DOMContentLoaded', async () => {
+        initSwiper();
+        try {
+            console.log("데이터 로드 중...");
+            await Promise.all([
+                loadAdminData(),
+                loadClientManagement(),
+                loadScheduleData()
+            ]);
+            console.log("데이터 로드 완료");
+            initCalendar();
+            renderScheduleList();
+        } catch (e) {
+            console.error("로딩 실패:", e);
+            initCalendar();
+        }
+    });
 
-       // 4. 데이터가 왔을 때만 달력과 리스트 그리기
-        initCalendar(); 
-        renderScheduleList();
-        console.log("데이터 로딩 및 화면 구성 완료");
-    } catch (e) {
-        console.error("데이터 로드 중 일부 실패:", e);
-        // 에러가 나면 달력을 빈 상태로라도 그려서 기절 방지
-        initCalendar(); 
-    }
-});
-      
-
-    // 스와이퍼를 초기화하는 함수를 별도로 만듭니다.
+    // [2] 스와이퍼 설정
     function initSwiper() {
-        const swiperContainer = document.querySelector('.swiper');
-        if (!swiperContainer) return;
-
+        const el = document.querySelector('.swiper');
+        if (!el) return;
         swiper = new Swiper('.swiper', {
-            speed: 400,
-            loop: false,
-            allowTouchMove: true, // 손가락 스와이프 허용
-
-          // 🟢 [핵심 1] 이 옵션을 켜야 "swiper-no-swiping" 클래스가 작동합니다!
-            noSwiping: true, 
-            noSwipingClass: 'swiper-no-swiping',
-          
-            on: {
-                slideChange: function () {
-                    updateNav(this.activeIndex);
-                }
-            }
+            speed: 400, loop: false, allowTouchMove: true,
+            noSwiping: true, noSwipingClass: 'swiper-no-swiping',
+            on: { slideChange: function () { updateNav(this.activeIndex); } }
         });
-        console.log("스와이퍼 준비 완료");
+    }
+    function jumpTo(index) { if (swiper) swiper.slideTo(index); }
+    function updateNav(index) {
+        document.querySelectorAll('.nav-item').forEach((item, i) => {
+            if (i === index) item.classList.add('active'); else item.classList.remove('active');
+        });
     }
 
-      
-// [달력 로직 - 드래그/클릭 완벽 수정]
+    // [3] 달력 설정
     function initCalendar() {
         const el = document.getElementById('calendar-container');
         if (!el) return;
-        
-        // 데이터 매핑 (안전장치 추가)
+
         const events = globalScheduleData.map(item => {
             let title = item.site;
             if(item.workers) {
-                // 인원수 표시 로직
                 const count = item.workers.split(',').length;
                 title += ` (${count}명)`;
             }
@@ -501,137 +468,39 @@ let globalScheduleData = [];
         if (calendar) calendar.destroy();
         calendar = new FullCalendar.Calendar(el, {
             initialView: 'dayGridMonth', locale: 'ko', height: 'auto',
-          locale: 'ko',
-            height: 'auto',
-
-          // 🟢 [핵심 3] 터치 민감도 최대로 설정 (즉시 반응)
-            longPressDelay: 0, 
-            eventLongPressDelay: 0,
-            selectLongPressDelay: 200,
-          
+            longPressDelay: 0, eventLongPressDelay: 0, selectLongPressDelay: 0, // 즉시 반응
             headerToolbar: { left: 'prev', center: 'title', right: 'next' },
             dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
-          
+            selectable: true, selectMirror: true,
             
-            selectable: true,  // 드래그 허용
-            selectMirror: true, 
-            
-            // 날짜 클릭/드래그 시 실행
             select: (info) => openModal('add', info.startStr, null, info.endStr),
-            
-            // 기존 일정 클릭 시 실행
             eventClick: (info) => openModal('edit', null, info.event.extendedProps),
-     events: events
+            events: events
         });
         calendar.render();
     }
-  
 
-    
-
-   function updateNav(index) {
-    // 모든 내비 아이템을 가져옵니다.
-    const navItems = document.querySelectorAll('.nav-item');
-    
-    navItems.forEach((item, i) => {
-        // 현재 슬라이드 번호와 아이콘 번호가 같으면 active 추가
-        if (i === index) {
-            item.classList.add('active');
-            console.log(i + "번 내비 활성화"); // 개발자 도구에서 확인용
-        } else {
-            item.classList.remove('active');
-        }
-    });
-}
-// [3] 일정 데이터 로드 (서버 통신) - 안전장치 보강
-async function loadScheduleData() {
-    try {
-        const res = await fetch(GAS_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: 'getScheduleList' }) 
-        });
-        
-        // 서버 응답을 텍스트로 먼저 받아서 확인
-        const text = await res.text();
-        let data;
-        
-        try {
-            data = JSON.parse(text); // JSON으로 변환 시도
-        } catch (e) {
-            console.error("서버 응답이 JSON 형식이 아닙니다:", text);
-            data = []; // 변환 실패 시 빈 리스트로 초기화
-        }
-
-        // ⭐ 핵심: 데이터가 리스트(Array)인지 확인하고 아니면 빈 리스트[] 대입
-        globalScheduleData = Array.isArray(data) ? data : [];
-        return globalScheduleData;
-
-    } catch (e) { 
-        console.error("네트워크 통신 실패:", e); 
-        globalScheduleData = []; // 통신 에러 시 빈 리스트로 초기화
-        return [];
-    }
-}
-
-
-
-   // [4] 일정 리스트 렌더링 (오늘 날짜 기준 필터링 적용)
+    // [4] 일정 리스트 (오늘 이후)
     function renderScheduleList() {
         const box = document.getElementById('schedule-list-container');
-        if (!box) return;
-
-        // 1. 오늘 날짜 구하기 (YYYY-MM-DD 포맷)
-        const d = new Date();
-        const today = d.getFullYear() + "-" + 
-                      String(d.getMonth() + 1).padStart(2, '0') + "-" + 
-                      String(d.getDate()).padStart(2, '0');
-        
-        // 2. 필터링: 오늘 날짜보다 크거나 같은(>=) 일정만 남김
-        // 3. 정렬: 가까운 날짜부터 먼 날짜 순으로 정렬
+        const today = new Date().toISOString().split('T')[0];
         const list = (Array.isArray(globalScheduleData) ? globalScheduleData : [])
-            .filter(item => item.date >= today) 
+            .filter(i => i.date >= today)
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // 일정이 없을 때 표시
-        if (list.length === 0) {
-            box.innerHTML = '<div style="padding:40px; text-align:center; color:#999;">📅 오늘 이후 예정된 일정이 없습니다.</div>';
-            return;
-        }
+        if (list.length === 0) { box.innerHTML = '<div style="padding:40px; text-align:center; color:#999;">📅 오늘 이후 예정된 일정이 없습니다.</div>'; return; }
 
-        // 리스트 그리기
-        box.innerHTML = list.map(item => {
-            // 오늘 일정인지 확인해서 '오늘' 뱃지 달아주기
-            const isToday = item.date === today;
-            const todayBadge = isToday ? '<span style="background:#ef4444; color:white; font-size:0.7rem; padding:2px 6px; border-radius:4px; margin-left:5px;">Today</span>' : '';
-
-            return `
+        box.innerHTML = list.map(item => `
             <div class="card" style="margin-bottom:10px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':'#2563eb'}; cursor:pointer;" 
                  onclick='openModal("edit", null, ${JSON.stringify(item).replace(/'/g, "&#39;")})'>
-                
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="font-weight:bold; font-size:1.1rem; color:#333;">
-                        ${item.date} 
-                        <span style="font-size:0.8rem; background:#eee; padding:2px 5px; border-radius:4px; font-weight:normal; color:#555;">${item.shift}</span>
-                        ${todayBadge}
-                    </div>
-                </div>
-
-                <div style="font-size:1.05rem; margin-top:8px; font-weight:bold; color:#1e293b;">
-                    ${item.site} <span style="color:#64748b; font-weight:normal; font-size:0.9rem;">(${item.client})</span>
-                </div>
-
-                <div style="font-size:0.9rem; color:#666; margin-top:6px; display:flex; gap:10px;">
-                    <span>👷 ${item.workers || '미정'}</span>
-                    <span style="color:#ddd;">|</span>
-                    <span>🚛 ${item.car || '-'}</span>
-                </div>
+                <div style="font-weight:bold; font-size:1.1rem; color:#333;">${item.date} <span style="font-size:0.8rem; background:#eee; padding:2px 5px; border-radius:4px;">${item.shift}</span> ${item.date===today?'<span style="background:#ef4444; color:#fff; font-size:0.7rem; padding:2px 6px; border-radius:4px;">Today</span>':''}</div>
+                <div style="font-size:1.05rem; margin-top:8px; font-weight:bold; color:#1e293b;">${item.site} <span style="color:#64748b; font-weight:normal; font-size:0.9rem;">(${item.client})</span></div>
+                <div style="font-size:0.9rem; color:#666; margin-top:6px;">👷 ${item.workers || '미정'} | 🚛 ${item.car || '-'}</div>
             </div>
-            `;
-        }).join('');
+        `).join('');
     }
 
-
-// [5] 모달 열기
+    // [5] 모달 열기
     function openModal(mode, dateStr, data, endStr = null) {
         const modal = document.getElementById('schedule-modal');
         modal.style.display = 'block';
@@ -681,7 +550,6 @@ async function loadScheduleData() {
     }
 
     function closeModal() { document.getElementById('schedule-modal').style.display = "none"; }
-      
     function resetForm() {
         ['sched-client', 'sched-site', 'sched-workers-text', 'sched-car', 'sched-content', 'sched-note', 'worker-search-input', 'new-work-input'].forEach(id => {
             const el = document.getElementById(id); if(el) el.value = "";
@@ -690,107 +558,123 @@ async function loadScheduleData() {
         selectedWorkSet.clear();
     }
 
-
-      
-      
-
-
-     // [2] 거래처/현장 칩 (진행중인 현장만 필터링!)
+    // [6] 칩 렌더링 로직들
+    // 6-1. 거래처/현장 (진행중만)
     function renderChips(sClient, sSite) {
         const cBox = document.getElementById('sched-client-chips-area');
         const sBox = document.getElementById('sched-site-chips-area');
-        
-        // 🟢 '진행중' 상태이거나, 현재 선택된(수정 모드) 현장만 포함
-        const activeData = globalClientData.filter(item => 
-            item.status !== '완료' || (item.client === sClient && item.site === sSite)
-        );
-
+        const activeData = globalClientData.filter(item => item.status !== '완료' || (item.client === sClient && item.site === sSite));
         const uniques = [...new Set(activeData.map(i => i.client))];
 
-        if (cBox) {
-            cBox.innerHTML = uniques.map(c => 
-                `<div class="chip ${c === sClient ? 'active' : ''}" onclick="clkClient(this, '${c}')">${c}</div>`
-            ).join('');
-        }
+        if (cBox) cBox.innerHTML = uniques.map(c => `<div class="chip ${c === sClient ? 'active' : ''}" onclick="clkClient(this, '${c}')">${c}</div>`).join('');
         document.getElementById('sched-client').value = sClient || "";
 
         if (sClient) {
-            // 선택된 거래처의 현장 중 '진행중'인 것만
             const sites = activeData.filter(i => i.client === sClient);
-            if (sBox) {
-                sBox.innerHTML = sites.map(s => 
-                    `<div class="chip ${s.site === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.site}')">${s.site}</div>`
-                ).join('');
-            }
+            if (sBox) sBox.innerHTML = sites.map(s => `<div class="chip ${s.site === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.site}')">${s.site}</div>`).join('');
             document.getElementById('sched-site').value = sSite || "";
         } else {
             if (sBox) sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>';
         }
     }
-      
-
-      // [3] 차량 중복 선택 로직
-    const VEHICLE_LIST = ["봉고", "스타렉스", "스타리아", "M4"]; // 👈 사장님 차 종류 수정 가능
-
-    function renderVehicleChips(currentVal) {
-        const box = document.getElementById('car-chips-area');
-        // 현재 입력된 값 ("1호차, 2호차")을 배열로 분리
-        const selected = currentVal ? currentVal.split(',').map(s=>s.trim()) : [];
-        
-        if(box) {
-            box.innerHTML = VEHICLE_LIST.map(car => {
-                const isActive = selected.includes(car);
-                return `<div class="chip ${isActive ? 'active' : ''}" onclick="toggleCar(this, '${car}')">${car}</div>`;
-            }).join('');
-        }
-        document.getElementById('sched-car').value = currentVal;
-    }
-
-      function toggleCar(el, carName) {
-        el.classList.toggle('active');
-        
-        // 현재 선택된 모든 차량 칩을 찾아서 텍스트로 합침
-        const activeChips = document.querySelectorAll('#car-chips-area .chip.active');
-        const result = Array.from(activeChips).map(c => c.innerText).join(', ');
-        
-        // 입력창에 반영 (수기 입력도 가능하도록 덮어쓰기보다는 갱신)
-        document.getElementById('sched-car').value = result;
-    }
-
-      // [4] 작업내용 프리셋 (반복 공정)
-    // 👈 여기에 자주 쓰는 작업 내용을 추가하세요!
-    const WORK_PRESETS = ["양중", "포설", "단말", "트레이", "입선", "결선", "스틸배관", "레이스웨이", "철거", "자재정리"];
-
-    function renderWorkPresets() {
-        const box = document.getElementById('work-content-chips');
-        if(box) {
-            box.innerHTML = WORK_PRESETS.map(text => 
-                `<div class="chip" style="background:#f3f4f6; color:#555; border:1px solid #ddd;" onclick="addWorkContent('${text}')">+ ${text}</div>`
-            ).join('');
-        }
-    }
-
-    function addWorkContent(text) {
-        const input = document.getElementById('sched-content');
-        if(input.value) {
-            input.value += ", " + text; // 이미 글자가 있으면 콤마 찍고 추가
-        } else {
-            input.value = text;
-        }
-    }
-      
-
-      
-      
-    function clickSchedSite(el, siteName) {
-        document.getElementById('sched-site').value = siteName;
-        const siblings = document.getElementById('sched-site-chips-area').children;
-        for(let s of siblings) s.classList.remove('active');
+    function clkClient(el, name) { document.getElementById('sched-client').value = name; renderChips(name, ''); }
+    function clkSite(el, name) { 
+        document.getElementById('sched-site').value = name; 
+        Array.from(el.parentNode.children).forEach(c => c.classList.remove('active'));
         el.classList.add('active');
     }
-    
- 
-  // [저장 로직 - 하루/연속 자동 분기]
+
+    // 6-2. 인원 선택 (검색 + 재직자만)
+    function renderWorkerChips(namesStr) {
+        const container = document.getElementById('worker-chips-area');
+        const sInput = document.getElementById('worker-search-input');
+        if(sInput) sInput.value = "";
+        
+        selectedWorkerSet.clear();
+        if (namesStr) namesStr.split(',').map(s=>s.trim()).forEach(n => { if(n) selectedWorkerSet.add(n); });
+
+        if(container) {
+            container.innerHTML = globalWorkerData.filter(w => w.status === '재직').map(w => {
+                const isSelected = selectedWorkerSet.has(w.name);
+                return `<div class="chip worker-candidate" data-name="${w.name}" onclick="addWorkerToSelection('${w.name}')" style="background:#fff; border:1px solid #ddd; display:${isSelected?'none':'inline-flex'}">${w.name}</div>`;
+            }).join('');
+        }
+        renderSelectedBox();
+    }
+    function filterWorkerChips() {
+        const input = document.getElementById('worker-search-input').value.toLowerCase();
+        document.querySelectorAll('.worker-candidate').forEach(chip => {
+            const name = chip.getAttribute('data-name');
+            if (selectedWorkerSet.has(name)) { chip.style.display = "none"; return; }
+            chip.style.display = name.toLowerCase().includes(input) ? "inline-flex" : "none";
+        });
+    }
+    function addWorkerToSelection(name) {
+        selectedWorkerSet.add(name);
+        document.querySelector(`.worker-candidate[data-name="${name}"]`).style.display = "none";
+        renderSelectedBox();
+    }
+    function removeWorkerFromSelection(name) {
+        selectedWorkerSet.delete(name);
+        const cand = document.querySelector(`.worker-candidate[data-name="${name}"]`);
+        if(cand) cand.style.display = "inline-flex";
+        filterWorkerChips(); renderSelectedBox();
+    }
+    function renderSelectedBox() {
+        const box = document.getElementById('selected-workers-box');
+        const cnt = document.getElementById('worker-count-display');
+        const list = Array.from(selectedWorkerSet);
+        cnt.innerText = `(${list.length}명)`;
+        document.getElementById('sched-workers-text').value = list.join(', ');
+        
+        if (list.length === 0) box.innerHTML = '<span style="color:#aaa; font-size:0.8rem; padding:5px;">아래 목록에서 선택하거나 검색하세요.</span>';
+        else box.innerHTML = list.map(n => `<div class="chip" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; gap:5px;">${n} <span onclick="removeWorkerFromSelection('${n}')" style="cursor:pointer; font-weight:bold;">&times;</span></div>`).join('');
+    }
+
+    // 6-3. 차량 (중복 선택)
+    const VEHICLE_LIST = ["1호차", "2호차", "3호차", "4호차", "본인차"];
+    function renderVehicleChips(currentVal) {
+        const box = document.getElementById('car-chips-area');
+        const selected = currentVal ? currentVal.split(',').map(s=>s.trim()) : [];
+        if(box) box.innerHTML = VEHICLE_LIST.map(c => `<div class="chip ${selected.includes(c)?'active':''}" onclick="toggleCar(this, '${c}')">${c}</div>`).join('');
+        document.getElementById('sched-car').value = currentVal;
+    }
+    function toggleCar(el, name) {
+        el.classList.toggle('active');
+        const all = document.querySelectorAll('#car-chips-area .chip.active');
+        document.getElementById('sched-car').value = Array.from(all).map(c=>c.innerText).join(', ');
+    }
+
+    // 6-4. 공정 (태그 방식)
+    const WORK_PRESETS = ["양중", "포설", "단말", "트레이", "입선", "결선", "스틸배관", "레이스웨이", "철거", "자재정리", "청소"];
+    function initWorkPresets(currentVal) {
+        selectedWorkSet.clear();
+        if(currentVal) currentVal.split(',').map(s=>s.trim()).forEach(t => { if(t) selectedWorkSet.add(t); });
+        document.getElementById('new-work-input').value = "";
+        renderWorkPresets();
+    }
+    function renderWorkPresets() {
+        const pBox = document.getElementById('work-preset-list');
+        const sBox = document.getElementById('selected-work-box');
+        document.getElementById('sched-content').value = Array.from(selectedWorkSet).join(', ');
+
+        if (selectedWorkSet.size === 0) sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem; padding:5px;">공정을 선택하면 여기에 추가됩니다.</span>';
+        else sBox.innerHTML = Array.from(selectedWorkSet).map(t => `<div class="chip" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; gap:5px;">${t} <span onclick="removeWorkTag('${t}')" style="cursor:pointer; font-weight:bold;">&times;</span></div>`).join('');
+
+        if(pBox) pBox.innerHTML = WORK_PRESETS.map(t => {
+            const isSel = selectedWorkSet.has(t);
+            return `<div class="chip" onclick="addWorkTag('${t}')" style="background:#f3f4f6; color:#555; display:${isSel?'none':'inline-flex'}">+ ${t}</div>`;
+        }).join('');
+    }
+    function addWorkTag(t) { selectedWorkSet.add(t); renderWorkPresets(); }
+    function removeWorkTag(t) { selectedWorkSet.delete(t); renderWorkPresets(); }
+    function addNewWorkTag() {
+        const inp = document.getElementById('new-work-input');
+        const val = inp.value.trim();
+        if(val) { selectedWorkSet.add(val); inp.value = ""; renderWorkPresets(); }
+    }
+
+    // [7] 저장/삭제 및 기타
     async function saveSchedule(mode) {
         const payload = {
             date: document.getElementById('sched-date').value,
@@ -802,21 +686,17 @@ async function loadScheduleData() {
             content: document.getElementById('sched-content').value,
             note: document.getElementById('sched-note').value
         };
-
         if(!payload.client || !payload.site) return alert("거래처와 현장을 선택하세요.");
 
         let action = 'addSchedule';
         let dataToSend = payload;
         const endDateStr = document.getElementById('sched-end-date').value;
 
-        // 드래그(연속) 등록인 경우
         if (mode === 'add' && endDateStr) {
             action = 'addScheduleBatch';
             const list = [];
             let cur = new Date(payload.date);
             const end = new Date(endDateStr);
-            
-            // 하루씩 증가시키며 리스트 생성
             while(cur < end) {
                 list.push({...payload, date: cur.toISOString().split('T')[0]});
                 cur.setDate(cur.getDate()+1);
@@ -826,444 +706,74 @@ async function loadScheduleData() {
             action = 'updateSchedule';
             payload.rowId = document.getElementById('sched-row-id').value;
         }
-
         await sendToGas(action, dataToSend);
         closeModal();
     }
-
-    // [삭제]
     async function deleteSchedule() {
         if(!confirm("삭제하시겠습니까?")) return;
         const rowId = document.getElementById('sched-row-id').value;
         await sendToGas('deleteSchedule', { rowId });
         closeModal();
     }
-      
 
-      
-      
-    // 5. [핵심 수정] 서버 전송 공통 함수 (async 위치 확인)
-    async function sendToGas(action, data) {
-        try {
-            const res = await fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: action, data: data }),
-                redirect: 'follow'
-            });
-            const text = await res.text();
-            if (text.includes("SUCCESS")) {
-                alert("✅ 등록 완료!");
-
-              // ✅ 대신 현재 탭을 유지하면서 데이터만 새로고침합니다.
-            if (action === 'adminAddClient' || action === 'updateSiteStatus' || action === 'updateSiteAddress') {
-                loadClientManagement(); // 거래처 리스트만 갱신
-            } else if (action === 'adminAddWorker' || action === 'adminUpdateStatus' || action === 'adminUpdatePassword') {
-                loadAdminData(); // 직원 리스트만 갱신
-            }
-            
-            // 입력창 비우기 (선택 사항)
-            clearInputs(action);
-              
-            } else {
-                alert("⚠️ 결과: " + text);
-            }
-        } catch (e) {
-            alert("🚨 통신 에러: " + e.message);
-        }
-    }
-
-      function clearInputs(action) {
-    if (action === 'adminAddClient') {
-        document.getElementById('c_client').value = "";
-        document.getElementById('c_site').value = "";
-        document.getElementById('c_addr').value = "";
-        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-    }
-    // 필요한 다른 입력창들도 여기에 추가 가능
-}
-
-      async function saveClient() {
-    const btn = event.target; // 클릭한 버튼
-    const data = {
-        client: document.getElementById('c_client').value,
-        site: document.getElementById('c_site').value,
-        address: document.getElementById('c_addr').value
-    };
-    if(!data.client || !data.site) return alert("거래처와 현장명은 필수입니다.");
-
-    btn.disabled = true; // 버튼 비활성화 (중복 클릭 방지)
-    btn.innerText = "⏳ 등록 중...";
-    
-    await sendToGas('adminAddClient', data);
-    
-    btn.disabled = false;
-    btn.innerText = "현장 등록하기";
-}
-      
-
-
-
-// 자재 등록 버튼용
-function saveMaterial() {
-    const data = {
-        cat: document.getElementById('m_cat').value,
-        name: document.getElementById('m_name').value,
-        spec: document.getElementById('m_spec').value,
-        unit: document.getElementById('m_unit').value,
-        price: document.getElementById('m_price').value
-    };
-    if(!data.name) return alert("품목명은 필수입니다.");
-    sendToGas('adminAddMaterial', data);
-}
-
-
-        
-        let globalWorkerData = []; // 🟢 맨 위에 이거 한 줄 추가하세요!
-      
-   // 1. 명단 불러오기 (async 키워드가 핵심!)
-async function loadAdminData() {
-    const box = document.getElementById('worker-list-admin');
-    box.innerHTML = "⏳ 데이터를 불러오는 중...";
-    try {
-        const res = await fetch(GAS_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: 'getAllWorkerInfo' }),
-            redirect: 'follow' 
-        });
-        const text = await res.text();
-        const workers = JSON.parse(text);
-        
-        globalWorkerData = workers; // 🟢 데이터를 전역 변수에 저장 (팝업에서 쓰려고)
-        
-   box.innerHTML = workers.map(w => `
-    <div class="worker-card" style="border-top-color: ${w.status === '재직' ? '#2563eb' : '#ef4444'}">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div class="name">${w.name} <span style="font-size:0.8rem; font-weight:normal;">(${w.role})</span></div>
-            <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">${w.status}</span>
-        </div>
-        
-        <div class="info">
-            <div class="copy-hint">📱 휴대폰</div>
-            <div class="copyable" onclick="copyText('${w.phone}')">${w.phone || '번호 없음'}</div>
-            
-            <div class="copy-hint" style="margin-top:8px;">🏠 집주소</div>
-            <div class="copyable" onclick="copyText('${w.address}')">${w.address || '주소 없음'}</div>
-            
-            <div style="margin-top:10px; display:flex; justify-content:space-between;">
-                <span>💰 단가: <b>${Number(w.rate).toLocaleString()}</b></span>
-                <span style="background:#eee; padding:2px 5px; border-radius:4px;">🔑 PW: ${w.pw}</span>
-            </div>
-        </div>
-
-        <div class="card-btns">
-            <button class="btn-sm btn-outline" onclick="changePassword('${w.name}')">비번변경</button>
-            <button class="btn-sm btn-red" onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')">
-                ${w.status === '재직' ? '퇴직처리' : '복구하기'}
-            </button>
-        </div>
-    </div>
-`).join('');
-    } catch (e) {
-        console.error(e);
-        box.innerHTML = `<p style="color:red">⚠️ 데이터를 불러오지 못했습니다. (CORS 또는 문법 에러)</p>`;
-    }
-}
-          
-
-     // 2. 비밀번호 변경 함수
-        async function changePassword(name) {
-            const newPw = prompt(`${name}님의 새 비밀번호 4자리를 입력하세요.`);
-            if (!newPw || newPw.length !== 4 || isNaN(newPw)) return alert("숫자 4자리를 정확히 입력하세요.");
-
-            if (confirm(`${name}님의 비밀번호를 [${newPw}]로 변경할까요?`)) {
-                try {
-                    await fetch(GAS_URL, { 
-                        method: 'POST', 
-                        body: JSON.stringify({ action: 'adminUpdatePassword', userName: name, newPw: newPw }),
-                        redirect: 'follow'
-                    });
-                    alert("✅ 변경 완료!");
-                    loadAdminData();
-                } catch (e) { alert("비번 변경 실패"); }
-            }
-        }
-
-        
-      // 3. 신규 인원 등록 함수
-      async function addWorker() {
-    const data = {
-        name: document.getElementById('new-name').value,
-        role: document.getElementById('new-role').value,
-        rate: document.getElementById('new-rate').value,
-        phone: document.getElementById('new-phone').value, // 추가
-        address: document.getElementById('new-address').value, // 추가
-        pw: document.getElementById('new-pw').value
-    };
-
-    if(!data.name || !data.pw) return alert("이름과 비밀번호는 필수입니다.");
-    
-    try {
-        await fetch(GAS_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: 'adminAddWorker', data }),
-            redirect: 'follow' 
-        });
-        alert("✅ 등록 완료!");
-        location.reload(); // 새로고침해서 목록 갱신
-    } catch (e) { 
-        alert("등록 실패: " + e.toString()); 
-    }
-}
-        
-
-    // 4. 상태 변경 함수 (퇴사/재직)
-        async function updateStatus(name, newStatus) {
-            if(!confirm(`${name}님을 ${newStatus} 처리하시겠습니까?`)) return;
-            try {
-                await fetch(GAS_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify({ action: 'adminUpdateStatus', userName: name, status: newStatus }),
-                    redirect: 'follow'
-                });
-                loadAdminData();
-            } catch (e) { alert("상태 변경 실패"); }
-        }
-
-        window.onload = loadAdminData;
-      
-
-        function copyText(text) {
-    if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
-        alert("복사되었습니다: " + text);
-    });
-}
-
-      // 1. 거래처 데이터를 불러와서 칩 생성 및 리스트 출력
-let clientSwiper = null; // 거래처 스와이퍼 전역 변수
-
-async function loadClientManagement() {
-
-  
-    const listBox = document.getElementById('client-management-list');
-    const chipBox = document.getElementById('client-chips'); // 칩이 들어갈 영역
-    
-    try {
-        const res = await fetch(GAS_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: 'getClientListData' }) 
-        });
-        const data = await res.json(); 
-
-        // 1. 거래처 칩 생성 (중복 제거)
-        const uniqueClients = [...new Set(data.map(item => item.client))];
-        if (chipBox) {
-            chipBox.innerHTML = uniqueClients.map(client => 
-                // 칩 클릭 시 selectClientChip 함수 실행 (입력창 자동완성용)
-                `<div class="chip" onclick="selectClientChip(this, '${client}')">${client}</div>`
-            ).join('');
-        }
-
-        // 2. 데이터 그룹화
-        const grouped = data.reduce((acc, curr) => {
-            if (!acc[curr.client]) acc[curr.client] = [];
-            acc[curr.client].push(curr);
-            return acc;
-        }, {});
-
-        // 3. 스와이퍼 HTML 생성
-        let html = `
-            <div class="swiper client-management-swiper">
-                <div class="swiper-wrapper">`;
-        
-        for (const client in grouped) {
-            html += `
-                <div class="swiper-slide client-slide">
-                    <div class="client-card">
-                        <div class="client-header">🏢 ${client}</div>
-                        <div class="site-list">
-                            ${grouped[client].map(item => `
-                                <div class="site-row ${item.status === '완료' ? 'status-done' : ''}">
-                                    <div class="site-content">
-                                        <div class="site-name">${item.site}</div>
-                                        <div class="site-addr" onclick="editAddress('${item.client}', '${item.site}', '${item.address || ''}')">
-                                            📍 ${item.address || '주소 등록'}
-                                        </div>
-                                    </div>
-                                    <div class="site-action">
-                                        <button class="status-btn ${item.status === '완료' ? 'completed' : 'ing'}" 
-                                                onclick="toggleSiteStatus('${item.client}', '${item.site}', '${item.status}')">
-                                            ${item.status || '진행중'}
-                                        </button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>`;
-        }
-        
-        html += `</div>
-                <div class="swiper-pagination"></div>
-            </div>`;
-        
-        listBox.innerHTML = html;
-
-        // 4. 스와이퍼 초기화 (이동 기능 없이 레이아웃만 유지)
-        if (window.clientSwiper) window.clientSwiper.destroy();
-        window.clientSwiper = new Swiper('.client-management-swiper', {
-            slidesPerView: 'auto',
-            centeredSlides: true,
-            spaceBetween: 15,
-            nested: true,
-            pagination: { el: '.swiper-pagination', clickable: true }
-        });
-
-    } catch (e) { console.error(e); }
-}
-
-// 칩 선택 시 입력창에 이름 넣어주는 함수
-function selectClientChip(el, name) {
-    // 1. 거래처 등록 입력란에 값 넣기
-    const clientInput = document.getElementById('c_client');
-    if (clientInput) {
-        clientInput.value = name;
-        // 입력창으로 화면 스크롤 (필요할 경우만)
-        clientInput.focus();
-    }
-
-    // 2. 칩 선택 표시 (색상 변경)
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-}
-
-// 2-2. 현장 상태 변경 (진행중 <-> 완료)
-async function toggleSiteStatus(client, site, currentStatus) {
-    const newStatus = currentStatus === '완료' ? '진행중' : '완료';
-    if(!confirm(`[${site}] 현장을 ${newStatus} 상태로 변경할까요?`)) return;
-    
-    await sendToGas('updateSiteStatus', { client, site, status: newStatus });
-    loadClientManagement(); // 새로고침
-}
-
-// 2-3. 주소 수정 기능
-async function editAddress(client, site, oldAddr) {
-    const newAddr = prompt(`[${site}]의 새 주소를 입력하세요:`, oldAddr);
-    if (newAddr === null || newAddr === oldAddr) return;
-    
-    await sendToGas('updateSiteAddress', { client, site, address: newAddr });
-    loadClientManagement();
-}
-
-
-
-      // ==========================================
-    // [UI 헬퍼 함수들] 일정 등록 팝업 작동용
-    // ==========================================
-
+    // UI Helper
     const SHIFT_TYPES = ['주간', '야간', '조출'];
     let currentShiftIndex = 0;
-    
-    // 1. 주/야/조출 버튼 토글 (클릭할 때마다 글자/색상 변경)
-    function toggleShift() {
-        currentShiftIndex = (currentShiftIndex + 1) % SHIFT_TYPES.length;
-        updateShiftBtn();
-    }
-
+    function toggleShift() { currentShiftIndex = (currentShiftIndex + 1) % SHIFT_TYPES.length; updateShiftBtn(); }
     function updateShiftBtn() {
         const s = SHIFT_TYPES[currentShiftIndex];
-        document.getElementById('sched-shift').value = s; // 숨겨진 input에 값 저장
-        
+        document.getElementById('sched-shift').value = s;
         const btn = document.getElementById('shift-toggle-btn');
-        // 버튼 텍스트 변경
         btn.innerText = (s === '주간' ? '🌞 ' : s === '야간' ? '🌙 ' : '🌅 ') + s;
-        // 버튼 색상 변경 (주간:파랑, 야간:회색, 조출:오렌지)
         btn.style.backgroundColor = s === '주간' ? '#3b82f6' : (s === '야간' ? '#475569' : '#f59e0b');
     }
-    
-    // 2. 차량 칩 선택
-    function selectCar(val) { 
-        document.getElementById('sched-car').value = val; 
+
+    // 서버 통신
+    async function sendToGas(action, data) {
+        try {
+            const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action, data }), redirect: 'follow' });
+            const text = await res.text();
+            if (text.includes("SUCCESS")) {
+                alert("✅ 완료!");
+                if(action.includes('Schedule')) { await loadScheduleData(); initCalendar(); renderScheduleList(); }
+                else if(action.includes('Worker')) loadAdminData();
+                else loadClientManagement();
+                
+                if(action === 'adminAddClient') { document.getElementById('c_client').value = ""; document.getElementById('c_site').value = ""; document.getElementById('c_addr').value = ""; }
+            } else alert("⚠️ " + text);
+        } catch (e) { alert("통신 에러: " + e.message); }
     }
 
-// [수정된 칩 렌더링 함수] - '재직' 필터링 추가
-    function renderWorkerChips(namesStr) {
-        const container = document.getElementById('worker-chips-area');
-        
-        // 1. 메모리 초기화
-        selectedWorkerSet.clear(); 
-
-        // 2. 기존 선택된 인원 복구
-        if (namesStr) {
-            namesStr.split(',').map(s => s.trim()).forEach(name => {
-                if(name) selectedWorkerSet.add(name);
-            });
-        }
-        
-        // 3. 검색창 초기화
-        const searchInput = document.getElementById('worker-search-input');
-        if(searchInput) searchInput.value = "";
-
-        // 4. 전체 직원(후보군) 그리기 - 🟢 여기서 '재직'만 걸러냅니다!
-        if(container) {
-            container.innerHTML = globalWorkerData
-                .filter(w => w.status === '재직') // 👈 [핵심] 상태가 '재직'인 사람만 통과!
-                .map(w => {
-                    // 이미 선택된 사람은 목록에서 숨김
-                    const isSelected = selectedWorkerSet.has(w.name);
-                    const displayStyle = isSelected ? "display:none;" : ""; 
-                    
-                    return `<div class="chip worker-candidate" 
-                                 data-name="${w.name}" 
-                                 onclick="addWorkerToSelection('${w.name}')"
-                                 style="background:#fff; border:1px solid #ddd; padding:5px 10px; ${displayStyle}">
-                                ${w.name}
-                            </div>`;
-                }).join('');
-        }
-        
-        // 5. 선택된 영역 그리기
-        renderSelectedBox();
-        
-        // 6. 데이터 동기화
-        updateWorkerInput();
+    async function loadScheduleData() { const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getScheduleList' }) }); globalScheduleData = await res.json(); }
+    async function loadAdminData() { const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) }); globalWorkerData = await res.json(); document.getElementById('worker-list-admin').innerHTML = globalWorkerData.map(w => `<div class="worker-card" style="border-top-color:${w.status==='재직'?'#2563eb':'#ef4444'}"><div style="display:flex; justify-content:space-between;"><b>${w.name}</b> <span class="status-badge ${w.status==='재직'?'status-on':'status-off'}">${w.status}</span></div><div>${w.phone||'-'}</div></div>`).join(''); }
+    async function loadClientManagement() {
+        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getClientListData' }) });
+        globalClientData = await res.json();
+        const cBox = document.getElementById('client-chips');
+        if(cBox) cBox.innerHTML = [...new Set(globalClientData.map(i=>i.client))].map(c => `<div class="chip" onclick="selectClientChip(this, '${c}')">${c}</div>`).join('');
+        renderClientList(globalClientData);
     }
     
-    // 직원 칩 클릭 시 (선택/해제 토글)
-    function toggleWorker(el, name) {
-        el.classList.toggle('active'); // 색상 변경
-        
-        // 현재 선택된 모든 칩의 이름을 긁어모음
-        const actives = document.querySelectorAll('#worker-chips-area .chip.active');
-        // "홍길동, 김철수" 형태로 합쳐서 input에 넣음
-        document.getElementById('sched-workers-text').value = Array.from(actives).map(c=>c.innerText).join(', ');
-        
-        updateWorkerCount();
-    }
-    
-    // 인원 수 표시 (예: 3명)
-    function updateWorkerCount() {
-        const cnt = document.querySelectorAll('#worker-chips-area .chip.active').length;
-        const display = document.getElementById('worker-count-display');
-        if(display) display.innerText = `(${cnt}명)`;
+    function renderClientList(data) {
+        const box = document.getElementById('client-management-list');
+        const grouped = data.reduce((acc, curr) => { if (!acc[curr.client]) acc[curr.client] = []; acc[curr.client].push(curr); return acc; }, {});
+        box.innerHTML = '<div class="swiper client-management-swiper"><div class="swiper-wrapper">' + 
+            Object.keys(grouped).map(c => `<div class="swiper-slide client-slide"><div class="client-card"><div class="client-header">🏢 ${c}</div><div class="site-list">${grouped[c].map(s=>`<div class="site-row"><div class="site-name">${s.site}</div><div class="site-action"><button class="status-btn ${s.status==='완료'?'completed':'ing'}" onclick="toggleSiteStatus('${c}','${s.site}','${s.status}')">${s.status||'진행중'}</button></div></div>`).join('')}</div></div></div>`).join('') + 
+            '</div></div>';
+        if(window.clientSwiper) window.clientSwiper.destroy();
+        window.clientSwiper = new Swiper('.client-management-swiper', { slidesPerView:'auto', centeredSlides:true, spaceBetween:15, nested:true });
     }
 
-   
-    // 거래처 칩 클릭
-    function clkClient(el, name) { 
-        document.getElementById('sched-client').value = name; 
-        renderChips(name, ''); // 거래처를 바꾸면 현장 선택은 초기화
-    }
-    
-    // 현장 칩 클릭
-    function clkSite(el, name) { 
-        document.getElementById('sched-site').value = name; 
-        // 형제 요소들의 active 제거하고 나만 active 추가
-        Array.from(el.parentNode.children).forEach(c=>c.classList.remove('active'));
-        el.classList.add('active');
-    }
-
-        
+    // 기타 기능 함수
+    function addWorker() { const d = { name: document.getElementById('new-name').value, role: document.getElementById('new-role').value, rate: document.getElementById('new-rate').value, pw: document.getElementById('new-pw').value, phone: document.getElementById('new-phone').value, address: document.getElementById('new-address').value }; sendToGas('adminAddWorker', d); }
+    function saveClient() { const d = { client: document.getElementById('c_client').value, site: document.getElementById('c_site').value, address: document.getElementById('c_addr').value }; sendToGas('adminAddClient', d); }
+    function selectClientChip(el, name) { document.getElementById('c_client').value = name; }
+    function saveMaterial() { const d = { cat: document.getElementById('m_cat').value, name: document.getElementById('m_name').value, spec: document.getElementById('m_spec').value, unit: document.getElementById('m_unit').value, price: document.getElementById('m_price').value }; sendToGas('adminAddMaterial', d); }
+    async function toggleSiteStatus(c, s, st) { if (confirm("상태변경?")) await sendToGas('updateSiteStatus', { client: c, site: s, status: st==='완료'?'진행중':'완료' }); }
+    async function editAddress(c, s, a) { const n = prompt("주소:", a); if (n) await sendToGas('updateSiteAddress', { client: c, site: s, address: n }); }
+    async function changePassword(n) { const p = prompt("새 비번:"); if (p) await sendToGas('adminUpdatePassword', { userName: n, newPw: p }); }
+    async function updateStatus(n, s) { if (confirm("상태변경?")) await sendToGas('adminUpdateStatus', { userName: n, status: s }); }
+    function copyText(t) { navigator.clipboard.writeText(t); alert("복사됨"); }
     </script>
 </body>
 </html>
