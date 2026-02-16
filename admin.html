@@ -707,13 +707,32 @@ async function loadScheduleData() {
         el.classList.add('active');
     }
     
-    function resetForm() {
-        document.getElementById('sched-client').value = "";
-        document.getElementById('sched-site').value = "";
-        document.getElementById('sched-workers').value = "1";
-        document.getElementById('sched-car').value = "";
-        document.getElementById('sched-content').value = "";
-        document.getElementById('sched-note').value = "";
+   function resetForm() {
+        // 1. 기본 텍스트 입력창 초기화 (안전하게 있는지 확인하고 지움)
+        const ids = ['sched-client', 'sched-site', 'sched-car', 'sched-content', 'sched-note'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+        });
+
+        // 2. 인원 관련 초기화 (업그레이드된 칩 로직 반영)
+        // (1) 숨겨진 저장값 초기화
+        const hiddenInput = document.getElementById('sched-workers-text');
+        if (hiddenInput) hiddenInput.value = "";
+
+        // (2) 검색창 초기화
+        const searchInput = document.getElementById('worker-search-input');
+        if (searchInput) searchInput.value = "";
+
+        // (3) 선택된 명단(Set) 비우기 및 화면 갱신
+        if (typeof selectedWorkerSet !== 'undefined') {
+            selectedWorkerSet.clear(); // 메모리에 저장된 선택 명단 삭제
+        }
+        
+        // (4) 칩 화면 다시 그리기 (빈 상태로)
+        if (typeof renderWorkerChips === 'function') {
+            renderWorkerChips(""); 
+        }
     }
 
   // [저장 로직 - 하루/연속 자동 분기]
