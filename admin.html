@@ -757,8 +757,54 @@ function initWorkPresets(currentVal) {
     }
 
     async function loadScheduleData() { const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getScheduleList' }) }); globalScheduleData = await res.json(); }
-    async function loadAdminData() { const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) }); globalWorkerData = await res.json(); document.getElementById('worker-list-admin').innerHTML = globalWorkerData.map(w => `<div class="worker-card" style="border-top-color:${w.status==='재직'?'#2563eb':'#ef4444'}"><div style="display:flex; justify-content:space-between;"><b>${w.name}</b> <span class="status-badge ${w.status==='재직'?'status-on':'status-off'}">${w.status}</span></div><div>${w.phone||'-'}</div></div>`).join(''); }
-    async function loadClientManagement() {
+
+      // [직원 관리] 상세 정보 표시 기능 복구
+          async function loadAdminData() { 
+        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) }); 
+        globalWorkerData = await res.json(); 
+        
+        const box = document.getElementById('worker-list-admin');
+        if (box) {
+            box.innerHTML = globalWorkerData.map(w => `
+                <div class="worker-card" style="border-top: 4px solid ${w.status === '재직' ? '#2563eb' : '#ef4444'}; background:#fff; border-radius:12px; padding:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05); margin-bottom:15px;">
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div class="name" style="font-size:1.1rem; font-weight:bold;">
+                            ${w.name} <span style="font-size:0.8rem; font-weight:normal; color:#666;">(${w.role})</span>
+                        </div>
+                        <span class="status-badge" style="background:${w.status === '재직' ? '#2563eb' : '#ef4444'}; color:#fff; padding:3px 8px; border-radius:20px; font-size:0.75rem; font-weight:bold;">
+                            ${w.status}
+                        </span>
+                    </div>
+
+                    <div class="info" style="font-size:0.9rem; color:#555; line-height:1.6;">
+                        <div onclick="copyText('${w.phone}')" style="cursor:pointer; display:flex; align-items:center;">
+                            📱 ${w.phone || '<span style="color:#aaa">번호 없음</span>'}
+                        </div>
+                        <div onclick="copyText('${w.address}')" style="cursor:pointer; margin-top:4px; display:flex; align-items:center;">
+                            🏠 ${w.address || '<span style="color:#aaa">주소 없음</span>'}
+                        </div>
+                        
+                        <div style="margin-top:8px; display:flex; justify-content:space-between; border-top:1px solid #f1f5f9; padding-top:8px;">
+                            <span style="font-weight:bold; color:#333;">💰 ${Number(w.rate).toLocaleString()}원</span>
+                            <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.85rem;">🔑 ${w.pw}</span>
+                        </div>
+                    </div>
+
+                    <div class="card-btns" style="margin-top:15px; display:flex; gap:8px;">
+                        <button onclick="changePassword('${w.name}')" style="flex:1; padding:8px; font-size:0.85rem; background:#fff; border:1px solid #ddd; color:#333; margin-top:0; border-radius:6px; cursor:pointer;">
+                            비번변경
+                        </button>
+                        <button onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')" style="flex:1; padding:8px; font-size:0.85rem; background:${w.status === '재직' ? '#fee2e2' : '#e0f2fe'}; color:${w.status === '재직' ? '#ef4444' : '#0284c7'}; border:none; margin-top:0; border-radius:6px; cursor:pointer; font-weight:bold;">
+                            ${w.status === '재직' ? '퇴직처리' : '복구하기'}
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+      
+    }    async function loadClientManagement() {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getClientListData' }) });
         globalClientData = await res.json();
         const cBox = document.getElementById('client-chips');
