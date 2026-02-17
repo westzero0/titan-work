@@ -608,14 +608,11 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
     }
 
    // [상세 일정 리스트 렌더링 수정]
-    function renderScheduleList() {
-        // 🔴 [수정] HTML에 있는 정확한 ID인 'upcoming-list'를 찾아야 합니다.
+function renderScheduleList() {
         const box = document.getElementById('upcoming-list'); 
-        
-        if (!box) return; // 없으면 조용히 종료 (에러 방지)
+        if (!box) return;
 
         const today = new Date().toISOString().split('T')[0];
-        // globalScheduleData가 없으면 빈 배열로 처리
         const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
 
         const list = scheduleData
@@ -627,34 +624,50 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
             return;
         }
 
-    box.innerHTML = list.map(item => `
-        <div class="card" style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':'#2563eb'}; cursor:pointer;" 
-             onclick='openModal("edit", null, ${JSON.stringify(item).replace(/'/g, "&#39;")})'>
-            
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                <div>
-                    <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
-                        📅 ${item.date} (${item.shift})
+        box.innerHTML = list.map(item => {
+            // 🔴 [핵심] 데이터를 안전하게 Base64로 인코딩 (특수문자/줄바꿈 에러 방지)
+            const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
+
+            return `
+                <div class="card" style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':'#2563eb'}; cursor:pointer;" 
+                     onclick="openModalSafe('${safeData}')">
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                        <div>
+                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
+                                📅 ${item.date} (${item.shift})
+                            </div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
+                            <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
+                        </div>
                     </div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
-                    <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
+
+                    <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0;">
+                        📝 ${item.content || '작업 내용 없음'}
+                    </div>
+
+                    <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
+                        ${(item.workers || '').split(',').map(name => 
+                            `<span style="background:#fff; border:1px solid #e2e8f0; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`
+                        ).join('')}
+                        ${item.car ? `<span style="font-size:0.8rem; color:#1e293b; font-weight:bold; margin-left:5px; display:flex; align-items:center;">🚛 ${item.car}</span>` : ''}
+                    </div>
                 </div>
-            </div>
-
-            <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0;">
-                📝 ${item.content || '작업 내용 없음'}
-            </div>
-
-            <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
-                ${(item.workers || '').split(',').map(name => 
-                    `<span style="background:#fff; border:1px solid #e2e8f0; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`
-                ).join('')}
-                ${item.car ? `<span style="font-size:0.8rem; color:#1e293b; font-weight:bold; margin-left:5px; display:flex; align-items:center;">🚛 ${item.car}</span>` : ''}
-            </div>
-        </div>
-    `).join('');
+            `;
+        }).join('');
     }
-      
+
+
+      // 안전하게 암호화된 데이터를 복호화해서 모달을 여는 함수
+    function openModalSafe(safeData) {
+        try {
+            const decodedData = JSON.parse(decodeURIComponent(atob(safeData)));
+            openModal("edit", null, decodedData);
+        } catch (e) {
+            console.error("데이터 복호화 실패:", e);
+            alert("일정 데이터를 읽는 중 오류가 발생했습니다.");
+        }
+    }
 
     // [5] 모달 열기 (핵심 로직 통합)
     function openModal(mode, dateStr, data, endStr = null) {
