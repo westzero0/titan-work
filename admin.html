@@ -737,6 +737,18 @@ function renderScheduleList() {
         }
     }
 
+      // 🔴 작업내용 입력창(sched-content)에 글자를 쓸 때마다 칩 실시간 업데이트
+document.addEventListener('DOMContentLoaded', () => {
+    const contentInput = document.getElementById('sched-content');
+    if (contentInput) {
+        contentInput.addEventListener('input', function() {
+            // 글자가 바뀔 때마다 칩을 다시 그립니다.
+            renderWorkPresets();
+        });
+    }
+});
+      
+
     function closeModal() { document.getElementById('schedule-modal').style.display = "none"; }
     function resetForm() {
         ['sched-client', 'sched-site', 'sched-workers-text', 'sched-car', 'sched-content', 'sched-note', 'worker-search-input', 'new-work-input'].forEach(id => {
@@ -1166,30 +1178,27 @@ if (rawData.titanData) {
         input.value = selected.join(', ');
     }
 
- function renderWorkPresets() {
-        const box = document.getElementById('work-preset-list');
-        const input = document.getElementById('sched-content');
-        if(!box || !input) return;
+      
+function renderWorkPresets() {
+    const box = document.getElementById('work-preset-list');
+    const input = document.getElementById('sched-content');
+    if (!box || !input) return;
 
-        // 1. 입력창 글자를 읽어옵니다.
-        const val = input.value;
-        const selected = val ? val.split(',').map(s => s.trim()).filter(x => x) : [];
+    // 1. 현재 입력창에 써 있는 글자들을 읽어옵니다.
+    const currentText = input.value;
+    const selectedArray = currentText ? currentText.split(',').map(s => s.trim()).filter(x => x) : [];
 
-        // 2. 칩 목록이 비어있을 경우를 대비해 기본값 확인 (없으면 추가)
-        if (!window.workList || workList.length === 0) {
-            workList = ["양중", "포설", "단말", "트레이", "입선", "결선", "스틸배관", "레이스웨이", "철거", "자재정리", "청소"];
-        }
-
-        // 3. 칩 생성 (오타 완벽 수정 버전)
-        box.innerHTML = workList.map(item => {
-            const isActive = selected.includes(item);
-            const modeClass = deleteMode.work ? 'delete-mode' : (isActive ? 'active' : '');
-            const clickAction = deleteMode.work ? `removePreset('work', '${item}')` : `toggleSelection('work', '${item}')`;
-            
-            // 🔴 여기가 핵심입니다. 따옴표와 괄호 짝을 맞췄습니다.
-            return `<div class="chip ${modeClass}" onclick="${clickAction}">${item}${deleteMode.work ? ' ❌' : ''}</div>`;
-        }).join('');
-    }
+    // 2. 칩 목록을 그립니다.
+    box.innerHTML = workList.map(item => {
+        // 입력창에 이 칩의 이름이 포함되어 있으면 active 클래스 추가
+        const isActive = selectedArray.includes(item);
+        const modeClass = deleteMode.work ? 'delete-mode' : (isActive ? 'active' : '');
+        const clickAction = deleteMode.work ? `removePreset('work', '${item}')` : `toggleSelection('work', '${item}')`;
+        
+        return `<div class="chip ${modeClass}" onclick="${clickAction}">${item}${deleteMode.work ? ' ❌' : ''}</div>`;
+    }).join('');
+}
+      
       
   // [4] 항목 추가/삭제/모드변경 함수
     function addPreset(type) {
