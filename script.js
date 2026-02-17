@@ -783,6 +783,13 @@ function renderCards() {
                 <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin-bottom:8px;">
                     📝 ${s.content || s.workContent || '작업내용 없음'}
                 </div>
+
+                ${s.note ? `
+        <div style="font-size:0.85rem; color:#ef4444; font-weight:bold; margin-bottom:8px;">
+            🚩 특이사항: ${s.note}
+        </div>` : ''}
+
+        
                 <div style="margin-top:5px; display:flex; align-items:center; flex-wrap:wrap; gap:5px;">
                     ${s.workers.map(w=>`<span class="worker-chip">${w}</span>`).join('')}
                     ${s.car ? `<span style="margin-left:5px; font-size:0.9rem; color:#2563eb; font-weight:bold;">| 🚛 ${s.car}</span>` : ''}
