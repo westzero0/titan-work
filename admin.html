@@ -63,68 +63,74 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 .nav-item.active { color: var(--primary-color); }
 .nav-item i { font-size: 20px; margin-bottom: 4px; }
 
-/* [현장 현황 관리 - 카드 덱 스타일] */
-    
-    /* 1. 리스트 컨테이너 위치 잡기 */
+/* [현장 현황 관리 - 꽉 찬 화면 스타일] */
+
+    /* 1. 리스트 컨테이너 */
     #client-management-list {
         width: 100%;
-        padding-bottom: 30px; /* 하단 여백 */
+        padding-bottom: 50px;
     }
 
-    /* 2. 스와이퍼 슬라이드 (카드 한 장의 크기 설정) */
+    /* 2. 스와이퍼 슬라이드 (화면 가로 100% 꽉 채우기) */
     .client-management-swiper .swiper-slide {
-        width: 90% !important;  /* 🟢 화면의 90%만 차지 (옆 카드가 살짝 보임) */
-        margin: 0 auto;         /* 가운데 정렬 */
-        background: transparent; 
-        padding: 10px 5px;      /* 그림자 잘리지 않게 여백 확보 */
+        width: 100% !important; 
+        padding: 0 !important;   /* 좌우 여백 제거 */
+        background-color: #fff;
     }
 
-    /* 3. 거래처 카드 디자인 (독립된 카드 느낌) */
+    /* 3. 거래처 카드 디자인 (여백 없이 꽉 찬 사각형) */
     .client-card {
         background: #fff;
-        border-radius: 20px;    /* 둥글게 */
-        box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* 🟢 그림자 추가해서 붕 띄움 */
-        border: none !important; 
-        overflow: hidden;       /* 내용 넘침 방지 */
-        min-height: 300px;
+        border-radius: 0;        /* 둥근 모서리 제거 */
+        box-shadow: none;        /* 그림자 제거하여 깔끔하게 */
+        border-bottom: 1px solid #e2e8f0;
+        min-height: 400px;
     }
 
-    /* 4. 거래처 헤더 (디자인 강화) */
+    /* 4. 거래처 헤더 (진한 색상으로 무게감 있게) */
     .client-header {
-        background: #2563eb;    /* 🟢 파란색 배경으로 강조 */
+        background: #1e293b;     /* 진한 네이비 */
         padding: 15px 20px;
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         font-weight: 800;
-        color: #fff;            /* 글자색 흰색 */
+        color: #fff;
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 8px;
     }
 
     /* 5. 현장 리스트 행 */
     .site-row {
-        padding: 18px 20px;
+        padding: 16px 20px;
         border-bottom: 1px solid #f1f5f9;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
-    /* 6. 현장 이름 & 주소 */
-    .site-name { 
-        font-size: 1.1rem; 
-        font-weight: bold; 
-        color: #333; 
-        margin-bottom: 6px; 
+    /* 6. 주소 복사 버튼 스타일 (클릭하고 싶게 만드는 파란 박스) */
+    .site-addr-box {
+        font-size: 0.85rem;
+        color: #2563eb;
+        margin-top: 6px;
+        display: inline-block;
+        cursor: pointer;
+        background: #eff6ff;     /* 연한 파랑 배경 */
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: 1px solid #dbeafe;
+        font-weight: 500;
     }
-    .site-addr { 
-        font-size: 0.9rem; 
-        color: #64748b; 
-        cursor: pointer; 
-        display: flex; 
-        align-items: center; 
-        gap: 5px; 
+    .site-addr-box:active {
+        background: #dbeafe;     /* 클릭 시 더 진해짐 */
     }
+
+    /* 완료된 현장 스타일 (흐리게 처리) */
+    .site-row.finished {
+        background: #f8fafc;
+        color: #94a3b8;
+    }
+    
 
 .swiper-pagination-bullet-active { background: #2563eb !important; }
 
@@ -1047,111 +1053,7 @@ function initWorkPresets(currentVal) {
     }
 
       
-// [UI] 거래처 및 현장 리스트 그리기 (정렬 강화 버전)
-    function renderClientList() {
-        const container = document.getElementById('client-management-list');
-        if (!container) return;
 
-        // 1. 데이터 확인
-        if (!globalTitanData || typeof globalTitanData !== 'object') {
-            container.innerHTML = "<div style='text-align:center; padding:20px; color:#999;'>데이터가 없습니다.</div>";
-            return;
-        }
-
-        // 시스템 메시지 제외하고 진짜 거래처만 뽑기
-        const clientNames = Object.keys(globalTitanData).filter(key => key !== 'message' && key !== 'status' && key !== 'result');
-        
-        if (clientNames.length === 0) {
-            container.innerHTML = "<div style='text-align:center; padding:40px; color:#94a3b8;'>등록된 거래처가 없습니다.</div>";
-            return;
-        }
-
-        // 2. [거래처 정렬] 진행중인 현장이 많은 거래처를 맨 앞으로
-        clientNames.sort((a, b) => {
-            const listA = Array.isArray(globalTitanData[a]) ? globalTitanData[a] : [];
-            const listB = Array.isArray(globalTitanData[b]) ? globalTitanData[b] : [];
-            
-            const countA = listA.filter(s => s.status !== '완료').length;
-            const countB = listB.filter(s => s.status !== '완료').length;
-
-            if (countB !== countA) return countB - countA; 
-            return a.localeCompare(b);
-        });
-
-        let html = `<div class="swiper client-management-swiper"><div class="swiper-wrapper">`;
-        
-        clientNames.forEach(client => {
-            // 해당 거래처의 현장 리스트 가져오기
-            const sites = Array.isArray(globalTitanData[client]) ? globalTitanData[client] : [];
-
-            // 🟢 [핵심] 현장 내부 정렬 로직 (이 부분이 순서를 바꿉니다!)
-            // 1. 진행중인 현장은 위로 (-1)
-            // 2. 완료된 현장은 아래로 (1)
-            sites.sort((a, b) => {
-                const statusA = (a.status || '').trim();
-                const statusB = (b.status || '').trim();
-                
-                const isFinA = statusA === '완료';
-                const isFinB = statusB === '완료';
-
-                if (isFinA !== isFinB) return isFinA ? 1 : -1; // 상태가 다르면(하나는 완료, 하나는 진행) 완료를 뒤로 보냄
-                
-                return (a.name || '').localeCompare(b.name || ''); // 상태가 같으면 가나다순
-            });
-
-            // 카드 HTML 조립
-            html += `
-            <div class="swiper-slide">
-                <div class="client-card">
-                    <div class="client-header">
-                        🏢 ${client} 
-                        <span style="font-size:0.8rem; background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:10px; margin-left:auto;">총 ${sites.length}개</span>
-                    </div>
-                    <div style="background:#f8fafc; min-height:200px;">`;
-
-            if (sites.length === 0) {
-                html += `<div style="padding:30px; text-align:center; color:#94a3b8;">등록된 현장이 없습니다.</div>`;
-            } else {
-                sites.forEach(s => {
-                    const isFinished = (s.status || '').trim() === '완료';
-                    
-                    html += `
-                    <div class="site-row" style="${isFinished ? 'background:#f1f5f9; color:#94a3b8;' : 'background:white;'}">
-                        <div style="flex:1;">
-                            <div style="font-weight:bold; font-size:1rem; ${isFinished ? 'text-decoration:line-through; color:#94a3b8;' : 'color:#1e293b;'}">
-                                ${s.name}
-                            </div>
-                             <div style="font-size:0.8rem; margin-top:4px; color:#64748b;">${s.addr ? `📍 ${s.addr}` : ''}</div>
-                        </div>
-                        <div style="text-align:right; min-width:60px;">
-                            <span onclick="toggleSiteStatus('${client}', '${s.name}', '${s.status}')" 
-                                  style="padding:4px 8px; border-radius:6px; font-size:0.75rem; cursor:pointer; font-weight:bold; 
-                                  ${isFinished ? 'background:#cbd5e1; color:white;' : 'background:#dbeafe; color:#2563eb;'}">
-                                ${isFinished ? '완료됨' : '진행중'}
-                            </span>
-                            <br>
-                            <button onclick="deleteSite('${client}', '${s.name}')" 
-                                    style="background:none; border:none; color:#ef4444; font-size:0.8rem; cursor:pointer; text-decoration:underline; margin-top:5px;">
-                                삭제
-                            </button>
-                        </div>
-                    </div>`;
-                });
-            }
-            html += `</div></div></div>`;
-        });
-        
-        html += `</div><div class="swiper-pagination"></div></div>`;
-        container.innerHTML = html;
-
-        // 스와이퍼 재가동
-        if(window.clientSwiper) window.clientSwiper.destroy();
-        window.clientSwiper = new Swiper('.client-management-swiper', {
-            slidesPerView: 'auto', spaceBetween: 15, centeredSlides: true,
-            observer: true, observeParents: true,
-            pagination: { el: '.swiper-pagination', clickable: true }
-        });
-    }
 
 
       // 1. 관리 가능한 리스트 (let으로 선언하여 수정 가능하게 함)
