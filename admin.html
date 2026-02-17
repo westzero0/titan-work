@@ -920,7 +920,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
       
-  async function saveSchedule(mode) {
+ async function saveSchedule(mode) {
     // 1. 데이터 수집
     const payload = {
         date: document.getElementById('sched-date').value,
@@ -930,23 +930,24 @@ document.addEventListener('DOMContentLoaded', () => {
         workers: document.getElementById('sched-workers-text').value,
         car: document.getElementById('sched-car').value,
         content: document.getElementById('sched-content').value,
-        note: document.getElementById('sched-note').value
+        note: document.getElementById('sched-note').value,
+        rowId: document.getElementById('sched-row-id').value // 수정 시 필요
     };
 
     // 2. 필수값 검사
     if(!payload.client || !payload.site) return alert("거래처와 현장을 선택하세요.");
 
-    // 🚀 [광속 비결] 서버 응답 기다리기 전에 창부터 닫아버리기!
+    // 🚀 [핵심] 검사 통과하면 모달부터 즉시 닫기!
     closeModal();
     
+    // 3. 데이터 가공 및 액션 설정
     let action = 'addSchedule';
     let dataToSend = payload;
     const endDateStr = document.getElementById('sched-end-date').value;
 
-    // 3. 모드에 따른 데이터 가공
     if (mode === 'add' && endDateStr) {
-        // 일괄 등록 모드
         action = 'addScheduleBatch';
+        // (일괄 등록 로직 생략 - 기존과 동일)
         const list = [];
         let cur = new Date(payload.date);
         const end = new Date(endDateStr);
@@ -956,32 +957,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         dataToSend = list;
     } else if (mode === 'update') {
-        // 수정 모드
         action = 'updateSchedule';
-        payload.rowId = document.getElementById('sched-row-id').value;
+        // payload에 이미 rowId가 포함되어 있음
     }
 
-    // 🔴 [핵심 수리] try-catch와 sendToGas를 조건문 밖으로 빼야 모든 경우에 작동합니다!
+    // 4. 서버 전송 (백그라운드 처리)
     try {
-        console.log(`서버로 ${action} 요청 중...`);
         await sendToGas(action, dataToSend); 
-        // 성공 시 달력 갱신 등은 sendToGas 함수 내부 로직을 따름
     } catch (e) {
         console.error("저장 실패:", e);
-        alert("⚠️ 서버 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.");
-        // 필요하다면 여기서 모달을 다시 열어줄 수도 있습니다.
+        alert("⚠️ 저장에 실패했습니다. 다시 시도해주세요.");
     }
 }
       
 
 
       
-    async function deleteSchedule() {
-        if(!confirm("삭제하시겠습니까?")) return;
-        const rowId = document.getElementById('sched-row-id').value;
-        await sendToGas('deleteSchedule', { rowId });
-        closeModal();
+   async function deleteSchedule() {
+    // 1. 사용자 확인
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+
+    // 🚀 [핵심] 확인하자마자 모달부터 닫아버림 (체감 속도 0초)
+    closeModal();
+
+    // 2. 데이터 준비
+    const rowId = document.getElementById('sched-row-id').value;
+
+    // 3. 서버 통신 (사용자 눈엔 이미 모달이 꺼진 뒤임)
+    try {
+        await sendToGas('deleteSchedule', { rowId: rowId });
+    } catch (e) {
+        console.error("삭제 실패:", e);
+        alert("⚠️ 삭제 중 오류가 발생했습니다.");
     }
+}
 
     // UI Helper
     const SHIFT_TYPES = ['주간', '야간', '조출'];
