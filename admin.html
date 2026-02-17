@@ -625,7 +625,8 @@ function renderScheduleList() {
         }
 
         box.innerHTML = list.map(item => {
-            // 🔴 [핵심] 데이터를 안전하게 Base64로 인코딩 (특수문자/줄바꿈 에러 방지)
+            // 🔴 [핵심] 한글과 특수문자, 줄바꿈을 모두 포함해도 안전한 암호화 방식
+            // JSON을 문자열로 만든 후 -> URI 인코딩 -> Base64 변환
             const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
 
             return `
@@ -658,17 +659,19 @@ function renderScheduleList() {
     }
 
 
-      // 안전하게 암호화된 데이터를 복호화해서 모달을 여는 함수
+   // [중요] 암호화된 데이터를 다시 한글 JSON으로 복구하여 모달 열기
     function openModalSafe(safeData) {
         try {
+            // Base64 해제 -> URI 디코딩 -> JSON 파싱
             const decodedData = JSON.parse(decodeURIComponent(atob(safeData)));
             openModal("edit", null, decodedData);
         } catch (e) {
-            console.error("데이터 복호화 실패:", e);
-            alert("일정 데이터를 읽는 중 오류가 발생했습니다.");
+            console.error("데이터 복구 에러:", e);
+            alert("일정 데이터를 불러오는 중 오류가 발생했습니다. 특수문자를 확인해주세요.");
         }
     }
 
+      
     // [5] 모달 열기 (핵심 로직 통합)
     function openModal(mode, dateStr, data, endStr = null) {
         const modal = document.getElementById('schedule-modal');
