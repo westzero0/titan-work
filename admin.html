@@ -943,11 +943,12 @@ function initWorkPresets(currentVal) {
       
     }  
       
-// [1] 데이터 로딩 함수
+// [진단용] 데이터가 진짜 오는지 눈으로 확인하는 함수
     async function loadClientManagement() {
-        const listContainer = document.getElementById('client-management-list');
-        // 로딩 중 표시
-        if(listContainer) listContainer.innerHTML = '<div style="text-align:center; padding:40px; color:#64748b;">⏳ 현장 데이터를 불러오는 중입니다...</div>';
+        const container = document.getElementById('client-management-list');
+        
+        // 1. 로딩 시작 알림
+        if(container) container.innerHTML = '<div style="padding:20px; text-align:center; color:blue;">📡 서버에 노크하는 중...</div>';
 
         try {
             const res = await fetch(GAS_URL, {
@@ -957,23 +958,26 @@ function initWorkPresets(currentVal) {
             
             const rawData = await res.json();
             
-            // 📦 데이터 포장지 벗기기
-            if (rawData.titanData) {
-                globalTitanData = rawData.titanData;
-            } else if (rawData.data) {
-                globalTitanData = rawData.data;
-            } else {
-                globalTitanData = rawData;
-            }
-
-            // 화면 그리기 시작
-            renderClientList();
+            // 🔴 [핵심] 받은 데이터를 숨기지 않고 화면에 바로 출력!
+            // 이걸 보면 데이터가 어떻게 생겼는지 100% 알 수 있습니다.
+            const jsonString = JSON.stringify(rawData, null, 2);
+            
+            container.innerHTML = `
+                <div style="padding:15px; background:#1e1e1e; color:#00ff00; font-family:monospace; font-size:12px; white-space:pre-wrap; overflow:auto; height:300px; border-radius:10px;">
+                <strong>[서버 응답 원본]</strong><br>
+                ${jsonString}
+                </div>
+                <button onclick="location.reload()" style="width:100%; padding:15px; margin-top:10px;">확인 후 새로고침</button>
+            `;
+            
+            console.log("서버 응답:", rawData); // F12 콘솔에서도 확인 가능
 
         } catch (e) {
-            console.error("로딩 실패:", e);
-            if(listContainer) listContainer.innerHTML = '<div style="color:#ef4444; text-align:center; padding:20px;">데이터 로드 실패<br>새로고침 해주세요.</div>';
+            console.error("통신 실패:", e);
+            if(container) container.innerHTML = `<div style="color:red; padding:20px; text-align:center;">❌ 통신 에러 발생!<br>${e.message}</div>`;
         }
     }
+      
     
 // [2] 화면 렌더링 함수 (정렬 + 필터링 + 스와이프)
     function renderClientList() {
