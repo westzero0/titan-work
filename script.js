@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwnTs1jNcjn4bipKjAiCBASQzpMj1_unUIsVpdvLO1xe1f3VwYeowNUMJjWYAUKWkdX/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzF0XR1Qvt7a2D6NkvKJdUSeRPiqdX7JIHKbzzWan1NaNFSDBf0u0osx2epLUM3rCg/exec";
 
 
 // 💡 1. 통합 초기 로드 로직
