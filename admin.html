@@ -749,7 +749,23 @@ document.addEventListener('DOMContentLoaded', () => {
 });
       
 
-    function closeModal() { document.getElementById('schedule-modal').style.display = "none"; }
+  function closeModal() {
+    const modal = document.getElementById('schedule-modal');
+    if (!modal) return;
+
+    // 🔴 1순위: 일단 눈앞에서 즉시 제거
+    modal.style.display = 'none';
+
+    // 🔵 2순위: 0.1초 뒤에 데이터 청소 (화면 멈춤 방지)
+    setTimeout(() => {
+        resetForm();
+        // 삭제 모드 같은 것도 여기서 초기화
+        deleteMode.car = false;
+        deleteMode.work = false;
+    }, 100);
+}
+
+      
     function resetForm() {
         ['sched-client', 'sched-site', 'sched-workers-text', 'sched-car', 'sched-content', 'sched-note', 'worker-search-input', 'new-work-input'].forEach(id => {
             const el = document.getElementById(id); if(el) el.value = "";
@@ -902,41 +918,64 @@ document.addEventListener('DOMContentLoaded', () => {
         if(val) { selectedWorkSet.add(val); inp.value = ""; renderWorkPresets(); }
     }
 
-    // 7. 저장/삭제
-    async function saveSchedule(mode) {
-        const payload = {
-            date: document.getElementById('sched-date').value,
-            client: document.getElementById('sched-client').value,
-            site: document.getElementById('sched-site').value,
-            shift: document.getElementById('sched-shift').value,
-            workers: document.getElementById('sched-workers-text').value,
-            car: document.getElementById('sched-car').value,
-            content: document.getElementById('sched-content').value,
-            note: document.getElementById('sched-note').value
-        };
-        if(!payload.client || !payload.site) return alert("거래처와 현장을 선택하세요.");
 
-        let action = 'addSchedule';
-        let dataToSend = payload;
-        const endDateStr = document.getElementById('sched-end-date').value;
+      
+  async function saveSchedule(mode) {
+    // 1. 데이터 수집
+    const payload = {
+        date: document.getElementById('sched-date').value,
+        client: document.getElementById('sched-client').value,
+        site: document.getElementById('sched-site').value,
+        shift: document.getElementById('sched-shift').value,
+        workers: document.getElementById('sched-workers-text').value,
+        car: document.getElementById('sched-car').value,
+        content: document.getElementById('sched-content').value,
+        note: document.getElementById('sched-note').value
+    };
 
-        if (mode === 'add' && endDateStr) {
-            action = 'addScheduleBatch';
-            const list = [];
-            let cur = new Date(payload.date);
-            const end = new Date(endDateStr);
-            while(cur < end) {
-                list.push({...payload, date: cur.toISOString().split('T')[0]});
-                cur.setDate(cur.getDate()+1);
-            }
-            dataToSend = list;
-        } else if (mode === 'update') {
-            action = 'updateSchedule';
-            payload.rowId = document.getElementById('sched-row-id').value;
+    // 2. 필수값 검사
+    if(!payload.client || !payload.site) return alert("거래처와 현장을 선택하세요.");
+
+    // 🚀 [광속 비결] 서버 응답 기다리기 전에 창부터 닫아버리기!
+    closeModal();
+    
+    let action = 'addSchedule';
+    let dataToSend = payload;
+    const endDateStr = document.getElementById('sched-end-date').value;
+
+    // 3. 모드에 따른 데이터 가공
+    if (mode === 'add' && endDateStr) {
+        // 일괄 등록 모드
+        action = 'addScheduleBatch';
+        const list = [];
+        let cur = new Date(payload.date);
+        const end = new Date(endDateStr);
+        while(cur < end) {
+            list.push({...payload, date: cur.toISOString().split('T')[0]});
+            cur.setDate(cur.getDate() + 1);
         }
-        await sendToGas(action, dataToSend);
-        closeModal();
+        dataToSend = list;
+    } else if (mode === 'update') {
+        // 수정 모드
+        action = 'updateSchedule';
+        payload.rowId = document.getElementById('sched-row-id').value;
     }
+
+    // 🔴 [핵심 수리] try-catch와 sendToGas를 조건문 밖으로 빼야 모든 경우에 작동합니다!
+    try {
+        console.log(`서버로 ${action} 요청 중...`);
+        await sendToGas(action, dataToSend); 
+        // 성공 시 달력 갱신 등은 sendToGas 함수 내부 로직을 따름
+    } catch (e) {
+        console.error("저장 실패:", e);
+        alert("⚠️ 서버 저장에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.");
+        // 필요하다면 여기서 모달을 다시 열어줄 수도 있습니다.
+    }
+}
+      
+
+
+      
     async function deleteSchedule() {
         if(!confirm("삭제하시겠습니까?")) return;
         const rowId = document.getElementById('sched-row-id').value;
@@ -957,20 +996,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 서버 통신
-    async function sendToGas(action, data) {
-        try {
-            const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action, data }), redirect: 'follow' });
-            const text = await res.text();
-            if (text.includes("SUCCESS")) {
-                alert("✅ 완료!");
-                if(action.includes('Schedule')) { await loadScheduleData(); initCalendar(); renderScheduleList(); }
-                else if(action.includes('Worker')) loadAdminData();
-                else loadClientManagement();
+  // 서버 통신 및 화면 갱신 함수
+async function sendToGas(action, data) {
+    try {
+        const res = await fetch(GAS_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action, data }), 
+            redirect: 'follow' 
+        });
+        const text = await res.text();
+
+        if (text.includes("SUCCESS")) {
+            // 1. 성공 알림 (선택 사항: alert 없이 바로 넘어가도 됩니다)
+            console.log("✅ 서버 저장 완료");
+
+            // 🔴 [여기에 넣으세요!] 일정 관련 액션일 경우 화면 갱신
+            if(action.includes('Schedule')) { 
+                await loadScheduleData(); // 최신 시트 데이터 다시 읽어오기
                 
-                if(action === 'adminAddClient') { document.getElementById('c_client').value = ""; document.getElementById('c_site').value = ""; document.getElementById('c_addr').value = ""; }
-            } else alert("⚠️ " + text);
-        } catch (e) { alert("통신 에러: " + e.message); }
+                // 모달이 닫히는 애니메이션 시간(0.3초)을 벌어줘서 렉을 방지합니다.
+                setTimeout(() => {
+                    initCalendar();      // 달력 다시 그리기
+                    renderScheduleList(); // 하단 리스트 다시 그리기
+                }, 300);
+            } 
+            else if(action.includes('Worker')) loadAdminData();
+            else loadClientManagement();
+            
+            // 등록창 입력값 초기화 (필요 시)
+            if(action === 'adminAddClient') { 
+                document.getElementById('c_client').value = ""; 
+                document.getElementById('c_site').value = ""; 
+                document.getElementById('c_addr').value = ""; 
+            }
+        } else {
+            alert("⚠️ 서버 응답 오류: " + text);
+        }
+    } catch (e) { 
+        alert("통신 에러: " + e.message); 
     }
+}
 
     async function loadScheduleData() { const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getScheduleList' }) }); globalScheduleData = await res.json(); }
 
