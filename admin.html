@@ -474,8 +474,8 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
                 <div class="delete-toggle" onclick="toggleDeleteMode('work')">🗑️ 삭제</div>
             </div>
             <div class="input-with-btn">
-                <input type="text" id="new-work-input" placeholder="공정 추가 (예: 배관)">
-                <button class="btn-add-chip" onclick="addPreset('work')">추가</button>
+<input type="text" id="sched-content" placeholder="공정을 선택하거나 직접 입력하세요" style="margin-bottom:10px; border: 2px solid #dbeafe;">
+              <button class="btn-add-chip" onclick="addPreset('work')">추가</button>
             </div>
             <div id="work-preset-list" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
             
@@ -1148,7 +1148,7 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
             const isActive = selected.includes(item);
             const modeClass = deleteMode.work ? 'delete-mode' : (isActive ? 'active' : '');
             const clickAction = deleteMode.work ? `removePreset('work', '${item}')` : `toggleSelection('work', '${item}')`;
-            return `<div class="chip ${modeClass}" onclick="${clickAction}">${item} ${deleteMode.work ? '❌' : (isActive ? '✕' : '')}</div>`;
+            return `<div class="chip ${modeClass}" onclick="${clickAction}">${item} ${deleteMode.work ? ')}</div>`;
         }).join('');
 
         input.value = selected.join(', ');
@@ -1180,16 +1180,29 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
         if(type === 'car') renderVehicleChips(document.getElementById('sched-car').value);
         else renderWorkPresets(document.getElementById('sched-content').value);
     }
-    function toggleSelection(type, item) {
+    
+function toggleSelection(type, item) {
         const inputId = type === 'car' ? 'sched-car' : 'sched-content';
         const input = document.getElementById(inputId);
-        let selected = input.value ? input.value.split(',').map(s=>s.trim()) : [];
-        if (selected.includes(item)) selected = selected.filter(i => i !== item);
-        else selected.push(item);
-        if(type === 'car') renderVehicleChips(selected.join(', '));
-        else renderWorkPresets(selected.join(', '));
+        
+        // 1. 현재 입력창의 값을 가져와서 배열로 만듦 (빈 값 제외)
+        let selected = input.value ? input.value.split(',').map(s => s.trim()).filter(x => x) : [];
+        
+        // 2. 이미 있으면 빼고, 없으면 넣기
+        if (selected.includes(item)) {
+            selected = selected.filter(i => i !== item);
+        } else {
+            selected.push(item);
+        }
+        
+        // 3. 다시 콤마로 연결해서 입력창에 넣어줌
+        input.value = selected.join(', ');
+        
+        // 4. 화면 다시 그리기 (여기서 X자 없는 칩이 그려짐)
+        if(type === 'car') renderVehicleChips(input.value);
+        else renderWorkPresets(); 
     }
-
+    
 
       // 🏢 [추가] 등록 섹션 전용: 기존 거래처 칩 생성
     function renderRegistrationClientChips() {
