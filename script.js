@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzF0XR1Qvt7a2D6NkvKJdUSeRPiqdX7JIHKbzzWan1NaNFSDBf0u0osx2epLUM3rCg/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwtTctsl5WSzPrKZSX4ySx9Rlk86ViznaZspzL2BA6YFACCM8lokStbxs1YNplDaUAi/exec";
 
 
 // 💡 1. 통합 초기 로드 로직
@@ -677,28 +677,38 @@ function copyAddr(text) {
     alert("복사되었습니다: " + text);
 }
 
-// 6. [일정 관리 로직]
 async function loadSchedules() {
     const container = document.getElementById('schedule-container');
-    container.innerHTML = '<p style="text-align:center;">🔌 서버 연결 중...</p>';
+    container.innerHTML = '<p style="text-align:center; padding:20px;">🔌 서버 연결 중...</p>';
 
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'getScheduleList' })
+            body: JSON.stringify({ action: 'getScheduleList' }) // 🔴 기존 Code.gs와 일치
         });
-        const result = await res.json();
-        allSchedules = result.schedules;
+
+        // 서버에서 온 데이터(result)를 그대로 받음
+        allSchedules = await res.json(); 
         
+        // 직원 필터(Select 박스) 생성
         const select = document.getElementById('worker-select');
-        select.innerHTML = '<option value="전체">👤 전체 보기</option>';
-        let workerSet = new Set();
-        allSchedules.forEach(s => s.workers.forEach(w => workerSet.add(w)));
-        Array.from(workerSet).sort().forEach(w => select.add(new Option(w, w)));
-        
+        if (select) {
+            select.innerHTML = '<option value="전체">👤 전체 보기</option>';
+            let workerSet = new Set();
+            allSchedules.forEach(s => {
+                if (s.workers) {
+                    // 서버에서 "홍길동, 김철수" 문자열로 오므로 콤마로 나눠서 처리
+                    s.workers.split(',').forEach(w => workerSet.add(w.trim()));
+                }
+            });
+            Array.from(workerSet).sort().forEach(w => select.add(new Option(w, w)));
+        }
+
         renderView();
+
     } catch (e) {
-        container.innerHTML = '<p style="text-align:center; color:red;">⚠️ 일정 로드 실패</p>';
+        console.error("일정 로드 에러:", e);
+        container.innerHTML = '<p style="text-align:center; color:red; padding:20px;">⚠️ 일정 로드 실패</p>';
     }
 }
 
@@ -763,45 +773,46 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    const filtered = allSchedules.filter(s => 
-        (worker === "전체" || s.workers.includes(worker)) && (showPast ? s.date < today : s.date >= today)
-    );
+    const filtered = allSchedules.filter(s => {
+        // workers 문자열 안에 선택한 직원이 있는지 확인
+        const wList = (s.workers || "").split(',').map(name => name.trim());
+        return (worker === "전체" || wList.includes(worker)) && (showPast ? s.date < today : s.date >= today);
+    });
 
     filtered.sort((a, b) => showPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
 
     let html = `<button class="past-btn" onclick="togglePast()">${showPast ? '⬆️ 예정 일정' : '⬇️ 지난 일정'}</button>`;
     
-    if (filtered.length === 0) html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
-    else {
-        html += filtered.map(s => {
-            // 🔴 [핵심] 엔터나 특수문자가 있어도 안 깨지게 암호화
-            const safeData = btoa(encodeURIComponent(JSON.stringify(s)));
-
-            return `
-            <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" style="border-left: 5px solid ${s.shift==='야'?'#1e293b':'#2563eb'}; padding:15px; position:relative;">
-                <div onclick="copyScheduleToLogSafe('${safeData}')" style="position:absolute; top:10px; right:10px; font-size:1.5rem; cursor:pointer;">📝</div>
+    if (filtered.length === 0) {
+        html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
+    } else {
+        html += filtered.map(s => `
+            <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" 
+                 style="border-left: 5px solid ${s.shift==='야간'?'#1e293b':'#2563eb'}; padding:15px; position:relative; margin-bottom:12px;">
+                
+                <div onclick='copyScheduleToLog(${JSON.stringify(s)})' style="position:absolute; top:10px; right:10px; font-size:1.5rem; cursor:pointer;">📝</div>
                 
                 <div><b>${s.date}</b> (${s.shift})</div>
                 <div style="color:#666; font-size:0.9rem;">${s.client}</div>
                 <div style="font-size:1.2rem; font-weight:bold;">${s.site}</div>
                 
                 <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:8px 0;">
-                    📝 ${s.content || s.workContent || '작업내용 없음'}
+                    📝 ${s.content || '작업내용 없음'}
                 </div>
 
                 ${s.note ? `
-                <div style="font-size:0.85rem; color:#ef4444; font-weight:bold; margin-bottom:8px; background:#fef2f2; padding:8px; border-radius:5px;">
+                <div style="font-size:0.85rem; color:#ef4444; font-weight:bold; margin-bottom:10px; background:#fef2f2; padding:8px; border-radius:5px; border:1px solid #fee2e2;">
                     🚩 특이사항: ${s.note}
                 </div>` : ''}
 
-                <div style="margin-top:5px; display:flex; align-items:center; flex-wrap:wrap; gap:5px;">
-                    ${s.workers.map(w=>`<span class="worker-chip">${w}</span>`).join('')}
-                    ${s.car ? `<span style="margin-left:5px; font-size:0.9rem; color:#2563eb; font-weight:bold;">| 🚛 ${s.car}</span>` : ''}
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:5px;">
+                    ${(s.workers || "").split(',').map(w => `<span class="worker-chip" style="background:#f1f5f9; padding:2px 8px; border-radius:10px; font-size:0.8rem;">${w.trim()}</span>`).join('')}
+                    ${s.car ? `<span style="margin-left:5px; font-size:0.9rem; color:#1e293b; font-weight:bold;">| 🚛 ${s.car}</span>` : ''}
                 </div>
                 
-                ${s.address ? `<div onclick="copyAddr('${s.address}')" style="margin-top:5px; color:blue; cursor:pointer;">📍 ${s.address}</div>` : ''}
+                ${s.address ? `<div onclick="copyAddr('${s.address}')" style="margin-top:10px; color:#64748b; font-size:0.85rem; cursor:pointer;">📍 ${s.address}</div>` : ''}
             </div>
-        `; }).join('');
+        `).join('');
     }
     container.innerHTML = html;
 }
