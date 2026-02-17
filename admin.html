@@ -921,12 +921,10 @@ function initWorkPresets(currentVal) {
       
     }  
       
-// [진단용] 데이터가 진짜 오는지 눈으로 확인하는 함수
+// [1] 데이터 로딩 함수 (박스 뜯어서 알맹이만 꺼내기)
     async function loadClientManagement() {
         const container = document.getElementById('client-management-list');
-        
-        // 1. 로딩 시작 알림
-        if(container) container.innerHTML = '<div style="padding:20px; text-align:center; color:blue;">📡 서버에 노크하는 중...</div>';
+        if(container) container.innerHTML = '<div style="text-align:center; padding:40px; color:#64748b;">⏳ 현장 카드를 생성 중입니다...</div>';
 
         try {
             const res = await fetch(GAS_URL, {
@@ -936,25 +934,118 @@ function initWorkPresets(currentVal) {
             
             const rawData = await res.json();
             
-            // 🔴 [핵심] 받은 데이터를 숨기지 않고 화면에 바로 출력!
-            // 이걸 보면 데이터가 어떻게 생겼는지 100% 알 수 있습니다.
-            const jsonString = JSON.stringify(rawData, null, 2);
-            
-            container.innerHTML = `
-                <div style="padding:15px; background:#1e1e1e; color:#00ff00; font-family:monospace; font-size:12px; white-space:pre-wrap; overflow:auto; height:300px; border-radius:10px;">
-                <strong>[서버 응답 원본]</strong><br>
-                ${jsonString}
-                </div>
-                <button onclick="location.reload()" style="width:100%; padding:15px; margin-top:10px;">확인 후 새로고침</button>
-            `;
-            
-            console.log("서버 응답:", rawData); // F12 콘솔에서도 확인 가능
+            // 🟢 [이미지 확인 결과 반영] titanData 안의 내용만 쏙 뽑아옵니다.
+            if (rawData.titanData) {
+                globalTitanData = rawData.titanData;
+            } else {
+                globalTitanData = rawData;
+            }
+
+            // 진짜 UI(카드) 그리기 함수 호출
+            renderClientList();
 
         } catch (e) {
-            console.error("통신 실패:", e);
-            if(container) container.innerHTML = `<div style="color:red; padding:20px; text-align:center;">❌ 통신 에러 발생!<br>${e.message}</div>`;
+            console.error("로딩 실패:", e);
+            if(container) container.innerHTML = '<div style="color:#ef4444; text-align:center; padding:20px;">데이터 연결 실패</div>';
         }
     }
+
+    // [2] 화면 렌더링 함수 (진행중 우선 정렬 UI)
+    function renderClientList() {
+        const container = document.getElementById('client-management-list');
+        if (!container) return;
+
+        container.innerHTML = "";
+
+        if (!globalTitanData || typeof globalTitanData !== 'object') {
+            container.innerHTML = "<div style='text-align:center; padding:20px; color:#999;'>데이터가 비어있습니다.</div>";
+            return;
+        }
+
+        // 시스템 메시지 제외 필터
+        const clientNames = Object.keys(globalTitanData).filter(key => 
+            key !== 'message' && key !== 'status' && key !== 'result'
+        );
+
+        if (clientNames.length === 0) {
+            container.innerHTML = "<div style='text-align:center; padding:40px; color:#94a3b8;'>등록된 거래처가 없습니다.</div>";
+            return;
+        }
+
+        // 거래처 정렬 (진행중 현장 많은 순)
+        clientNames.sort((a, b) => {
+            const listA = Array.isArray(globalTitanData[a]) ? globalTitanData[a] : [];
+            const listB = Array.isArray(globalTitanData[b]) ? globalTitanData[b] : [];
+            const countA = listA.filter(s => s.status !== '완료').length;
+            const countB = listB.filter(s => s.status !== '완료').length;
+            return countB - countA;
+        });
+
+        let html = `<div class="swiper client-management-swiper"><div class="swiper-wrapper">`;
+
+        clientNames.forEach(client => {
+            const sites = Array.isArray(globalTitanData[client]) ? globalTitanData[client] : [];
+
+            // 🟢 [핵심 정렬] 현장 내부 정렬 (진행중 위로, 완료 아래로)
+            sites.sort((x, y) => {
+                const isFinX = x.status === '완료';
+                const isFinY = y.status === '완료';
+                if (isFinX === isFinY) return 0;
+                return isFinX ? 1 : -1;
+            });
+
+            html += `
+            <div class="swiper-slide">
+                <div class="client-card">
+                    <div class="client-header">
+                        🏢 ${client} 
+                        <span style="font-size:0.8rem; background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:10px; margin-left:auto;">
+                            총 ${sites.length}개
+                        </span>
+                    </div>
+                    <div style="background:#f8fafc; min-height:200px;">
+            `;
+
+            sites.forEach(s => {
+                const isFinished = s.status === '완료';
+                html += `
+                <div class="site-row" style="${isFinished ? 'background:#f1f5f9; color:#94a3b8;' : 'background:white;'}">
+                    <div style="flex:1;">
+                        <div style="font-weight:bold; font-size:1rem; ${isFinished ? 'text-decoration:line-through;' : 'color:#1e293b;'}">
+                            ${s.name}
+                        </div>
+                         <div style="font-size:0.8rem; margin-top:4px; color:#64748b;">
+                            ${s.addr ? `📍 ${s.addr}` : ''}
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span onclick="toggleSiteStatus('${client}', '${s.name}', '${s.status}')" 
+                              style="display:inline-block; padding:4px 8px; border-radius:6px; font-size:0.75rem; cursor:pointer; font-weight:bold;
+                              ${isFinished ? 'background:#cbd5e1; color:white;' : 'background:#dbeafe; color:#2563eb;'}">
+                            ${isFinished ? '완료됨' : '진행중'}
+                        </span>
+                    </div>
+                </div>`;
+            });
+
+            html += `</div></div></div>`;
+        });
+
+        html += `</div><div class="swiper-pagination"></div></div>`;
+        container.innerHTML = html;
+
+        // 스와이퍼 초기화
+        if(window.clientSwiper) window.clientSwiper.destroy();
+        window.clientSwiper = new Swiper('.client-management-swiper', {
+            slidesPerView: 'auto',
+            spaceBetween: 15,
+            centeredSlides: true,
+            observer: true,
+            observeParents: true,
+            pagination: { el: '.swiper-pagination', clickable: true }
+        });
+    }
+
       
 // [UI] 거래처 및 현장 리스트 그리기 (정렬 강화 버전)
     function renderClientList() {
