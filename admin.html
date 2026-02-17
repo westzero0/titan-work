@@ -263,34 +263,54 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     text-align: center;
 }
 
-    /* --- 달력 테두리 제거 및 공간 확장 --- */
+/* [모바일 달력 최적화 스타일] */
+    
+    /* 1. 달력 툴바(년월 제목, 버튼) 크기 조절 */
+    .fc .fc-toolbar-title {
+        font-size: 1.1rem !important; /* 제목 크기 적당히 */
+    }
+    .fc .fc-button {
+        padding: 4px 8px !important;  /* 버튼 여백 축소 */
+        font-size: 0.85rem !important; /* 버튼 글자 축소 */
+    }
 
-/* 1. 달력 전체를 감싸는 '겉 테두리' 제거 (핵심!) */
-.fc-theme-standard .fc-scrollgrid {
-    border: none !important;
-}
+    /* 2. 날짜 숫자 크기 축소 */
+    .fc .fc-daygrid-day-top {
+        flex-direction: row; /* 숫자 정렬 */
+    }
+    .fc-daygrid-day-number {
+        font-size: 0.8rem !important; /* 날짜 숫자 줄임 */
+        padding: 4px !important;
+        color: #64748b;
+    }
 
-/* 2. 요일(일,월,화...) 박스 테두리 제거 */
-.fc-theme-standard th {
-    border: none !important;
-    border-bottom: 1px solid #f0f0f0 !important; /* 요일 아래에만 아주 연한 줄 남김 */
-}
+    /* 3. 일정 막대(Event Bar) 최적화 - 요청하신 부분! */
+    .fc-event {
+        margin-top: 1px !important; /* 막대 간 간격 좁힘 */
+        border-radius: 3px !important;
+    }
+    
+    .fc-event-main {
+        padding: 1px 2px !important; /* 막대 내부 여백 최소화 */
+    }
 
-/* 3. 날짜 칸(셀) 테두리 아주 연하게 변경 (완전 없애면 구분이 안 갈 수 있음) */
-.fc-theme-standard td {
-    border: 1px solid #f8fafc !important; /* 배경색과 거의 비슷한 연회색 */
-    border-top: none !important; /* 윗줄 제거해서 시원하게 */
-}
+    .fc-event-title {
+        font-size: 0.7rem !important; /* 🟢 글자 크기 확 줄임 (11~12px 수준) */
+        font-weight: normal !important; /* 두꺼운 글씨 해제해서 공간 확보 */
+        line-height: 1.1 !important;
+        white-space: nowrap !important; /* 줄바꿈 방지 */
+        overflow: hidden !important;
+        text-overflow: ellipsis !important; /* 길면 ... 처리 */
+    }
 
-/* 4. 달력 맨 아래쪽 불필요한 여백 제거 */
-.fc-view-harness {
-    background-color: #fff; /* 배경 흰색 */
-}
-
-/* 5. (선택사항) 오늘 날짜 배경색을 연한 파랑으로 칠해서 테두리 없이도 구분되게 함 */
-.fc-day-today {
-    background-color: #eff6ff !important; 
-}
+    /* 4. 일요일/토요일 색상 */
+    .fc-day-sun .fc-daygrid-day-number { color: #ef4444 !important; }
+    .fc-day-sat .fc-daygrid-day-number { color: #2563eb !important; }
+    
+    /* 5. 오늘 날짜 강조 (배경색 연하게) */
+    .fc-day-today {
+        background-color: #f8fafc !important;
+    }
     
     
   </style>
@@ -374,18 +394,24 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
       </div>
     </div>
 
+
+    
    <div class="swiper-slide">
-        <div id="schedule-admin" class="card swiper-no-swiping">
-            <h3>📅 작업 일정 <span style="font-size:0.8rem; color:#666; font-weight:normal;">(날짜 클릭: 등록 / 바 클릭: 수정)</span></h3>
-            
-            <div id="calendar-container"></div>
-            
-            <h4 style="margin-top:25px; border-bottom:2px solid #f1f5f9; padding-bottom:10px; color:#1e293b;">📋 다가오는 상세 일정</h4>
-            <div id="schedule-list-container" style="padding-top:10px;">
-                <div style="text-align:center; padding:30px; color:#999;">일정을 불러오는 중...</div>
-            </div>
+        <div style="padding: 20px 10px 10px 10px;">
+            <h3 style="margin:0; color:#1e293b;">📅 작업 일정</h3>
+            <p style="margin:5px 0 0 0; font-size:0.8rem; color:#64748b;">
+                날짜 클릭: 등록 / 바 클릭: 수정
+            </p>
         </div>
 
+        <div id="calendar-container" style="background:white; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; margin-bottom: 30px;"></div>
+
+        <div class="card" style="margin: 0 10px 100px 10px;">
+            <h4 style="margin:0 0 15px 0; color:#334155;">📋 다가오는 상세 일정</h4>
+            <div id="upcoming-list"></div>
+        </div>
+
+     
 <div id="schedule-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
@@ -481,6 +507,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     let globalWorkerData = [];
     let selectedWorkerSet = new Set(); // 인원 선택용
     let selectedWorkSet = new Set();   // 공정 선택용
+let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니다!
 
     // [1] 초기화
     window.addEventListener('DOMContentLoaded', async () => {
@@ -893,13 +920,33 @@ function initWorkPresets(currentVal) {
         }
 
       
-    }    async function loadClientManagement() {
-        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getClientListData' }) });
-        globalClientData = await res.json();
-        const cBox = document.getElementById('client-chips');
-        if(cBox) cBox.innerHTML = [...new Set(globalClientData.map(i=>i.client))].map(c => `<div class="chip" onclick="selectClientChip(this, '${c}')">${c}</div>`).join('');
-        renderClientList(globalClientData);
+    }  
+      
+    // [데이터 불러오기 함수 수정]
+    async function loadClientManagement() {
+        const listContainer = document.getElementById('client-management-list');
+        if(listContainer) listContainer.innerHTML = '<div style="text-align:center; padding:20px;">⏳ 현장 데이터 로딩 중...</div>';
+
+        try {
+            // 1. 서버에 데이터 요청
+            const res = await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'getTitanData' }) // 또는 'getAllData' (기존에 쓰시던 액션명 확인 필요)
+            });
+            
+            // 2. 받아온 데이터를 전역 변수에 저장 (핵심!)
+            const data = await res.json();
+            globalTitanData = data;  // 👈 여기서 데이터를 채워줍니다!
+
+            // 3. 리스트 그리기
+            renderClientList();
+
+        } catch (e) {
+            console.error("로딩 실패:", e);
+            if(listContainer) listContainer.innerHTML = '<div style="color:red; text-align:center; padding:20px;">데이터 로드 실패</div>';
+        }
     }
+      
     
 // [현장 현황 관리 - 정렬 기능 강화 버전]
     function renderClientList() {
