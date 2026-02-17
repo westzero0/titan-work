@@ -754,6 +754,9 @@ function renderScheduleList() {
     // 2. '진행중'인 현장이 하나라도 있는 거래처만 추출 (공백 제거하여 비교)
     const activeClients = Object.keys(globalTitanData).filter(client => {
         if(['message', 'status', 'result', 'undefined'].includes(client)) return false;
+      // 🔴 수정: 현재 선택된 거래처(sClient)이거나, '진행중'인 현장이 있는 경우만 표시
+    if (client === sClient) return true;
+      
         return globalTitanData[client].some(site => {
             const st = (site.status || "").toString().trim();
             return st === '진행중' || st === '진행'; // '진행'도 포함해서 안전하게
@@ -1012,13 +1015,16 @@ function renderScheduleList() {
             });
             
             const rawData = await res.json();
+          console.log("서버 원본 데이터:", rawData); // 👈 확인용 로그 추가
             
-            // 🟢 [이미지 확인 결과 반영] titanData 안의 내용만 쏙 뽑아옵니다.
-            if (rawData.titanData) {
-                globalTitanData = rawData.titanData;
-            } else {
-                globalTitanData = rawData;
-            }
+         // 🟢 [수정] titanData 알맹이만 확실히 추출
+if (rawData.titanData) {
+    globalTitanData = rawData.titanData;
+} else if (rawData.result) {
+    globalTitanData = rawData.result;
+} else {
+    globalTitanData = rawData;
+}
 
             // 진짜 UI(카드) 그리기 함수 호출
             renderClientList();
