@@ -684,30 +684,29 @@ async function loadSchedules() {
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'getScheduleList' }) // 🔴 기존 Code.gs와 일치
+            body: JSON.stringify({ action: 'getScheduleList' }) // 또는 'getScheduleData'
         });
 
-        // 서버에서 온 데이터(result)를 그대로 받음
-        allSchedules = await res.json(); 
+        const result = await res.json();
         
-        // 직원 필터(Select 박스) 생성
-        const select = document.getElementById('worker-select');
-        if (select) {
-            select.innerHTML = '<option value="전체">👤 전체 보기</option>';
-            let workerSet = new Set();
-            allSchedules.forEach(s => {
-                if (s.workers) {
-                    // 서버에서 "홍길동, 김철수" 문자열로 오므로 콤마로 나눠서 처리
-                    s.workers.split(',').forEach(w => workerSet.add(w.trim()));
-                }
-            });
-            Array.from(workerSet).sort().forEach(w => select.add(new Option(w, w)));
-        }
+        // 🔴 [수정] 서버가 주는 모양이 배열이면 그대로 사용합니다.
+        allSchedules = Array.isArray(result) ? result : (result.schedules || []);
 
+        const select = document.getElementById('worker-select');
+        select.innerHTML = '<option value="전체">👤 전체 보기</option>';
+        let workerSet = new Set();
+        
+        allSchedules.forEach(s => {
+            // workers가 배열일 수도, 문자열일 수도 있어서 안전하게 처리
+            const wList = Array.isArray(s.workers) ? s.workers : (s.workers || "").split(',');
+            wList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
+        });
+        
+        Array.from(workerSet).sort().forEach(w => select.add(new Option(w, w)));
         renderView();
 
     } catch (e) {
-        console.error("일정 로드 에러:", e);
+        console.error("로드 에러:", e);
         container.innerHTML = '<p style="text-align:center; color:red; padding:20px;">⚠️ 일정 로드 실패</p>';
     }
 }
