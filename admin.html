@@ -676,7 +676,6 @@ function renderScheduleList() {
     }
 
       
-    // [5] 모달 열기 (핵심 로직 통합)
     function openModal(mode, dateStr, data, endStr = null) {
         const modal = document.getElementById('schedule-modal');
         if (!modal) return;
@@ -684,6 +683,7 @@ function renderScheduleList() {
 
         try {
             if (mode === 'add') {
+                // [기존 등록 기능 유지]
                 document.getElementById('sched-date').value = dateStr;
                 document.getElementById('sched-end-date').value = endStr || "";
                 let title = dateStr + " 일정 등록";
@@ -694,24 +694,28 @@ function renderScheduleList() {
                 document.getElementById('modal-date-title').innerText = title;
                 resetForm();
                 
-                // 모든 칩 초기화
                 renderChips('', '');
                 renderWorkerChips("");
                 renderVehicleChips("");
-                initWorkPresets("");
-                currentShiftIndex = 0; updateShiftBtn();
+                initWorkPresets(""); // 빈값 초기화
+                currentShiftIndex = 0; 
+                updateShiftBtn();
 
                 document.getElementById('btn-save').style.display = 'block';
                 document.getElementById('btn-update').style.display = 'none';
                 document.getElementById('btn-delete').style.display = 'none';
             } else {
+                // [수정 모드: 동기화 보강]
                 document.getElementById('modal-date-title').innerText = "일정 수정";
                 document.getElementById('sched-row-id').value = data.rowId;
                 document.getElementById('sched-date').value = data.date;
                 document.getElementById('sched-end-date').value = "";
                 document.getElementById('sched-note').value = data.note || "";
               
-
+             // 🔴 [수정] 변수를 먼저 정의해줘야 아래에서 쓸 수 있습니다.
+                const workValue = data.content || ""; 
+                document.getElementById('sched-content').value = workValue;
+                
                 const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
                 currentShiftIndex = shiftIdx >= 0 ? shiftIdx : 0;
                 updateShiftBtn();
@@ -719,7 +723,9 @@ function renderScheduleList() {
                 renderChips(data.client, data.site);
                 renderWorkerChips(data.workers || "");
                 renderVehicleChips(data.car || "");
-                initWorkPresets(data.content || "");
+                
+                // 🔵 텍스트가 먼저 들어간 후 칩 색깔을 입힙니다.
+                initWorkPresets(workValue);
 
                 document.getElementById('btn-save').style.display = 'none';
                 document.getElementById('btn-update').style.display = 'block';
