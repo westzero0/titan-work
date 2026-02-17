@@ -773,23 +773,27 @@ function renderCards() {
     
     if (filtered.length === 0) html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     else {
-        html += filtered.map(s => `
+        html += filtered.map(s => {
+            // 🔴 [핵심] 엔터나 특수문자가 있어도 안 깨지게 암호화
+            const safeData = btoa(encodeURIComponent(JSON.stringify(s)));
+
+            return `
             <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" style="border-left: 5px solid ${s.shift==='야'?'#1e293b':'#2563eb'}; padding:15px; position:relative;">
-                <div onclick='copyScheduleToLog(${JSON.stringify(s)})' style="position:absolute; top:10px; right:10px; font-size:1.5rem;">📝</div>
-             <div><b>${s.date}</b> (${s.shift})</div>
-                <div style="color:#666; font-size:0.9rem;">${s.client}</div>
-                <div style="font-size:1.2rem; font-weight:bold; margin-bottom:5px;">${s.site}</div>
+                <div onclick="copyScheduleToLogSafe('${safeData}')" style="position:absolute; top:10px; right:10px; font-size:1.5rem; cursor:pointer;">📝</div>
                 
-                <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin-bottom:8px;">
+                <div><b>${s.date}</b> (${s.shift})</div>
+                <div style="color:#666; font-size:0.9rem;">${s.client}</div>
+                <div style="font-size:1.2rem; font-weight:bold;">${s.site}</div>
+                
+                <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:8px 0;">
                     📝 ${s.content || s.workContent || '작업내용 없음'}
                 </div>
 
                 ${s.note ? `
-        <div style="font-size:0.85rem; color:#ef4444; font-weight:bold; margin-bottom:8px;">
-            🚩 특이사항: ${s.note}
-        </div>` : ''}
+                <div style="font-size:0.85rem; color:#ef4444; font-weight:bold; margin-bottom:8px; background:#fef2f2; padding:8px; border-radius:5px;">
+                    🚩 특이사항: ${s.note}
+                </div>` : ''}
 
-        
                 <div style="margin-top:5px; display:flex; align-items:center; flex-wrap:wrap; gap:5px;">
                     ${s.workers.map(w=>`<span class="worker-chip">${w}</span>`).join('')}
                     ${s.car ? `<span style="margin-left:5px; font-size:0.9rem; color:#2563eb; font-weight:bold;">| 🚛 ${s.car}</span>` : ''}
@@ -797,9 +801,15 @@ function renderCards() {
                 
                 ${s.address ? `<div onclick="copyAddr('${s.address}')" style="margin-top:5px; color:blue; cursor:pointer;">📍 ${s.address}</div>` : ''}
             </div>
-        `).join('');
+        `; }).join('');
     }
     container.innerHTML = html;
+}
+
+// 🔴 [추가] 암호화된 데이터를 풀어서 원래 함수에 전달해주는 보조 함수
+function copyScheduleToLogSafe(safeData) {
+    const s = JSON.parse(decodeURIComponent(atob(safeData)));
+    copyScheduleToLog(s);
 }
 
 
