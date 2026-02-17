@@ -439,7 +439,6 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         <input type="hidden" id="sched-shift">
         <input type="hidden" id="sched-workers-text">
         <input type="hidden" id="sched-car">
-        <input type="hidden" id="sched-content">
 
         <div class="input-group">
             <label>🏢 거래처 (진행중인 현장)</label>
@@ -1164,7 +1163,7 @@ function renderScheduleList() {
             const isActive = selected.includes(item);
             const modeClass = deleteMode.work ? 'delete-mode' : (isActive ? 'active' : '');
             const clickAction = deleteMode.work ? `removePreset('work', '${item}')` : `toggleSelection('work', '${item}')`;
-            return `<div class="chip ${modeClass}" onclick="${clickAction}">${item} ${deleteMode.work ? ')}</div>`;
+            return `<div class="chip ${modeClass}" onclick="${clickAction}">${item} ${deleteMode.work ? ' ❌' : ''}</div>`;
         }).join('');
 
         input.value = selected.join(', ');
