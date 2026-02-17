@@ -354,6 +354,12 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     
     <button class="btn-blue" onclick="saveClient()" style="width:100%">현장 등록하기</button>
 </div>
+        <h3 style="margin: 25px 10px 10px 10px; color:#1e293b; font-size:1.1rem;">
+            📋 현장 현황 <span style="font-size:0.8rem; color:#94a3b8; font-weight:normal;">(좌우로 넘겨보세요)</span>
+        </h3>
+        
+        <div id="client-management-list"></div>
+        
     </div>
 
     <div class="swiper-slide">
@@ -895,66 +901,100 @@ function initWorkPresets(currentVal) {
         renderClientList(globalClientData);
     }
     
-// [현장 현황 - 스와이퍼 + 주소 표시 복구]
-    function renderClientList(data) {
-        const box = document.getElementById('client-management-list');
+// [현장 현황 관리 - 정렬 기능 강화 버전]
+    function renderClientList() {
+        const container = document.getElementById('client-management-list');
+        if (!container) return;
         
-        // 1. 데이터 그룹화 (거래처별)
-        const grouped = data.reduce((acc, curr) => { 
-            if (!acc[curr.client]) acc[curr.client] = []; 
-            acc[curr.client].push(curr); 
-            return acc; 
-        }, {});
+        container.innerHTML = "";
 
-        // 2. 스와이퍼 구조 생성 (HTML)
-        let html = `
-            <div class="swiper client-management-swiper">
-                <div class="swiper-wrapper">`;
-        
-        // 거래처별 슬라이드 생성
-        for (const client in grouped) {
+        // 1. 데이터가 없으면 안내 문구
+        const clientNames = Object.keys(globalTitanData);
+        if (clientNames.length === 0) {
+            container.innerHTML = "<div style='text-align:center; padding:20px; color:#999;'>등록된 거래처가 없습니다.</div>";
+            return;
+        }
+
+        // 🟢 [핵심] 거래처 정렬 로직 (진행중인 현장 많은 순 -> 가나다 순)
+        clientNames.sort((a, b) => {
+            // a, b 거래처의 '완료되지 않은' 현장 개수 세기
+            const activeCountA = globalTitanData[a].filter(s => s.status !== '완료').length;
+            const activeCountB = globalTitanData[b].filter(s => s.status !== '완료').length;
+
+            // 1순위: 진행중 현장 개수 (내림차순)
+            if (activeCountB !== activeCountA) return activeCountB - activeCountA;
+            // 2순위: 개수가 같으면 이름순 (오름차순)
+            return a.localeCompare(b);
+        });
+
+        // 2. 스와이퍼 구조 생성
+        let html = `<div class="swiper client-management-swiper" style="width:100%; padding-bottom:30px;"><div class="swiper-wrapper">`;
+
+        clientNames.forEach(client => {
+            // 🟢 [핵심] 현장 내부 정렬 (진행중을 위로, 완료를 아래로)
+            const sites = globalTitanData[client].sort((x, y) => {
+                const isFinX = x.status === '완료';
+                const isFinY = y.status === '완료';
+                if (isFinX === isFinY) return 0; // 상태 같으면 유지
+                return isFinX ? 1 : -1; // 완료된 건 뒤로(1), 진행중은 앞으로(-1)
+            });
+
+            // 카드 HTML 생성
             html += `
-                <div class="swiper-slide">
-                    <div class="client-card">
-                        <div class="client-header">🏢 ${client}</div>
-                        
-                        <div class="site-list">
-                            ${grouped[client].map(s => `
-                                <div class="site-row ${s.status === '완료' ? 'status-done' : ''}">
-                                    <div class="site-content" style="flex:1;">
-                                        <div class="site-name">${s.site}</div>
-                                        
-                                        <div class="site-addr" onclick="editAddress('${client}', '${s.site}', '${s.address || ''}')">
-                                            📍 ${s.address || '주소 등록 (터치)'} ✎
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="site-action" style="margin-left:10px;">
-                                        <button class="status-btn" 
-                                                style="background:${s.status==='완료'?'#f1f5f9':'#dcfce7'}; color:${s.status==='완료'?'#94a3b8':'#166534'};"
-                                                onclick="toggleSiteStatus('${client}','${s.site}','${s.status}')">
-                                            ${s.status||'진행중'}
-                                        </button>
-                                    </div>
-                                </div>
-                            `).join('')}
+            <div class="swiper-slide" style="width:90%; margin:0 auto;">
+                <div class="client-card">
+                    <div class="client-header">
+                        🏢 ${client} 
+                        <span style="font-size:0.8rem; background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:10px; margin-left:auto;">
+                            총 ${sites.length}개
+                        </span>
+                    </div>
+                    <div style="background:#f8fafc;">
+            `;
+
+            if (sites.length === 0) {
+                html += `<div style="padding:20px; text-align:center; color:#94a3b8;">등록된 현장이 없습니다.</div>`;
+            } else {
+                sites.forEach(s => {
+                    const isFinished = s.status === '완료';
+                    html += `
+                    <div class="site-row" style="${isFinished ? 'background:#f1f5f9; color:#94a3b8;' : 'background:white;'}">
+                        <div>
+                            <div style="font-weight:bold; font-size:1rem; ${isFinished ? 'text-decoration:line-through;' : 'color:#1e293b;'}">
+                                ${s.name}
+                            </div>
+                            <div style="font-size:0.8rem; margin-top:2px;">
+                                ${s.addr ? `📍 ${s.addr}` : '<span style="color:#cbd5e1;">주소 미등록</span>'}
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span onclick="toggleSiteStatus('${client}', '${s.name}', '${s.status}')" 
+                                  style="padding:4px 8px; border-radius:6px; font-size:0.75rem; cursor:pointer; font-weight:bold; 
+                                  ${isFinished ? 'background:#cbd5e1; color:white;' : 'background:#dbeafe; color:#2563eb;'}">
+                                ${isFinished ? '완료됨' : '진행중'}
+                            </span>
+                            <div style="margin-top:6px;">
+                                <button onclick="deleteSite('${client}', '${s.name}')" style="background:none; border:none; color:#ef4444; font-size:0.8rem; cursor:pointer;">삭제</button>
+                            </div>
                         </div>
                     </div>
-                </div>`;
-        }
-        
-        html += `   </div>
-                    <div class="swiper-pagination"></div> </div>`;
-        
-        box.innerHTML = html;
+                    `;
+                });
+            }
+            html += `</div></div></div>`; // 카드 닫기
+        });
 
-     // 스와이퍼 재설정 (100% 뷰)
+        html += `</div><div class="swiper-pagination"></div></div>`; // 스와이퍼 닫기
+        container.innerHTML = html;
+
+        // 스와이퍼 재설정
         if(window.clientSwiper) window.clientSwiper.destroy();
-        
         window.clientSwiper = new Swiper('.client-management-swiper', {
-            slidesPerView: 1,       // 🟢 화면에 딱 1개만 (꽉 차게)
-            spaceBetween: 0,        // 간격 없음
-            nested: true,           // 부모 스와이퍼 간섭 방지
+            slidesPerView: 'auto',
+            spaceBetween: 15,
+            centeredSlides: true,
+            observer: true, 
+            observeParents: true,
             pagination: {
                 el: '.swiper-pagination',
                 clickable: true
@@ -964,7 +1004,7 @@ function initWorkPresets(currentVal) {
 
 
       // 1. 관리 가능한 리스트 (let으로 선언하여 수정 가능하게 함)
-    let vehicleList = ["봉고", "포터", "스타렉스", "1호차", "2호차", "본인차"];
+    let vehicleList = ["봉고", "포터", "스타렉스", "M4"];
     let workList = ["배관", "입선", "단말", "트레이", "철거", "청소", "자재정리"];
 
     // 2. 삭제 모드 상태 관리
