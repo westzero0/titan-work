@@ -943,10 +943,11 @@ function initWorkPresets(currentVal) {
       
     }  
       
- // [데이터 불러오기 함수 - 포장지 벗기기 버전]
+// [1] 데이터 로딩 함수
     async function loadClientManagement() {
         const listContainer = document.getElementById('client-management-list');
-        if(listContainer) listContainer.innerHTML = '<div style="text-align:center; padding:20px;">⏳ 현장 데이터 로딩 중...</div>';
+        // 로딩 중 표시
+        if(listContainer) listContainer.innerHTML = '<div style="text-align:center; padding:40px; color:#64748b;">⏳ 현장 데이터를 불러오는 중입니다...</div>';
 
         try {
             const res = await fetch(GAS_URL, {
@@ -954,78 +955,72 @@ function initWorkPresets(currentVal) {
                 body: JSON.stringify({ action: 'getTitanData' }) 
             });
             
-            const rawData = await res.json(); // 1. 일단 서버 응답을 다 받음
+            const rawData = await res.json();
             
-            console.log("서버 원본 응답:", rawData); // (확인용 로그)
-
-            // 🟢 [핵심] 포장지 벗기기 로직
-            // 만약 응답 안에 'data'나 'titanData'라는 방이 따로 있다면 그 안으로 들어감
+            // 📦 데이터 포장지 벗기기
             if (rawData.titanData) {
                 globalTitanData = rawData.titanData;
             } else if (rawData.data) {
                 globalTitanData = rawData.data;
             } else {
-                // 별도 포장지가 없으면 그대로 사용 (기존 방식)
                 globalTitanData = rawData;
             }
 
-            // 3. 리스트 그리기
+            // 화면 그리기 시작
             renderClientList();
 
         } catch (e) {
             console.error("로딩 실패:", e);
-            if(listContainer) listContainer.innerHTML = '<div style="color:red; text-align:center; padding:20px;">데이터 로드 실패</div>';
+            if(listContainer) listContainer.innerHTML = '<div style="color:#ef4444; text-align:center; padding:20px;">데이터 로드 실패<br>새로고침 해주세요.</div>';
         }
     }
     
-function renderClientList() {
+// [2] 화면 렌더링 함수 (정렬 + 필터링 + 스와이프)
+    function renderClientList() {
         const container = document.getElementById('client-management-list');
-        if (!container) return; 
+        if (!container) return;
 
-        container.innerHTML = "";
-
+        // 1. 데이터가 없으면 중단
         if (!globalTitanData || typeof globalTitanData !== 'object') {
-            container.innerHTML = "<div style='text-align:center; padding:20px; color:#999;'>데이터를 불러올 수 없습니다.</div>";
+            container.innerHTML = "<div style='text-align:center; padding:20px; color:#999;'>데이터가 없습니다.</div>";
             return;
         }
 
-        // 🔴 [수정] 진짜 거래처만 남기고, 시스템 메시지(message, status 등)는 버리는 필터 추가
+        // 2. [필터링] 'message', 'status' 같은 시스템 문구는 거래처 목록에서 제외!
         const clientNames = Object.keys(globalTitanData).filter(key => {
-            // 'message', 'status', 'result' 같은 이름은 거래처가 아니므로 제외!
-            return key !== 'message' && key !== 'status' && key !== 'result';
+            return key !== 'message' && key !== 'status' && key !== 'result' && key !== 'undefined';
         });
 
         if (clientNames.length === 0) {
-            container.innerHTML = "<div style='text-align:center; padding:20px; color:#999;'>등록된 거래처가 없습니다.</div>";
+            container.innerHTML = "<div style='text-align:center; padding:40px; color:#94a3b8;'>등록된 거래처가 없습니다.<br>위에서 등록해 주세요.</div>";
             return;
         }
 
-        // 🟢 [수정됨] 정렬 로직에 안전장치 추가 (에러 원인 해결)
+        // 3. [정렬] 진행중인 현장이 많은 거래처가 앞으로 오도록 정렬
         clientNames.sort((a, b) => {
-            // 데이터가 배열인지 확인. 아니면 빈 배열로 취급
             const listA = Array.isArray(globalTitanData[a]) ? globalTitanData[a] : [];
             const listB = Array.isArray(globalTitanData[b]) ? globalTitanData[b] : [];
 
-            // 진행중인 현장 개수 세기
+            // 진행중인(완료가 아닌) 현장 개수 세기
             const countA = listA.filter(s => s.status !== '완료').length;
             const countB = listB.filter(s => s.status !== '완료').length;
 
-            if (countB !== countA) return countB - countA; // 개수 많은 순
-            return a.localeCompare(b); // 이름 순
+            if (countB !== countA) return countB - countA; // 개수 많은 순 (내림차순)
+            return a.localeCompare(b); // 개수 같으면 가나다 순
         });
 
-        // ... (이하 스와이퍼 생성 코드는 동일하지만, 안전을 위해 전체 제공) ...
-        let html = `<div class="swiper client-management-swiper" style="width:100%; padding-bottom:30px;"><div class="swiper-wrapper">`;
+        // 4. HTML 생성 (스와이퍼 구조)
+        let html = `<div class="swiper client-management-swiper"><div class="swiper-wrapper">`;
 
         clientNames.forEach(client => {
-            // 여기도 안전장치: 배열이 아니면 빈 배열로
+            // 현장 리스트 가져오기 (배열이 아니면 빈 배열로 방어)
             const sites = Array.isArray(globalTitanData[client]) ? globalTitanData[client] : [];
 
-            // 현장 정렬 (완료된 건 뒤로)
+            // 현장 정렬: 진행중인 건 위로, 완료된 건 아래로
             sites.sort((x, y) => (x.status === '완료') === (y.status === '완료') ? 0 : x.status === '완료' ? 1 : -1);
 
             html += `
-            <div class="swiper-slide" style="width:90%; margin:0 auto;">
+            <div class="swiper-slide">
                 <div class="client-card">
                     <div class="client-header">
                         🏢 ${client} 
@@ -1033,49 +1028,49 @@ function renderClientList() {
                             총 ${sites.length}개
                         </span>
                     </div>
-                    <div style="background:#f8fafc;">
+                    <div style="background:#f8fafc; min-height:200px;">
             `;
 
             if (sites.length === 0) {
-                html += `<div style="padding:20px; text-align:center; color:#94a3b8;">현장 정보 없음</div>`;
+                html += `<div style="padding:30px; text-align:center; color:#94a3b8; font-size:0.9rem;">등록된 현장이 없습니다.</div>`;
             } else {
                 sites.forEach(s => {
                     const isFinished = s.status === '완료';
                     html += `
                     <div class="site-row" style="${isFinished ? 'background:#f1f5f9; color:#94a3b8;' : 'background:white;'}">
-                        <div>
+                        <div style="flex:1;">
                             <div style="font-weight:bold; font-size:1rem; ${isFinished ? 'text-decoration:line-through;' : 'color:#1e293b;'}">
                                 ${s.name}
                             </div>
-                             <div style="font-size:0.8rem; margin-top:2px;">
+                             <div style="font-size:0.8rem; margin-top:4px; color:#64748b;">
                                 ${s.addr ? `📍 ${s.addr}` : ''}
                             </div>
                         </div>
-                        <div style="text-align:right;">
+                        <div style="text-align:right; min-width:60px;">
                             <span onclick="toggleSiteStatus('${client}', '${s.name}', '${s.status}')" 
-                                  style="padding:4px 8px; border-radius:6px; font-size:0.75rem; cursor:pointer; font-weight:bold; 
+                                  style="display:inline-block; padding:4px 8px; border-radius:6px; font-size:0.75rem; cursor:pointer; font-weight:bold; margin-bottom:5px;
                                   ${isFinished ? 'background:#cbd5e1; color:white;' : 'background:#dbeafe; color:#2563eb;'}">
                                 ${isFinished ? '완료됨' : '진행중'}
                             </span>
-                            <div style="margin-top:6px;">
-                                <button onclick="deleteSite('${client}', '${s.name}')" style="background:none; border:none; color:#ef4444; font-size:0.8rem; cursor:pointer;">삭제</button>
-                            </div>
+                            <br>
+                            <button onclick="deleteSite('${client}', '${s.name}')" style="background:none; border:none; color:#ef4444; font-size:0.8rem; cursor:pointer; text-decoration:underline;">삭제</button>
                         </div>
                     </div>`;
                 });
             }
-            html += `</div></div></div>`;
+            html += `</div></div></div>`; // 카드 닫기
         });
 
         html += `</div><div class="swiper-pagination"></div></div>`;
         container.innerHTML = html;
 
+        // 5. 스와이퍼 초기화 (카드 덱 효과)
         if(window.clientSwiper) window.clientSwiper.destroy();
         window.clientSwiper = new Swiper('.client-management-swiper', {
-            slidesPerView: 'auto',
-            spaceBetween: 15,
-            centeredSlides: true,
-            observer: true,
+            slidesPerView: 'auto',   // CSS 너비(90%) 따름
+            spaceBetween: 15,        // 카드 사이 간격
+            centeredSlides: true,    // 가운데 정렬
+            observer: true, 
             observeParents: true,
             pagination: { el: '.swiper-pagination', clickable: true }
         });
