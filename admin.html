@@ -1154,24 +1154,29 @@ function renderScheduleList() {
         input.value = selected.join(', ');
     }
 
- // [수정] 칩을 선택할 때나 로드할 때 값을 정확히 매칭
-    function renderWorkPresets(currentVal) {
+ function renderWorkPresets() {
         const box = document.getElementById('work-preset-list');
         const input = document.getElementById('sched-content');
         if(!box || !input) return;
 
-        // 🟢 칩 선택 중이면 현재 Set에서 가져오고, 초기 로드면 인자에서 가져옴
-        const val = (currentVal !== undefined) ? currentVal : Array.from(selectedWorkSet).join(', ');
-        const selected = val ? val.split(',').map(s=>s.trim()) : [];
+        // 1. 입력창 글자를 읽어옵니다.
+        const val = input.value;
+        const selected = val ? val.split(',').map(s => s.trim()).filter(x => x) : [];
 
+        // 2. 칩 목록이 비어있을 경우를 대비해 기본값 확인 (없으면 추가)
+        if (!window.workList || workList.length === 0) {
+            workList = ["양중", "포설", "단말", "트레이", "입선", "결선", "스틸배관", "레이스웨이", "철거", "자재정리", "청소"];
+        }
+
+        // 3. 칩 생성 (오타 완벽 수정 버전)
         box.innerHTML = workList.map(item => {
             const isActive = selected.includes(item);
             const modeClass = deleteMode.work ? 'delete-mode' : (isActive ? 'active' : '');
             const clickAction = deleteMode.work ? `removePreset('work', '${item}')` : `toggleSelection('work', '${item}')`;
-            return `<div class="chip ${modeClass}" onclick="${clickAction}">${item} ${deleteMode.work ? ' ❌' : ''}</div>`;
+            
+            // 🔴 여기가 핵심입니다. 따옴표와 괄호 짝을 맞췄습니다.
+            return `<div class="chip ${modeClass}" onclick="${clickAction}">${item}${deleteMode.work ? ' ❌' : ''}</div>`;
         }).join('');
-
-        input.value = selected.join(', ');
     }
       
   // [4] 항목 추가/삭제/모드변경 함수
@@ -1204,26 +1209,21 @@ function renderScheduleList() {
 function toggleSelection(type, item) {
         const inputId = type === 'car' ? 'sched-car' : 'sched-content';
         const input = document.getElementById(inputId);
-        
-        // 1. 현재 입력창의 값을 가져와서 배열로 만듦 (빈 값 제외)
+        if (!input) return;
+
         let selected = input.value ? input.value.split(',').map(s => s.trim()).filter(x => x) : [];
         
-        // 2. 이미 있으면 빼고, 없으면 넣기
         if (selected.includes(item)) {
             selected = selected.filter(i => i !== item);
         } else {
             selected.push(item);
         }
         
-        // 3. 다시 콤마로 연결해서 입력창에 넣어줌
         input.value = selected.join(', ');
         
-   // 4. ⭐ 중요: 입력창이 바뀌었으니 칩 화면을 다시 그려라!
-    if(type === 'car') {
-        renderVehicleChips(input.value);
-    } else {
-        renderWorkPresets(); // 이 함수가 실행되어야 칩 색깔이 바뀝니다.
-    }
+        // 칩 색깔을 즉시 업데이트
+        if(type === 'car') renderVehicleChips(input.value);
+        else renderWorkPresets(); 
     }
     
 
