@@ -967,13 +967,15 @@ function initWorkPresets(currentVal) {
             return;
         }
 
+        // 시스템 메시지 제외하고 진짜 거래처만 뽑기
         const clientNames = Object.keys(globalTitanData).filter(key => key !== 'message' && key !== 'status' && key !== 'result');
+        
         if (clientNames.length === 0) {
             container.innerHTML = "<div style='text-align:center; padding:40px; color:#94a3b8;'>등록된 거래처가 없습니다.</div>";
             return;
         }
 
-        // 2. [거래처 정렬] 진행중인 현장이 많은 순서대로 (바쁜 거래처가 먼저 보임)
+        // 2. [거래처 정렬] 진행중인 현장이 많은 거래처를 맨 앞으로
         clientNames.sort((a, b) => {
             const listA = Array.isArray(globalTitanData[a]) ? globalTitanData[a] : [];
             const listB = Array.isArray(globalTitanData[b]) ? globalTitanData[b] : [];
@@ -988,9 +990,12 @@ function initWorkPresets(currentVal) {
         let html = `<div class="swiper client-management-swiper"><div class="swiper-wrapper">`;
         
         clientNames.forEach(client => {
+            // 해당 거래처의 현장 리스트 가져오기
             const sites = Array.isArray(globalTitanData[client]) ? globalTitanData[client] : [];
 
-            // 🟢 [핵심] 현장 내부 정렬 로직 (진행중을 위로, 완료를 아래로)
+            // 🟢 [핵심] 현장 내부 정렬 로직 (이 부분이 순서를 바꿉니다!)
+            // 1. 진행중인 현장은 위로 (-1)
+            // 2. 완료된 현장은 아래로 (1)
             sites.sort((a, b) => {
                 const statusA = (a.status || '').trim();
                 const statusB = (b.status || '').trim();
@@ -998,13 +1003,12 @@ function initWorkPresets(currentVal) {
                 const isFinA = statusA === '완료';
                 const isFinB = statusB === '완료';
 
-                // 1순위: 상태 (진행중이 먼저)
-                if (isFinA !== isFinB) return isFinA ? 1 : -1; 
+                if (isFinA !== isFinB) return isFinA ? 1 : -1; // 상태가 다르면(하나는 완료, 하나는 진행) 완료를 뒤로 보냄
                 
-                // 2순위: 이름 (가나다 순)
-                return (a.name || '').localeCompare(b.name || ''); 
+                return (a.name || '').localeCompare(b.name || ''); // 상태가 같으면 가나다순
             });
 
+            // 카드 HTML 조립
             html += `
             <div class="swiper-slide">
                 <div class="client-card">
@@ -1049,6 +1053,7 @@ function initWorkPresets(currentVal) {
         html += `</div><div class="swiper-pagination"></div></div>`;
         container.innerHTML = html;
 
+        // 스와이퍼 재가동
         if(window.clientSwiper) window.clientSwiper.destroy();
         window.clientSwiper = new Swiper('.client-management-swiper', {
             slidesPerView: 'auto', spaceBetween: 15, centeredSlides: true,
