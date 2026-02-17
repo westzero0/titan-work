@@ -897,19 +897,22 @@ function scrollToCard(d, s) {
 function copyScheduleToLog(s) {
     if(!confirm("📝 선택한 일정 내용으로 일보 작성을 시작할까요?")) return;
 
-    // 1. 날짜, 현장명, 작업내용 기본 입력
+    // 1. 기본 정보 입력
     document.getElementById('date').value = s.date;
     document.getElementById('siteSearch').value = s.site;
-const workInput = document.getElementById('work');
-    if(workInput) {
-        workInput.value = s.content || s.workContent || "";
-    }    
-    // 2. 거래처 칩 먼저 선택 (현장 칩을 불러오기 위함)
-    const clientChips = document.querySelectorAll('#client-chips .chip');
-    clientChips.forEach(c => { if(c.innerText === s.client) c.click(); });
+    
+    // 작업내용 입력 (content 또는 workContent 모두 대응)
+    const workInput = document.getElementById('work');
+    if(workInput) workInput.value = s.content || s.workContent || "";
 
-    // 3. 시간 설정 (주간/야간)
-    if(s.shift === '야') {
+    // 2. 거래처 칩 강제 클릭 (현장 칩을 불러오기 위함)
+    const clientChips = document.querySelectorAll('#client-chips .chip');
+    clientChips.forEach(c => { 
+        if(c.innerText.trim() === s.client.trim()) c.click(); 
+    });
+
+    // 3. 주간/야간 시간 자동 세팅
+    if(s.shift === '야' || s.shift === '야간') {
         document.getElementById('start').value = "18:00";
         document.getElementById('end').value = "05:00";
     } else {
@@ -917,45 +920,50 @@ const workInput = document.getElementById('work');
         document.getElementById('end').value = "17:00";
     }
 
-    // 💡 4. 핵심 수리: 0.5초 대기 후 인원/차량/현장 칩 자동 선택
-    // (칩들이 화면에 다 그려질 시간을 주는 겁니다)
+    // 4. 🔴 [핵심 수리] 인원 및 차량 칩 자동 선택 (0.5초 대기 후 실행)
     setTimeout(() => {
-        // [현장 칩 선택]
-        const siteInput = document.getElementById('siteSearch');
-        if(siteInput) { siteInput.dispatchEvent(new Event('input')); }
+        // [인원 데이터 정리] 글자로 오든 배열로 오든 무조건 명단(배열)으로 만듦
+        const workerArray = Array.isArray(s.workers) ? s.workers : (s.workers || "").split(',').map(w => w.trim()).filter(x => x);
+        
+        // 모든 인원 칩 초기화 후 다시 선택
+        const memChips = document.querySelectorAll('#member-chips .chip');
+        memChips.forEach(c => c.classList.remove('active'));
+
+        workerArray.forEach(workerName => {
+            let found = false;
+            memChips.forEach(chip => {
+                if(chip.innerText.trim() === workerName) {
+                    chip.classList.add('active');
+                    found = true;
+                }
+            });
+            // 만약 칩 목록에 없는 사람이라면 새로 만들어서 선택함
+            if(!found) addItem('member', workerName);
+        });
+
+        // [차량 칩 선택]
+        const carArray = (s.car || "").split(',').map(c => c.trim()).filter(x => x);
+        const carChips = document.querySelectorAll('#car-chips .chip');
+        carChips.forEach(c => c.classList.remove('active'));
+
+        carArray.forEach(carName => {
+            let found = false;
+            carChips.forEach(chip => {
+                if(chip.innerText.trim() === carName) {
+                    chip.classList.add('active');
+                    found = true;
+                }
+            });
+            if(!found) addItem('car', carName);
+        });
+
+        // [현장 칩 선택 강조]
         const siteChips = document.querySelectorAll('#site-chips .chip');
         siteChips.forEach(c => {
             if(c.innerText.includes(s.site)) c.classList.add('active');
         });
 
-        // [인원 칩 선택]
-        const memChips = document.querySelectorAll('#member-chips .chip');
-        memChips.forEach(c => c.classList.remove('active')); // 초기화
-        if (s.workers && Array.isArray(s.workers)) {
-            s.workers.forEach(w => {
-                let found = false;
-                memChips.forEach(c => {
-                    if(c.innerText === w.trim()) { c.classList.add('active'); found = true; }
-                });
-                // 목록에 없는 사람이라면 새로 만들어서 선택
-                if(!found && w.trim()){
-                     addItem('member', w.trim());
-                }
-            });
-        }
-
-        // [차량 칩 선택]
-        const carChips = document.querySelectorAll('#car-chips .chip');
-        carChips.forEach(c => c.classList.remove('active')); // 초기화
-        if(s.car){
-            let found = false;
-            carChips.forEach(c => {
-                if(c.innerText === s.car.trim()){ c.classList.add('active'); found = true; }
-            });
-            // 목록에 없는 차량이라면 새로 만들어서 선택
-            if(!found) addItem('car', s.car.trim());
-        }
-    }, 500);
+    }, 500); // 칩이 그려질 시간을 0.5초 줍니다.
 
     showPage('log-page');
     window.scrollTo(0, 0);
