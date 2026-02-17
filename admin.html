@@ -25,7 +25,7 @@
     margin-top: 65px; /* 🟢 기존 50px에서 65px로 증가 */
 }
 
-.card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+.card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 10px; }
 h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px; }
 
 label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #444; }
@@ -71,11 +71,20 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         padding-bottom: 50px;
     }
 
+    .client-management-swiper {
+        width: 100%;
+        touch-action: pan-y; /* 🔴 위아래 스크롤은 허용하고 좌우는 스와이퍼가 통제 */
+        overflow: hidden;    /* 🔴 카드가 옆으로 튀어나가는 것 방지 */
+    }
+    
+
     /* 2. 스와이퍼 슬라이드 (화면 가로 100% 꽉 채우기) */
     .client-management-swiper .swiper-slide {
         width: 100% !important; 
         padding: 0 !important;   /* 좌우 여백 제거 */
         background-color: #fff;
+      -webkit-user-select: none;
+        user-select: none;
     }
 
     /* 3. 거래처 카드 디자인 (여백 없이 꽉 찬 사각형) */
@@ -527,17 +536,45 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
         }
     });
 
-    // [2] 스와이퍼
+  // [스와이퍼 초기화 수정]
     function initSwiper() {
         const el = document.querySelector('.swiper');
         if (!el) return;
+
         swiper = new Swiper('.swiper', {
-            speed: 400, loop: false, allowTouchMove: true,
-            noSwiping: true, noSwipingClass: 'swiper-no-swiping',
-            on: { slideChange: function () { updateNav(this.activeIndex); } }
+            speed: 400,
+            loop: false,
+            allowTouchMove: true, // 기본은 스와이프 허용
+            on: {
+                slideChange: function () {
+                    const idx = this.activeIndex;
+                    updateNav(idx);
+
+                    // 🔴 [핵심] 3번 탭(일정)일 때만 스와이프 잠금
+                    if (idx === 3) {
+                        this.allowTouchMove = false; // 터치로 옆으로 넘기기 금지
+                        console.log("📅 일정 탭: 드래그 보호를 위해 스와이프 잠금");
+                    } else {
+                        this.allowTouchMove = true;  // 다른 탭은 스와이프 허용
+                    }
+                }
+            }
         });
     }
-    function jumpTo(index) { if (swiper) swiper.slideTo(index); }
+
+    // [하단 네비 클릭 이동 수정]
+    function jumpTo(index) {
+        if (swiper) {
+            // 잠금 상태여도 버튼 클릭으로 이동하는 것은 항상 허용해야 함
+            swiper.allowTouchMove = true; 
+            swiper.slideTo(index);
+            
+            // 이동 후 만약 일정 탭(3)이라면 다시 잠금
+            if (index === 3) swiper.allowTouchMove = false;
+        }
+    }
+
+      
     function updateNav(index) {
         document.querySelectorAll('.nav-item').forEach((item, i) => {
             if (i === index) item.classList.add('active'); else item.classList.remove('active');
@@ -1029,6 +1066,7 @@ function initWorkPresets(currentVal) {
     if(window.clientSwiper) window.clientSwiper.destroy();
     window.clientSwiper = new Swiper('.client-management-swiper', {
         slidesPerView: 1,         // 한 번에 카드 한 장 (꽉 차게)
+      nested: true,            // ⭐ 핵심: 메인 스와이퍼와 충돌 방지
         spaceBetween: 0,         // 간격 제거
         centeredSlides: true,
         observer: true,
