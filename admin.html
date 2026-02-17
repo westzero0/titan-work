@@ -627,26 +627,32 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
             return;
         }
 
-        box.innerHTML = list.map(item => `
-            <div class="card" style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':'#2563eb'};" 
-                 onclick='openModal("edit", null, ${JSON.stringify(item).replace(/'/g, "&#39;")})'>
-                
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <div>
-                        <div style="font-weight:bold; font-size:0.9rem; color:#334155;">
-                            ${item.date} (${item.shift})
-                        </div>
-                        <div style="font-size:1.1rem; font-weight:800; color:#1e293b; margin:3px 0;">${item.site}</div>
-                         <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
+    box.innerHTML = list.map(item => `
+        <div class="card" style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':'#2563eb'}; cursor:pointer;" 
+             onclick='openModal("edit", null, ${JSON.stringify(item).replace(/'/g, "&#39;")})'>
+            
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                <div>
+                    <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
+                        📅 ${item.date} (${item.shift})
                     </div>
-                </div>
-
-                <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;">
-                    ${(item.workers || '').split(',').map(name => `<span style="background:#f1f5f9; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`).join('')}
-                    ${item.car ? `<span style="font-size:0.8rem; color:#2563eb; font-weight:bold; margin-left:5px;">🚛 ${item.car}</span>` : ''}
+                    <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
+                    <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
                 </div>
             </div>
-        `).join('');
+
+            <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0;">
+                📝 ${item.content || '작업 내용 없음'}
+            </div>
+
+            <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
+                ${(item.workers || '').split(',').map(name => 
+                    `<span style="background:#fff; border:1px solid #e2e8f0; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`
+                ).join('')}
+                ${item.car ? `<span style="font-size:0.8rem; color:#1e293b; font-weight:bold; margin-left:5px; display:flex; align-items:center;">🚛 ${item.car}</span>` : ''}
+            </div>
+        </div>
+    `).join('');
     }
       
 
@@ -684,6 +690,7 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
                 document.getElementById('sched-date').value = data.date;
                 document.getElementById('sched-end-date').value = "";
                 document.getElementById('sched-note').value = data.note || "";
+              
 
                 const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
                 currentShiftIndex = shiftIdx >= 0 ? shiftIdx : 0;
@@ -785,7 +792,6 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
                 const isSelected = selectedWorkerSet.has(w.name);
                 return `<div class="chip ${isSelected ? 'active' : ''}" 
                              onclick="toggleWorkerSelection('${w.name}')">
-                            ${w.name}${isSelected ? ' ✕' : ''}
                         </div>`;
             }).join('');
         }
@@ -1005,6 +1011,7 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
 
             // 진짜 UI(카드) 그리기 함수 호출
             renderClientList();
+          renderRegistrationClientChips(); // 🔴 [추가] 등록용 칩 생성 실행!
 
         } catch (e) {
             console.error("로딩 실패:", e);
@@ -1188,6 +1195,38 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
         else selected.push(item);
         if(type === 'car') renderVehicleChips(selected.join(', '));
         else renderWorkPresets(selected.join(', '));
+    }
+
+
+      // 🏢 [추가] 등록 섹션 전용: 기존 거래처 칩 생성
+    function renderRegistrationClientChips() {
+        const container = document.getElementById('client-chips');
+        if (!container) return;
+
+        // 시스템 키 제외하고 순수 거래처 명단만 추출
+        const clientNames = Object.keys(globalTitanData).filter(key => 
+            !['message', 'status', 'result', 'undefined'].includes(key)
+        );
+
+        if (clientNames.length === 0) {
+            container.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">데이터가 없습니다.</span>';
+            return;
+        }
+
+        // 칩 생성 (클릭 시 입력창에 이름 쏙 들어가게)
+        container.innerHTML = clientNames.map(name => 
+            `<div class="chip" onclick="selectRegClientChip(this, '${name}')">${name}</div>`
+        ).join('');
+    }
+
+    // 칩 클릭 시 입력창(c_client)에 값 넣어주는 기능
+    function selectRegClientChip(el, name) {
+        document.getElementById('c_client').value = name;
+        
+        // 선택된 칩 파랗게 강조
+        const allChips = document.querySelectorAll('#client-chips .chip');
+        allChips.forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
     }
       
 
