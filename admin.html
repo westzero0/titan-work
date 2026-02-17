@@ -943,21 +943,31 @@ function initWorkPresets(currentVal) {
       
     }  
       
-    // [데이터 불러오기 함수 수정]
+ // [데이터 불러오기 함수 - 포장지 벗기기 버전]
     async function loadClientManagement() {
         const listContainer = document.getElementById('client-management-list');
         if(listContainer) listContainer.innerHTML = '<div style="text-align:center; padding:20px;">⏳ 현장 데이터 로딩 중...</div>';
 
         try {
-            // 1. 서버에 데이터 요청
             const res = await fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ action: 'getTitanData' }) // 또는 'getAllData' (기존에 쓰시던 액션명 확인 필요)
+                body: JSON.stringify({ action: 'getTitanData' }) 
             });
             
-            // 2. 받아온 데이터를 전역 변수에 저장 (핵심!)
-            const data = await res.json();
-            globalTitanData = data;  // 👈 여기서 데이터를 채워줍니다!
+            const rawData = await res.json(); // 1. 일단 서버 응답을 다 받음
+            
+            console.log("서버 원본 응답:", rawData); // (확인용 로그)
+
+            // 🟢 [핵심] 포장지 벗기기 로직
+            // 만약 응답 안에 'data'나 'titanData'라는 방이 따로 있다면 그 안으로 들어감
+            if (rawData.titanData) {
+                globalTitanData = rawData.titanData;
+            } else if (rawData.data) {
+                globalTitanData = rawData.data;
+            } else {
+                // 별도 포장지가 없으면 그대로 사용 (기존 방식)
+                globalTitanData = rawData;
+            }
 
             // 3. 리스트 그리기
             renderClientList();
@@ -967,7 +977,6 @@ function initWorkPresets(currentVal) {
             if(listContainer) listContainer.innerHTML = '<div style="color:red; text-align:center; padding:20px;">데이터 로드 실패</div>';
         }
     }
-      
     
 function renderClientList() {
         const container = document.getElementById('client-management-list');
