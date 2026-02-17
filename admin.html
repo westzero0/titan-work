@@ -498,7 +498,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     
       
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbx0r8IPhDytW9knWTEbsFRVK4HmFj5CynrD9TlXzIbOe_aSDotaATcnSzouC845NIBx/exec"; // 👈 꼭 본인 주소로 수정하세요!
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzF0XR1Qvt7a2D6NkvKJdUSeRPiqdX7JIHKbzzWan1NaNFSDBf0u0osx2epLUM3rCg/exec"; // 👈 꼭 본인 주소로 수정하세요!
 // 전역 변수 선언 (에러 방지용)
     let calendar = null;
     let swiper = null;
@@ -760,18 +760,7 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
         else box.innerHTML = list.map(n => `<div class="chip" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; gap:5px;">${n} <span onclick="removeWorkerFromSelection('${n}')" style="cursor:pointer; font-weight:bold;">&times;</span></div>`).join('');
     }
 
-  // [3] 차량 & 공정 칩 렌더링 (추가/삭제 UI 통합)
-    function renderVehicleChips(currentVal) {
-        const box = document.getElementById('car-chips-area');
-        const selected = currentVal ? currentVal.split(',').map(s=>s.trim()) : [];
-        box.innerHTML = vehicleList.map(item => {
-            const isActive = selected.includes(item);
-            const modeClass = deleteMode.car ? 'delete-mode' : (isActive ? 'active' : '');
-            const action = deleteMode.car ? `removePreset('car', '${item}')` : `toggleSelection('car', '${item}')`;
-            return `<div class="chip ${modeClass}" onclick="${action}">${item}${deleteMode.car ? ' ❌' : (isActive ? ' ✕' : '')}</div>`;
-        }).join('');
-        document.getElementById('sched-car').value = selected.join(', ');
-    }
+
 
       
     function toggleCar(el, name) {
@@ -801,18 +790,7 @@ function initWorkPresets(currentVal) {
         renderWorkPresets();
     }
       
-   function renderWorkPresets(currentVal) {
-        const box = document.getElementById('work-preset-list');
-        const selected = currentVal ? currentVal.split(',').map(s=>s.trim()) : [];
-        box.innerHTML = workList.map(item => {
-            const isActive = selected.includes(item);
-            const modeClass = deleteMode.work ? 'delete-mode' : (isActive ? 'active' : '');
-            const action = deleteMode.work ? `removePreset('work', '${item}')` : `toggleSelection('work', '${item}')`;
-            return `<div class="chip ${modeClass}" onclick="${action}">${item}${deleteMode.work ? ' ❌' : (isActive ? ' ✕' : '')}</div>`;
-        }).join('');
-        document.getElementById('sched-content').value = selected.join(', ');
-    }
-      
+
 
       
     function addWorkTag(t) { selectedWorkSet.add(t); renderWorkPresets(); }
