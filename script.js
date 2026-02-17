@@ -685,7 +685,7 @@ async function loadSchedules() {
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'getScheduleData' })
+            body: JSON.stringify({ action: 'getScheduleList' })
         });
         const result = await res.json();
         allSchedules = result.schedules;
