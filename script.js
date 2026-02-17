@@ -776,10 +776,13 @@ function renderCards() {
         html += filtered.map(s => `
             <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" style="border-left: 5px solid ${s.shift==='야'?'#1e293b':'#2563eb'}; padding:15px; position:relative;">
                 <div onclick='copyScheduleToLog(${JSON.stringify(s)})' style="position:absolute; top:10px; right:10px; font-size:1.5rem;">📝</div>
-                <div><b>${s.date}</b> (${s.shift})</div>
+             <div><b>${s.date}</b> (${s.shift})</div>
                 <div style="color:#666; font-size:0.9rem;">${s.client}</div>
-                <div style="font-size:1.2rem; font-weight:bold;">${s.site}</div>
+                <div style="font-size:1.2rem; font-weight:bold; margin-bottom:5px;">${s.site}</div>
                 
+                <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin-bottom:8px;">
+                    📝 ${s.content || s.workContent || '작업내용 없음'}
+                </div>
                 <div style="margin-top:5px; display:flex; align-items:center; flex-wrap:wrap; gap:5px;">
                     ${s.workers.map(w=>`<span class="worker-chip">${w}</span>`).join('')}
                     ${s.car ? `<span style="margin-left:5px; font-size:0.9rem; color:#2563eb; font-weight:bold;">| 🚛 ${s.car}</span>` : ''}
@@ -870,8 +873,10 @@ function copyScheduleToLog(s) {
     // 1. 날짜, 현장명, 작업내용 기본 입력
     document.getElementById('date').value = s.date;
     document.getElementById('siteSearch').value = s.site;
-    document.getElementById('work').value = s.workContent || "";
-    
+const workInput = document.getElementById('work');
+    if(workInput) {
+        workInput.value = s.content || s.workContent || "";
+    }    
     // 2. 거래처 칩 먼저 선택 (현장 칩을 불러오기 위함)
     const clientChips = document.querySelectorAll('#client-chips .chip');
     clientChips.forEach(c => { if(c.innerText === s.client) c.click(); });
