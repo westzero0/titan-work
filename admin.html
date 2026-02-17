@@ -646,6 +646,11 @@ function renderScheduleList() {
                         📝 ${item.content || '작업 내용 없음'}
                     </div>
 
+                    ${item.note ? `
+                <div style="background:#fffbeb; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:10px;">
+                    💡 특이사항: ${item.note}
+                </div>` : ''}
+
                     <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
                         ${(item.workers || '').split(',').map(name => 
                             `<span style="background:#fff; border:1px solid #e2e8f0; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`
@@ -1213,9 +1218,12 @@ function toggleSelection(type, item) {
         // 3. 다시 콤마로 연결해서 입력창에 넣어줌
         input.value = selected.join(', ');
         
-        // 4. 화면 다시 그리기 (여기서 X자 없는 칩이 그려짐)
-        if(type === 'car') renderVehicleChips(input.value);
-        else renderWorkPresets(); 
+   // 4. ⭐ 중요: 입력창이 바뀌었으니 칩 화면을 다시 그려라!
+    if(type === 'car') {
+        renderVehicleChips(input.value);
+    } else {
+        renderWorkPresets(); // 이 함수가 실행되어야 칩 색깔이 바뀝니다.
+    }
     }
     
 
