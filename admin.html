@@ -740,54 +740,52 @@ function renderScheduleList() {
         selectedWorkSet.clear();
     }
 
-    // [6] 칩 로직들
-   // [수정] 일정 등록 팝업 내 거래처/현장 칩 생성
-    function renderChips(sClient, sSite) {
-        const cBox = document.getElementById('sched-client-chips-area');
-        const sBox = document.getElementById('sched-site-chips-area');
-        if(!cBox || !sBox) return;
+   function renderChips(sClient, sSite) {
+    const cBox = document.getElementById('sched-client-chips-area');
+    const sBox = document.getElementById('sched-site-chips-area');
+    if(!cBox || !sBox) return;
 
-        // 1. 진행중인 현장이 하나라도 있는 거래처만 추출
-        // globalTitanData가 비어있으면 조기 종료
-        if (!globalTitanData || Object.keys(globalTitanData).length === 0) {
-            cBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">데이터를 불러오는 중입니다...</span>';
-            return;
-        }
-
-        const activeClients = Object.keys(globalTitanData).filter(client => {
-            // 시스템 키 제외
-            if(['message', 'status', 'result', 'undefined'].includes(client)) return false;
-            // 해당 거래처 현장 중 '진행중'이 하나라도 있는지 확인
-            return globalTitanData[client].some(site => site.status === '진행중');
-        });
-
-        // 2. 거래처 칩 그리기
-        if (activeClients.length === 0) {
-            cBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">진행 중인 거래처가 없습니다.</span>';
-        } else {
-            cBox.innerHTML = activeClients.map(c => 
-                `<div class="chip ${c === sClient ? 'active' : ''}" onclick="clkClient(this, '${c}')">${c}</div>`
-            ).join('');
-        }
-        
-        document.getElementById('sched-client').value = sClient || "";
-
-        // 3. 선택된 거래처의 '진행중' 현장들만 그리기
-        if (sClient && globalTitanData[sClient]) {
-            const activeSites = globalTitanData[sClient].filter(site => site.status === '진행중');
-            
-            if (activeSites.length === 0) {
-                sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">진행 중인 현장이 없습니다.</span>';
-            } else {
-                sBox.innerHTML = activeSites.map(s => 
-                    `<div class="chip ${s.name === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.name}')">${s.name}</div>`
-                ).join('');
-            }
-            document.getElementById('sched-site').value = sSite || "";
-        } else {
-            sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>';
-        }
+    // 1. 데이터가 아직 안 왔으면 안내 메시지
+    if (!globalTitanData || Object.keys(globalTitanData).length === 0) {
+        cBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">⏳ 데이터를 불러오는 중... (잠시만 기다리세요)</span>';
+        return;
     }
+
+    // 2. '진행중'인 현장이 하나라도 있는 거래처만 추출 (공백 제거하여 비교)
+    const activeClients = Object.keys(globalTitanData).filter(client => {
+        if(['message', 'status', 'result', 'undefined'].includes(client)) return false;
+        return globalTitanData[client].some(site => {
+            const st = (site.status || "").toString().trim();
+            return st === '진행중' || st === '진행'; // '진행'도 포함해서 안전하게
+        });
+    });
+
+    if (activeClients.length === 0) {
+        cBox.innerHTML = '<span style="color:#ef4444; font-size:0.8rem;">❌ 진행 중인 거래처가 없습니다. (시트 상태 확인)</span>';
+    } else {
+        cBox.innerHTML = activeClients.sort().map(c => 
+            `<div class="chip ${c === sClient ? 'active' : ''}" onclick="clkClient(this, '${c}')">${c}</div>`
+        ).join('');
+    }
+    
+    document.getElementById('sched-client').value = sClient || "";
+
+    // 3. 선택된 거래처의 '진행중' 현장들 그리기
+    if (sClient && globalTitanData[sClient]) {
+        const activeSites = globalTitanData[sClient].filter(site => {
+            const st = (site.status || "").toString().trim();
+            return st === '진행중' || st === '진행';
+        });
+        
+        sBox.innerHTML = activeSites.length === 0 ? 
+            '<span style="color:#aaa; font-size:0.8rem;">진행 중인 현장이 없습니다.</span>' :
+            activeSites.map(s => `<div class="chip ${s.name === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.name}')">${s.name}</div>`).join('');
+        
+        document.getElementById('sched-site').value = sSite || "";
+    } else {
+        sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>';
+    }
+}
 
       
     function clkClient(el, name) { document.getElementById('sched-client').value = name; renderChips(name, ''); }
