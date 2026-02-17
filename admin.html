@@ -63,53 +63,51 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 .nav-item.active { color: var(--primary-color); }
 .nav-item i { font-size: 20px; margin-bottom: 4px; }
 
-/* [현장 현황 관리 - 와이드 디자인 (여백 제거)] */
+/* [현장 현황 관리 - 카드 덱 스타일] */
     
-    /* 1. 리스트 컨테이너를 강제로 넓혀서 부모 카드 여백 상쇄 */
+    /* 1. 리스트 컨테이너 위치 잡기 */
     #client-management-list {
-        margin: 10px -20px -20px -20px; /* 위, 우, 하, 좌 (음수 마진으로 꽉 채움) */
-        width: calc(100% + 40px); /* 늘어난 만큼 폭 보정 */
+        width: 100%;
+        padding-bottom: 30px; /* 하단 여백 */
     }
 
-    /* 2. 스와이퍼 슬라이드 설정 */
-    .client-management-swiper {
-        padding-bottom: 20px;
-    }
+    /* 2. 스와이퍼 슬라이드 (카드 한 장의 크기 설정) */
     .client-management-swiper .swiper-slide {
-        width: 100% !important; /* 화면 가로 100% 꽉 채우기 */
-        padding: 0;
-        background: transparent;
+        width: 90% !important;  /* 🟢 화면의 90%만 차지 (옆 카드가 살짝 보임) */
+        margin: 0 auto;         /* 가운데 정렬 */
+        background: transparent; 
+        padding: 10px 5px;      /* 그림자 잘리지 않게 여백 확보 */
     }
 
-    /* 3. 내부 카드 디자인 (그림자/테두리 제거 -> 평면화) */
+    /* 3. 거래처 카드 디자인 (독립된 카드 느낌) */
     .client-card {
         background: #fff;
-        border-radius: 0; /* 둥근 모서리 제거 (직각) */
-        box-shadow: none !important; /* 그림자 제거 */
-        border: none !important;
-        border-top: 1px solid #eee !important; /* 상단 구분선만 */
+        border-radius: 20px;    /* 둥글게 */
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* 🟢 그림자 추가해서 붕 띄움 */
+        border: none !important; 
+        overflow: hidden;       /* 내용 넘침 방지 */
         min-height: 300px;
     }
 
-    /* 4. 거래처 헤더 (꽉 찬 디자인) */
+    /* 4. 거래처 헤더 (디자인 강화) */
     .client-header {
-        background: #f1f5f9; /* 연한 회색 배경 */
+        background: #2563eb;    /* 🟢 파란색 배경으로 강조 */
         padding: 15px 20px;
-        font-size: 1.15rem;
+        font-size: 1.2rem;
         font-weight: 800;
-        color: #1e293b;
+        color: #fff;            /* 글자색 흰색 */
         display: flex;
         align-items: center;
-        border-bottom: 1px solid #e2e8f0;
+        gap: 8px;
     }
 
-    /* 5. 현장 리스트 한 줄 (좌우 패딩 확보) */
+    /* 5. 현장 리스트 행 */
     .site-row {
-        padding: 18px 20px; /* 터치하기 좋게 상하 패딩 늘림 */
+        padding: 18px 20px;
         border-bottom: 1px solid #f1f5f9;
         display: flex;
         justify-content: space-between;
-        align-items: center; /* 수직 중앙 정렬 */
+        align-items: center;
     }
 
     /* 6. 현장 이름 & 주소 */
@@ -356,12 +354,6 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     
     <button class="btn-blue" onclick="saveClient()" style="width:100%">현장 등록하기</button>
 </div>
-
-<div class="card" style="margin-top:20px;">
-    <h3>📋 현장 현황 관리</h3>
-    <div id="client-management-list">
-        </div>
-</div>
     </div>
 
     <div class="swiper-slide">
@@ -531,7 +523,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         if (calendar) calendar.destroy();
         calendar = new FullCalendar.Calendar(el, {
             initialView: 'dayGridMonth', locale: 'ko', height: 'auto',
-            longPressDelay: 0, eventLongPressDelay: 0, selectLongPressDelay: 0,
+            longPressDelay: 300, eventLongPressDelay: 300, selectLongPressDelay: 300,
             headerToolbar: { left: 'prev', center: 'title', right: 'next' },
             dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
             selectable: true, selectMirror: true,
