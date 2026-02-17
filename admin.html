@@ -777,30 +777,23 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
         el.classList.add('active');
     }
 
-  // [2] 인원 선택 (검색창 없이 칩으로만 구성)
+ // [5] 칩 관련 (X 표시 제거 & 색상만 변경)
     function renderWorkerChips(namesStr) {
         const container = document.getElementById('worker-chips-area');
-        const countDisplay = document.getElementById('worker-count-display');
         selectedWorkerSet.clear();
-        if (namesStr) namesStr.split(',').map(s=>s.trim()).forEach(n => { if(n) selectedWorkerSet.add(n); });
-
-        countDisplay.innerText = `(${selectedWorkerSet.size}명)`;
+        if (namesStr) namesStr.split(',').forEach(n => n.trim() && selectedWorkerSet.add(n.trim()));
+        document.getElementById('worker-count-display').innerText = `(${selectedWorkerSet.size}명)`;
         document.getElementById('sched-workers-text').value = Array.from(selectedWorkerSet).join(', ');
 
         if(container) {
             container.innerHTML = globalWorkerData.filter(w => w.status === '재직').map(w => {
-                const isSelected = selectedWorkerSet.has(w.name);
-                return `<div class="chip ${isSelected ? 'active' : ''}" 
-                             onclick="toggleWorkerSelection('${w.name}')">
-                        </div>`;
+                const active = selectedWorkerSet.has(w.name);
+                // 🟢 X 표시 없이 이름만 출력, 클래스로 색상 제어
+                return `<div class="chip ${active ? 'active' : ''}" onclick="toggleWorkerSelection('${w.name}')">${w.name}</div>`;
             }).join('');
         }
     }
-    function toggleWorkerSelection(name) {
-        if (selectedWorkerSet.has(name)) selectedWorkerSet.delete(name);
-        else selectedWorkerSet.add(name);
-        renderWorkerChips(Array.from(selectedWorkerSet).join(', '));
-    }
+    function toggleWorkerSelection(n) { selectedWorkerSet.has(n) ? selectedWorkerSet.delete(n) : selectedWorkerSet.add(n); renderWorkerChips(Array.from(selectedWorkerSet).join(',')); }
       
 
       
@@ -1241,6 +1234,18 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
     async function changePassword(n) { const p = prompt("새 비번:"); if (p) await sendToGas('adminUpdatePassword', { userName: n, newPw: p }); }
     async function updateStatus(n, s) { if (confirm("상태변경?")) await sendToGas('adminUpdateStatus', { userName: n, status: s }); }
     function copyText(t) { navigator.clipboard.writeText(t); alert("복사됨"); }
+
+
+      // [추가] 모달창 바깥 영역(배경) 클릭 시 창 닫기
+window.onclick = function(event) {
+    const modal = document.getElementById('schedule-modal');
+    // 클릭한 대상이 모달 배경일 경우에만 닫기 실행
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+
+      
     </script>
 </body>
 </html>
