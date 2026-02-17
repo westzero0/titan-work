@@ -509,7 +509,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     
       
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwtTctsl5WSzPrKZSX4ySx9Rlk86ViznaZspzL2BA6YFACCM8lokStbxs1YNplDaUAi/exec"; // 👈 꼭 본인 주소로 수정하세요!
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxTipS_7yvzIvj4WwP7OWaSH98l6L0yOjZK9B22n__Iiw08-DDmK1NBiPIuYDtvOrux/exec"; // 👈 꼭 본인 주소로 수정하세요!
 // 전역 변수 선언 (에러 방지용)
     let calendar = null;
     let swiper = null;
@@ -740,31 +740,34 @@ function renderScheduleList() {
         selectedWorkSet.clear();
     }
 
-   function renderChips(sClient, sSite) {
+  // 🔴 admin.html 스크립트 부분의 renderChips 함수를 이 코드로 덮어쓰기 하세요.
+
+function renderChips(sClient, sSite) {
     const cBox = document.getElementById('sched-client-chips-area');
     const sBox = document.getElementById('sched-site-chips-area');
     if(!cBox || !sBox) return;
 
-    // 1. 데이터가 아직 안 왔으면 안내 메시지
+    // 1. 데이터 확인
     if (!globalTitanData || Object.keys(globalTitanData).length === 0) {
-        cBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">⏳ 데이터를 불러오는 중... (잠시만 기다리세요)</span>';
+        cBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">⏳ 데이터를 불러오는 중...</span>';
         return;
     }
 
-    // 2. '진행중'인 현장이 하나라도 있는 거래처만 추출 (공백 제거하여 비교)
-    const activeClients = Object.keys(globalTitanData).filter(client => {
-        if(['message', 'status', 'result', 'undefined'].includes(client)) return false;
-      // 🔴 수정: 현재 선택된 거래처(sClient)이거나, '진행중'인 현장이 있는 경우만 표시
-    if (client === sClient) return true;
-      
+    // 2. 거래처 목록 추출 (현재 선택된 거래처는 무조건 포함)
+    const clientNames = Object.keys(globalTitanData).filter(key => 
+        !['message', 'status', 'result', 'undefined'].includes(key)
+    );
+
+    const activeClients = clientNames.filter(client => {
+        if (client === sClient) return true; // 현재 수정 중인 거래처는 무조건 표시
         return globalTitanData[client].some(site => {
             const st = (site.status || "").toString().trim();
-            return st === '진행중' || st === '진행'; // '진행'도 포함해서 안전하게
+            return st === '진행중' || st === '진행';
         });
     });
 
     if (activeClients.length === 0) {
-        cBox.innerHTML = '<span style="color:#ef4444; font-size:0.8rem;">❌ 진행 중인 거래처가 없습니다. (시트 상태 확인)</span>';
+        cBox.innerHTML = '<span style="color:#ef4444; font-size:0.8rem;">❌ 진행 중인 거래처가 없습니다.</span>';
     } else {
         cBox.innerHTML = activeClients.sort().map(c => 
             `<div class="chip ${c === sClient ? 'active' : ''}" onclick="clkClient(this, '${c}')">${c}</div>`
@@ -773,20 +776,19 @@ function renderScheduleList() {
     
     document.getElementById('sched-client').value = sClient || "";
 
-    // 3. 선택된 거래처의 '진행중' 현장들 그리기
+    // 3. 현장 목록 그리기
     if (sClient && globalTitanData[sClient]) {
-        const activeSites = globalTitanData[sClient].filter(site => {
-            const st = (site.status || "").toString().trim();
-            return st === '진행중' || st === '진행';
-        });
-        
-        sBox.innerHTML = activeSites.length === 0 ? 
-            '<span style="color:#aaa; font-size:0.8rem;">진행 중인 현장이 없습니다.</span>' :
-            activeSites.map(s => `<div class="chip ${s.name === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.name}')">${s.name}</div>`).join('');
+        const sites = globalTitanData[sClient];
+        // 수정 시에는 완료된 현장도 보여야 하므로 필터링 완화
+        sBox.innerHTML = sites.map(s => 
+            `<div class="chip ${s.name === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.name}')">
+                ${s.status === '완료' ? '[완료] ' : ''}${s.name}
+            </div>`
+        ).join('');
         
         document.getElementById('sched-site').value = sSite || "";
     } else {
-        sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 먼저 선택하세요.</span>';
+        sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 선택하세요.</span>';
     }
 }
 
