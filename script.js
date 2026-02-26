@@ -773,64 +773,8 @@ function renderCards() {
     const today = new Date().toISOString().split('T')[0];
 
     const filtered = allSchedules.filter(s => {
-        // workers 문자열 안에 선택한 직원이 있는지 확인
-        const wList = (s.workers || "").split(',').map(name => name.trim());
-        return (worker === "전체" || wList.includes(worker)) && (showPast ? s.date < today : s.date >= today);
-    });
-
-    filtered.sort((a, b) => showPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
-
-    let html = `<button class="past-btn" onclick="togglePast()">${showPast ? '⬆️ 예정 일정' : '⬇️ 지난 일정'}</button>`;
-    
-    if (filtered.length === 0) {
-        html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
-    } else {
-        html += filtered.map(s => `
-            <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" 
-                 style="border-left: 5px solid ${s.shift==='야간'?'#1e293b':'#2563eb'}; padding:15px; position:relative; margin-bottom:12px;">
-                
-                <div onclick='copyScheduleToLog(${JSON.stringify(s)})' style="position:absolute; top:10px; right:10px; font-size:1.5rem; cursor:pointer;">📝</div>
-                
-                <div><b>${s.date}</b> (${s.shift})</div>
-                <div style="color:#666; font-size:0.9rem;">${s.client}</div>
-                <div style="font-size:1.2rem; font-weight:bold;">${s.site}</div>
-                
-                <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:8px 0;">
-                    📝 ${s.content || '작업내용 없음'}
-                </div>
-
-                ${s.note ? `
-                <div style="font-size:0.85rem; color:#ef4444; font-weight:bold; margin-bottom:10px; background:#fef2f2; padding:8px; border-radius:5px; border:1px solid #fee2e2;">
-                    🚩 특이사항: ${s.note}
-                </div>` : ''}
-
-                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:5px;">
-                    ${(s.workers || "").split(',').map(w => `<span class="worker-chip" style="background:#f1f5f9; padding:2px 8px; border-radius:10px; font-size:0.8rem;">${w.trim()}</span>`).join('')}
-                    ${s.car ? `<span style="margin-left:5px; font-size:0.9rem; color:#1e293b; font-weight:bold;">| 🚛 ${s.car}</span>` : ''}
-                </div>
-                
-                ${s.address ? `<div onclick="copyAddr('${s.address}')" style="margin-top:10px; color:#64748b; font-size:0.85rem; cursor:pointer;">📍 ${s.address}</div>` : ''}
-            </div>
-        `).join('');
-    }
-    container.innerHTML = html;
-}
-
-// 🔴 [추가] 암호화된 데이터를 풀어서 원래 함수에 전달해주는 보조 함수
-function copyScheduleToLogSafe(safeData) {
-    const s = JSON.parse(decodeURIComponent(atob(safeData)));
-    copyScheduleToLog(s);
-}
-
-
-// 💡 작업일보 달력 렌더링 함수 교체 (인원수 카운트 & 줄바꿈 & 주/야 색상 완벽 적용)
-function renderCards() {
-    const container = document.getElementById('schedule-container');
-    const worker = document.getElementById('worker-select').value;
-    const today = new Date().toISOString().split('T')[0];
-
-    const filtered = allSchedules.filter(s => {
-        const wList = (s.workers || "").split(',').map(name => name.trim());
+        // workers가 문자열일 수도 있으니 안전하게 처리
+        const wList = (s.workers || "").toString().split(',').map(name => name.trim());
         return (worker === "전체" || wList.includes(worker)) && (showPast ? s.date < today : s.date >= today);
     });
 
@@ -842,7 +786,7 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [에러 방지 핵심] 데이터를 안전하게 인코딩 (Base64)
+            // 🔴 [핵심] 데이터를 Base64로 안전하게 포장 (에러 방지 1순위)
             const safeData = btoa(encodeURIComponent(JSON.stringify(s)));
             const siteAddr = s.address || s.addr || ""; 
             const specialNote = s.note || s.memo || "";
@@ -853,11 +797,11 @@ function renderCards() {
                     
                     <div onclick="copyScheduleToLogSafe('${safeData}')" style="position:absolute; top:10px; right:10px; font-size:1.5rem; cursor:pointer;">📝</div>
                     
-                    <div style="font-weight:bold; color:#64748b; font-size:0.9rem;">📅 ${s.date} (${s.shift})</div>
+                    <div style="font-weight:bold; color:#64748b; font-size:0.85rem;">📅 ${s.date} (${s.shift})</div>
                     <div style="color:#666; font-size:0.85rem; margin-top:2px;">🏢 ${s.client}</div>
                     <div style="font-size:1.1rem; font-weight:800; color:#1e293b; margin:4px 0;">${s.site}</div>
                     
-                    <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0; background:#f1f5f9; padding:8px; border-radius:5px;">
+                    <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0; background:#f1f5f9; padding:8px; border-radius:8px;">
                         📝 ${s.content || s.workContent || '작업내용 없음'}
                     </div>
 
@@ -867,7 +811,7 @@ function renderCards() {
                     </div>` : ''}
 
                     <div style="display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
-                        ${(s.workers || "").split(',').filter(n => n.trim() !== "").map(w => `<span style="background:#f1f5f9; padding:3px 8px; border-radius:10px; font-size:0.8rem; color:#475569; border:1px solid #e2e8f0;">${w.trim()}</span>`).join('')}
+                        ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => `<span style="background:#f1f5f9; padding:3px 8px; border-radius:10px; font-size:0.8rem; color:#475569; border:1px solid #e2e8f0;">${w.trim()}</span>`).join('')}
                     </div>
                     
                     ${siteAddr ? `
@@ -879,6 +823,17 @@ function renderCards() {
         }).join('');
     }
     container.innerHTML = html;
+}
+
+// 🔴 [보조 함수] 암호화된 데이터를 다시 풀어서 전달하는 다리 역할
+function copyScheduleToLogSafe(safeData) {
+    try {
+        const s = JSON.parse(decodeURIComponent(atob(safeData)));
+        copyScheduleToLog(s);
+    } catch (e) {
+        console.error("데이터 복구 에러:", e);
+        alert("일정 정보를 불러오지 못했습니다.");
+    }
 }
 
 
