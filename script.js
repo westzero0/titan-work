@@ -829,7 +829,7 @@ function renderCalendar() {
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
     
-    // 현재 선택된 직원이 누구인지 가져옵니다.
+    // 현재 선택된 직원이 누구인지 가져오기 (필터링용)
     const selectedWorker = document.getElementById('worker-select').value;
     
     let html = `<div class="card calendar-card" style="padding:10px;">
@@ -843,34 +843,39 @@ function renderCalendar() {
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
     
+    // 빈 칸 채우기
     for(let i=0; i<firstDay; i++) html += `<div style="background:white; min-height:80px;"></div>`;
     
+    // 날짜별 칸 그리기
     for(let d=1; d<=lastDate; d++) {
         const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         
+        // 1. 가짜 일정(현장명 없는 것) 걸러내고 + 선택된 직원 포함된 것만 필터링
         const jobs = allSchedules.filter(s => {
+            const isValid = (s.client && s.client.trim() !== "") || (s.site && s.site.trim() !== "");
             const isSameDate = s.date === dStr;
             const isWorkerMatched = (selectedWorker === "전체" || (s.workers && s.workers.includes(selectedWorker)));
-            return isSameDate && isWorkerMatched;
+            return isValid && isSameDate && isWorkerMatched;
         });
         
         html += `<div class="calendar-day-cell" style="background:white; min-height:80px; padding:2px; border:1px solid #eee;">
             <span style="font-size:0.8rem; font-weight:bold;">${d}</span>
-       ${jobs.map(j => {
-                // 🔴 1. 인원수 정확히 계산 (콤마로 쪼개서 개수 세기)
-                const workerCount = j.workers ? String(j.workers).split(',').filter(n => n.trim() !== '').length : 0;
-                // 🔴 '(3명)' 처럼 '명' 자도 붙여주면 더 예쁩니다.
+            ${jobs.map(j => {
+                // 🔴 [수정 1] 인원수 계산: 콤마로 쪼개서 정확히 카운트 (0명 방지)
+                const workerList = (j.workers || "").split(',').filter(w => w.trim() !== "");
+                const workerCount = workerList.length;
                 const displayTitle = `${j.site}(${workerCount}명)`;
 
-                // 🔴 2. 야/야간 호환성 체크
-                const shiftStr = (j.shift || '').toString();
-                const isNight = shiftStr.includes('야');
+                // 🔴 [수정 2] 색상 결정: '야', '조' 1글자 완벽 대응
+                const sType = (j.shift || "").toString().trim();
+                let bgColor = '#2563eb'; // 기본 주간 (파란색)
+                if (sType === '야') bgColor = '#475569'; // 야간 (검정/진회색)
+                else if (sType === '조') bgColor = '#f59e0b'; // 조출 (주황색)
 
-                // 🔴 3. 줄바꿈 허용 속성 적용 (nowrap, ellipsis 삭제하고 normal, keep-all 추가)
+                // 🔴 [수정 3] 줄바꿈 강제 적용 (white-space: normal, word-break: keep-all)
                 return `<div onclick="jumpToCard('${j.date}','${j.site}')" 
-                             class="calendar-event-bar ${isNight ? 'bar-night' : 'bar-day'}" 
-                             style="color:white; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; 
-                                    white-space:normal; word-break:keep-all; cursor:pointer;">
+                             style="background:${bgColor}; color:white; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; 
+                                    white-space:normal; word-break:keep-all; cursor:pointer; min-height:1.4rem;">
                              ${displayTitle}
                         </div>`;
             }).join('')}
