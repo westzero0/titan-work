@@ -742,7 +742,6 @@ function renderTimeline() {
     grid.innerHTML = '';
     const worker = document.getElementById('worker-select').value;
     
-    // 💡 오늘 날짜를 비교하기 위해 이 줄이 반드시 필요합니다.
     const todayStr = new Date().toISOString().split('T')[0]; 
 
     for (let i = 0; i < 14; i++) {
@@ -750,17 +749,28 @@ function renderTimeline() {
         date.setDate(date.getDate() + i);
         const dateStr = date.toISOString().split('T')[0];
         
+        // 필터링 로직: 1글자 '야' 반영
         let dayJobs = allSchedules.filter(j => 
-            j.date === dateStr && (worker === "전체" || j.workers.includes(worker))
+            j.date === dateStr && (worker === "전체" || (j.workers && j.workers.includes(worker)))
         );
 
         const col = document.createElement('div');
-        // 💡 여기서 todayStr을 사용합니다.
         col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
         col.innerHTML = `
             <div style="font-size:0.75rem; text-align:center; margin-bottom:5px; font-weight:bold;">${dateStr === todayStr ? '🌟' : (date.getMonth()+1)+'/'+date.getDate()}</div>
             <div style="display:flex; flex-direction:column; gap:4px;">
-                ${dayJobs.map(j => `<div class="job-bar ${j.shift === '야' ? 'bar-night' : 'bar-day'}" onclick="scrollToCard('${j.date}', '${j.site}')">${j.site}</div>`).join('')}
+                ${dayJobs.map(j => {
+                    // 🔴 [색상 결정]
+                    const isNight = (j.shift || "").toString().includes('야');
+                    const bgColor = isNight ? '#475569' : '#2563eb';
+
+                    // 🔴 [핵심] style="color: white !important;" 를 직접 박았습니다.
+                    return `<div class="job-bar" 
+                                 onclick="scrollToCard('${j.date}', '${j.site}')"
+                                 style="background-color: ${bgColor}; color: white !important; font-weight: bold; font-size: 0.7rem; padding: 3px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;">
+                                 ${j.site}
+                            </div>`;
+                }).join('')}
             </div>
         `;
         grid.appendChild(col);
