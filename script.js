@@ -873,12 +873,16 @@ function renderCalendar() {
                 else if (sType === '조') bgColor = '#f59e0b'; // 조출 (주황색)
 
                 // 🔴 [수정 3] 줄바꿈 강제 적용 (white-space: normal, word-break: keep-all)
-                return `<div onclick="jumpToCard('${j.date}','${j.site}')" 
-                             style="background:${bgColor}; color:white; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; 
-                                    white-space:normal; word-break:keep-all; cursor:pointer; min-height:1.4rem;">
-                             ${displayTitle}
-                        </div>`;
-            }).join('')}
+           // renderCalendar 함수 안의 return 부분을 이렇게 고치세요
+return `<div onclick="jumpToCard('${j.date}','${j.site}')" 
+             style="background:${bgColor}; color:white !important; font-size:0.65rem; padding:4px; margin-top:2px; border-radius:3px; 
+                    white-space: normal;     /* 🔴 줄바꿈 허용 */
+                    word-break: keep-all;    /* 🔴 단어 단위 줄바꿈 */
+                    line-height: 1.2;        /* 🔴 줄 간격 */
+                    cursor:pointer; font-weight:bold;
+                    display: block;          /* 🔴 박스 형태 유지 */
+                    height: auto;">
+             ${j.site}(${workerCount})
         </div>`;
     }
     html += `</div></div>`;
