@@ -300,7 +300,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     }
 
     /* 3. 일정 막대(Event Bar) 최적화 - 요청하신 부분! */
-    .fc-event {
+   .fc-event {
         margin-top: 1px !important; /* 막대 간 간격 좁힘 */
         border-radius: 3px !important;
     }
@@ -310,12 +310,12 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     }
 
     .fc-event-title {
-        font-size: 0.7rem !important; /* 🟢 글자 크기 확 줄임 (11~12px 수준) */
-        font-weight: normal !important; /* 두꺼운 글씨 해제해서 공간 확보 */
-        line-height: 1.1 !important;
-        white-space: nowrap !important; /* 줄바꿈 방지 */
-        overflow: hidden !important;
-        text-overflow: ellipsis !important; /* 길면 ... 처리 */
+        font-size: 0.65rem !important; /* 글자 크기 유지 */
+        font-weight: normal !important; 
+        line-height: 1.2 !important; /* 🔴 위아래 줄 겹치지 않게 살짝 늘림 */
+        white-space: normal !important; /* 🔴 nowrap을 normal로 변경 (줄바꿈 허용!) */
+        word-break: keep-all !important; /* 🔴 한국어 단어 중간에 안 잘리게 예쁘게 줄바꿈 */
+        /* overflow와 text-overflow 줄은 아예 삭제해 버리세요! */
     }
 
     /* 4. 일요일/토요일 색상 */
@@ -948,13 +948,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
       
  async function saveSchedule(mode) {
+   let rawShift = document.getElementById('sched-shift').value;
+    let finalShift = '주'; 
+    if (rawShift.includes('야')) finalShift = '야';
+    else if (rawShift.includes('조')) finalShift = '조';
+   
     // 1. 데이터 수집
     const payload = {
         date: document.getElementById('sched-date').value,
         client: document.getElementById('sched-client').value,
         site: document.getElementById('sched-site').value,
-        shift: document.getElementById('sched-shift').value,
-        workers: document.getElementById('sched-workers-text').value,
+        shift: finalShift, // '주', '야', '조'로 꽂힘
+      workers: document.getElementById('sched-workers-text').value,
         car: document.getElementById('sched-car').value,
         content: document.getElementById('sched-content').value,
         note: document.getElementById('sched-note').value,
@@ -1020,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
     // UI Helper
-    const SHIFT_TYPES = ['주간', '야간', '조출'];
+    const SHIFT_TYPES = ['주', '야', '조'];
     let currentShiftIndex = 0;
     function toggleShift() { currentShiftIndex = (currentShiftIndex + 1) % SHIFT_TYPES.length; updateShiftBtn(); }
     function updateShiftBtn() {
