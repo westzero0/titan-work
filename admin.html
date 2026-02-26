@@ -593,86 +593,101 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
     }
 
     // [3] 달력
-    function initCalendar() {
-        const el = document.getElementById('calendar-container');
-        if (!el) return;
-        const events = globalScheduleData.map(item => ({
-            id: item.rowId,
-            title: `${item.site} (${item.workers ? item.workers.split(',').length : 0}명)`,
-            start: item.date,
-            backgroundColor: item.shift === '야간' ? '#475569' : '#3b82f6',
-            borderColor: 'transparent', extendedProps: item
-        }));
+  function initCalendar() {
+    const el = document.getElementById('calendar-container');
+    if (!el) return;
 
-        if (calendar) calendar.destroy();
-        calendar = new FullCalendar.Calendar(el, {
-            initialView: 'dayGridMonth', locale: 'ko', height: 'auto',
-            longPressDelay: 300, eventLongPressDelay: 300, selectLongPressDelay: 300,
-            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-            dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
-            selectable: true, selectMirror: true,
-            select: (info) => openModal('add', info.startStr, null, info.endStr),
-            eventClick: (info) => openModal('edit', null, info.event.extendedProps),
-            events: events
-        });
-        calendar.render();
+    // 🔴 [핵심] 거래처(client)나 현장(site) 이름이 비어있는 가짜 일정은 아예 걸러버립니다.
+    const validSchedules = globalScheduleData.filter(item => 
+        (item.client && item.client.trim() !== "") || (item.site && item.site.trim() !== "")
+    );
+
+    const events = validSchedules.map(item => {
+        // 인원수 계산 시 빈칸은 제외하고 정확히 카운트
+        const workerCount = item.workers ? item.workers.split(',').filter(n => n.trim() !== '').length : 0;
+        
+        return {
+            id: item.rowId,
+            title: `${item.site || '현장미상'} (${workerCount}명)`,
+            start: item.date,
+            // 주간/야간/조출에 따라 달력 바 색상 다르게 표시
+            backgroundColor: item.shift === '야간' ? '#475569' : (item.shift === '조출' ? '#f59e0b' : '#3b82f6'),
+            borderColor: 'transparent', 
+            extendedProps: item
+        };
+    });
+
+    if (calendar) calendar.destroy();
+    calendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth', locale: 'ko', height: 'auto',
+        longPressDelay: 300, eventLongPressDelay: 300, selectLongPressDelay: 300,
+        headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+        dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
+        selectable: true, selectMirror: true,
+        select: (info) => openModal('add', info.startStr, null, info.endStr),
+        eventClick: (info) => openModal('edit', null, info.event.extendedProps),
+        events: events
+    });
+    calendar.render();
+}
+
+ // [상세 일정 리스트 렌더링]
+function renderScheduleList() {
+    const box = document.getElementById('upcoming-list'); 
+    if (!box) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
+
+    const list = scheduleData
+        .filter(i => {
+            // 🔴 오늘 이후의 일정이면서 + 거래처나 현장명이 존재하는 것만 남김
+            const isValid = (i.client && i.client.trim() !== "") || (i.site && i.site.trim() !== "");
+            return i.date >= today && isValid;
+        })
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (list.length === 0) {
+        box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">예정된 일정이 없습니다.</div>';
+        return;
     }
 
-   // [상세 일정 리스트 렌더링 수정]
-function renderScheduleList() {
-        const box = document.getElementById('upcoming-list'); 
-        if (!box) return;
+    box.innerHTML = list.map(item => {
+        const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
 
-        const today = new Date().toISOString().split('T')[0];
-        const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
-
-        const list = scheduleData
-            .filter(i => i.date >= today)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        if (list.length === 0) {
-            box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">예정된 일정이 없습니다.</div>';
-            return;
-        }
-
-        box.innerHTML = list.map(item => {
-            // 🔴 [핵심] 한글과 특수문자, 줄바꿈을 모두 포함해도 안전한 암호화 방식
-            // JSON을 문자열로 만든 후 -> URI 인코딩 -> Base64 변환
-            const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
-
-            return `
-                <div class="card" style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':'#2563eb'}; cursor:pointer;" 
-                     onclick="openModalSafe('${safeData}')">
-                    
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                        <div>
-                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
-                                📅 ${item.date} (${item.shift})
-                            </div>
-                            <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
-                            <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
+        return `
+            <div class="card" style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${item.shift==='야간'?'#475569':(item.shift==='조출'?'#f59e0b':'#2563eb')}; cursor:pointer;" 
+                 onclick="openModalSafe('${safeData}')">
+                
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                    <div>
+                        <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
+                            📅 ${item.date} (${item.shift})
                         </div>
-                    </div>
-
-                    <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0;">
-                        📝 ${item.content || '작업 내용 없음'}
-                    </div>
-
-                    ${item.note ? `
-                <div style="background:#fffbeb; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:10px;">
-                    💡 특이사항: ${item.note}
-                </div>` : ''}
-
-                    <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
-                        ${(item.workers || '').split(',').map(name => 
-                            `<span style="background:#fff; border:1px solid #e2e8f0; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`
-                        ).join('')}
-                        ${item.car ? `<span style="font-size:0.8rem; color:#1e293b; font-weight:bold; margin-left:5px; display:flex; align-items:center;">🚛 ${item.car}</span>` : ''}
+                        <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
+                        <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
                     </div>
                 </div>
-            `;
-        }).join('');
-    }
+
+                <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0;">
+                    📝 ${item.content || item.workContent || '작업 내용 없음'}
+                </div>
+
+                ${item.note || item.memo ? `
+                <div style="background:#fffbeb; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:10px;">
+                    💡 특이사항: ${item.note || item.memo}
+                </div>` : ''}
+
+                <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
+                    ${(item.workers || '').split(',').filter(n => n.trim() !== '').map(name => 
+                        `<span style="background:#fff; border:1px solid #e2e8f0; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`
+                    ).join('')}
+                    ${item.car ? `<span style="font-size:0.8rem; color:#1e293b; font-weight:bold; margin-left:5px; display:flex; align-items:center;">🚛 ${item.car}</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
 
 
    // [중요] 암호화된 데이터를 다시 한글 JSON으로 복구하여 모달 열기
