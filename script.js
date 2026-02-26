@@ -823,12 +823,13 @@ function copyScheduleToLogSafe(safeData) {
 }
 
 
+// 💡 작업일보 달력 렌더링 함수 교체 (인원수 카운트 & 줄바꿈 & 주/야 색상 완벽 적용)
 function renderCalendar() {
     const container = document.getElementById('schedule-container');
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
     
-    // 🟢 1. 현재 선택된 직원이 누구인지 가져옵니다.
+    // 현재 선택된 직원이 누구인지 가져옵니다.
     const selectedWorker = document.getElementById('worker-select').value;
     
     let html = `<div class="card calendar-card" style="padding:10px;">
@@ -847,7 +848,6 @@ function renderCalendar() {
     for(let d=1; d<=lastDate; d++) {
         const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         
-        // 🟢 2. [핵심 수정] 날짜만 체크하는 게 아니라, 선택된 직원이 포함된 일정만 필터링합니다.
         const jobs = allSchedules.filter(s => {
             const isSameDate = s.date === dStr;
             const isWorkerMatched = (selectedWorker === "전체" || (s.workers && s.workers.includes(selectedWorker)));
@@ -857,12 +857,20 @@ function renderCalendar() {
         html += `<div class="calendar-day-cell" style="background:white; min-height:80px; padding:2px; border:1px solid #eee;">
             <span style="font-size:0.8rem; font-weight:bold;">${d}</span>
        ${jobs.map(j => {
-                const workerCount = (j.workers && Array.isArray(j.workers)) ? j.workers.length : 0;
-                const displayTitle = `${j.site}(${workerCount})`;
+                // 🔴 1. 인원수 정확히 계산 (콤마로 쪼개서 개수 세기)
+                const workerCount = j.workers ? String(j.workers).split(',').filter(n => n.trim() !== '').length : 0;
+                // 🔴 '(3명)' 처럼 '명' 자도 붙여주면 더 예쁩니다.
+                const displayTitle = `${j.site}(${workerCount}명)`;
 
+                // 🔴 2. 야/야간 호환성 체크
+                const shiftStr = (j.shift || '').toString();
+                const isNight = shiftStr.includes('야');
+
+                // 🔴 3. 줄바꿈 허용 속성 적용 (nowrap, ellipsis 삭제하고 normal, keep-all 추가)
                 return `<div onclick="jumpToCard('${j.date}','${j.site}')" 
-                             class="calendar-event-bar ${j.shift==='야'?'bar-night':'bar-day'}" 
-                             style="color:white; font-size:0.6rem; padding:2px; margin-top:2px; border-radius:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;">
+                             class="calendar-event-bar ${isNight ? 'bar-night' : 'bar-day'}" 
+                             style="color:white; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; 
+                                    white-space:normal; word-break:keep-all; cursor:pointer;">
                              ${displayTitle}
                         </div>`;
             }).join('')}
