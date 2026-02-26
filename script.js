@@ -824,68 +824,60 @@ function copyScheduleToLogSafe(safeData) {
 
 
 // 💡 작업일보 달력 렌더링 함수 교체 (인원수 카운트 & 줄바꿈 & 주/야 색상 완벽 적용)
-function renderCalendar() {
+function renderCards() {
     const container = document.getElementById('schedule-container');
-    const year = viewDate.getFullYear();
-    const month = viewDate.getMonth();
-    
-    // 현재 선택된 직원이 누구인지 가져오기 (필터링용)
-    const selectedWorker = document.getElementById('worker-select').value;
-    
-    let html = `<div class="card calendar-card" style="padding:10px;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <button onclick="changeMonth(-1)">◀</button> <b>${year}.${month+1}</b> <button onclick="changeMonth(1)">▶</button>
-        </div>
-        <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:1px; background:#ddd;">
-            ${['일','월','화','수','목','금','토'].map(d=>`<div style="background:#f8f9fa; text-align:center; font-size:0.8rem; padding:5px;">${d}</div>`).join('')}
-    `;
-    
-    const firstDay = new Date(year, month, 1).getDay();
-    const lastDate = new Date(year, month + 1, 0).getDate();
-    
-    // 빈 칸 채우기
-    for(let i=0; i<firstDay; i++) html += `<div style="background:white; min-height:80px;"></div>`;
-    
-    // 날짜별 칸 그리기
-    for(let d=1; d<=lastDate; d++) {
-        const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        
-        // 1. 가짜 일정(현장명 없는 것) 걸러내고 + 선택된 직원 포함된 것만 필터링
-        const jobs = allSchedules.filter(s => {
-            const isValid = (s.client && s.client.trim() !== "") || (s.site && s.site.trim() !== "");
-            const isSameDate = s.date === dStr;
-            const isWorkerMatched = (selectedWorker === "전체" || (s.workers && s.workers.includes(selectedWorker)));
-            return isValid && isSameDate && isWorkerMatched;
-        });
-        
-        html += `<div class="calendar-day-cell" style="background:white; min-height:80px; padding:2px; border:1px solid #eee;">
-            <span style="font-size:0.8rem; font-weight:bold;">${d}</span>
-            ${jobs.map(j => {
-                // 🔴 [수정 1] 인원수 계산: 콤마로 쪼개서 정확히 카운트 (0명 방지)
-                const workerList = (j.workers || "").split(',').filter(w => w.trim() !== "");
-                const workerCount = workerList.length;
-                const displayTitle = `${j.site}(${workerCount}명)`;
+    const worker = document.getElementById('worker-select').value;
+    const today = new Date().toISOString().split('T')[0];
 
-                // 🔴 [수정 2] 색상 결정: '야', '조' 1글자 완벽 대응
-                const sType = (j.shift || "").toString().trim();
-                let bgColor = '#2563eb'; // 기본 주간 (파란색)
-                if (sType === '야') bgColor = '#475569'; // 야간 (검정/진회색)
-                else if (sType === '조') bgColor = '#f59e0b'; // 조출 (주황색)
+    const filtered = allSchedules.filter(s => {
+        const wList = (s.workers || "").split(',').map(name => name.trim());
+        return (worker === "전체" || wList.includes(worker)) && (showPast ? s.date < today : s.date >= today);
+    });
 
-                // 🔴 [수정 3] 줄바꿈 강제 적용 (white-space: normal, word-break: keep-all)
-           // renderCalendar 함수 안의 return 부분을 이렇게 고치세요
-return `<div onclick="jumpToCard('${j.date}','${j.site}')" 
-             style="background:${bgColor}; color:white !important; font-size:0.65rem; padding:4px; margin-top:2px; border-radius:3px; 
-                    white-space: normal;     /* 🔴 줄바꿈 허용 */
-                    word-break: keep-all;    /* 🔴 단어 단위 줄바꿈 */
-                    line-height: 1.2;        /* 🔴 줄 간격 */
-                    cursor:pointer; font-weight:bold;
-                    display: block;          /* 🔴 박스 형태 유지 */
-                    height: auto;">
-             ${j.site}(${workerCount})
-        </div>`;
+    filtered.sort((a, b) => showPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
+
+    let html = `<button class="past-btn" onclick="togglePast()">${showPast ? '⬆️ 예정 일정' : '⬇️ 지난 일정'}</button>`;
+    
+    if (filtered.length === 0) {
+        html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
+    } else {
+        html += filtered.map(s => {
+            // 🔴 [에러 방지 핵심] 데이터를 안전하게 인코딩 (Base64)
+            const safeData = btoa(encodeURIComponent(JSON.stringify(s)));
+            const siteAddr = s.address || s.addr || ""; 
+            const specialNote = s.note || s.memo || "";
+
+            return `
+                <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" 
+                     style="border-left: 5px solid ${s.shift === '야' ? '#475569' : (s.shift === '조' ? '#f59e0b' : '#2563eb')}; padding:15px; position:relative; margin-bottom:12px;">
+                    
+                    <div onclick="copyScheduleToLogSafe('${safeData}')" style="position:absolute; top:10px; right:10px; font-size:1.5rem; cursor:pointer;">📝</div>
+                    
+                    <div style="font-weight:bold; color:#64748b; font-size:0.9rem;">📅 ${s.date} (${s.shift})</div>
+                    <div style="color:#666; font-size:0.85rem; margin-top:2px;">🏢 ${s.client}</div>
+                    <div style="font-size:1.1rem; font-weight:800; color:#1e293b; margin:4px 0;">${s.site}</div>
+                    
+                    <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0; background:#f1f5f9; padding:8px; border-radius:5px;">
+                        📝 ${s.content || s.workContent || '작업내용 없음'}
+                    </div>
+
+                    ${specialNote ? `
+                    <div style="font-size:0.85rem; color:#b45309; font-weight:bold; margin-bottom:10px; background:#fffbeb; padding:10px; border-radius:8px; border:1px solid #fef3c7;">
+                        💡 특이사항: ${specialNote}
+                    </div>` : ''}
+
+                    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
+                        ${(s.workers || "").split(',').filter(n => n.trim() !== "").map(w => `<span style="background:#f1f5f9; padding:3px 8px; border-radius:10px; font-size:0.8rem; color:#475569; border:1px solid #e2e8f0;">${w.trim()}</span>`).join('')}
+                    </div>
+                    
+                    ${siteAddr ? `
+                    <div onclick="copyText('${siteAddr.replace(/'/g, "\\'")}')" style="margin-top:10px; color:#475569; font-size:0.8rem; cursor:pointer; background:#f8fafc; padding:8px; border-radius:6px; border:1px dashed #cbd5e1;">
+                        📍 <b>현장주소:</b> ${siteAddr} <span style="color:#2563eb; font-weight:bold; margin-left:5px;">[복사]</span>
+                    </div>` : ''}
+                </div>
+            `;
+        }).join('');
     }
-    html += `</div></div>`;
     container.innerHTML = html;
 }
 
