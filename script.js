@@ -749,7 +749,7 @@ function renderTimeline() {
         date.setDate(date.getDate() + i);
         const dateStr = date.toISOString().split('T')[0];
         
-        // 필터링 로직: 1글자 '야' 반영
+        // 해당 날짜의 일정 필터링
         let dayJobs = allSchedules.filter(j => 
             j.date === dateStr && (worker === "전체" || (j.workers && j.workers.includes(worker)))
         );
@@ -760,15 +760,33 @@ function renderTimeline() {
             <div style="font-size:0.75rem; text-align:center; margin-bottom:5px; font-weight:bold;">${dateStr === todayStr ? '🌟' : (date.getMonth()+1)+'/'+date.getDate()}</div>
             <div style="display:flex; flex-direction:column; gap:4px;">
                 ${dayJobs.map(j => {
-                    // 🔴 [색상 결정]
+                    // 🔴 1. 인원수 계산 (쉼표로 쪼개서 정확히 카운트)
+                    const wCount = (j.workers || "").toString().split(',').filter(n => n.trim() !== "").length;
+                    const displayTitle = `${j.site}(${wCount})`;
+
+                    // 🔴 2. 주/야 색상 판별
                     const isNight = (j.shift || "").toString().includes('야');
                     const bgColor = isNight ? '#475569' : '#2563eb';
 
-                    // 🔴 [핵심] style="color: white !important;" 를 직접 박았습니다.
+                    // 🔴 3. 줄바꿈 및 흰색 글씨 적용
                     return `<div class="job-bar" 
                                  onclick="scrollToCard('${j.date}', '${j.site}')"
-                                 style="background-color: ${bgColor}; color: white !important; font-weight: bold; font-size: 0.7rem; padding: 3px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;">
-                                 ${j.site}
+                                 style="background-color: ${bgColor}; 
+                                        color: white !important; 
+                                        font-weight: bold; 
+                                        font-size: 0.65rem; 
+                                        padding: 4px 2px; 
+                                        border-radius: 4px; 
+                                        text-align: center;
+                                        white-space: normal;    /* 👈 줄바꿈 허용 */
+                                        word-break: break-all;  /* 👈 좁으면 글자단위로 쪼갬 */
+                                        line-height: 1.1;       /* 👈 줄간격 좁게 */
+                                        min-height: 1.5rem;     /* 👈 최소 높이 확보 */
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        cursor: pointer;">
+                                 ${displayTitle}
                             </div>`;
                 }).join('')}
             </div>
