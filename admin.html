@@ -309,13 +309,14 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         padding: 1px 2px !important; /* 막대 내부 여백 최소화 */
     }
 
+   /* 🔴 작업일보 달력에서도 말줄임표 없애고 줄바꿈 허용 */
     .fc-event-title {
-        font-size: 0.65rem !important; /* 글자 크기 유지 */
+        font-size: 0.65rem !important; /* 글씨 크기 (원하시는 대로 조절) */
         font-weight: normal !important; 
-        line-height: 1.2 !important; /* 🔴 위아래 줄 겹치지 않게 살짝 늘림 */
-        white-space: normal !important; /* 🔴 nowrap을 normal로 변경 (줄바꿈 허용!) */
-        word-break: keep-all !important; /* 🔴 한국어 단어 중간에 안 잘리게 예쁘게 줄바꿈 */
-        /* overflow와 text-overflow 줄은 아예 삭제해 버리세요! */
+        line-height: 1.2 !important; /* 위아래 간격 */
+        white-space: normal !important; /* 줄바꿈 허용! */
+        word-break: keep-all !important; /* 단어 안 잘리게! */
+        /* overflow: hidden 이나 text-overflow: ellipsis 가 있다면 반드시 지우세요! */
     }
 
     /* 4. 일요일/토요일 색상 */
