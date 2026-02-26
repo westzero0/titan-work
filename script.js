@@ -767,6 +767,63 @@ function renderTimeline() {
     }
 }
 
+// 🔴 [복구] 작업일보 전용 달력 렌더링 함수
+function renderCalendar() {
+    const container = document.getElementById('schedule-container');
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    
+    // 현재 필터링된 직원 선택값
+    const selectedWorker = document.getElementById('worker-select').value;
+    
+    let html = `<div class="card calendar-card" style="padding:10px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <button onclick="changeMonth(-1)">◀</button> <b>${year}.${month+1}</b> <button onclick="changeMonth(1)">▶</button>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:1px; background:#ddd;">
+            ${['일','월','화','수','목','금','토'].map(d=>`<div style="background:#f8f9fa; text-align:center; font-size:0.8rem; padding:5px;">${d}</div>`).join('')}
+    `;
+    
+    const firstDay = new Date(year, month, 1).getDay();
+    const lastDate = new Date(year, month + 1, 0).getDate();
+    
+    for(let i=0; i<firstDay; i++) html += `<div style="background:white; min-height:80px;"></div>`;
+    
+    for(let d=1; d<=lastDate; d++) {
+        const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        
+        // 날짜와 직원에 맞는 일정 필터링
+        const jobs = allSchedules.filter(s => {
+            const isSameDate = s.date === dStr;
+            const isWorkerMatched = (selectedWorker === "전체" || (s.workers && s.workers.includes(selectedWorker)));
+            return isSameDate && isWorkerMatched;
+        });
+        
+        html += `<div class="calendar-day-cell" style="background:white; min-height:80px; padding:2px; border:1px solid #eee;">
+            <span style="font-size:0.8rem; font-weight:bold;">${d}</span>
+            ${jobs.map(j => {
+                // 인원수 계산 (글자 쪼개서 숫자 세기)
+                const workerCount = (j.workers || "").toString().split(',').filter(n => n.trim() !== "").length;
+                
+                // 🔴 [색상] 1글자 주/야/조 완벽 대응
+                const sType = (j.shift || "").toString().trim();
+                let bgColor = '#2563eb'; // 기본 주간 (파란색)
+                if (sType === '야') bgColor = '#475569'; // 야간 (진회색)
+                else if (sType === '조') bgColor = '#f59e0b'; // 조출 (주황색)
+
+                // 🔴 [줄바꿈] white-space: normal 로 설정해서 아래로 내려가게 함
+                return `<div onclick="jumpToCard('${j.date}','${j.site}')" 
+                             style="background:${bgColor}; color:white !important; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; 
+                                    white-space:normal; word-break:keep-all; cursor:pointer; font-weight:bold;">
+                             ${j.site}(${workerCount})
+                        </div>`;
+            }).join('')}
+        </div>`;
+    }
+    html += `</div></div>`;
+    container.innerHTML = html;
+}
+
 function renderCards() {
     const container = document.getElementById('schedule-container');
     const worker = document.getElementById('worker-select').value;
