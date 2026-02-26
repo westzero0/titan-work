@@ -438,7 +438,6 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         <input type="hidden" id="sched-site">
         <input type="hidden" id="sched-shift">
         <input type="hidden" id="sched-workers-text">
-        <input type="hidden" id="sched-car">
 
         <div class="input-group">
             <label>🏢 거래처 (진행중인 현장)</label>
@@ -458,24 +457,37 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
             <div id="worker-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; padding:10px 0;">
                 </div>
 
-            <div class="header-row">
-                <label style="margin:0;">🚛 사용 차량 (중복 가능)</label>
-                <div class="delete-toggle" onclick="toggleDeleteMode('car')">🗑️ 삭제</div>
-            </div>
-            <div class="input-with-btn">
-                <input type="text" id="new-car-input" placeholder="차량 추가">
-                <button class="btn-add-chip" onclick="addPreset('car')">추가</button>
-            </div>
+          <div class="header-row">
+    <label style="margin:0;">🚛 사용 차량 (중복 가능)</label>
+    <div class="delete-toggle" onclick="toggleDeleteMode('car')">🗑️ 삭제</div>
+</div>
+
+<input type="text" id="sched-car" placeholder="칩을 클릭하면 여기에 표시됩니다" readonly style="margin-bottom:8px; border: 2px solid #dbeafe; background-color: #f8fafc;">
+
+<div id="car-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
+
+<div class="input-with-btn">
+    <input type="text" id="new-car-input" placeholder="새로운 차량 리스트에 추가">
+    <button type="button" class="btn-add-chip" onclick="addPreset('car')">추가</button>
+</div>
+          
             <div id="car-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
 
-            <div class="header-row">
-                <label style="margin:0;">📝 작업 내용 (공정 선택)</label>
-                <div class="delete-toggle" onclick="toggleDeleteMode('work')">🗑️ 삭제</div>
-            </div>
-            <div class="input-with-btn">
-<input type="text" id="sched-content" placeholder="공정을 선택하거나 직접 입력하세요" style="margin-bottom:10px; border: 2px solid #dbeafe;">
-              <button class="btn-add-chip" onclick="addPreset('work')">추가</button>
-            </div>
+           <div class="header-row">
+    <label style="margin:0;">📝 작업 내용 (공정 선택)</label>
+    <div class="delete-toggle" onclick="toggleDeleteMode('work')">🗑️ 삭제</div>
+</div>
+
+<input type="text" id="sched-content" placeholder="공정 칩을 클릭하거나 직접 입력하세요" oninput="renderWorkPresets()" style="margin-bottom:8px; border: 2px solid #dbeafe;">
+
+<div id="work-preset-list" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
+
+<div class="input-with-btn">
+    <input type="text" id="new-work-input" placeholder="새로운 공정 리스트에 추가">
+    <button type="button" class="btn-add-chip" onclick="addPreset('work')">추가</button>
+</div>
+
+          
             <div id="work-preset-list" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
             
             <label>특이사항</label>
