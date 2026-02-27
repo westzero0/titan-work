@@ -670,7 +670,7 @@ function renderScheduleList() {
 
     const list = scheduleData
         .filter(i => {
-            // 🔴 오늘 이후의 일정이면서 + 거래처나 현장명이 존재하는 것만 남김
+            // 오늘 이후의 일정이면서 + 거래처나 현장명이 존재하는 것만 남김
             const isValid = (i.client && i.client.trim() !== "") || (i.site && i.site.trim() !== "");
             return i.date >= today && isValid;
         })
@@ -682,6 +682,18 @@ function renderScheduleList() {
     }
 
     box.innerHTML = list.map(item => {
+        // 🔴 [주소 매칭 로직] 거래처 마스터(globalTitanData)에서 주소를 찾아옵니다.
+        let siteAddr = "";
+        const clientKey = (item.client || "").trim();
+        const siteKey = (item.site || "").trim();
+
+        if (globalTitanData[clientKey]) {
+            const masterSite = globalTitanData[clientKey].find(s => (s.name || "").trim() === siteKey);
+            if (masterSite) {
+                siteAddr = masterSite.addr || masterSite.address || "";
+            }
+        }
+
         const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
 
         return `
@@ -689,12 +701,19 @@ function renderScheduleList() {
                  onclick="openModalSafe('${safeData}')">
                 
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                    <div>
+                    <div style="width: 100%;">
                         <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
                             📅 ${item.date} (${item.shift})
                         </div>
                         <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
                         <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
+                        
+                        ${siteAddr ? `
+                        <div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr}')" style="margin-top:10px; display: block; width: fit-content;">
+                            📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
+                        </div>` : `
+                        <div style="font-size:0.75rem; color:#94a3b8; margin-top:8px;">📍 주소 정보 없음</div>
+                        `}
                     </div>
                 </div>
 
