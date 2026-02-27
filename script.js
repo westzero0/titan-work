@@ -230,6 +230,9 @@ async function loadTitanDataWithBackgroundSync() {
         // 데이터가 정상적인 객체인지 확인
         if (fullData && typeof fullData === 'object' && !fullData.status) {
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
+
+            // 🔴 [핵심 수정] 가져온 데이터를 전역 변수에 넣어줘야 다른 함수들이 주소를 찾을 수 있습니다!
+            globalTitanData = fullData;
             
             // 칩 렌더링 함수 실행
             const clientNames = Object.keys(fullData);
@@ -859,19 +862,8 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 [에러 차단] 변수 존재 여부를 가장 안전한 방법으로 체크합니다.
-    let masterData = {};
-    try {
-        // window 객체를 통해 접근하면 ReferenceError를 완벽히 피할 수 있습니다.
-        if (window.globalTitanData && Object.keys(window.globalTitanData).length > 0) {
-            masterData = window.globalTitanData;
-        } else {
-            const cached = localStorage.getItem('titan_full_data_cache');
-            masterData = cached ? JSON.parse(cached) : {};
-        }
-    } catch (e) {
-        masterData = {}; 
-    }
+    // 🔴 [주소 마스터 데이터 가져오기]
+    const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
         const wList = (s.workers || "").toString().split(',').map(name => name.trim());
@@ -886,17 +878,13 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [주소 매칭] 공백 제거 후 1:1 대조
-            let siteAddr = ""; 
-            const clientName = (s.client || "").toString().trim();
-            const siteName = (s.site || "").toString().trim();
-
-            if (masterData[clientName]) {
-                const found = masterData[clientName].find(item => (item.name || "").toString().trim() === siteName);
-                if (found) {
-                    // 구글 시트의 열 이름이 무엇이든(address, addr, 주소) 다 찾아옵니다.
-                    siteAddr = found.address || found.addr || found.주소 || "";
-                }
+            // 🔴 [주소 매칭 로직]
+            let siteAddr = "";
+            const clientKey = (s.client || "").trim();
+            const siteKey = (s.site || "").trim();
+            if (masterData[clientKey]) {
+                const found = masterData[clientKey].find(item => (item.name || "").trim() === siteKey);
+                if (found) siteAddr = found.address || found.addr || found.주소 || "";
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
@@ -911,6 +899,12 @@ function renderCards() {
                     <div style="color:#666; font-size:0.85rem; margin-top:2px;">🏢 ${s.client}</div>
                     <div style="font-size:1.1rem; font-weight:800; color:#1e293b; margin:4px 0;">${s.site}</div>
                     
+                    ${siteAddr ? `
+                    <div onclick="event.stopPropagation(); copyText('${siteAddr}')" 
+                         style="margin-top:8px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
+                        📍 <b>주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
+                    </div>` : ''}
+
                     <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0; background:#f1f5f9; padding:8px; border-radius:8px;">
                         📝 ${s.content || s.workContent || '작업내용 없음'}
                     </div>
@@ -918,22 +912,12 @@ function renderCards() {
                     <div style="display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
                         ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => `<span style="background:#f1f5f9; padding:3px 8px; border-radius:10px; font-size:0.8rem; color:#475569; border:1px solid #e2e8f0;">${w.trim()}</span>`).join('')}
                     </div>
-                    
-                    ${siteAddr ? `
-                    <div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
-                         style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
-                        📍 <b>현장주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                    </div>` : `
-                    <div style="margin-top:10px; color:#94a3b8; font-size:0.8rem; padding:8px; background:#f8fafc; border-radius:6px;">
-                        📍 주소 정보 없음
-                    </div>`}
                 </div>
             `;
         }).join('');
     }
     container.innerHTML = html;
 }
-
 
 
 function toggleView() {
