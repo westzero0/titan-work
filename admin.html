@@ -267,6 +267,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     left: 0; top: 0;
     width: 100%; height: 100%;
     background-color: rgba(0, 0, 0, 0.7);
+  overscroll-behavior: contain !important; /* 🔴 스크롤이 밖으로 새나가는 것 방지 */
     
     /* 🔴 잘림 방지를 위한 핵심 설정 */
     overflow-y: auto; /* 내용이 길면 배경 자체에 스크롤 생성 */
@@ -292,6 +293,8 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     position: relative;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
     /* 내부 스크롤이 필요 없을 정도로 여백을 줬으므로 max-height는 뺍니다 */
+  overscroll-behavior: contain !important; /* 🔴 모달 안에서만 스크롤이 돌게 함 */
+  -webkit-overflow-scrolling: touch;
 }
     
     
@@ -728,7 +731,11 @@ function openModal(mode, dateStr, data, endStr = null) {
     // 🔴 중요: display를 'flex'로 줘야 중앙에 정렬됩니다.
     modal.style.display = 'flex'; 
 
-    // 모달 내부 스크롤을 맨 위로 리셋
+    // 🔴 [추가] 뒤에 있는 모든 슬라이드의 스크롤을 잠금
+    document.querySelectorAll('.swiper-slide').forEach(slide => {
+        slide.style.overflowY = 'hidden';
+    });
+
     const content = modal.querySelector('.modal-content');
     if (content) content.scrollTop = 0;
 
@@ -812,8 +819,10 @@ function closeModal() {
     // 1. 모달 닫기
     modal.style.display = 'none';
     
-    // 2. 뒷배경 스크롤 복구
-    document.body.style.overflow = 'auto';
+// 🔴 [추가] 뒤에 있는 슬라이드 스크롤 다시 허용
+    document.querySelectorAll('.swiper-slide').forEach(slide => {
+        slide.style.overflowY = 'auto';
+    });
 
     // 3. 0.1초 뒤 데이터 리셋
     setTimeout(() => {
