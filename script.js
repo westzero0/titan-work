@@ -216,7 +216,6 @@ function saveListsToStorage() {
 
 
 // 3. [데이터 동기화] (무한로딩 방지 안전장치 포함)
-// [수정본] 서버 데이터를 가져와서 변수에 실제 주입하는 기능
 async function loadTitanDataWithBackgroundSync() {
     const startTime = Date.now();
     const safetyTimeout = setTimeout(() => hideSplashScreen(), 5000); 
@@ -226,26 +225,33 @@ async function loadTitanDataWithBackgroundSync() {
             method: 'POST',
             body: JSON.stringify({ action: 'getAllData' })
         });
-        const fullData = await res.json();
+        const rawData = await res.json();
         
+        // 🔴 [핵심] 서버 응답이 'titanData' 박스에 들어있는지 확인 후 알맹이만 추출
+        const fullData = rawData.titanData || rawData.result || rawData;
+
         if (fullData && typeof fullData === 'object' && !fullData.status) {
-            // 1. 브라우저 창고에 저장
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             
-            // 🔴 [이게 빠져있었습니다!] 실시간 변수에 주소 데이터 주입
+            // 전역 변수에 주소 데이터 주입
             globalTitanData = fullData; 
             
+            console.log("주소 데이터 로드 완료:", Object.keys(globalTitanData).length, "건");
+
             const clientNames = Object.keys(fullData);
             renderClientChips(clientNames);
             
-            // 데이터 들어왔으니 화면 다시 그리기
-            if(typeof renderCards === 'function') renderCards();
+            // 🔴 데이터가 들어온 즉시 '일정 카드'를 다시 그려서 주소를 채웁니다.
+            if (typeof renderCards === 'function') {
+                console.log("일정 카드 주소 업데이트 실행");
+                renderCards(); 
+            }
         }
     } catch (e) {
         console.log("연결 실패: 캐시 데이터 사용");
         const cached = localStorage.getItem('titan_full_data_cache');
         if (cached) {
-            globalTitanData = JSON.parse(cached); // 🔴 캐시 데이터도 변수에 넣어줌
+            globalTitanData = JSON.parse(cached);
             renderClientChips(Object.keys(globalTitanData));
         }
     } finally {
@@ -868,7 +874,7 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 최신 변수 데이터 사용 (없으면 창고에서 가져옴)
+    // 🔴 [매칭 로직 1단계] 현재 메모리(globalTitanData)에 데이터가 없으면 창고(localStorage)를 뒤집니다.
     let masterData = (globalTitanData && Object.keys(globalTitanData).length > 0) 
                      ? globalTitanData 
                      : JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
@@ -886,16 +892,16 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 이름 매칭 (공백 제거 로직 포함)
+            // 🔴 [매칭 로직 2단계] 이름 앞뒤 공백 제거 및 열 이름(주소, address) 대응
             let siteAddr = ""; 
             const clientKey = (s.client || "").toString().trim();
             const siteKey = (s.site || "").toString().trim();
 
             if (masterData[clientKey]) {
-                const matchedSite = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteKey);
-                if (matchedSite) {
-                    // 주소, address, addr 열 이름 모두 대응
-                    siteAddr = matchedSite.주소 || matchedSite.address || matchedSite.addr || "";
+                const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteKey);
+                if (found) {
+                    // 주소, address, addr 등 모든 열 이름에 대응합니다.
+                    siteAddr = found.주소 || found.address || found.addr || "";
                 }
             }
 
