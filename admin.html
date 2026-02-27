@@ -260,23 +260,23 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     
 
 /* 1. 모달 전체 배경 */
+/* 1. 모달 배경 */
 .modal {
-    display: none; /* JS에서 flex로 변경 */
+    display: none; /* JS에서 flex로 켭니다 */
     position: fixed !important;
-    z-index: 999999 !important;
-    left: 0; top: 0;
-    width: 100%; height: 100%;
+    z-index: 2147483647 !important; /* 내비바보다 높게 최상단 고정 */
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100dvh; /* 🔴 모바일 주소창 변동에 대응하는 높이 */
     background-color: rgba(0, 0, 0, 0.7);
-  overscroll-behavior: contain !important; /* 🔴 스크롤이 밖으로 새나가는 것 방지 */
     
-    /* 🔴 잘림 방지를 위한 핵심 설정 */
-    overflow-y: auto; /* 내용이 길면 배경 자체에 스크롤 생성 */
-    display: none; 
-    align-items: flex-start; /* 윗부분부터 배치하여 잘림 방지 */
+    /* 🔴 중앙 정렬 */
     justify-content: center;
-    padding: 40px 10px; /* 상하 여백 40px 확보 */
+    align-items: center;
+    padding: 20px;
     box-sizing: border-box;
-    -webkit-overflow-scrolling: touch;
+    pointer-events: auto; /* 터치 가능하게 */
 }
 
 /* 2. 모달 본체 */
@@ -285,16 +285,19 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     width: 100%;
     max-width: 420px;
     
-    /* 🔴 정중앙 배치를 위한 마법의 한 줄 */
-    margin: auto !important; 
+    /* 🔴 잘림 방지: 화면보다 크면 내부 스크롤 */
+    max-height: 85dvh; 
+    overflow-y: auto;
     
     border-radius: 20px;
     padding: 25px;
+    margin: 0 !important; /* 마진 자동 계산 방지 */
     position: relative;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-    /* 내부 스크롤이 필요 없을 정도로 여백을 줬으므로 max-height는 뺍니다 */
-  overscroll-behavior: contain !important; /* 🔴 모달 안에서만 스크롤이 돌게 함 */
-  -webkit-overflow-scrolling: touch;
+    
+    /* 스크롤 가두기 */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
     
     
@@ -447,7 +450,24 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         </div>
 
      
-<div id="schedule-modal" class="modal">
+
+     
+     
+      
+    </div>
+
+       </div>
+</div>
+
+<div class="bottom-nav" id="main-nav">
+    <div class="nav-item active" onclick="jumpTo(0)">👥 <span>인원</span></div>
+    <div class="nav-item" onclick="jumpTo(1)">🏢 <span>거래처</span></div>
+    <div class="nav-item" onclick="jumpTo(2)">📦 <span>자재</span></div>
+    <div class="nav-item" onclick="jumpTo(3)">📅 <span>일정</span></div>
+</div>
+
+
+   <div id="schedule-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
             <h3 id="modal-date-title" style="margin:0; color:#2563eb;">일정 수정</h3>
@@ -522,25 +542,13 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         </div>
     </div>
   </div>
-     
-     
-      
-    </div>
 
-       </div>
-</div>
-
-<div class="bottom-nav" id="main-nav">
-    <div class="nav-item active" onclick="jumpTo(0)">👥 <span>인원</span></div>
-    <div class="nav-item" onclick="jumpTo(1)">🏢 <span>거래처</span></div>
-    <div class="nav-item" onclick="jumpTo(2)">📦 <span>자재</span></div>
-    <div class="nav-item" onclick="jumpTo(3)">📅 <span>일정</span></div>
-</div>
-
+  
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
     
-      
+
+  
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxTipS_7yvzIvj4WwP7OWaSH98l6L0yOjZK9B22n__Iiw08-DDmK1NBiPIuYDtvOrux/exec"; // 👈 꼭 본인 주소로 수정하세요!
 // 전역 변수 선언 (에러 방지용)
@@ -1485,5 +1493,8 @@ window.onclick = function(event) {
 
       
     </script>
+
+ 
+  
 </body>
 </html>
