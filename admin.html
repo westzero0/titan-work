@@ -723,9 +723,15 @@ function renderScheduleList() {
 
       
     function openModal(mode, dateStr, data, endStr = null) {
+      
         const modal = document.getElementById('schedule-modal');
         if (!modal) return;
-        modal.style.display = 'block';
+      
+       // 🔴 block 대신 flex로 변경 (CSS에서 설정한 중앙 정렬 활성화)
+    modal.style.display = 'flex';
+
+      const content = modal.querySelector('.modal-content');
+    if(content) content.scrollTop = 0;
 
         try {
             if (mode === 'add') {
