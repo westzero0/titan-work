@@ -222,30 +222,35 @@ async function loadTitanDataWithBackgroundSync() {
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'getAllData' })
+            body: JSON.stringify({ action: 'getAllData' }) // 관리자 패널의 getTitanData와 동일한 알맹이를 가져옴
         });
         const rawData = await res.json();
         
-        // 껍데기 뜯어서 알맹이만 추출
+        // 🔴 [수정] 관리자 패널과 동일하게 데이터 알맹이만 확실히 추출
         const fullData = rawData.titanData || rawData.result || rawData;
 
         if (fullData && typeof fullData === 'object') {
+            // 1. 브라우저 창고 저장
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             
-            // 🔴 [핵심] 윈도우 공용 주머니에 데이터 강제 주입
+            // 2. 🔴 [핵심] 관리자 패널이 사용하는 공용 변수명과 동일하게 세팅
             window.globalTitanData = fullData; 
             
-            console.log("📍 주소 데이터 동기화 완료");
+            console.log("📍 주소 마스터 데이터 로드 완료");
 
-            renderClientChips(Object.keys(fullData));
+            // 3. 거래처 칩 그리기
+            renderClientChips(Object.keys(fullData).filter(k => !['status','message','result'].includes(k)));
             
-            // 데이터 로드 성공했으니 즉시 주소 채워서 다시 그리기
+            // 4. 데이터가 들어왔으니 즉시 일정 카드를 다시 그려서 주소를 채움
             if (typeof renderCards === 'function') renderCards();
         }
     } catch (e) {
-        console.log("연결 실패: 캐시 사용");
+        console.log("연결 실패: 캐시 데이터 사용");
         const cached = localStorage.getItem('titan_full_data_cache');
-        if (cached) window.globalTitanData = JSON.parse(cached);
+        if (cached) {
+            window.globalTitanData = JSON.parse(cached);
+            renderClientChips(Object.keys(window.globalTitanData));
+        }
     } finally {
         clearTimeout(safetyTimeout); 
         const remainingTime = Math.max(0, 1500 - (Date.now() - startTime));
@@ -867,7 +872,7 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 [해결] 관리자 패널과 똑같은 주머니(window.globalTitanData)를 뒤집니다.
+    // 🔴 [해결] 관리자 패널과 똑같은 주머니(window.globalTitanData)를 최우선으로 뒤집니다.
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -883,15 +888,17 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [관리자 패널 매칭 로직 이식]
+            // 🔴 [관리자 패널 로직 100% 동일화] 
+            // 거래처명과 현장명을 대조하여 주소를 찾아옵니다.
             let siteAddr = "";
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
 
             if (masterData[clientName]) {
-                const matchedSite = masterData[clientName].find(item => (item.name || "").toString().trim() === siteName);
-                if (matchedSite) {
-                    siteAddr = matchedSite.주소 || matchedSite.address || matchedSite.addr || "";
+                const found = masterData[clientName].find(item => (item.name || "").toString().trim() === siteName);
+                if (found) {
+                    // 구글 시트의 열 이름(주소, address, addr)을 모두 체크
+                    siteAddr = found.주소 || found.address || found.addr || "";
                 }
             }
 
@@ -908,8 +915,8 @@ function renderCards() {
                     <div style="font-size:1.1rem; font-weight:800; color:#1e293b; margin:4px 0;">${s.site}</div>
                     
                     ${siteAddr ? `
-                    <div onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
-                         style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
+                    <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
+                         style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500; display:inline-block;">
                         📍 <b>현장주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
                     </div>` : `
                     <div style="margin-top:10px; color:#94a3b8; font-size:0.8rem; padding:8px; background:#f8fafc; border-radius:6px;">
