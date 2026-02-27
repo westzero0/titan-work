@@ -867,6 +867,7 @@ function renderCalendar() {
     container.innerHTML = html;
 }
 
+
 function renderCards() {
     const container = document.getElementById('schedule-container');
     if (!container) return;
@@ -874,7 +875,7 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
     
-    // 🔴 관리자 패널이 참조하는 그 주머니를 똑같이 봅니다.
+    // 1. 관리자 패널과 동일한 데이터 저장소 참조
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -890,7 +891,7 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [관리자 패널 매칭 로직 100% 동일화]
+            // 2. 🔴 [주소 추출 로직 강화] 
             let siteAddr = "";
             const clientKey = (s.client || "").toString().trim();
             const siteKey = (s.site || "").toString().trim();
@@ -898,7 +899,8 @@ function renderCards() {
             if (masterData[clientKey]) {
                 const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteKey);
                 if (found) {
-                    siteAddr = found.주소 || found.address || found.addr || "";
+                    // 🔴 시트 열 이름이 무엇이든 대응 (우선순위: 주소 > address > addr > 현장주소)
+                    siteAddr = found.주소 || found.address || found.addr || found.현장주소 || "";
                 }
             }
 
@@ -907,7 +909,7 @@ function renderCards() {
             const borderColor = sType === '야' ? '#475569' : (sType === '조' ? '#f59e0b' : '#2563eb');
 
             return `
-                <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" 
+                <div class="card schedule-card-item" 
                      style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                     
                     <div onclick="copyScheduleToLogSafe('${safeData}')" 
@@ -923,7 +925,7 @@ function renderCards() {
                             <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
                                  style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:inline-block; line-height:1.4;">
                                 📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px;">📍 주소 정보 없음</div>`}
+                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:inline-block;">📍 주소 정보 없음</div>`}
                         </div>
                     </div>
 
