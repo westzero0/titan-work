@@ -222,41 +222,36 @@ async function loadTitanDataWithBackgroundSync() {
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'getAllData' }) // 관리자 패널의 getTitanData와 동일한 알맹이를 가져옴
+            body: JSON.stringify({ action: 'getAllData' })
         });
         const rawData = await res.json();
         
-        // 🔴 [수정] 관리자 패널과 동일하게 데이터 알맹이만 확실히 추출
-        const fullData = rawData.titanData || rawData.result || rawData;
+        // 🔴 [수정] 어떤 형태의 껍데기든 다 뜯어냅니다.
+        const fullData = rawData.titanData || rawData.result || rawData.data || rawData;
 
         if (fullData && typeof fullData === 'object') {
-            // 1. 브라우저 창고 저장
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
-            
-            // 2. 🔴 [핵심] 관리자 패널이 사용하는 공용 변수명과 동일하게 세팅
             window.globalTitanData = fullData; 
             
-            console.log("📍 주소 마스터 데이터 로드 완료");
+            console.log("📍 주소 데이터 매칭 준비 완료:", Object.keys(fullData).length, "개 거래처");
 
-            // 3. 거래처 칩 그리기
-            renderClientChips(Object.keys(fullData).filter(k => !['status','message','result'].includes(k)));
-            
-            // 4. 데이터가 들어왔으니 즉시 일정 카드를 다시 그려서 주소를 채움
+            // 데이터 로드 즉시 화면 갱신 (주소 채우기)
             if (typeof renderCards === 'function') renderCards();
+            
+            const clientNames = Object.keys(fullData).filter(k => !['status','message','result'].includes(k));
+            renderClientChips(clientNames);
         }
     } catch (e) {
         console.log("연결 실패: 캐시 데이터 사용");
         const cached = localStorage.getItem('titan_full_data_cache');
-        if (cached) {
-            window.globalTitanData = JSON.parse(cached);
-            renderClientChips(Object.keys(window.globalTitanData));
-        }
+        if (cached) window.globalTitanData = JSON.parse(cached);
     } finally {
         clearTimeout(safetyTimeout); 
         const remainingTime = Math.max(0, 1500 - (Date.now() - startTime));
         setTimeout(() => hideSplashScreen(), remainingTime);
     }
 }
+
 
 
 function hideSplashScreen() {
@@ -872,7 +867,7 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 [해결] 관리자 패널과 똑같은 주머니(window.globalTitanData)를 최우선으로 뒤집니다.
+    // 🔴 관리자 패널 공용 주머니 데이터 가져오기
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -888,47 +883,63 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [관리자 패널 로직 100% 동일화] 
-            // 거래처명과 현장명을 대조하여 주소를 찾아옵니다.
+            // 🔴 [주소 매칭 강화] 대소문자 무시, 공백 무시하고 찾기
             let siteAddr = "";
-            const clientName = (s.client || "").toString().trim();
-            const siteName = (s.site || "").toString().trim();
+            const clientKey = (s.client || "").toString().trim();
+            const siteKey = (s.site || "").toString().trim();
 
-            if (masterData[clientName]) {
-                const found = masterData[clientName].find(item => (item.name || "").toString().trim() === siteName);
-                if (found) {
-                    // 구글 시트의 열 이름(주소, address, addr)을 모두 체크
-                    siteAddr = found.주소 || found.address || found.addr || "";
+            if (masterData[clientKey]) {
+                const matchedSite = masterData[clientKey].find(item => 
+                    (item.name || "").toString().trim() === siteKey
+                );
+                if (matchedSite) {
+                    siteAddr = matchedSite.주소 || matchedSite.address || matchedSite.addr || "";
                 }
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
+            const sType = (s.shift || "").toString().trim();
+            const borderColor = sType === '야' ? '#475569' : (sType === '조' ? '#f59e0b' : '#2563eb');
 
+            // 🔴 [디자인] 관리자 패널의 renderScheduleList 포맷과 100% 동일하게 구성
             return `
                 <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" 
-                     style="border-left: 5px solid ${s.shift === '야' ? '#475569' : (s.shift === '조' ? '#f59e0b' : '#2563eb')}; padding:15px; position:relative; margin-bottom:12px;">
+                     style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); cursor:default;">
                     
-                    <div onclick="copyScheduleToLogSafe('${safeData}')" style="position:absolute; top:10px; right:10px; font-size:1.5rem; cursor:pointer;">📝</div>
+                    <div onclick="copyScheduleToLogSafe('${safeData}')" 
+                         style="position:absolute; top:12px; right:12px; font-size:1.4rem; cursor:pointer; background:#f8fafc; width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #e2e8f0; z-index:10;">📝</div>
                     
-                    <div style="font-weight:bold; color:#64748b; font-size:0.85rem;">📅 ${s.date} (${s.shift})</div>
-                    <div style="color:#666; font-size:0.85rem; margin-top:2px;">🏢 ${s.client}</div>
-                    <div style="font-size:1.1rem; font-weight:800; color:#1e293b; margin:4px 0;">${s.site}</div>
-                    
-                    ${siteAddr ? `
-                    <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
-                         style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500; display:inline-block;">
-                        📍 <b>현장주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                    </div>` : `
-                    <div style="margin-top:10px; color:#94a3b8; font-size:0.8rem; padding:8px; background:#f8fafc; border-radius:6px;">
-                        📍 주소 정보 없음
-                    </div>`}
-
-                    <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0; background:#f1f5f9; padding:8px; border-radius:8px;">
-                        📝 ${s.content || s.workContent || '작업내용 없음'}
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                        <div style="width: calc(100% - 45px);">
+                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
+                                📅 ${s.date} (${sType})
+                            </div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
+                            <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
+                            
+                            ${siteAddr ? `
+                            <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
+                                 style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:inline-block; line-height:1.4;">
+                                📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
+                            </div>` : `
+                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:inline-block;">📍 주소 정보 없음</div>`}
+                        </div>
                     </div>
 
-                    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:5px;">
-                        ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => `<span style="background:#f1f5f9; padding:3px 8px; border-radius:10px; font-size:0.8rem; color:#475569; border:1px solid #e2e8f0;">${w.trim()}</span>`).join('')}
+                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:12px 0; line-height:1.4; border:1px solid #e2e8f0;">
+                        🛠️ ${s.content || s.workContent || '작업내용 없음'}
+                    </div>
+
+                    ${(s.note || s.memo) ? `
+                    <div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:10px; line-height:1.4;">
+                        💡 특이사항: ${s.note || s.memo}
+                    </div>` : ''}
+
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; align-items:center;">
+                        ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => 
+                            `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155; font-weight:500;">${w.trim()}</span>`
+                        ).join('')}
+                        ${s.car ? `<span style="font-size:0.85rem; color:#1e293b; font-weight:bold; margin-left:5px; display:flex; align-items:center;">🚛 ${s.car}</span>` : ''}
                     </div>
                 </div>
             `;
