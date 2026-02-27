@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxTipS_7yvzIvj4WwP7OWaSH98l6L0yOjZK9B22n__Iiw08-DDmK1NBiPIuYDtvOrux/exec";
 
+let globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
+
 
 // 💡 1. 통합 초기 로드 로직
 document.addEventListener('DOMContentLoaded', async () => {
@@ -857,12 +859,17 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 [해결 포인트 1] 관리자 패널에서 쓰는 변수(globalTitanData)를 1순위로 참조합니다.
-    // 변수가 비어있다면 캐시에서 가져오되, 둘 다 없으면 빈 객체로 시작합니다.
-    let masterData = globalTitanData;
-    if (!masterData || Object.keys(masterData).length === 0) {
-        const cached = localStorage.getItem('titan_full_data_cache');
-        masterData = cached ? JSON.parse(cached) : {};
+    // 🔴 [에러 방어 로직] globalTitanData가 선언되지 않았어도 에러 내지 않고 창고 데이터를 가져옵니다.
+    let masterData = {};
+    try {
+        if (typeof globalTitanData !== 'undefined' && Object.keys(globalTitanData).length > 0) {
+            masterData = globalTitanData;
+        } else {
+            const cached = localStorage.getItem('titan_full_data_cache');
+            masterData = cached ? JSON.parse(cached) : {};
+        }
+    } catch (e) {
+        masterData = {}; // 최악의 경우 빈 데이터로 진행 (에러는 안 남)
     }
 
     const filtered = allSchedules.filter(s => {
@@ -878,22 +885,19 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [해결 포인트 2] 관리자 패널과 똑같은 로직으로 주소 매칭
+            // 🔴 [주소 매칭] 거래처 관리 데이터와 이름 대조
             let siteAddr = ""; 
-            const targetClient = (s.client || "").trim();
-            const targetSite = (s.site || "").trim();
+            const clientName = (s.client || "").toString().trim();
+            const siteName = (s.site || "").toString().trim();
 
-            if (masterData[targetClient]) {
-                // 해당 거래처 배열 안에서 현장명이 일치하는 녀석을 찾습니다.
-                const found = masterData[targetClient].find(item => (item.name || "").trim() === targetSite);
+            if (masterData[clientName]) {
+                const found = masterData[clientName].find(item => (item.name || "").toString().trim() === siteName);
                 if (found) {
-                    // 시트의 열 이름이 address, addr, 주소 중 무엇이라도 가져옵니다.
                     siteAddr = found.address || found.addr || found.주소 || "";
                 }
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
-            const specialNote = s.note || s.memo || "";
 
             return `
                 <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" 
@@ -908,8 +912,6 @@ function renderCards() {
                     <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0; background:#f1f5f9; padding:8px; border-radius:8px;">
                         📝 ${s.content || s.workContent || '작업내용 없음'}
                     </div>
-
-                    ${specialNote ? `<div style="font-size:0.85rem; color:#b45309; font-weight:bold; margin-bottom:10px; background:#fffbeb; padding:10px; border-radius:8px; border:1px solid #fef3c7;">💡 특이사항: ${specialNote}</div>` : ''}
 
                     <div style="display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
                         ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => `<span style="background:#f1f5f9; padding:3px 8px; border-radius:10px; font-size:0.8rem; color:#475569; border:1px solid #e2e8f0;">${w.trim()}</span>`).join('')}
