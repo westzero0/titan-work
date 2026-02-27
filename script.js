@@ -216,6 +216,7 @@ function saveListsToStorage() {
 
 
 // 3. [데이터 동기화] (무한로딩 방지 안전장치 포함)
+// [수정본] 서버 데이터를 가져와서 변수에 실제 주입하는 기능
 async function loadTitanDataWithBackgroundSync() {
     const startTime = Date.now();
     const safetyTimeout = setTimeout(() => hideSplashScreen(), 5000); 
@@ -227,21 +228,26 @@ async function loadTitanDataWithBackgroundSync() {
         });
         const fullData = await res.json();
         
-        // 데이터가 정상적인 객체인지 확인
         if (fullData && typeof fullData === 'object' && !fullData.status) {
+            // 1. 브라우저 창고에 저장
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
-
-            // 🔴 [핵심 수정] 가져온 데이터를 전역 변수에 넣어줘야 다른 함수들이 주소를 찾을 수 있습니다!
-            globalTitanData = fullData;
             
-            // 칩 렌더링 함수 실행
+            // 🔴 [이게 빠져있었습니다!] 실시간 변수에 주소 데이터 주입
+            globalTitanData = fullData; 
+            
             const clientNames = Object.keys(fullData);
             renderClientChips(clientNames);
+            
+            // 데이터 들어왔으니 화면 다시 그리기
+            if(typeof renderCards === 'function') renderCards();
         }
     } catch (e) {
         console.log("연결 실패: 캐시 데이터 사용");
         const cached = localStorage.getItem('titan_full_data_cache');
-        if (cached) renderClientChips(Object.keys(JSON.parse(cached)));
+        if (cached) {
+            globalTitanData = JSON.parse(cached); // 🔴 캐시 데이터도 변수에 넣어줌
+            renderClientChips(Object.keys(globalTitanData));
+        }
     } finally {
         clearTimeout(safetyTimeout); 
         const remainingTime = Math.max(0, 1500 - (Date.now() - startTime));
@@ -862,8 +868,10 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 [주소 마스터 데이터 가져오기]
-    const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
+    // 🔴 최신 변수 데이터 사용 (없으면 창고에서 가져옴)
+    let masterData = (globalTitanData && Object.keys(globalTitanData).length > 0) 
+                     ? globalTitanData 
+                     : JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
         const wList = (s.workers || "").toString().split(',').map(name => name.trim());
@@ -878,13 +886,17 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [주소 매칭 로직]
-            let siteAddr = "";
-            const clientKey = (s.client || "").trim();
-            const siteKey = (s.site || "").trim();
+            // 🔴 이름 매칭 (공백 제거 로직 포함)
+            let siteAddr = ""; 
+            const clientKey = (s.client || "").toString().trim();
+            const siteKey = (s.site || "").toString().trim();
+
             if (masterData[clientKey]) {
-                const found = masterData[clientKey].find(item => (item.name || "").trim() === siteKey);
-                if (found) siteAddr = found.address || found.addr || found.주소 || "";
+                const matchedSite = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteKey);
+                if (matchedSite) {
+                    // 주소, address, addr 열 이름 모두 대응
+                    siteAddr = matchedSite.주소 || matchedSite.address || matchedSite.addr || "";
+                }
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
@@ -899,12 +911,6 @@ function renderCards() {
                     <div style="color:#666; font-size:0.85rem; margin-top:2px;">🏢 ${s.client}</div>
                     <div style="font-size:1.1rem; font-weight:800; color:#1e293b; margin:4px 0;">${s.site}</div>
                     
-                    ${siteAddr ? `
-                    <div onclick="event.stopPropagation(); copyText('${siteAddr}')" 
-                         style="margin-top:8px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
-                        📍 <b>주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                    </div>` : ''}
-
                     <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0; background:#f1f5f9; padding:8px; border-radius:8px;">
                         📝 ${s.content || s.workContent || '작업내용 없음'}
                     </div>
@@ -912,6 +918,15 @@ function renderCards() {
                     <div style="display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
                         ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => `<span style="background:#f1f5f9; padding:3px 8px; border-radius:10px; font-size:0.8rem; color:#475569; border:1px solid #e2e8f0;">${w.trim()}</span>`).join('')}
                     </div>
+                    
+                    ${siteAddr ? `
+                    <div onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
+                         style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
+                        📍 <b>현장주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
+                    </div>` : `
+                    <div style="margin-top:10px; color:#94a3b8; font-size:0.8rem; padding:8px; background:#f8fafc; border-radius:6px;">
+                        📍 주소 정보 없음
+                    </div>`}
                 </div>
             `;
         }).join('');
