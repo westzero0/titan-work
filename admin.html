@@ -260,34 +260,39 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     
 
     /* 일정등록 팝업 모달 배경 */
+/* 1. 모달 전체 배경 (화면 꽉 채우기) */
+/* 모달 배경 */
 .modal {
-   display: none; /* JS에서 flex로 띄울 겁니다 */
-    position: fixed; /* 브라우저 창 기준으로 고정 */
-    z-index: 10000; /* 최상단 */
+    display: none; 
+    position: fixed !important;
+    z-index: 99999;
     left: 0; top: 0;
     width: 100%; height: 100%;
-    background-color: rgba(0,0,0,0.6); /* 배경 조금 더 어둡게 */
+    background-color: rgba(0, 0, 0, 0.7);
     
-    /* 🔴 화면 중앙 정렬을 위한 핵심 설정 */
-    justify-content: center;
-    align-items: center;
-}
-    
-/* 수정된 모달 본체 */
-.modal-content {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 15px;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 5px 25px rgba(0,0,0,0.4);
-    
-    /* 🔴 내용이 길어질 경우 모달 내부에서만 스크롤되도록 설정 */
-    max-height: 90vh; 
-    overflow-y: auto; 
-    margin: 0; /* 기존 margin: 10% auto 제거 */
+    /* 🔴 flex로 설정하되, 중앙 정렬 옵션을 뺍니다. (박스의 margin:auto가 대신 함) */
+    display: none; 
+    overflow-y: auto; /* 배경 자체에도 스크롤 허용 (보험) */
+    -webkit-overflow-scrolling: touch;
 }
 
+/* 모달 본체 */
+.modal-content {
+    background-color: #fff;
+    width: 90%;
+    max-width: 400px;
+    
+    /* 🔴 [중요] 윗부분 잘림 방지 마법의 코드 */
+    margin: auto !important; /* 상하좌우 여백을 자동으로 계산해서 정중앙 배치 */
+    margin-top: 50px !important; /* 최소한 천장에서 50px은 떨어지게 설정 */
+    margin-bottom: 50px !important; /* 바닥에서도 여유 있게 */
+    
+    border-radius: 20px;
+    padding: 20px;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-sizing: border-box;
+}
 /* 간단한 달력 스타일 */
 #calendar-container {
   padding: 0;                   /* 🟢 여백 0으로 설정 (꽉 차게) */
@@ -722,16 +727,19 @@ function renderScheduleList() {
     }
 
       
-    function openModal(mode, dateStr, data, endStr = null) {
-      
-        const modal = document.getElementById('schedule-modal');
-        if (!modal) return;
-      
-       // 🔴 block 대신 flex로 변경 (CSS에서 설정한 중앙 정렬 활성화)
-    modal.style.display = 'flex';
+function openModal(mode, dateStr, data, endStr = null) {
+    const modal = document.getElementById('schedule-modal');
+    if (!modal) return;
 
-      const content = modal.querySelector('.modal-content');
-    if(content) content.scrollTop = 0;
+    // 🔴 중요: block이 아니라 'flex'로 열어야 중앙 정렬이 작동합니다.
+    modal.style.display = 'flex'; 
+
+    // 모달을 열 때마다 본체 스크롤을 맨 위로 초기화 (이전 기록 방지)
+    const content = modal.querySelector('.modal-content');
+    if (content) content.scrollTop = 0;
+
+    // 뒷배경 스크롤 방지 (선택 사항이지만 추천)
+    document.body.style.overflow = 'hidden';
 
         try {
             if (mode === 'add') {
@@ -801,17 +809,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
       
 
-  function closeModal() {
+ function closeModal() {
     const modal = document.getElementById('schedule-modal');
     if (!modal) return;
 
     // 🔴 1순위: 일단 눈앞에서 즉시 제거
     modal.style.display = 'none';
 
-    // 🔵 2순위: 0.1초 뒤에 데이터 청소 (화면 멈춤 방지)
+    // 🔴 뒷배경 스크롤 다시 허용 (이게 빠지면 모달 닫고 나서 화면이 안 움직일 수 있어요)
+    document.body.style.overflow = 'auto';
+
+    // 🔵 2순위: 0.1초 뒤에 데이터 청소 (렉 방지)
     setTimeout(() => {
         resetForm();
-        // 삭제 모드 같은 것도 여기서 초기화
         deleteMode.car = false;
         deleteMode.work = false;
     }, 100);
