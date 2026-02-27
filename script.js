@@ -875,7 +875,7 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
     
-    // 1. 관리자 패널과 동일한 데이터 저장소 참조
+    // 관리자 패널과 동일한 데이터 저장소 참조
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -891,16 +891,21 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 2. 🔴 [주소 추출 로직 강화] 
             let siteAddr = "";
             const clientKey = (s.client || "").toString().trim();
             const siteKey = (s.site || "").toString().trim();
 
-            if (masterData[clientKey]) {
+            // 🔍 [진단 로그] 주소를 못 찾을 때 원인을 분석합니다.
+            if (!masterData[clientKey]) {
+                console.warn(`❌ [매칭 실패] 거래처명이 창고에 없습니다: "${clientKey}"`);
+            } else {
                 const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteKey);
                 if (found) {
-                    // 🔴 시트 열 이름이 무엇이든 대응 (우선순위: 주소 > address > addr > 현장주소)
-                    siteAddr = found.주소 || found.address || found.addr || found.현장주소 || "";
+                    // 🔴 [해결책] 모든 가능성 있는 열 이름을 다 뒤집니다.
+                    siteAddr = found.주소 || found.address || found.addr || found.현장주소 || found.Location || "";
+                    if (!siteAddr) console.error(`❓ [데이터 오류] "${siteKey}" 현장을 찾았으나 주소 필드가 비어있습니다. 시트의 열 이름을 확인하세요.`, found);
+                } else {
+                    console.warn(`❌ [매칭 실패] 거래처 "${clientKey}" 내에 현장명 "${siteKey}"이 없습니다.`);
                 }
             }
 
@@ -925,7 +930,7 @@ function renderCards() {
                             <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
                                  style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:inline-block; line-height:1.4;">
                                 📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:inline-block;">📍 주소 정보 없음</div>`}
+                            </div>` : `<div style="font-size:0.75rem; color:#ef4444; margin-top:8px; background:#fef2f2; padding:4px 8px; border-radius:4px; display:inline-block; border:1px solid #fee2e2;">📍 주소 정보 없음 (시트 확인 필요)</div>`}
                         </div>
                     </div>
 
