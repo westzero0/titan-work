@@ -235,13 +235,14 @@ async function loadTitanDataWithBackgroundSync() {
         const fullData = rawData.titanData || rawData.result || rawData;
 
         if (fullData && typeof fullData === 'object') {
+            // 1. 공용 주머니에 데이터 저장
             window.globalTitanData = fullData; 
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             
-            console.log("📍 주소 데이터 동기화 완료");
+            console.log("📍 주소 데이터 동기화 완료! 현재 화면 업데이트 중...");
 
-            // 🔴 데이터가 도착했으니, '주소 정보 없음'으로 그려진 카드를 즉시 업데이트
-            if (typeof renderCards === 'function') renderCards();
+            // 2. [핵심] 주소가 도착했으므로 카드뷰를 즉시 다시 그립니다.
+            if (typeof renderCards === 'function') renderCards(); 
             
             renderClientChips(Object.keys(fullData).filter(k => !['status','message','result'].includes(k)));
         }
@@ -867,8 +868,6 @@ function renderCards() {
 
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
-
-    // 공용 주머니(window)와 창고(cache) 동시 확인
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -884,7 +883,7 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 주소 매칭 (앞뒤 공백 완벽 제거)
+            // 주소 매칭 (오타/공백 방지)
             let siteAddr = "";
             const clientKey = (s.client || "").toString().trim();
             const siteKey = (s.site || "").toString().trim();
@@ -894,6 +893,7 @@ function renderCards() {
                 if (found) siteAddr = found.주소 || found.address || found.addr || "";
             }
 
+            // 🔴 일보 작성을 위한 데이터 암호화
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
             const sType = (s.shift || "").toString().trim();
             const borderColor = sType === '야' ? '#475569' : (sType === '조' ? '#f59e0b' : '#2563eb');
@@ -915,14 +915,11 @@ function renderCards() {
                             <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
                                  style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:inline-block; line-height:1.4;">
                                 📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                            </div>` : `
-                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:inline-block;">
-                                📍 주소 정보 없음
-                            </div>`}
+                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px;">📍 주소 정보 없음</div>`}
                         </div>
                     </div>
 
-                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:12px 0; border:1px solid #e2e8f0;">
+                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:10px 0; border:1px solid #e2e8f0;">
                         🛠️ ${s.content || s.workContent || '작업내용 없음'}
                     </div>
 
