@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxTipS_7yvzIvj4WwP7OWaSH98l6L0yOjZK9B22n__Iiw08-DDmK1NBiPIuYDtvOrux/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwpPuDquad_yvJmja5IkFZ5x2Y_SORp6saFgcxgAMMac3WLTUdC6ERMTvYL5_98vhMM/exec";
 
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
@@ -867,7 +867,7 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
     
-    // 🔴 [핵심] 무조건 'window.globalTitanData' 주머니만 뒤집니다.
+    // 관리자 패널과 동일한 데이터 주머니 사용
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -883,21 +883,29 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            let siteAddr = ""; // 👈 대표님이 말씀하신 바로 그 변수입니다.
+            // 1. 강력한 주소 매칭 로직 (한글/영어/공백 무시)
+            let siteAddr = "";
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
+            
+            let clientKey = Object.keys(masterData).find(k => k.trim() === clientName || clientName.includes(k.trim()));
 
-            // 🔴 [매칭 로직] 주머니에서 거래처를 찾고, 그 안에서 현장을 찾습니다.
-            if (masterData[clientName]) {
-                const found = masterData[clientName].find(item => (item.name || "").toString().trim() === siteName);
+            if (clientKey && masterData[clientKey]) {
+                const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteName);
                 if (found) {
-                    // 🔴 [해결] 한국어 열 이름은 대괄호['']로 접근하는 게 가장 정확합니다.
-                    siteAddr = found['주소'] || found['address'] || found['addr'] || "";
+                     const allKeys = Object.keys(found);
+                     const addrKey = allKeys.find(k => k.trim().includes('주소') || k.toLowerCase().includes('addr'));
+                     if (addrKey) siteAddr = found[addrKey];
+                     else {
+                         const potential = allKeys.find(k => k !== 'name' && k !== 'subCat' && found[k] && found[k].toString().length > 5);
+                         siteAddr = potential ? found[potential] : "";
+                     }
                 }
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
-            const borderColor = (s.shift || "").includes('야') ? '#475569' : ((s.shift || "").includes('조') ? '#f59e0b' : '#2563eb');
+            const sType = (s.shift || "").toString().trim();
+            const borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
 
             return `
                 <div class="card schedule-card-item" 
@@ -908,7 +916,7 @@ function renderCards() {
                     
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                         <div style="width: calc(100% - 50px);">
-                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">📅 ${s.date} (${s.shift || '주간'})</div>
+                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">📅 ${s.date} (${sType || '주간'})</div>
                             <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
                             <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
                             
@@ -916,7 +924,7 @@ function renderCards() {
                             <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
                                  style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:inline-block; line-height:1.4;">
                                 📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px;">📍 주소 정보 없음</div>`}
+                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:inline-block;">📍 주소 정보 없음</div>`}
                         </div>
                     </div>
 
@@ -924,13 +932,17 @@ function renderCards() {
                         🛠️ ${s.content || s.workContent || '작업내용 없음'}
                     </div>
 
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:10px;">
+                        <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
                             ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => 
                                 `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
                             ).join('')}
                         </div>
-                        ${s.car ? `<div style="font-size:0.9rem; font-weight:bold; color:#1e293b;">🚛 ${s.car}</div>` : ''}
+                        
+                        ${s.car ? `
+                        <div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap; margin-left: 10px;">
+                            🚛 ${s.car}
+                        </div>` : ''}
                     </div>
                 </div>
             `;
@@ -938,7 +950,6 @@ function renderCards() {
     }
     container.innerHTML = html;
 }
-
 
 function toggleView() {
     currentView = (currentView === 'list') ? 'calendar' : 'list';
