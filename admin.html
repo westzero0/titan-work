@@ -1276,10 +1276,32 @@ if (rawData.titanData) {
 
 
 
-      // 1. 관리 가능한 리스트 (let으로 선언하여 수정 가능하게 함)
-    let vehicleList = ["봉고", "포터", "스타렉스", "M4"];
-    let workList = ["배관", "입선", "단말", "트레이", "철거", "청소", "자재정리"];
+   // 1. [변수 선언] 저장된 목록이 있으면 가져오고, 없으면 기본값을 씁니다.
+let vehicleList = JSON.parse(localStorage.getItem('titan_vehicle_list')) || ["봉고", "스타리아", "스타렉스"];
+let workList = JSON.parse(localStorage.getItem('titan_work_list')) || ["배관", "입선", "단말", "트레이", "철거", "청소", "자재정리"];
 
+
+      // 2. [항목 추가] 추가 버튼 누를 때 실행 (LocalStorage 저장 포함)
+function addPreset(type) {
+    const isCar = (type === 'car');
+    const input = document.getElementById(isCar ? 'new-car-input' : 'new-work-input');
+    const val = input.value.trim();
+    const list = isCar ? vehicleList : workList;
+    
+    if (val && !list.includes(val)) {
+        list.push(val);
+        input.value = "";
+        
+        // 💾 브라우저에 영구 저장
+        localStorage.setItem(isCar ? 'titan_vehicle_list' : 'titan_work_list', JSON.stringify(list));
+        
+        // 화면 갱신
+        if(isCar) renderVehicleChips(document.getElementById('sched-car').value);
+        else renderWorkPresets(); 
+    }
+}
+
+      
     // 2. 삭제 모드 상태 관리
     let deleteMode = { car: false, work: false };
 
@@ -1342,16 +1364,27 @@ function renderWorkPresets() {
             else renderWorkPresets(document.getElementById('sched-content').value);
         }
     }
-    function removePreset(type, item) {
+function removePreset(type, item) {
         if (!confirm(`'${item}' 항목을 영구 삭제할까요?`)) return;
+
         if (type === 'car') {
+            // 1. 메모리에서 삭제
             vehicleList = vehicleList.filter(i => i !== item);
+            // 2. 브라우저 저장소(창고)에 저장 🔴 (이게 추가되어야 기억합니다!)
+            localStorage.setItem('titan_vehicle_list', JSON.stringify(vehicleList));
+            // 3. 화면 갱신
             renderVehicleChips(document.getElementById('sched-car').value.split(',').filter(i => i !== item).join(', '));
         } else {
+            // 1. 메모리에서 삭제
             workList = workList.filter(i => i !== item);
-            renderWorkPresets(document.getElementById('sched-content').value.split(',').filter(i => i !== item).join(', '));
+            // 2. 브라우저 저장소(창고)에 저장 🔴 (이게 추가되어야 기억합니다!)
+            localStorage.setItem('titan_work_list', JSON.stringify(workList));
+            // 3. 화면 갱신
+            renderWorkPresets(); // 기존에 작업내용 갱신 함수 호출
         }
     }
+
+      
     function toggleDeleteMode(type) {
         deleteMode[type] = !deleteMode[type];
         if(type === 'car') renderVehicleChips(document.getElementById('sched-car').value);
