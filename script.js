@@ -213,45 +213,44 @@ function saveListsToStorage() {
     localStorage.setItem('titan_custom_lists', JSON.stringify(lists));
 }
 
-
+// 📝 아이콘 클릭 시 데이터를 안전하게 해독해서 일보 작성으로 넘겨주는 다리 함수
+function copyScheduleToLogSafe(safeData) {
+    try {
+        // Base64로 암호화된 데이터를 다시 풀어서 JSON 객체로 만듭니다.
+        const s = JSON.parse(decodeURIComponent(atob(safeData)));
+        copyScheduleToLog(s); // 실제 일보 작성 로직 실행
+    } catch (e) {
+        console.error("데이터 복구 에러:", e);
+        alert("일정 정보를 불러오지 못했습니다.");
+    }
+}
 
 async function loadTitanDataWithBackgroundSync() {
-    const startTime = Date.now();
-    const safetyTimeout = setTimeout(() => hideSplashScreen(), 5000); 
-
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
             body: JSON.stringify({ action: 'getAllData' })
         });
         const rawData = await res.json();
-        
-        // 🔴 [수정] 어떤 형태의 껍데기든 다 뜯어냅니다.
-        const fullData = rawData.titanData || rawData.result || rawData.data || rawData;
+        const fullData = rawData.titanData || rawData.result || rawData;
 
         if (fullData && typeof fullData === 'object') {
-            localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             window.globalTitanData = fullData; 
+            localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             
-            console.log("📍 주소 데이터 매칭 준비 완료:", Object.keys(fullData).length, "개 거래처");
+            console.log("📍 주소 데이터 동기화 완료");
 
-            // 데이터 로드 즉시 화면 갱신 (주소 채우기)
+            // 🔴 데이터가 도착했으니, '주소 정보 없음'으로 그려진 카드를 즉시 업데이트
             if (typeof renderCards === 'function') renderCards();
             
-            const clientNames = Object.keys(fullData).filter(k => !['status','message','result'].includes(k));
-            renderClientChips(clientNames);
+            renderClientChips(Object.keys(fullData).filter(k => !['status','message','result'].includes(k)));
         }
     } catch (e) {
-        console.log("연결 실패: 캐시 데이터 사용");
+        console.log("연결 실패: 캐시 사용");
         const cached = localStorage.getItem('titan_full_data_cache');
         if (cached) window.globalTitanData = JSON.parse(cached);
-    } finally {
-        clearTimeout(safetyTimeout); 
-        const remainingTime = Math.max(0, 1500 - (Date.now() - startTime));
-        setTimeout(() => hideSplashScreen(), remainingTime);
     }
 }
-
 
 
 function hideSplashScreen() {
@@ -864,10 +863,12 @@ function renderCalendar() {
 
 function renderCards() {
     const container = document.getElementById('schedule-container');
+    if (!container) return;
+
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 관리자 패널 공용 주머니 데이터 가져오기
+    // 공용 주머니(window)와 창고(cache) 동시 확인
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -883,37 +884,30 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [주소 매칭 강화] 대소문자 무시, 공백 무시하고 찾기
+            // 🔴 주소 매칭 (앞뒤 공백 완벽 제거)
             let siteAddr = "";
             const clientKey = (s.client || "").toString().trim();
             const siteKey = (s.site || "").toString().trim();
 
             if (masterData[clientKey]) {
-                const matchedSite = masterData[clientKey].find(item => 
-                    (item.name || "").toString().trim() === siteKey
-                );
-                if (matchedSite) {
-                    siteAddr = matchedSite.주소 || matchedSite.address || matchedSite.addr || "";
-                }
+                const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteKey);
+                if (found) siteAddr = found.주소 || found.address || found.addr || "";
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
             const sType = (s.shift || "").toString().trim();
             const borderColor = sType === '야' ? '#475569' : (sType === '조' ? '#f59e0b' : '#2563eb');
 
-            // 🔴 [디자인] 관리자 패널의 renderScheduleList 포맷과 100% 동일하게 구성
             return `
                 <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" 
-                     style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); cursor:default;">
+                     style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                     
                     <div onclick="copyScheduleToLogSafe('${safeData}')" 
-                         style="position:absolute; top:12px; right:12px; font-size:1.4rem; cursor:pointer; background:#f8fafc; width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #e2e8f0; z-index:10;">📝</div>
+                         style="position:absolute; top:12px; right:12px; font-size:1.4rem; cursor:pointer; background:#f8fafc; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #e2e8f0; z-index:5;">📝</div>
                     
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                        <div style="width: calc(100% - 45px);">
-                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
-                                📅 ${s.date} (${sType})
-                            </div>
+                        <div style="width: calc(100% - 50px);">
+                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">📅 ${s.date} (${sType})</div>
                             <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
                             <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
                             
@@ -922,24 +916,20 @@ function renderCards() {
                                  style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:inline-block; line-height:1.4;">
                                 📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
                             </div>` : `
-                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:inline-block;">📍 주소 정보 없음</div>`}
+                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:inline-block;">
+                                📍 주소 정보 없음
+                            </div>`}
                         </div>
                     </div>
 
-                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:12px 0; line-height:1.4; border:1px solid #e2e8f0;">
+                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:12px 0; border:1px solid #e2e8f0;">
                         🛠️ ${s.content || s.workContent || '작업내용 없음'}
                     </div>
 
-                    ${(s.note || s.memo) ? `
-                    <div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:10px; line-height:1.4;">
-                        💡 특이사항: ${s.note || s.memo}
-                    </div>` : ''}
-
-                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; align-items:center;">
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;">
                         ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => 
-                            `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155; font-weight:500;">${w.trim()}</span>`
+                            `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
                         ).join('')}
-                        ${s.car ? `<span style="font-size:0.85rem; color:#1e293b; font-weight:bold; margin-left:5px; display:flex; align-items:center;">🚛 ${s.car}</span>` : ''}
                     </div>
                 </div>
             `;
@@ -947,6 +937,7 @@ function renderCards() {
     }
     container.innerHTML = html;
 }
+
 
 function toggleView() {
     currentView = (currentView === 'list') ? 'calendar' : 'list';
