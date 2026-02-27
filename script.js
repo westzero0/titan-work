@@ -215,7 +215,6 @@ function saveListsToStorage() {
 
 
 
-// 3. [데이터 동기화] (무한로딩 방지 안전장치 포함)
 async function loadTitanDataWithBackgroundSync() {
     const startTime = Date.now();
     const safetyTimeout = setTimeout(() => hideSplashScreen(), 5000); 
@@ -225,26 +224,20 @@ async function loadTitanDataWithBackgroundSync() {
             method: 'POST',
             body: JSON.stringify({ action: 'getAllData' })
         });
-        const rawData = await res.json();
+        const fullData = await res.json();
         
-        // 🔴 [핵심] 서버 응답이 'titanData' 박스에 들어있는지 확인 후 알맹이만 추출
-        const fullData = rawData.titanData || rawData.result || rawData;
-
         if (fullData && typeof fullData === 'object' && !fullData.status) {
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             
-            // 전역 변수에 주소 데이터 주입
+            // 🔴 1. 전역 변수에 데이터 주입
             globalTitanData = fullData; 
             
-            console.log("주소 데이터 로드 완료:", Object.keys(globalTitanData).length, "건");
-
             const clientNames = Object.keys(fullData);
             renderClientChips(clientNames);
-            
-            // 🔴 데이터가 들어온 즉시 '일정 카드'를 다시 그려서 주소를 채웁니다.
-            if (typeof renderCards === 'function') {
-                console.log("일정 카드 주소 업데이트 실행");
-                renderCards(); 
+
+            // 🔴 2. [핵심] 주소 데이터가 왔으니, 이미 그려진 일정표를 주소 포함해서 다시 그리기!
+            if (typeof renderView === 'function') {
+                renderView(); 
             }
         }
     } catch (e) {
@@ -260,6 +253,7 @@ async function loadTitanDataWithBackgroundSync() {
         setTimeout(() => hideSplashScreen(), remainingTime);
     }
 }
+
 
 function hideSplashScreen() {
     const splash = document.getElementById('splash-screen');
@@ -874,7 +868,7 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 [매칭 로직 1단계] 현재 메모리(globalTitanData)에 데이터가 없으면 창고(localStorage)를 뒤집니다.
+    // 🔴 [수정] 변수가 없으면 창고에서라도 무조건 가져오기
     let masterData = (globalTitanData && Object.keys(globalTitanData).length > 0) 
                      ? globalTitanData 
                      : JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
@@ -892,15 +886,14 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [매칭 로직 2단계] 이름 앞뒤 공백 제거 및 열 이름(주소, address) 대응
+            // 🔴 [주소 매칭] 공백 제거 및 대조
             let siteAddr = ""; 
-            const clientKey = (s.client || "").toString().trim();
-            const siteKey = (s.site || "").toString().trim();
+            const clientName = (s.client || "").toString().trim();
+            const siteName = (s.site || "").toString().trim();
 
-            if (masterData[clientKey]) {
-                const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteKey);
+            if (masterData[clientName]) {
+                const found = masterData[clientName].find(item => (item.name || "").toString().trim() === siteName);
                 if (found) {
-                    // 주소, address, addr 등 모든 열 이름에 대응합니다.
                     siteAddr = found.주소 || found.address || found.addr || "";
                 }
             }
@@ -926,7 +919,7 @@ function renderCards() {
                     </div>
                     
                     ${siteAddr ? `
-                    <div onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
+                    <div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
                          style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
                         📍 <b>현장주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
                     </div>` : `
