@@ -857,9 +857,10 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 [1단계] 거래처 관리 마스터 데이터(캐시) 불러오기
-    const cached = localStorage.getItem('titan_full_data_cache');
-    const masterData = cached ? JSON.parse(cached) : {};
+    // 1. [데이터 확보] 관리자 실시간 데이터(globalTitanData)를 먼저 보고, 없으면 캐시를 봅니다.
+    let masterData = (typeof globalTitanData !== 'undefined' && Object.keys(globalTitanData).length > 0) 
+                     ? globalTitanData 
+                     : JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
         const wList = (s.workers || "").toString().split(',').map(name => name.trim());
@@ -874,17 +875,21 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [2단계] 마스터 데이터에서 주소 매칭해서 가져오기
+            // 2. [주소 매칭 로직 핵심] .trim()을 사용해 앞뒤 공백을 완전히 제거 후 비교
             let siteAddr = ""; 
-            if (masterData[s.client]) {
-                // 해당 거래처의 현장 목록 중 이름이 같은 현장을 찾음
-                const matchedSite = masterData[s.client].find(site => site.name === s.site);
+            const clientName = (s.client || "").trim();
+            const siteName = (s.site || "").trim();
+
+            if (masterData[clientName]) {
+                // 해당 거래처 내에서 현장 이름이 일치하는 항목 찾기
+                const matchedSite = masterData[clientName].find(site => (site.name || "").trim() === siteName);
                 if (matchedSite) {
-                    siteAddr = matchedSite.address || matchedSite.addr || "";
+                    // 구글 시트 열 이름이 address, addr, 주소 중 무엇이든 가져옵니다.
+                    siteAddr = matchedSite.address || matchedSite.addr || matchedSite.주소 || "";
                 }
             }
 
-            // 🔴 [3단계] 일보 작성을 위해 찾은 주소를 데이터에 포함
+            // 3. 일보 작성을 위해 찾은 주소를 안전하게 전달
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
             const specialNote = s.note || s.memo || "";
 
@@ -902,39 +907,25 @@ function renderCards() {
                         📝 ${s.content || s.workContent || '작업내용 없음'}
                     </div>
 
-                    ${specialNote ? `
-                    <div style="font-size:0.85rem; color:#b45309; font-weight:bold; margin-bottom:10px; background:#fffbeb; padding:10px; border-radius:8px; border:1px solid #fef3c7;">
-                        💡 특이사항: ${specialNote}
-                    </div>` : ''}
+                    ${specialNote ? `<div style="font-size:0.85rem; color:#b45309; font-weight:bold; margin-bottom:10px; background:#fffbeb; padding:10px; border-radius:8px; border:1px solid #fef3c7;">💡 특이사항: ${specialNote}</div>` : ''}
 
                     <div style="display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
                         ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => `<span style="background:#f1f5f9; padding:3px 8px; border-radius:10px; font-size:0.8rem; color:#475569; border:1px solid #e2e8f0;">${w.trim()}</span>`).join('')}
                     </div>
                     
                     ${siteAddr ? `
-                    <div onclick="copyText('${siteAddr.replace(/'/g, "\\'")}')" style="margin-top:10px; color:#475569; font-size:0.8rem; cursor:pointer; background:#f8fafc; padding:8px; border-radius:6px; border:1px dashed #cbd5e1;">
-                        📍 <b>현장주소:</b> ${siteAddr} <span style="color:#2563eb; font-weight:bold; margin-left:5px;">[복사]</span>
+                    <div onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
+                         style="margin-top:10px; color:#2563eb; font-size:0.8rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
+                        📍 <b>현장주소:</b> ${siteAddr} <span style="color:#94a3b8; font-size:0.7rem; margin-left:5px;">(복사)</span>
                     </div>` : `
                     <div style="margin-top:10px; color:#94a3b8; font-size:0.8rem; padding:8px; background:#f8fafc; border-radius:6px;">
-                        📍 주소 정보 없음 (거래처 관리에서 등록 필요)
-                    </div>
-                    `}
+                        📍 주소 정보 없음
+                    </div>`}
                 </div>
             `;
         }).join('');
     }
     container.innerHTML = html;
-}
-
-// 🔴 [보조 함수] 암호화된 데이터를 다시 풀어서 전달하는 다리 역할
-function copyScheduleToLogSafe(safeData) {
-    try {
-        const s = JSON.parse(decodeURIComponent(atob(safeData)));
-        copyScheduleToLog(s);
-    } catch (e) {
-        console.error("데이터 복구 에러:", e);
-        alert("일정 정보를 불러오지 못했습니다.");
-    }
 }
 
 
