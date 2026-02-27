@@ -857,8 +857,11 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
+    // 🔴 [1단계] 거래처 관리 마스터 데이터(캐시) 불러오기
+    const cached = localStorage.getItem('titan_full_data_cache');
+    const masterData = cached ? JSON.parse(cached) : {};
+
     const filtered = allSchedules.filter(s => {
-        // workers가 문자열일 수도 있으니 안전하게 처리
         const wList = (s.workers || "").toString().split(',').map(name => name.trim());
         return (worker === "전체" || wList.includes(worker)) && (showPast ? s.date < today : s.date >= today);
     });
@@ -871,9 +874,18 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [핵심] 데이터를 Base64로 안전하게 포장 (에러 방지 1순위)
-            const safeData = btoa(encodeURIComponent(JSON.stringify(s)));
-            const siteAddr = s.address || s.addr || ""; 
+            // 🔴 [2단계] 마스터 데이터에서 주소 매칭해서 가져오기
+            let siteAddr = ""; 
+            if (masterData[s.client]) {
+                // 해당 거래처의 현장 목록 중 이름이 같은 현장을 찾음
+                const matchedSite = masterData[s.client].find(site => site.name === s.site);
+                if (matchedSite) {
+                    siteAddr = matchedSite.address || matchedSite.addr || "";
+                }
+            }
+
+            // 🔴 [3단계] 일보 작성을 위해 찾은 주소를 데이터에 포함
+            const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
             const specialNote = s.note || s.memo || "";
 
             return `
@@ -902,7 +914,11 @@ function renderCards() {
                     ${siteAddr ? `
                     <div onclick="copyText('${siteAddr.replace(/'/g, "\\'")}')" style="margin-top:10px; color:#475569; font-size:0.8rem; cursor:pointer; background:#f8fafc; padding:8px; border-radius:6px; border:1px dashed #cbd5e1;">
                         📍 <b>현장주소:</b> ${siteAddr} <span style="color:#2563eb; font-weight:bold; margin-left:5px;">[복사]</span>
-                    </div>` : ''}
+                    </div>` : `
+                    <div style="margin-top:10px; color:#94a3b8; font-size:0.8rem; padding:8px; background:#f8fafc; border-radius:6px;">
+                        📍 주소 정보 없음 (거래처 관리에서 등록 필요)
+                    </div>
+                    `}
                 </div>
             `;
         }).join('');
