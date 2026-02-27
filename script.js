@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxTipS_7yvzIvj4WwP7OWaSH98l6L0yOjZK9B22n__Iiw08-DDmK1NBiPIuYDtvOrux/exec";
 
-let globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
+var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
 
 // 💡 1. 통합 초기 로드 로직
@@ -859,17 +859,18 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 [에러 방어 로직] globalTitanData가 선언되지 않았어도 에러 내지 않고 창고 데이터를 가져옵니다.
+    // 🔴 [에러 차단] 변수 존재 여부를 가장 안전한 방법으로 체크합니다.
     let masterData = {};
     try {
-        if (typeof globalTitanData !== 'undefined' && Object.keys(globalTitanData).length > 0) {
-            masterData = globalTitanData;
+        // window 객체를 통해 접근하면 ReferenceError를 완벽히 피할 수 있습니다.
+        if (window.globalTitanData && Object.keys(window.globalTitanData).length > 0) {
+            masterData = window.globalTitanData;
         } else {
             const cached = localStorage.getItem('titan_full_data_cache');
             masterData = cached ? JSON.parse(cached) : {};
         }
     } catch (e) {
-        masterData = {}; // 최악의 경우 빈 데이터로 진행 (에러는 안 남)
+        masterData = {}; 
     }
 
     const filtered = allSchedules.filter(s => {
@@ -885,7 +886,7 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [주소 매칭] 거래처 관리 데이터와 이름 대조
+            // 🔴 [주소 매칭] 공백 제거 후 1:1 대조
             let siteAddr = ""; 
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
@@ -893,6 +894,7 @@ function renderCards() {
             if (masterData[clientName]) {
                 const found = masterData[clientName].find(item => (item.name || "").toString().trim() === siteName);
                 if (found) {
+                    // 구글 시트의 열 이름이 무엇이든(address, addr, 주소) 다 찾아옵니다.
                     siteAddr = found.address || found.addr || found.주소 || "";
                 }
             }
@@ -918,7 +920,7 @@ function renderCards() {
                     </div>
                     
                     ${siteAddr ? `
-                    <div onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
+                    <div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
                          style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
                         📍 <b>현장주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
                     </div>` : `
