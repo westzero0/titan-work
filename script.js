@@ -224,7 +224,9 @@ function copyScheduleToLogSafe(safeData) {
         alert("일정 정보를 불러오지 못했습니다.");
     }
 }
+
 async function loadTitanDataWithBackgroundSync() {
+    const startTime = Date.now();
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -232,24 +234,27 @@ async function loadTitanDataWithBackgroundSync() {
         });
         const rawData = await res.json();
         
-        // 관리자 패널과 동일하게 데이터 박스 뜯기
+        // 🔴 관리자 패널과 동일하게 껍데기 뜯기
         const fullData = rawData.titanData || rawData.result || rawData;
 
         if (fullData && typeof fullData === 'object') {
-            window.globalTitanData = fullData; // 공용 주머니에 저장
+            // 🔴 전역 주머니(window)에 데이터 강제 주입
+            window.globalTitanData = fullData; 
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             
-            console.log("📍 주소 데이터 동기화 완료! 화면을 강제로 다시 그립니다.");
+            console.log("📍 주소 데이터 동기화 완료");
 
-            // 🔴 핵심: 데이터가 왔으니 현재 화면(카드뷰)을 주소 포함해서 다시 그리기
+            // 🔴 데이터가 들어온 즉시! 현재 화면을 주소 포함해서 다시 그립니다.
             if (typeof renderView === 'function') renderView(); 
-            
+
             renderClientChips(Object.keys(fullData).filter(k => !['status','message','result'].includes(k)));
         }
     } catch (e) {
         console.log("연결 실패: 캐시 사용");
         const cached = localStorage.getItem('titan_full_data_cache');
         if (cached) window.globalTitanData = JSON.parse(cached);
+    } finally {
+        hideSplashScreen();
     }
 }
 
@@ -869,7 +874,7 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
     
-    // 관리자 패널과 동일한 주머니 참조
+    // 🔴 관리자 패널이 참조하는 그 주머니를 똑같이 봅니다.
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -885,14 +890,16 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 관리자 패널 매칭 로직 (client/site 매칭)
+            // 🔴 [관리자 패널 매칭 로직 100% 동일화]
             let siteAddr = "";
             const clientKey = (s.client || "").toString().trim();
             const siteKey = (s.site || "").toString().trim();
 
             if (masterData[clientKey]) {
                 const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteKey);
-                if (found) siteAddr = found.주소 || found.address || found.addr || "";
+                if (found) {
+                    siteAddr = found.주소 || found.address || found.addr || "";
+                }
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
