@@ -227,25 +227,21 @@ async function loadTitanDataWithBackgroundSync() {
         const fullData = await res.json();
         
         if (fullData && typeof fullData === 'object' && !fullData.status) {
+            // 🔴 [관리자 패널과 동일하게] 공용 주머니에 데이터 주입
+            window.globalTitanData = fullData; 
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             
-            // 🔴 1. 전역 변수에 데이터 주입
-            globalTitanData = fullData; 
-            
-            const clientNames = Object.keys(fullData);
-            renderClientChips(clientNames);
+            renderClientChips(Object.keys(fullData));
 
-            // 🔴 2. [핵심] 주소 데이터가 왔으니, 이미 그려진 일정표를 주소 포함해서 다시 그리기!
-            if (typeof renderView === 'function') {
-                renderView(); 
-            }
+            // 데이터가 왔으니 즉시 화면을 다시 그려서 주소를 채웁니다.
+            if (typeof renderCards === 'function') renderCards(); 
         }
     } catch (e) {
         console.log("연결 실패: 캐시 데이터 사용");
         const cached = localStorage.getItem('titan_full_data_cache');
         if (cached) {
-            globalTitanData = JSON.parse(cached);
-            renderClientChips(Object.keys(globalTitanData));
+            window.globalTitanData = JSON.parse(cached);
+            renderClientChips(Object.keys(window.globalTitanData));
         }
     } finally {
         clearTimeout(safetyTimeout); 
@@ -868,10 +864,8 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 [수정] 변수가 없으면 창고에서라도 무조건 가져오기
-    let masterData = (globalTitanData && Object.keys(globalTitanData).length > 0) 
-                     ? globalTitanData 
-                     : JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
+    // 🔴 [관리자 패널과 동일하게] 공용 주머니 데이터 가져오기
+    const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
         const wList = (s.workers || "").toString().split(',').map(name => name.trim());
@@ -886,16 +880,14 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [주소 매칭] 공백 제거 및 대조
-            let siteAddr = ""; 
-            const clientName = (s.client || "").toString().trim();
-            const siteName = (s.site || "").toString().trim();
+            // 🔴 [관리자 패널 주소 찾기 로직 100% 복사]
+            let siteAddr = "";
+            const clientKey = (s.client || "").trim();
+            const siteKey = (s.site || "").trim();
 
-            if (masterData[clientName]) {
-                const found = masterData[clientName].find(item => (item.name || "").toString().trim() === siteName);
-                if (found) {
-                    siteAddr = found.주소 || found.address || found.addr || "";
-                }
+            if (masterData[clientKey]) {
+                const found = masterData[clientKey].find(m => (m.name || "").trim() === siteKey);
+                if (found) siteAddr = found.address || found.addr || found.주소 || "";
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
@@ -910,6 +902,12 @@ function renderCards() {
                     <div style="color:#666; font-size:0.85rem; margin-top:2px;">🏢 ${s.client}</div>
                     <div style="font-size:1.1rem; font-weight:800; color:#1e293b; margin:4px 0;">${s.site}</div>
                     
+                    ${siteAddr ? `
+                    <div onclick="event.stopPropagation(); copyText('${siteAddr}')" 
+                         style="margin-top:8px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:6px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
+                        📍 <b>현장주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
+                    </div>` : ''}
+
                     <div style="font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0; background:#f1f5f9; padding:8px; border-radius:8px;">
                         📝 ${s.content || s.workContent || '작업내용 없음'}
                     </div>
@@ -917,22 +915,12 @@ function renderCards() {
                     <div style="display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
                         ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => `<span style="background:#f1f5f9; padding:3px 8px; border-radius:10px; font-size:0.8rem; color:#475569; border:1px solid #e2e8f0;">${w.trim()}</span>`).join('')}
                     </div>
-                    
-                    ${siteAddr ? `
-                    <div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
-                         style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
-                        📍 <b>현장주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                    </div>` : `
-                    <div style="margin-top:10px; color:#94a3b8; font-size:0.8rem; padding:8px; background:#f8fafc; border-radius:6px;">
-                        📍 주소 정보 없음
-                    </div>`}
                 </div>
             `;
         }).join('');
     }
     container.innerHTML = html;
 }
-
 
 function toggleView() {
     currentView = (currentView === 'list') ? 'calendar' : 'list';
