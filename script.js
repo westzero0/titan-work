@@ -857,12 +857,14 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 🔴 [해결포인트 1] 관리자패널과 똑같은 실시간 데이터를 최우선으로 사용합니다.
+    // 🔴 [해결포인트 1] 관리자 패널에서 검증된 실시간 데이터를 최우선으로 가져옵니다.
+    // globalTitanData가 비어있으면 창고(cache)를 뒤지는 2중 방어막입니다.
     let masterData = {};
     if (typeof globalTitanData !== 'undefined' && Object.keys(globalTitanData).length > 0) {
         masterData = globalTitanData;
     } else {
-        masterData = JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
+        const cached = localStorage.getItem('titan_full_data_cache');
+        masterData = cached ? JSON.parse(cached) : {};
     }
 
     const filtered = allSchedules.filter(s => {
@@ -878,15 +880,16 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 🔴 [해결포인트 2] 이름 앞뒤에 숨은 공백까지 싹 지워서 매칭율을 높입니다.
+            // 🔴 [해결포인트 2] 관리자 패널과 100% 동일한 매칭 로직 적용
             let siteAddr = ""; 
-            const clientKey = (s.client || "").trim();
-            const siteKey = (s.site || "").trim();
+            const clientName = (s.client || "").trim();
+            const siteName = (s.site || "").trim();
 
-            if (masterData[clientKey]) {
-                const matchedSite = masterData[clientKey].find(item => (item.name || "").trim() === siteKey);
+            if (masterData[clientName]) {
+                // 이름 끝에 공백이 있어도 찾을 수 있게 .trim() 처리
+                const matchedSite = masterData[clientName].find(item => (item.name || "").trim() === siteName);
                 if (matchedSite) {
-                    // addr, address, 주소 등 모든 가능성 있는 이름표를 체크합니다.
+                    // 시트의 열 이름이 addr, address, 주소 중 무엇이라도 가져옵니다.
                     siteAddr = matchedSite.addr || matchedSite.address || matchedSite.주소 || "";
                 }
             }
@@ -915,12 +918,12 @@ function renderCards() {
                     </div>
                     
                     ${siteAddr ? `
-                    <div onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
+                    <div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
                          style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
                         📍 <b>현장주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
                     </div>` : `
                     <div style="margin-top:10px; color:#94a3b8; font-size:0.8rem; padding:8px; background:#f8fafc; border-radius:6px;">
-                        📍 주소 정보 없음 (거래처 관리에서 주소 확인 요망)
+                        📍 주소 정보 없음
                     </div>`}
                 </div>
             `;
