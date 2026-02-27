@@ -485,7 +485,6 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     <button type="button" class="btn-add-chip" onclick="addPreset('car')">추가</button>
 </div>
           
-          // <div id="car-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
 
            <div class="header-row">
     <label style="margin:0;">📝 작업 내용 (공정 선택)</label>
@@ -502,7 +501,6 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 </div>
 
           
-         //   <div id="work-preset-list" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
             
             <label>특이사항</label>
             <textarea id="sched-note" rows="2" placeholder="특이사항 입력"></textarea>
@@ -1062,7 +1060,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
       
-    // 서버 통신
   // 서버 통신 및 화면 갱신 함수
 async function sendToGas(action, data) {
     try {
