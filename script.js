@@ -204,9 +204,9 @@ let delMode = { member: false, car: false, material: false, payer: false };
 const savedLists = localStorage.getItem('titan_custom_lists');
 let lists = savedLists ? JSON.parse(savedLists) : {
     member: ["기원", "창재", "조환", "서호"],
-    car: ["봉고", "포터", "스타렉스", "창재차"],
+    car: ["봉고", "스타렉스", "스타리아"],
     material: ["2.5sq 전선", "4sq 전선", "CD관", "난연관", "복스"],
-    payer: ["서영", "기원", "창재"]
+    payer: ["서영", "기원", "조환"]
 };
 
 function saveListsToStorage() {
@@ -883,7 +883,7 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 1. 강력한 주소 매칭 로직 (한글/영어/공백 무시)
+            // 강력한 주소 매칭 로직 (한글/영어/공백 무시)
             let siteAddr = "";
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
@@ -928,11 +928,16 @@ function renderCards() {
                         </div>
                     </div>
 
-                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:12px 0; border:1px solid #e2e8f0;">
+                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin-top:12px; margin-bottom:${s.note ? '8px' : '12px'}; border:1px solid #e2e8f0;">
                         🛠️ ${s.content || s.workContent || '작업내용 없음'}
                     </div>
 
-                    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:10px;">
+                    ${s.note ? `
+                    <div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:12px; line-height:1.4;">
+                        💡 특이사항: ${s.note}
+                    </div>` : ''}
+
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                         <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
                             ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => 
                                 `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
