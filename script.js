@@ -226,7 +226,6 @@ function copyScheduleToLogSafe(safeData) {
 }
 
 async function loadTitanDataWithBackgroundSync() {
-    const startTime = Date.now();
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -234,27 +233,22 @@ async function loadTitanDataWithBackgroundSync() {
         });
         const rawData = await res.json();
         
-        // 🔴 관리자 패널과 동일하게 껍데기 뜯기
+        // 🔴 관리자 패널에서 하는 것과 똑같이 껍데기를 뜯습니다.
         const fullData = rawData.titanData || rawData.result || rawData;
 
         if (fullData && typeof fullData === 'object') {
-            // 🔴 전역 주머니(window)에 데이터 강제 주입
+            // 🔴 관리자 패널 전용 전역 변수에 똑같이 저장
             window.globalTitanData = fullData; 
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             
-            console.log("📍 주소 데이터 동기화 완료");
+            console.log("📍 관리자 패널 방식으로 데이터 로드 완료");
 
-            // 🔴 데이터가 들어온 즉시! 현재 화면을 주소 포함해서 다시 그립니다.
-            if (typeof renderView === 'function') renderView(); 
-
-            renderClientChips(Object.keys(fullData).filter(k => !['status','message','result'].includes(k)));
+            // 데이터가 왔으니 즉시 카드뷰를 다시 그려서 주소를 채웁니다.
+            if (typeof renderCards === 'function') renderCards(); 
         }
     } catch (e) {
-        console.log("연결 실패: 캐시 사용");
         const cached = localStorage.getItem('titan_full_data_cache');
         if (cached) window.globalTitanData = JSON.parse(cached);
-    } finally {
-        hideSplashScreen();
     }
 }
 
@@ -867,15 +861,12 @@ function renderCalendar() {
     container.innerHTML = html;
 }
 
-
 function renderCards() {
     const container = document.getElementById('schedule-container');
     if (!container) return;
 
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
-    
-    // 관리자 패널과 동일한 주머니 참조
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -895,23 +886,15 @@ function renderCards() {
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
 
-            // 🔴 [개선된 매칭] '현흥전설'과 '현흥'이 달라도 포함관계라면 찾아줍니다.
-            let clientKey = Object.keys(masterData).find(k => k.includes(clientName) || clientName.includes(k));
-            
+            // 🔴 [관리자 패널 방식] 거래처 이름이 정확하지 않아도(현흥 vs 현흥전설) 찾아냅니다.
+            let clientKey = Object.keys(masterData).find(k => k.trim() === clientName || clientName.includes(k.trim()));
+
             if (clientKey && masterData[clientKey]) {
                 const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteName);
                 if (found) {
-                    // 🔴 [핵심 수리] '주소'라는 이름이 정확하지 않아도 데이터가 있는 칸을 다 뒤집니다.
-                    const allKeys = Object.keys(found);
-                    // 1순위: '주소' 단어가 들어간 칸
-                    const addrKey = allKeys.find(k => k.includes('주소') || k.toLowerCase().includes('addr'));
-                    if (addrKey) siteAddr = found[addrKey];
-                    
-                    // 2순위: 그래도 없으면 현장명(name)이 아니고 글자가 긴 칸을 주소로 간주
-                    if (!siteAddr) {
-                        const potential = allKeys.find(k => k !== 'name' && found[k] && found[k].toString().length > 5);
-                        siteAddr = potential ? found[potential] : "";
-                    }
+                    // 🔴 [핵심 수정] 시트 열 이름이 "주소", " 주소", "주소 " 등 무엇이든 상관없이 찾아냅니다.
+                    const realKey = Object.keys(found).find(k => k.trim() === "주소");
+                    siteAddr = realKey ? found[realKey] : (found.주소 || found.address || found.addr || "");
                 }
             }
 
@@ -920,7 +903,7 @@ function renderCards() {
             const borderColor = sType === '야' ? '#475569' : (sType === '조' ? '#f59e0b' : '#2563eb');
 
             return `
-                <div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" 
+                <div class="card schedule-card-item" 
                      style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                     
                     <div onclick="copyScheduleToLogSafe('${safeData}')" 
