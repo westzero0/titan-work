@@ -232,21 +232,20 @@ async function loadTitanDataWithBackgroundSync() {
             body: JSON.stringify({ action: 'getAllData' })
         });
         const rawData = await res.json();
-        
-        // 🔴 관리자 패널에서 하는 것과 똑같이 껍데기를 뜯습니다.
         const fullData = rawData.titanData || rawData.result || rawData;
 
         if (fullData && typeof fullData === 'object') {
-            // 🔴 관리자 패널 전용 전역 변수에 똑같이 저장
+            // 🔴 [수정] 박스 이름을 'window.globalTitanData'로 통일해서 어디서든 보이게 함
             window.globalTitanData = fullData; 
             localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
             
-            console.log("📍 관리자 패널 방식으로 데이터 로드 완료");
+            console.log("📍 주소 박스 채우기 완료. 현재 들어있는 거래처:", Object.keys(window.globalTitanData));
 
-            // 데이터가 왔으니 즉시 카드뷰를 다시 그려서 주소를 채웁니다.
-            if (typeof renderCards === 'function') renderCards(); 
+            // 🔴 박스가 채워졌으니 즉시 화면을 다시 그립니다.
+            if (typeof renderCards === 'function') renderCards();
         }
     } catch (e) {
+        console.log("연결 실패: 캐시 사용");
         const cached = localStorage.getItem('titan_full_data_cache');
         if (cached) window.globalTitanData = JSON.parse(cached);
     }
@@ -867,6 +866,8 @@ function renderCards() {
 
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
+    
+    // 🔴 [핵심] 무조건 'window.globalTitanData' 주머니만 뒤집니다.
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -882,25 +883,21 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            let siteAddr = "";
+            let siteAddr = ""; // 👈 대표님이 말씀하신 바로 그 변수입니다.
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
 
-            // 🔴 [관리자 패널 방식] 거래처 이름이 정확하지 않아도(현흥 vs 현흥전설) 찾아냅니다.
-            let clientKey = Object.keys(masterData).find(k => k.trim() === clientName || clientName.includes(k.trim()));
-
-            if (clientKey && masterData[clientKey]) {
-                const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteName);
+            // 🔴 [매칭 로직] 주머니에서 거래처를 찾고, 그 안에서 현장을 찾습니다.
+            if (masterData[clientName]) {
+                const found = masterData[clientName].find(item => (item.name || "").toString().trim() === siteName);
                 if (found) {
-                    // 🔴 [핵심 수정] 시트 열 이름이 "주소", " 주소", "주소 " 등 무엇이든 상관없이 찾아냅니다.
-                    const realKey = Object.keys(found).find(k => k.trim() === "주소");
-                    siteAddr = realKey ? found[realKey] : (found.주소 || found.address || found.addr || "");
+                    // 🔴 [해결] 한국어 열 이름은 대괄호['']로 접근하는 게 가장 정확합니다.
+                    siteAddr = found['주소'] || found['address'] || found['addr'] || "";
                 }
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
-            const sType = (s.shift || "").toString().trim();
-            const borderColor = sType === '야' ? '#475569' : (sType === '조' ? '#f59e0b' : '#2563eb');
+            const borderColor = (s.shift || "").includes('야') ? '#475569' : ((s.shift || "").includes('조') ? '#f59e0b' : '#2563eb');
 
             return `
                 <div class="card schedule-card-item" 
@@ -911,7 +908,7 @@ function renderCards() {
                     
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                         <div style="width: calc(100% - 50px);">
-                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">📅 ${s.date} (${sType})</div>
+                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">📅 ${s.date} (${s.shift || '주간'})</div>
                             <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
                             <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
                             
@@ -919,18 +916,21 @@ function renderCards() {
                             <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
                                  style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:inline-block; line-height:1.4;">
                                 📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:inline-block;">📍 주소 정보 없음</div>`}
+                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px;">📍 주소 정보 없음</div>`}
                         </div>
                     </div>
 
-                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:10px 0; border:1px solid #e2e8f0;">
+                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:12px 0; border:1px solid #e2e8f0;">
                         🛠️ ${s.content || s.workContent || '작업내용 없음'}
                     </div>
 
-                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;">
-                        ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => 
-                            `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
-                        ).join('')}
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                            ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => 
+                                `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
+                            ).join('')}
+                        </div>
+                        ${s.car ? `<div style="font-size:0.9rem; font-weight:bold; color:#1e293b;">🚛 ${s.car}</div>` : ''}
                     </div>
                 </div>
             `;
