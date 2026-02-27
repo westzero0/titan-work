@@ -857,10 +857,13 @@ function renderCards() {
     const worker = document.getElementById('worker-select').value;
     const today = new Date().toISOString().split('T')[0];
 
-    // 1. [데이터 확보] 관리자 실시간 데이터(globalTitanData)를 먼저 보고, 없으면 캐시를 봅니다.
-    let masterData = (typeof globalTitanData !== 'undefined' && Object.keys(globalTitanData).length > 0) 
-                     ? globalTitanData 
-                     : JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
+    // 🔴 [해결포인트 1] 관리자패널과 똑같은 실시간 데이터를 최우선으로 사용합니다.
+    let masterData = {};
+    if (typeof globalTitanData !== 'undefined' && Object.keys(globalTitanData).length > 0) {
+        masterData = globalTitanData;
+    } else {
+        masterData = JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
+    }
 
     const filtered = allSchedules.filter(s => {
         const wList = (s.workers || "").toString().split(',').map(name => name.trim());
@@ -875,21 +878,19 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 2. [주소 매칭 로직 핵심] .trim()을 사용해 앞뒤 공백을 완전히 제거 후 비교
+            // 🔴 [해결포인트 2] 이름 앞뒤에 숨은 공백까지 싹 지워서 매칭율을 높입니다.
             let siteAddr = ""; 
-            const clientName = (s.client || "").trim();
-            const siteName = (s.site || "").trim();
+            const clientKey = (s.client || "").trim();
+            const siteKey = (s.site || "").trim();
 
-            if (masterData[clientName]) {
-                // 해당 거래처 내에서 현장 이름이 일치하는 항목 찾기
-                const matchedSite = masterData[clientName].find(site => (site.name || "").trim() === siteName);
+            if (masterData[clientKey]) {
+                const matchedSite = masterData[clientKey].find(item => (item.name || "").trim() === siteKey);
                 if (matchedSite) {
-                    // 구글 시트 열 이름이 address, addr, 주소 중 무엇이든 가져옵니다.
-                    siteAddr = matchedSite.address || matchedSite.addr || matchedSite.주소 || "";
+                    // addr, address, 주소 등 모든 가능성 있는 이름표를 체크합니다.
+                    siteAddr = matchedSite.addr || matchedSite.address || matchedSite.주소 || "";
                 }
             }
 
-            // 3. 일보 작성을 위해 찾은 주소를 안전하게 전달
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
             const specialNote = s.note || s.memo || "";
 
@@ -915,11 +916,11 @@ function renderCards() {
                     
                     ${siteAddr ? `
                     <div onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
-                         style="margin-top:10px; color:#2563eb; font-size:0.8rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
-                        📍 <b>현장주소:</b> ${siteAddr} <span style="color:#94a3b8; font-size:0.7rem; margin-left:5px;">(복사)</span>
+                         style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px; border-radius:6px; border:1px solid #dbeafe; font-weight:500;">
+                        📍 <b>현장주소:</b> ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
                     </div>` : `
                     <div style="margin-top:10px; color:#94a3b8; font-size:0.8rem; padding:8px; background:#f8fafc; border-radius:6px;">
-                        📍 주소 정보 없음
+                        📍 주소 정보 없음 (거래처 관리에서 주소 확인 요망)
                     </div>`}
                 </div>
             `;
