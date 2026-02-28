@@ -241,6 +241,12 @@ async function loadTitanDataWithBackgroundSync() {
             
             console.log("📍 주소 박스 채우기 완료. 현재 들어있는 거래처:", Object.keys(window.globalTitanData));
 
+
+            // 🔴 [복구 완료] 일보 작성 탭에 거래처 버튼(칩)을 화면에 뿌려줍니다!
+            const clientNames = Object.keys(fullData).filter(k => !['status','message','result'].includes(k));
+            if (typeof renderClientChips === 'function') renderClientChips(clientNames);
+
+            
             // 🔴 박스가 채워졌으니 즉시 화면을 다시 그립니다.
             if (typeof renderCards === 'function') renderCards();
         }
