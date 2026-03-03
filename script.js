@@ -814,6 +814,11 @@ function renderCalendar() {
     const container = document.getElementById('schedule-container');
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
+
+    // 🔴 [추가] 오늘 날짜 구하기 (한국 시간 기준 정확한 날짜)
+    const now = new Date();
+    const todayStrLocal = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
     
     // 현재 필터링된 직원 선택값
     const selectedWorker = document.getElementById('worker-select').value;
@@ -834,6 +839,10 @@ function renderCalendar() {
     for(let d=1; d<=lastDate; d++) {
         const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         
+   // 🔴 [추가] 오늘 날짜 문자열 만들기 (yyyy-MM-dd)
+        const now = new Date();
+        const todayStrLocal = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
         // 날짜와 직원에 맞는 일정 필터링
         const jobs = allSchedules.filter(s => {
             const isSameDate = s.date === dStr;
@@ -841,8 +850,16 @@ function renderCalendar() {
             return isSameDate && isWorkerMatched;
         });
         
-        html += `<div class="calendar-day-cell" style="background:white; min-height:80px; padding:2px; border:1px solid #eee;">
-            <span style="font-size:0.8rem; font-weight:bold;">${d}</span>
+        // 🔴 [핵심] 오늘 날짜인지 확인해서 배경색/동그라미 스타일 세팅
+        const isToday = (dStr === todayStrLocal);
+        const cellBg = isToday ? '#eff6ff' : 'white'; // 오늘이면 연한 파란색 배경
+        const dateStyle = isToday 
+            ? 'font-size:0.8rem; font-weight:bold; background:#2563eb; color:white; border-radius:50%; display:inline-block; width:22px; height:22px; text-align:center; line-height:22px;' 
+            : 'font-size:0.8rem; font-weight:bold;';
+
+        // ⬇️ 아래 일정 블록(jobs.map)은 대표님 코드 100% 그대로입니다! ⬇️
+        html += `<div class="calendar-day-cell" style="background:${cellBg}; min-height:80px; padding:2px; border:1px solid #eee;">
+            <span style="${dateStyle}">${d}</span>
             ${jobs.map(j => {
                 // 인원수 계산 (글자 쪼개서 숫자 세기)
                 const workerCount = (j.workers || "").toString().split(',').filter(n => n.trim() !== "").length;
