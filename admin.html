@@ -683,9 +683,11 @@ function renderScheduleList() {
         return;
     }
 
-    box.innerHTML = list.map(item => {
-        // 🔴 [주소 매칭 로직] 거래처 마스터(globalTitanData)에서 주소를 찾아옵니다.
+   box.innerHTML = list.map(item => {
+        // 🔴 [로직 추가] 거래처 마스터(globalTitanData)에서 주소와 특이사항을 찾아옵니다.
         let siteAddr = "";
+        let siteNote = ""; 
+
         const clientKey = (item.client || "").trim();
         const siteKey = (item.site || "").trim();
 
@@ -693,6 +695,7 @@ function renderScheduleList() {
             const masterSite = globalTitanData[clientKey].find(s => (s.name || "").trim() === siteKey);
             if (masterSite) {
                 siteAddr = masterSite.addr || masterSite.address || "";
+                siteNote = masterSite.note || ""; // 👈 거래처관리 시트의 E열 데이터
             }
         }
 
@@ -719,14 +722,19 @@ function renderScheduleList() {
                     </div>
                 </div>
 
+                ${siteNote ? `
+                <div style="background:#fef3c7; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#92400e; margin-top:10px; border:1px solid #fde68a;">
+                    📢 <b>현장 안내:</b> ${siteNote}
+                </div>` : ''}
+
+                ${item.note || item.memo ? `
+                <div style="background:#fffbeb; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-top:10px;">
+                    💡 <b>일정 비고:</b> ${item.note || item.memo}
+                </div>` : ''}
+
                 <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-size:0.9rem; color:#2563eb; font-weight:bold; margin:10px 0;">
                     📝 ${item.content || item.workContent || '작업 내용 없음'}
                 </div>
-
-                ${item.note || item.memo ? `
-                <div style="background:#fffbeb; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:10px;">
-                    💡 특이사항: ${item.note || item.memo}
-                </div>` : ''}
 
                 <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
                     ${(item.workers || '').split(',').filter(n => n.trim() !== '').map(name => 
@@ -1287,23 +1295,29 @@ if (rawData.titanData) {
                 <div>
         `;
 
-      sites.forEach(s => {
+    sites.forEach(s => {
             const isFinished = s.status === '완료';
             
-            // 특이사항 데이터 안전하게 가져오기 (undefined 방지)
+            // 데이터 안전하게 처리
             const safeNote = s.note ? s.note.replace(/'/g, "\\'") : "";
             const safeAddr = s.addr ? s.addr.replace(/'/g, "\\'") : "";
 
             html += `
             <div class="site-row" style="padding:15px 20px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; ${isFinished ? 'background:#f8fafc;' : 'background:white;'}">
-                <div style="flex:1;">
+                <div style="flex:1; padding-right:10px;">
                     <div style="font-weight:bold; font-size:1rem; ${isFinished ? 'color:#94a3b8; text-decoration:line-through;' : 'color:#1e293b;'}">
                         ${s.name}
                     </div>
-                    ${s.addr ? `<div class="site-addr-box" onclick="copyText('${safeAddr}')">📍 ${s.addr} (복사)</div>` : ''}
+                    
+                    ${s.addr ? `<div class="site-addr-box" onclick="copyText('${safeAddr}')" style="margin-top:5px;">📍 ${s.addr}</div>` : ''}
+                    
+                    ${s.note ? `
+                    <div style="margin-top:6px; font-size:0.85rem; color:#92400e; background:#fff7ed; padding:4px 8px; border-radius:4px; border:1px solid #ffedd5; display:inline-block; line-height:1.4;">
+                        📢 <b>현장안내:</b> ${s.note}
+                    </div>` : ''}
                 </div>
                 
-                <div style="text-align:right; display:flex; flex-direction:column; gap:6px;">
+                <div style="text-align:right; display:flex; flex-direction:column; gap:6px; min-width:80px;">
                     <span onclick="toggleSiteStatus('${client}', '${s.name}', '${s.status}')" 
                           style="display:inline-block; padding:6px 10px; border-radius:6px; text-align:center; font-size:0.8rem; cursor:pointer; font-weight:bold;
                           ${isFinished ? 'background:#cbd5e1; color:white;' : 'background:#dbeafe; color:#2563eb;'}">
