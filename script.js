@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxWEYPv_WTsA-vAE5jald-llET0q33MlH_3KK2rtA3_hGM0UC4t3wI9NrNeWcxivCGI/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwKf4C9jpm2R8rB2Jadmid1-B6PkBiUaKGlu39gCsy03xbDIzEw_PMuRDVgS1GVLr0q/exec";
 
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
@@ -938,9 +938,19 @@ function renderCards() {
        return `
     <div class="card schedule-card-item" 
          data-date="${s.date}" data-site="${s.site}" 
-         style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">         
+         style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);"> 
+
+         <div onclick="openMaterialCheckModal('${safeData}')" 
+             style="position:absolute; top:12px; right:60px; font-size:1.4rem; cursor:pointer; 
+                    background:${hasMaterials ? '#ecfdf5' : '#f8fafc'}; 
+                    width:42px; height:42px; display:flex; align-items:center; justify-content:center; 
+                    border-radius:50%; border:1px solid ${hasMaterials ? '#10b981' : '#e2e8f0'}; z-index:5;">
+            📦${hasMaterials ? '<span style="position:absolute; top:-2px; right:-2px; font-size:0.7rem;">✅</span>' : ''}
+        </div>
                     <div onclick="copyScheduleToLogSafe('${safeData}')" 
                          style="position:absolute; top:12px; right:12px; font-size:1.4rem; cursor:pointer; background:#f8fafc; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #e2e8f0; z-index:5;">📝</div>
+
+              
                     
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                         <div style="width: calc(100% - 50px);">
@@ -970,13 +980,7 @@ function renderCards() {
                         💡 <b>전달 사항:</b> ${s.note}
                     </div>` : ''}
 
-                    <div style="margin-top: 15px; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-                ${hasMaterials ? `<span style="font-size: 0.8rem; color: #10b981; font-weight: bold;">✅ 자재 등록됨</span>` : ''}
-                <button onclick="openMaterialCheckModal('${safeData}')" 
-                        style="width: auto; padding: 8px 15px; margin: 0; background: #475569; font-size: 0.85rem; border-radius: 6px;">
-                    📦 자재 ${hasMaterials ? '확인/수정' : '입력'}
-                </button>
-            </div>
+                 
 
                     <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                         <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
@@ -1527,65 +1531,62 @@ function renderAdminWorkerList(workers) {
 
 let currentEditItem = null; // 현재 수정 중인 일정을 담을 변수
 
-// [모달 열기]
+let currentEditItem = null; // 현재 선택된 일정 데이터를 담을 변수
+
+// [1. 자재 모달 열기]
 function openMaterialCheckModal(safeData) {
+    // 암호화된 데이터를 풀어서 변수에 저장
     const s = JSON.parse(decodeURIComponent(atob(safeData)));
     currentEditItem = s; 
     
-    // 모달 레이아웃 생성 (없으면 생성)
-    let modal = document.getElementById('mat-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'mat-modal';
-        modal.className = 'modal'; // 기존 모달 CSS 활용
-        modal.innerHTML = `
-            <div class="modal-content" style="max-width:350px; border-radius:15px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <h3 id="mat-modal-title" style="margin:0;">📦 자재 체크리스트</h3>
-                    <span onclick="closeMatModal()" style="cursor:pointer; font-size:1.5rem;">&times;</span>
-                </div>
-                <div id="mat-modal-body"></div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    }
-    
-    showMatChecklist(); // 처음에는 체크리스트 모드로 시작
-    modal.style.display = 'flex';
+    // index.html에 미리 만들어둔 모달 찾기
+    const modal = document.getElementById('mat-check-modal');
+    if (!modal) return console.error("모달을 찾을 수 없습니다.");
+
+    showMatChecklist(); // 체크리스트 화면 먼저 그리기
+    modal.style.display = 'flex'; // 👈 중앙 정렬을 위해 flex로 열기
 }
 
-// [모드 1: 체크리스트 화면]
+// [2. 모드 1: 체크리스트 화면 (기존 서식 유지)]
 function showMatChecklist() {
     const body = document.getElementById('mat-modal-body');
+    if (!body) return;
+
     const mats = (currentEditItem.materials || "").split(',').filter(m => m.trim() !== "");
 
     body.innerHTML = `
-        <div style="max-height:300px; overflow-y:auto; margin-bottom:15px;">
+        <div style="max-height:300px; overflow-y:auto; margin-bottom:20px; border:1px solid #f1f5f9; border-radius:10px;">
             ${mats.length > 0 ? mats.map((m, idx) => `
-                <div onclick="this.querySelector('input').click()" style="display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid #f1f5f9; cursor:pointer;">
-                    <input type="checkbox" id="chk-${idx}" style="width:20px; height:20px;" onclick="event.stopPropagation()">
-                    <label style="font-size:1rem; cursor:pointer;">${m.trim()}</label>
+                <div onclick="this.querySelector('input').click()" 
+                     style="display:flex; align-items:center; gap:12px; padding:15px; border-bottom:1px solid #f1f5f9; cursor:pointer; background:white;">
+                    <input type="checkbox" id="chk-${idx}" style="width:20px; height:20px; cursor:pointer;" onclick="event.stopPropagation()">
+                    <label style="font-size:1.05rem; color:#1e293b; cursor:pointer;">${m.trim()}</label>
                 </div>
-            `).join('') : '<p style="text-align:center; color:#94a3b8; padding:30px;">등록된 자재가 없습니다.</p>'}
+            `).join('') : '<p style="text-align:center; color:#94a3b8; padding:40px; background:#f8fafc;">등록된 자재가 없습니다.<br><small>수정 버튼을 눌러 입력하세요.</small></p>'}
         </div>
-        <button onclick="showMatInput()" style="background:#f1f5f9; color:#475569; border:1px solid #ddd; width:100%; padding:10px; border-radius:8px;">✏️ 목록 수정하기</button>
+        <div style="display:flex; gap:10px;">
+            <button onclick="showMatInput()" style="background:#f1f5f9; color:#475569; border:1px solid #ddd; flex:1; height:48px; border-radius:10px; font-weight:bold;">✏️ 목록 수정</button>
+            <button onclick="closeMatModal()" style="background:#2563eb; color:white; flex:1; height:48px; border-radius:10px; font-weight:bold;">닫기</button>
+        </div>
     `;
 }
 
-// [모드 2: 자재 입력/수정 화면]
+// [3. 모드 2: 자재 입력/수정 화면 (기존 서식 유지)]
 function showMatInput() {
     const body = document.getElementById('mat-modal-body');
     body.innerHTML = `
-        <p style="font-size:0.85rem; color:#64748b; margin-bottom:8px;">자재명을 쉼표(,)로 구분해서 적어주세요.</p>
-        <textarea id="mat-edit-area" style="width:100%; height:120px; padding:10px; border:1,px solid #ddd; border-radius:8px; font-size:1rem;">${currentEditItem.materials || ""}</textarea>
-        <div style="display:flex; gap:10px; margin-top:15px;">
-            <button onclick="showMatChecklist()" style="flex:1; background:#94a3b8;">취소</button>
-            <button onclick="submitMaterialUpdate()" style="flex:2; background:#2563eb;">저장하기</button>
+        <p style="font-size:0.85rem; color:#64748b; margin-bottom:10px;">자재명을 쉼표(,)로 구분해서 적어주세요.</p>
+        <textarea id="mat-edit-area" 
+                  style="width:100%; height:160px; padding:15px; border:1px solid #ddd; border-radius:12px; font-size:1rem; box-sizing:border-box; line-height:1.5; outline:none; border-color:#2563eb;">${currentEditItem.materials || ""}</textarea>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button onclick="showMatChecklist()" style="flex:1; background:#94a3b8; color:white; height:48px; border-radius:10px;">취소</button>
+            <button onclick="submitMaterialUpdate()" style="flex:2; background:#2563eb; color:white; height:48px; border-radius:10px; font-weight:bold;">저장하기</button>
         </div>
     `;
+    document.getElementById('mat-edit-area').focus(); // 바로 입력 가능하게 커서 이동
 }
 
-// [서버로 데이터 전송]
+// [4. 서버로 데이터 전송]
 async function submitMaterialUpdate() {
     const newVal = document.getElementById('mat-edit-area').value;
     const btn = event.target;
@@ -1602,16 +1603,17 @@ async function submitMaterialUpdate() {
             })
         });
         
-        alert("자재 리스트가 업데이트되었습니다.");
-        location.reload(); // 최신 데이터 반영을 위해 새로고침
+        alert("✅ 자재 리스트가 업데이트되었습니다.");
+        location.reload(); // 새로고침하여 카드 상태 반영
     } catch (e) {
-        alert("저장 중 오류가 발생했습니다.");
+        alert("🚨 저장 실패: " + e.message);
         btn.disabled = false;
         btn.innerText = "저장하기";
     }
 }
 
+// [5. 모달 닫기]
 function closeMatModal() {
-    document.getElementById('mat-modal').style.display = 'none';
+    const modal = document.getElementById('mat-check-modal');
+    if (modal) modal.style.display = 'none';
 }
-
