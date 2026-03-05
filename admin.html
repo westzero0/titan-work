@@ -412,7 +412,9 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         <label>현장 주소</label>
         <input type="text" id="c_addr" placeholder="주소를 입력하세요 (D열 저장)">
     </div>
-    
+    <input type="text" id="admin-new-site-note" placeholder="현장 특이사항 (예: 비밀번호 1234*, 주차불가 등)" style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #cbd5e1; border-radius:5px; font-size:0.9rem;">
+
+       
     <button class="btn-blue" onclick="saveClient()" style="width:100%">현장 등록하기</button>
 </div>
             
@@ -550,7 +552,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
   
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwpPuDquad_yvJmja5IkFZ5x2Y_SORp6saFgcxgAMMac3WLTUdC6ERMTvYL5_98vhMM/exec"; // 👈 꼭 본인 주소로 수정하세요!
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyKywsTYXHjdLrnFc4XZeCd8-JpcLDf8FiZdZE0o2mFbQWghZyBvvZ07sTwfdn8ImuO/exec"; // 👈 꼭 본인 주소로 수정하세요!
 // 전역 변수 선언 (에러 방지용)
     let calendar = null;
     let swiper = null;
@@ -1285,21 +1287,32 @@ if (rawData.titanData) {
                 <div>
         `;
 
-        sites.forEach(s => {
+      sites.forEach(s => {
             const isFinished = s.status === '완료';
+            
+            // 특이사항 데이터 안전하게 가져오기 (undefined 방지)
+            const safeNote = s.note ? s.note.replace(/'/g, "\\'") : "";
+            const safeAddr = s.addr ? s.addr.replace(/'/g, "\\'") : "";
+
             html += `
             <div class="site-row" style="padding:15px 20px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; ${isFinished ? 'background:#f8fafc;' : 'background:white;'}">
                 <div style="flex:1;">
                     <div style="font-weight:bold; font-size:1rem; ${isFinished ? 'color:#94a3b8; text-decoration:line-through;' : 'color:#1e293b;'}">
                         ${s.name}
                     </div>
-                    ${s.addr ? `<div class="site-addr-box" onclick="copyText('${s.addr}')">📍 ${s.addr} (복사)</div>` : ''}
+                    ${s.addr ? `<div class="site-addr-box" onclick="copyText('${safeAddr}')">📍 ${s.addr} (복사)</div>` : ''}
                 </div>
-                <div style="text-align:right;">
+                
+                <div style="text-align:right; display:flex; flex-direction:column; gap:6px;">
                     <span onclick="toggleSiteStatus('${client}', '${s.name}', '${s.status}')" 
-                          style="display:inline-block; padding:6px 10px; border-radius:6px; font-size:0.8rem; cursor:pointer; font-weight:bold;
+                          style="display:inline-block; padding:6px 10px; border-radius:6px; text-align:center; font-size:0.8rem; cursor:pointer; font-weight:bold;
                           ${isFinished ? 'background:#cbd5e1; color:white;' : 'background:#dbeafe; color:#2563eb;'}">
                         ${isFinished ? '완료됨' : '진행중'}
+                    </span>
+                    
+                    <span onclick="openClientEditModal('${client}', '${s.name}', '${safeAddr}', '${safeNote}', '${s.status}')" 
+                          style="display:inline-block; padding:6px 10px; border-radius:6px; text-align:center; font-size:0.8rem; cursor:pointer; font-weight:bold; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">
+                        ✏️ 수정
                     </span>
                 </div>
             </div>`;
@@ -1491,8 +1504,60 @@ function toggleSelection(type, item) {
       
 
     function addWorker() { const d = { name: document.getElementById('new-name').value, role: document.getElementById('new-role').value, rate: document.getElementById('new-rate').value, pw: document.getElementById('new-pw').value, phone: document.getElementById('new-phone').value, address: document.getElementById('new-address').value }; sendToGas('adminAddWorker', d); }
-    function saveClient() { const d = { client: document.getElementById('c_client').value, site: document.getElementById('c_site').value, address: document.getElementById('c_addr').value }; sendToGas('adminAddClient', d); }
-    function selectClientChip(el, name) { document.getElementById('c_client').value = name; }
+// 💡 [수정됨] 현장 등록 시 특이사항(note)도 같이 넘기도록 변경
+    function saveClient() { 
+        const d = { 
+            client: document.getElementById('c_client').value, 
+            site: document.getElementById('c_site').value, 
+            address: document.getElementById('c_addr').value,
+            note: document.getElementById('admin-new-site-note').value.trim() // 👈 특이사항 추가됨
+        }; 
+        sendToGas('adminAddClient', d); 
+    }
+
+      // 💡 [신규 추가] 현장 정보 수정 모달 열기
+    function openClientEditModal(client, site, address, note, status) {
+        document.getElementById('edit-client-title').innerText = `[${client}] ${site} 수정`;
+        document.getElementById('edit-client-name').value = client;
+        document.getElementById('edit-client-site').value = site;
+        document.getElementById('edit-client-address').value = (address !== 'undefined' && address) ? address : "";
+        document.getElementById('edit-client-note').value = (note !== 'undefined' && note) ? note : "";
+        document.getElementById('edit-client-status').value = status || "진행중";
+        
+        document.getElementById('client-edit-modal').style.display = 'flex';
+    }
+
+    // 💡 [신규 추가] 현장 정보 수정 모달 닫기
+    function closeClientEditModal() {
+        document.getElementById('client-edit-modal').style.display = 'none';
+    }
+
+    // 💡 [신규 추가] 수정한 정보 서버로 저장하기
+    async function saveClientEdit() {
+        const btn = document.getElementById('btn-save-client');
+        const client = document.getElementById('edit-client-name').value;
+        const site = document.getElementById('edit-client-site').value;
+        const address = document.getElementById('edit-client-address').value.trim();
+        const note = document.getElementById('edit-client-note').value.trim();
+        const status = document.getElementById('edit-client-status').value;
+
+        btn.innerText = "⏳ 저장 중...";
+        btn.disabled = true;
+
+        try {
+            await sendToGas("updateClientInfoFull", { client, site, address, note, status });
+            alert("✅ 정보가 성공적으로 수정되었습니다.");
+            closeClientEditModal();
+        } catch (e) {
+            alert("수정 실패: 인터넷 연결을 확인하세요.");
+        } finally {
+            btn.innerText = "저장하기";
+            btn.disabled = false;
+        }
+    }
+
+      
+      function selectClientChip(el, name) { document.getElementById('c_client').value = name; }
     function saveMaterial() { const d = { cat: document.getElementById('m_cat').value, name: document.getElementById('m_name').value, spec: document.getElementById('m_spec').value, unit: document.getElementById('m_unit').value, price: document.getElementById('m_price').value }; sendToGas('adminAddMaterial', d); }
     async function toggleSiteStatus(c, s, st) { if (confirm("상태변경?")) await sendToGas('updateSiteStatus', { client: c, site: s, status: st==='완료'?'진행중':'완료' }); }
     async function editAddress(c, s, a) { const n = prompt("주소:", a); if (n) await sendToGas('updateSiteAddress', { client: c, site: s, address: n }); }
@@ -1513,7 +1578,37 @@ window.onclick = function(event) {
       
     </script>
 
- 
+
+  <div id="client-edit-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
+    
+    <div style="background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
+        
+        <h3 id="edit-client-title" style="margin-top:0; color:#1e293b; border-bottom:2px solid #e2e8f0; padding-bottom:10px; font-size:1.1rem;">현장 정보 수정</h3>
+        
+        <input type="hidden" id="edit-client-name">
+        <input type="hidden" id="edit-client-site">
+        
+        <label style="font-weight:bold; font-size:0.85rem; color:#64748b; display:block; margin-bottom:5px;">상태</label>
+        <select id="edit-client-status" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid #cbd5e1; font-size:0.9rem;">
+            <option value="진행중">진행중</option>
+            <option value="완료">완료</option>
+        </select>
+
+        <label style="font-weight:bold; font-size:0.85rem; color:#64748b; display:block; margin-bottom:5px;">주소</label>
+        <input type="text" id="edit-client-address" placeholder="주소를 입력하세요" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid #cbd5e1; font-size:0.9rem;">
+        
+        <label style="font-weight:bold; font-size:0.85rem; color:#64748b; display:block; margin-bottom:5px;">현장 특이사항</label>
+        <textarea id="edit-client-note" placeholder="현장 고정 특이사항을 입력하세요" style="width:100%; padding:10px; margin-bottom:20px; border-radius:5px; border:1px solid #cbd5e1; height:80px; resize:none; font-size:0.9rem;"></textarea>
+        
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button onclick="closeClientEditModal()" style="padding:10px 15px; background:#94a3b8; color:white; border:none; border-radius:8px; cursor:pointer; font-size:0.9rem;">닫기</button>
+            <button onclick="saveClientEdit()" id="btn-save-client" style="padding:10px 15px; background:#2563eb; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.9rem;">저장하기</button>
+        </div>
+
+    </div>
+</div>
+
+  
   
 </body>
 </html>
