@@ -932,7 +932,6 @@ function renderCards() {
             const borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
 
             const hasMaterials = s.materials && s.materials.trim() !== "";
-    const safeData = btoa(encodeURIComponent(JSON.stringify(s)));
 
             
 
