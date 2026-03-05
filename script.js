@@ -229,7 +229,7 @@ async function loadTitanDataWithBackgroundSync() {
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'getAllData' })
+            body: JSON.stringify({ action: 'getTitanData' })
         });
         const rawData = await res.json();
         const fullData = rawData.titanData || rawData.result || rawData;
