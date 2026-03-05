@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzgjhpLwkrDc--BNkZOyZrtvcfTkPGxiCujQ9DO60LofIJ2oEV4e2qVBDphWaGZbk71/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxWEYPv_WTsA-vAE5jald-llET0q33MlH_3KK2rtA3_hGM0UC4t3wI9NrNeWcxivCGI/exec";
 
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
@@ -931,6 +931,11 @@ function renderCards() {
             const sType = (s.shift || "").toString().trim();
             const borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
 
+            const hasMaterials = s.materials && s.materials.trim() !== "";
+    const safeData = btoa(encodeURIComponent(JSON.stringify(s)));
+
+            
+
        return `
     <div class="card schedule-card-item" 
          data-date="${s.date}" data-site="${s.site}" 
@@ -965,6 +970,14 @@ function renderCards() {
                     <div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:12px; line-height:1.4;">
                         💡 <b>전달 사항:</b> ${s.note}
                     </div>` : ''}
+
+                    <div style="margin-top: 15px; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+                ${hasMaterials ? `<span style="font-size: 0.8rem; color: #10b981; font-weight: bold;">✅ 자재 등록됨</span>` : ''}
+                <button onclick="openMaterialCheckModal('${safeData}')" 
+                        style="width: auto; padding: 8px 15px; margin: 0; background: #475569; font-size: 0.85rem; border-radius: 6px;">
+                    📦 자재 ${hasMaterials ? '확인/수정' : '입력'}
+                </button>
+            </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                         <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
@@ -1511,3 +1524,95 @@ function renderAdminWorkerList(workers) {
     `;
   }).join('');
 }
+
+
+let currentEditItem = null; // 현재 수정 중인 일정을 담을 변수
+
+// [모달 열기]
+function openMaterialCheckModal(safeData) {
+    const s = JSON.parse(decodeURIComponent(atob(safeData)));
+    currentEditItem = s; 
+    
+    // 모달 레이아웃 생성 (없으면 생성)
+    let modal = document.getElementById('mat-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'mat-modal';
+        modal.className = 'modal'; // 기존 모달 CSS 활용
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width:350px; border-radius:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 id="mat-modal-title" style="margin:0;">📦 자재 체크리스트</h3>
+                    <span onclick="closeMatModal()" style="cursor:pointer; font-size:1.5rem;">&times;</span>
+                </div>
+                <div id="mat-modal-body"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    showMatChecklist(); // 처음에는 체크리스트 모드로 시작
+    modal.style.display = 'flex';
+}
+
+// [모드 1: 체크리스트 화면]
+function showMatChecklist() {
+    const body = document.getElementById('mat-modal-body');
+    const mats = (currentEditItem.materials || "").split(',').filter(m => m.trim() !== "");
+
+    body.innerHTML = `
+        <div style="max-height:300px; overflow-y:auto; margin-bottom:15px;">
+            ${mats.length > 0 ? mats.map((m, idx) => `
+                <div onclick="this.querySelector('input').click()" style="display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+                    <input type="checkbox" id="chk-${idx}" style="width:20px; height:20px;" onclick="event.stopPropagation()">
+                    <label style="font-size:1rem; cursor:pointer;">${m.trim()}</label>
+                </div>
+            `).join('') : '<p style="text-align:center; color:#94a3b8; padding:30px;">등록된 자재가 없습니다.</p>'}
+        </div>
+        <button onclick="showMatInput()" style="background:#f1f5f9; color:#475569; border:1px solid #ddd; width:100%; padding:10px; border-radius:8px;">✏️ 목록 수정하기</button>
+    `;
+}
+
+// [모드 2: 자재 입력/수정 화면]
+function showMatInput() {
+    const body = document.getElementById('mat-modal-body');
+    body.innerHTML = `
+        <p style="font-size:0.85rem; color:#64748b; margin-bottom:8px;">자재명을 쉼표(,)로 구분해서 적어주세요.</p>
+        <textarea id="mat-edit-area" style="width:100%; height:120px; padding:10px; border:1,px solid #ddd; border-radius:8px; font-size:1rem;">${currentEditItem.materials || ""}</textarea>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button onclick="showMatChecklist()" style="flex:1; background:#94a3b8;">취소</button>
+            <button onclick="submitMaterialUpdate()" style="flex:2; background:#2563eb;">저장하기</button>
+        </div>
+    `;
+}
+
+// [서버로 데이터 전송]
+async function submitMaterialUpdate() {
+    const newVal = document.getElementById('mat-edit-area').value;
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerText = "⏳ 저장 중...";
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'updateScheduleMaterials',
+                rowId: currentEditItem.rowId,
+                materials: newVal
+            })
+        });
+        
+        alert("자재 리스트가 업데이트되었습니다.");
+        location.reload(); // 최신 데이터 반영을 위해 새로고침
+    } catch (e) {
+        alert("저장 중 오류가 발생했습니다.");
+        btn.disabled = false;
+        btn.innerText = "저장하기";
+    }
+}
+
+function closeMatModal() {
+    document.getElementById('mat-modal').style.display = 'none';
+}
+
