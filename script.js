@@ -931,10 +931,10 @@ function renderCards() {
             const sType = (s.shift || "").toString().trim();
             const borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
 
-            return `
-                <div class="card schedule-card-item" 
-                     style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                    
+       return `
+    <div class="card schedule-card-item" 
+         data-date="${s.date}" data-site="${s.site}" 
+         style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">         
                     <div onclick="copyScheduleToLogSafe('${safeData}')" 
                          style="position:absolute; top:12px; right:12px; font-size:1.4rem; cursor:pointer; background:#f8fafc; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #e2e8f0; z-index:5;">📝</div>
                     
@@ -1000,9 +1000,31 @@ function jumpToCard(d, s) {
     renderView();
     setTimeout(() => scrollToCard(d, s), 200);
 }
+
 function scrollToCard(d, s) {
-    const el = document.querySelector(`.schedule-card-item[data-date="${d}"][data-site="${s}"]`);
-    if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    const today = new Date().toISOString().split('T')[0];
+    const isTargetPast = (d < today);
+
+    // 1. 만약 찾으려는 날짜가 현재 보고 있는 리스트 모드(showPast)와 다르면 모드 변경
+    if (showPast !== isTargetPast) {
+        showPast = isTargetPast;
+        renderView(); // 리스트 새로 그리기 (지난 ↔ 예정)
+    }
+
+    // 2. 리스트가 그려질 시간을 0.1초 주고 해당 위치로 점프!
+    setTimeout(() => {
+        const el = document.querySelector(`.schedule-card-item[data-date="${d}"][data-site="${s}"]`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // 💡 센스: 찾은 카드를 1초간 노란색으로 반짝여서 알려주기
+            el.style.transition = "background 0.5s";
+            el.style.backgroundColor = "#fffde7"; 
+            setTimeout(() => { el.style.backgroundColor = "white"; }, 1000);
+        } else {
+            console.warn("해당 카드를 찾을 수 없습니다:", d, s);
+        }
+    }, 100);
 }
 
 function copyScheduleToLog(s) {
