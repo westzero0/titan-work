@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwpPuDquad_yvJmja5IkFZ5x2Y_SORp6saFgcxgAMMac3WLTUdC6ERMTvYL5_98vhMM/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzgjhpLwkrDc--BNkZOyZrtvcfTkPGxiCujQ9DO60LofIJ2oEV4e2qVBDphWaGZbk71/exec";
 
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
@@ -906,8 +906,9 @@ function renderCards() {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
         html += filtered.map(s => {
-            // 강력한 주소 매칭 로직 (한글/영어/공백 무시)
             let siteAddr = "";
+            let siteNote = ""; // 👈 1. 현장 고정 특이사항(E열) 변수 추가
+
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
             
@@ -916,13 +917,13 @@ function renderCards() {
             if (clientKey && masterData[clientKey]) {
                 const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteName);
                 if (found) {
-                     const allKeys = Object.keys(found);
-                     const addrKey = allKeys.find(k => k.trim().includes('주소') || k.toLowerCase().includes('addr'));
-                     if (addrKey) siteAddr = found[addrKey];
-                     else {
-                         const potential = allKeys.find(k => k !== 'name' && k !== 'subCat' && found[k] && found[k].toString().length > 5);
-                         siteAddr = potential ? found[potential] : "";
-                     }
+                    // 주소 찾기 로직
+                    const allKeys = Object.keys(found);
+                    const addrKey = allKeys.find(k => k.trim().includes('주소') || k.toLowerCase().includes('addr'));
+                    if (addrKey) siteAddr = found[addrKey];
+                    
+                    // 👈 2. [추가] 고정 특이사항 데이터 꺼내기 (E열)
+                    siteNote = found.note || found.특이사항 || found.비고 || "";
                 }
             }
 
@@ -945,11 +946,16 @@ function renderCards() {
                             
                             ${siteAddr ? `
                             <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
-                                 style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:inline-block; line-height:1.4;">
+                                 style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:block; width:fit-content; line-height:1.4;">
                                 📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:inline-block;">📍 주소 정보 없음</div>`}
+                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:block; width:fit-content;">📍 주소 정보 없음</div>`}
                         </div>
                     </div>
+
+                    ${siteNote ? `
+                    <div style="background:#fef3c7; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:10px; line-height:1.5;">
+                        📢 <b>현장 안내:</b> ${siteNote}
+                    </div>` : ''}
 
                     <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin-top:12px; margin-bottom:${s.note ? '8px' : '12px'}; border:1px solid #e2e8f0;">
                         🛠️ ${s.content || s.workContent || '작업내용 없음'}
@@ -957,7 +963,7 @@ function renderCards() {
 
                     ${s.note ? `
                     <div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:12px; line-height:1.4;">
-                        💡 특이사항: ${s.note}
+                        💡 <b>전달 사항:</b> ${s.note}
                     </div>` : ''}
 
                     <div style="display:flex; justify-content:space-between; align-items:flex-end;">
