@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwKf4C9jpm2R8rB2Jadmid1-B6PkBiUaKGlu39gCsy03xbDIzEw_PMuRDVgS1GVLr0q/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwWLv0IRztkufMzArWZ3niVwljzRAcHmEx10WUB--r2Kcwf7i-r5U-GZqrfy3KbUqMD/exec";
 
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
@@ -1604,48 +1604,30 @@ function showMatInput() {
 // [4. 서버로 데이터 전송]
 async function submitMaterialUpdate() {
     const newVal = document.getElementById('mat-edit-area').value;
-    const btn = event.target;
-
-    // 🔴 데이터 확인용 (F12 콘솔창에서 확인 가능)
-    console.log("전송 데이터:", {
-        rowId: currentEditItem.rowId,
+    
+    // 전송할 데이터 뭉치
+    const payload = {
+        action: 'updateScheduleMaterials',
+        rowId: currentEditItem.rowId, // 👈 이게 서버의 data.rowId가 됩니다.
         materials: newVal
-    });
-
-    if (!currentEditItem.rowId) {
-        alert("일정 번호(rowId)가 없어 저장할 수 없습니다.");
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerText = "⏳ 저장 중...";
+    };
 
     try {
-        const response = await fetch(GAS_URL, {
+        const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({
-                action: 'updateScheduleMaterials',
-                rowId: currentEditItem.rowId,
-                materials: newVal
-            })
+            // 🔴 중요: JSON 문자열로 변환해서 보내야 합니다.
+            body: JSON.stringify(payload) 
         });
         
-        const result = await response.json();
-        console.log("서버 응답:", result);
-
+        const result = await res.json();
         if (result.status === 'SUCCESS') {
             alert("✅ 시트에 성공적으로 저장되었습니다.");
-            location.reload(); // 새로고침해서 카드에 ✅ 표시 확인
+            location.reload();
         } else {
-            alert("❌ 저장 실패: " + result.msg);
-            btn.disabled = false;
-            btn.innerText = "저장하기";
+            alert("❌ 저장 실패: " + result.message);
         }
     } catch (e) {
-        console.error("통신 에러:", e);
-        alert("🚨 서버와 통신 중 오류가 발생했습니다.");
-        btn.disabled = false;
-        btn.innerText = "저장하기";
+        alert("🚨 통신 에러가 발생했습니다.");
     }
 }
 
