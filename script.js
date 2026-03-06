@@ -1529,8 +1529,6 @@ function renderAdminWorkerList(workers) {
 }
 
 
-let currentEditItem = null; // 현재 수정 중인 일정을 담을 변수
-
 let currentEditItem = null; // 현재 선택된 일정 데이터를 담을 변수
 
 // [1. 자재 모달 열기]
