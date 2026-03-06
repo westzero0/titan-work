@@ -1605,11 +1605,23 @@ function showMatInput() {
 async function submitMaterialUpdate() {
     const newVal = document.getElementById('mat-edit-area').value;
     const btn = event.target;
+
+    // 🔴 데이터 확인용 (F12 콘솔창에서 확인 가능)
+    console.log("전송 데이터:", {
+        rowId: currentEditItem.rowId,
+        materials: newVal
+    });
+
+    if (!currentEditItem.rowId) {
+        alert("일정 번호(rowId)가 없어 저장할 수 없습니다.");
+        return;
+    }
+
     btn.disabled = true;
     btn.innerText = "⏳ 저장 중...";
 
     try {
-        const res = await fetch(GAS_URL, {
+        const response = await fetch(GAS_URL, {
             method: 'POST',
             body: JSON.stringify({
                 action: 'updateScheduleMaterials',
@@ -1618,10 +1630,20 @@ async function submitMaterialUpdate() {
             })
         });
         
-        alert("✅ 자재 리스트가 업데이트되었습니다.");
-        location.reload(); // 새로고침하여 카드 상태 반영
+        const result = await response.json();
+        console.log("서버 응답:", result);
+
+        if (result.status === 'SUCCESS') {
+            alert("✅ 시트에 성공적으로 저장되었습니다.");
+            location.reload(); // 새로고침해서 카드에 ✅ 표시 확인
+        } else {
+            alert("❌ 저장 실패: " + result.msg);
+            btn.disabled = false;
+            btn.innerText = "저장하기";
+        }
     } catch (e) {
-        alert("🚨 저장 실패: " + e.message);
+        console.error("통신 에러:", e);
+        alert("🚨 서버와 통신 중 오류가 발생했습니다.");
         btn.disabled = false;
         btn.innerText = "저장하기";
     }
