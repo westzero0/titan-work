@@ -334,7 +334,36 @@ html { scroll-behavior: smooth; }
     border-radius: 8px; font-weight: bold; color: white; cursor: pointer;
 }
         
+/* 💡 기존 .modal 스타일을 아래 내용으로 교체하거나 추가하세요 */
+.modal {
+    display: none; /* 평소엔 숨김 */
+    position: fixed; /* 👈 화면에 딱 고정 (이게 핵심!) */
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5); /* 배경 어둡게 */
+    z-index: 10000; /* 최상단 배치 */
+    
+    /* 💡 중앙 정렬 삼총사 */
+    display: none; /* JS에서 flex로 바꿀 예정 */
+    align-items: center; 
+    justify-content: center;
+}
 
+/* index.html에 넣으신 .modal-content 서식 */
+.modal-content {
+    background: white;
+    width: 90%;
+    max-width: 380px;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    position: relative;
+    /* 💡 폰 화면에서 너무 길어지면 스크롤 생기게 */
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+        
         /* 2. 타임라인 내부 현장명 막대 (말줄임 처리) */
 .job-bar {
     width: 95%; /* 기둥 너비 안에서 꽉 차게 */
@@ -392,6 +421,10 @@ html { scroll-behavior: smooth; }
     box-sizing: border-box !important;
     font-size: 0.6rem !important;     /* 글자가 너무 크면 잘리니 살짝 조절 */
 }
+
+
+
+        
 
         
         
@@ -575,9 +608,18 @@ html { scroll-behavior: smooth; }
 
         
     </div>
-    
-    <script src="script.js"></script>
+     <div id="mat-check-modal" class="modal">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 id="mat-modal-title" style="margin:0;">📦 자재 체크리스트</h3>
+            <span onclick="closeMatModal()" style="cursor:pointer; font-size:1.5rem;">&times;</span>
+        </div>
+        
+        <div id="mat-modal-body"></div>
+    </div>
+</div>
 
+    
     <div id="custom-material-modal" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-title">📦 자재 직접 입력</div>
@@ -596,6 +638,11 @@ html { scroll-behavior: smooth; }
         </div>
     </div>
 </div>
+    
+    <script src="script.js"></script>
+
+
+   
 
     
 </body>
