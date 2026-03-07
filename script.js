@@ -967,7 +967,7 @@ const dateObj = new Date(s.date);
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                         <div style="width: calc(100% - 50px);">
                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
-                    📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span> (${sType || '주간'})
+                    📅 ${s.date} <span style="color:${dayColor}">${dayName}</span> (${sType || '주간'})
                 </div>
                             <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
                             <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
@@ -1579,10 +1579,11 @@ function openMaterialCheckModal(safeData) {
 // [2. 모드 1: 체크리스트 화면 (기존 서식 유지)]
 function showMatChecklist() {
     const body = document.getElementById('mat-modal-body');
+    
     if (!body) return;
 
-    const mats = (currentEditItem.materials || "").split(',').filter(m => m.trim() !== "");
-
+const mats = (currentEditItem.materials || "").split(/,|\n/).filter(m => m.trim() !== "");
+    
     body.innerHTML = `
         <div style="max-height:300px; overflow-y:auto; margin-bottom:20px; border:1px solid #f1f5f9; border-radius:10px;">
             ${mats.length > 0 ? mats.map((m, idx) => `
@@ -1604,8 +1605,8 @@ function showMatChecklist() {
 function showMatInput() {
     const body = document.getElementById('mat-modal-body');
     body.innerHTML = `
-        <p style="font-size:0.85rem; color:#64748b; margin-bottom:10px;">자재명을 쉼표(,)로 구분해서 적어주세요.</p>
-        <textarea id="mat-edit-area" 
+<p style="font-size:0.85rem; color:#64748b; margin-bottom:10px;">자재명을 한 줄에 하나씩 적어주세요. (엔터)</p>
+<textarea id="mat-edit-area" 
                   style="width:100%; height:160px; padding:15px; border:1px solid #ddd; border-radius:12px; font-size:1rem; box-sizing:border-box; line-height:1.5; outline:none; border-color:#2563eb;">${currentEditItem.materials || ""}</textarea>
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button onclick="showMatChecklist()" style="flex:1; background:#94a3b8; color:white; height:48px; border-radius:10px;">취소</button>
