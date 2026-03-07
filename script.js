@@ -1,4 +1,4 @@
-const APP_VERSION = "2.0"; // 👈 기능 수정할 때마다 이 숫자를 1.6, 1.7로 올리세요!
+const APP_VERSION = "2.1"; // 👈 기능 수정할 때마다 이 숫자를 1.6, 1.7로 올리세요!
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedVer = localStorage.getItem('titan_app_version');
@@ -888,7 +888,7 @@ function renderCards() {
     if (!container) return;
 
     const worker = document.getElementById('worker-select').value;
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
     
     // 관리자 패널과 동일한 데이터 주머니 사용
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
