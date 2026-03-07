@@ -905,10 +905,22 @@ function renderCards() {
     if (filtered.length === 0) {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
+
+        // 1. 요일 배열 만들기
+const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+        
         html += filtered.map(s => {
+const dateObj = new Date(s.date);
+    const dayName = weekDays[dateObj.getDay()];
+            
             let siteAddr = "";
             let siteNote = ""; // 👈 1. 현장 고정 특이사항(E열) 변수 추가
 
+            let dayColor = "#64748b"; // 기본 회색
+    if (dateObj.getDay() === 0) dayColor = "#ef4444"; // 일요일
+    if (dateObj.getDay() === 6) dayColor = "#3b82f6"; // 토요일
+
+            
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
             
@@ -954,7 +966,9 @@ function renderCards() {
                     
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                         <div style="width: calc(100% - 50px);">
-                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">📅 ${s.date} (${sType || '주간'})</div>
+                           <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
+                    📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span> (${sType || '주간'})
+                </div>
                             <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
                             <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
                             
@@ -1604,30 +1618,52 @@ function showMatInput() {
 // [4. 서버로 데이터 전송]
 async function submitMaterialUpdate() {
     const newVal = document.getElementById('mat-edit-area').value;
+    const btn = event.target;
     
-    // 전송할 데이터 뭉치
-    const payload = {
-        action: 'updateScheduleMaterials',
-        rowId: currentEditItem.rowId, // 👈 이게 서버의 data.rowId가 됩니다.
-        materials: newVal
-    };
+    if (!currentEditItem || !currentEditItem.rowId) {
+        alert("일정 정보를 찾을 수 없습니다.");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "⏳ 저장 중...";
 
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            // 🔴 중요: JSON 문자열로 변환해서 보내야 합니다.
-            body: JSON.stringify(payload) 
+            body: JSON.stringify({
+                action: 'updateScheduleMaterials',
+                rowId: currentEditItem.rowId,
+                materials: newVal
+            })
         });
         
         const result = await res.json();
+        
         if (result.status === 'SUCCESS') {
-            alert("✅ 시트에 성공적으로 저장되었습니다.");
-            location.reload();
+            // 🔴 [핵심] 새로고침 대신 로컬 데이터를 즉시 업데이트합니다.
+            // 1. 전체 데이터(allSchedules)에서 현재 수정 중인 항목을 찾아 자재 내용 갱신
+            const targetIdx = allSchedules.findIndex(s => s.rowId === currentEditItem.rowId);
+            if (targetIdx !== -1) {
+                allSchedules[targetIdx].materials = newVal;
+            }
+
+            // 2. 팝업 닫기
+            closeMatModal();
+            
+            // 3. 카드 화면만 다시 그리기 (선택된 직원/날짜 필터 유지됨)
+            renderCards(); 
+            
+            alert("✅ 자재 정보가 저장되었습니다.");
         } else {
             alert("❌ 저장 실패: " + result.message);
+            btn.disabled = false;
+            btn.innerText = "저장하기";
         }
     } catch (e) {
         alert("🚨 통신 에러가 발생했습니다.");
+        btn.disabled = false;
+        btn.innerText = "저장하기";
     }
 }
 
