@@ -967,7 +967,7 @@ const dateObj = new Date(s.date);
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                         <div style="width: calc(100% - 50px);">
                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
-                    📅 ${s.date} <span style="color:${dayColor}">$({dayName})</span> [${sType || '주간'}]
+                    📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span> [${sType || '주간'}]
                 </div>
                             <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
                             <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
