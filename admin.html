@@ -564,7 +564,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     <script>
 
       
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbw88GslIvIDxdcUl7o5dSFO2lF5BsnyqKCnTU7Hhs87LOMIeJ1tFZyoJ7LDuxv_z2rB/exec"; // 👈 꼭 본인 주소로 수정하세요!
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbz4Pl186OaqgjuOnCyGzROBIBGEpAH2PKU0sMhhWrBhPmQQ56ylj8-XOdZboguSms45/exec"; // 👈 꼭 본인 주소로 수정하세요!
 // 전역 변수 선언 (에러 방지용)
     let calendar = null;
     let swiper = null;
@@ -708,18 +708,24 @@ var calendarMode = 'work';
         let events = [];
 
         if (calendarMode === 'work') {
-            const validSchedules = globalScheduleData.filter(item => 
-                (item.client && item.client.trim() !== "") || (item.site && item.site.trim() !== "")
-            );
-            events = validSchedules.map(item => {
-                const workerCount = item.workers ? item.workers.split(',').filter(n => n.trim() !== '').length : 0;
-                return {
-                    id: item.rowId, title: `${item.site || '현장미상'} (${workerCount}명)`, start: item.date,
-                    backgroundColor: item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#3b82f6'),
-                    borderColor: 'transparent', extendedProps: item
-                };
-            });
-        } else {
+          // 🔴 [핵심 변경] 거래처나 현장명이 '휴무'인 것은 걸러냅니다!
+        const validSchedules = globalScheduleData.filter(item => 
+            item.client !== '휴무' && item.site !== '휴무' && 
+            ((item.client && item.client.trim() !== "") || (item.site && item.site.trim() !== ""))
+        );
+
+        events = validSchedules.map(item => {
+            const workerCount = item.workers ? item.workers.split(',').filter(n => n.trim() !== '').length : 0;
+            return {
+                id: item.rowId,
+                title: `${item.site || '현장미상'} (${workerCount}명)`,
+                start: item.date,
+                backgroundColor: item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#3b82f6'),
+                borderColor: 'transparent', 
+                extendedProps: item
+            };
+        });
+    } else {
             const offDates = {}; 
             globalScheduleData.forEach(item => {
                 if (item.offWorkers && item.offWorkers.trim() !== "") {
@@ -839,8 +845,17 @@ function toggleOffWorkerSelection(n) {
         const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
 
         if (calendarMode === 'work') {
-            const list = scheduleData.filter(i => (i.client && i.client.trim() !== "") || (i.site && i.site.trim() !== "")).filter(i => i.date >= today).sort((a, b) => new Date(a.date) - new Date(b.date));
-            if (list.length === 0) { box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">예정된 일정이 없습니다.</div>'; return; }
+            // 🔴 [핵심 변경] 리스트에서도 '휴무'인 항목은 완벽하게 숨깁니다!
+        const list = scheduleData
+            .filter(item => item.client !== '휴무' && item.site !== '휴무')
+            .filter(i => (i.client && i.client.trim() !== "") || (i.site && i.site.trim() !== ""))
+            .filter(i => i.date >= today)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        if (list.length === 0) {
+            box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">예정된 일정이 없습니다.</div>';
+            return;
+        }
             box.innerHTML = list.map(item => {
                 let siteAddr = ""; let masterNote = ""; 
                 const clientKey = (item.client || "").trim(); const siteKey = (item.site || "").trim();
@@ -1161,21 +1176,30 @@ function toggleWorkerSelection(n) {
 
 
       
- // 🚀 데이터 저장 시 휴무자 처리
+// 🚀 데이터 저장 시 휴무자 처리
 async function saveSchedule(mode) {
     const isAllOff = document.getElementById('chk-all-off').checked;
     
     let clientVal = document.getElementById('sched-client').value;
     let siteVal = document.getElementById('sched-site').value;
-    let workersVal = document.getElementById('sched-workers-text').value;
-    let offWorkersVal = document.getElementById('sched-off-workers-text').value;
+    
+    // 현재 선택된 칩에서 명단 가져오기
+    let workersVal = Array.from(selectedWorkerSet).join(', ');
+    let offWorkersVal = Array.from(selectedOffWorkerSet).join(', ');
+    
     let finalShift = '주';
 
     if (isAllOff) {
-        // 전체 휴무일 경우 가짜 데이터 '휴무'를 보냅니다.
+        // 전체 휴무일 경우 가짜 데이터 '휴무' 세팅
         clientVal = '휴무';
         siteVal = '휴무';
-        workersVal = '';
+        workersVal = ''; // 출근자는 0명으로 초기화
+        
+        // 🚨 [핵심 추가] 전체 휴무인데 이름이 안 뽑혔다면, 모든 재직자 이름을 강제로 넣습니다!
+        if (!offWorkersVal) {
+            const activeWorkers = globalWorkerData.filter(w => w.status === '재직').map(w => w.name);
+            offWorkersVal = activeWorkers.join(', '); // "홍길동, 김철수, 이영희..." 로 꽉 채움
+        }
     } else {
         if(!clientVal || !siteVal) return alert("거래처와 현장을 선택하세요.");
         let rawShift = document.getElementById('sched-shift').value;
@@ -1188,7 +1212,7 @@ async function saveSchedule(mode) {
         site: siteVal,
         shift: finalShift, 
         workers: workersVal,
-        offWorkers: offWorkersVal, // 🔴 휴무자 데이터!
+        offWorkers: offWorkersVal, // 🔴 이제 전 직원 이름이 꽉 채워져서 날아갑니다!
         car: isAllOff ? "" : document.getElementById('sched-car').value,
         content: isAllOff ? "" : document.getElementById('sched-content').value,
         note: document.getElementById('sched-note').value,
@@ -1211,7 +1235,11 @@ async function saveSchedule(mode) {
         dataToSend = list;
     }
 
-    try { await sendToGas(action, dataToSend); } catch (e) { alert("⚠️ 저장에 실패했습니다."); }
+    try { 
+        await sendToGas(action, dataToSend); 
+    } catch (e) { 
+        alert("⚠️ 저장에 실패했습니다."); 
+    }
 }
 
 
