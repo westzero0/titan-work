@@ -599,14 +599,13 @@ function getWorkerColor(workerName) {
         { bg: '#f5f5f4', text: '#57534e', border: '#e7e5e4' }  // 15: 스톤(회색)
     ];
 
-    // 이름 글자를 숫자로 변환해서 고유 번호(해시) 만들기
-    let hash = 0;
+   let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    hash = Math.abs(hash); // 무조건 양수로
+    hash = Math.abs(hash); 
     
-    // 8개 색상 중 하나를 무조건 고정으로 배정
+    // 16개 색상 중 하나를 배정 (직원이 16명까지는 겹칠 확률이 아주 낮아짐!)
     return palettes[hash % palettes.length];
 }
       
