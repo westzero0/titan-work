@@ -883,6 +883,7 @@ function renderScheduleList() {
                     <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:12px 0; border:1px solid #e2e8f0;">🛠️ ${item.content || '작업 내용 없음'}</div>
                     <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
                         ${(item.workers || '').split(',').filter(n => n.trim() !== '').map(name => `<span style="background:#fff; border:1px solid #e2e8f0; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`).join('')}
+                        ${item.car ? `<span style="font-size:0.85rem; color:#1e293b; font-weight:bold; margin-left:5px; background:#e2e8f0; padding:2px 8px; border-radius:12px;">🚛 ${item.car}</span>` : ''}
                     </div>
                 </div>`;
         }).join('');
