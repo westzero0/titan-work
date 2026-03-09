@@ -435,15 +435,14 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     </div>
 
 
-    
-<div style="padding: 20px 10px 10px 10px; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div class="swiper-slide">
+        <div style="padding: 20px 10px 10px 10px; display: flex; justify-content: space-between; align-items: flex-end;">
             <div>
                 <h3 id="cal-main-title" style="margin:0; color:#1e293b;">📅 작업 일정</h3>
                 <p id="cal-sub-title" style="margin:5px 0 0 0; font-size:0.8rem; color:#64748b;">
                     날짜 클릭: 등록 / 바 클릭: 수정
                 </p>
             </div>
-            
             <div style="display: flex; background: #e2e8f0; padding: 4px; border-radius: 10px;">
                 <button id="btn-cal-work" onclick="setCalendarMode('work')" style="border:none; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: white; font-weight: bold; color: #2563eb; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin:0; width:auto; font-size: 0.9rem;">🏗️ 작업</button>
                 <button id="btn-cal-off" onclick="setCalendarMode('off')" style="border:none; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: transparent; font-weight: bold; color: #64748b; margin:0; width:auto; font-size: 0.9rem;">🏖️ 휴무</button>
@@ -456,14 +455,8 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
             <h4 id="upcoming-title" style="margin:0 0 15px 0; color:#334155;">📋 다가오는 상세 일정</h4>
             <div id="upcoming-list"></div>
         </div>
-
-     
-
-     
-     
-      
-    </div>
-
+      </div>
+    
        </div>
 </div>
 
@@ -629,36 +622,34 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
         });
     }
 
+var calendarMode = 'work'; 
 
-      let calendarMode = 'work'; // 기본값은 작업 모드
+    function setCalendarMode(mode) {
+        calendarMode = mode;
+        
+        const workBtn = document.getElementById('btn-cal-work');
+        const offBtn = document.getElementById('btn-cal-off');
+        const mainTitle = document.getElementById('cal-main-title');
+        const subTitle = document.getElementById('cal-sub-title');
+        const upcomingTitle = document.getElementById('upcoming-title');
 
-function setCalendarMode(mode) {
-    calendarMode = mode;
-    
-    const workBtn = document.getElementById('btn-cal-work');
-    const offBtn = document.getElementById('btn-cal-off');
-    const mainTitle = document.getElementById('cal-main-title');
-    const subTitle = document.getElementById('cal-sub-title');
-    const upcomingTitle = document.getElementById('upcoming-title');
-
-    if (mode === 'work') {
-        workBtn.style.background = 'white'; workBtn.style.color = '#2563eb'; workBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-        offBtn.style.background = 'transparent'; offBtn.style.color = '#64748b'; offBtn.style.boxShadow = 'none';
-        mainTitle.innerText = "📅 작업 일정";
-        subTitle.innerText = "날짜 클릭: 등록 / 바 클릭: 수정";
-        upcomingTitle.innerText = "📋 다가오는 상세 일정";
-    } else {
-        offBtn.style.background = 'white'; offBtn.style.color = '#ef4444'; offBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-        workBtn.style.background = 'transparent'; workBtn.style.color = '#64748b'; workBtn.style.boxShadow = 'none';
-        mainTitle.innerText = "🏖️ 휴무 일정";
-        subTitle.innerText = "직원들의 휴무(X) 현황입니다.";
-        upcomingTitle.innerText = "🏖️ 다가오는 휴무자";
+        if (mode === 'work') {
+            workBtn.style.background = 'white'; workBtn.style.color = '#2563eb'; workBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            offBtn.style.background = 'transparent'; offBtn.style.color = '#64748b'; offBtn.style.boxShadow = 'none';
+            mainTitle.innerText = "📅 작업 일정";
+            subTitle.innerText = "날짜 클릭: 등록 / 바 클릭: 수정";
+            upcomingTitle.innerText = "📋 다가오는 상세 일정";
+        } else {
+            offBtn.style.background = 'white'; offBtn.style.color = '#ef4444'; offBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            workBtn.style.background = 'transparent'; workBtn.style.color = '#64748b'; workBtn.style.boxShadow = 'none';
+            mainTitle.innerText = "🏖️ 휴무 일정";
+            subTitle.innerText = "직원들의 휴무(X) 현황입니다.";
+            upcomingTitle.innerText = "🏖️ 다가오는 휴무자";
+        }
+        
+        initCalendar();
+        renderScheduleList();
     }
-    
-    // 모드가 바뀌면 달력과 리스트를 다시 그립니다!
-    initCalendar();
-    renderScheduleList();
-}
 
       
 
@@ -676,177 +667,111 @@ function setCalendarMode(mode) {
         }
     }
 
-function initCalendar() {
-    const el = document.getElementById('calendar-container');
-    if (!el) return;
 
-    let events = [];
+   function initCalendar() {
+        const el = document.getElementById('calendar-container');
+        if (!el) return;
+        let events = [];
 
-    // 🏗️ 작업 모드일 때
-    if (calendarMode === 'work') {
-        const validSchedules = globalScheduleData.filter(item => 
-            (item.client && item.client.trim() !== "") || (item.site && item.site.trim() !== "")
-        );
-
-        events = validSchedules.map(item => {
-            const workerCount = item.workers ? item.workers.split(',').filter(n => n.trim() !== '').length : 0;
-            return {
-                id: item.rowId,
-                title: `${item.site || '현장미상'} (${workerCount}명)`,
-                start: item.date,
-                backgroundColor: item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#3b82f6'),
-                borderColor: 'transparent', 
-                extendedProps: item
-            };
-        });
-    } 
-    // 🏖️ 휴무 모드일 때
-    else {
-        const offDates = {}; // 날짜별로 중복 이름 걸러내기 위한 주머니
-        
-        globalScheduleData.forEach(item => {
-            if (item.offWorkers && item.offWorkers.trim() !== "") {
-                if (!offDates[item.date]) offDates[item.date] = new Set();
-                item.offWorkers.split(',').forEach(w => {
-                    if (w.trim() !== "") offDates[item.date].add(w.trim());
-                });
-            }
-        });
-
-        Object.keys(offDates).forEach(date => {
-            Array.from(offDates[date]).forEach(worker => {
-                events.push({
-                    title: `🏖️ ${worker}`,
-                    start: date,
-                    backgroundColor: '#fef2f2',
-                    textColor: '#ef4444', // 글자색 빨강
-                    borderColor: '#fca5a5',
-                    extendedProps: { isOff: true } // 클릭 방지용 태그
+        if (calendarMode === 'work') {
+            const validSchedules = globalScheduleData.filter(item => 
+                (item.client && item.client.trim() !== "") || (item.site && item.site.trim() !== "")
+            );
+            events = validSchedules.map(item => {
+                const workerCount = item.workers ? item.workers.split(',').filter(n => n.trim() !== '').length : 0;
+                return {
+                    id: item.rowId, title: `${item.site || '현장미상'} (${workerCount}명)`, start: item.date,
+                    backgroundColor: item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#3b82f6'),
+                    borderColor: 'transparent', extendedProps: item
+                };
+            });
+        } else {
+            const offDates = {}; 
+            globalScheduleData.forEach(item => {
+                if (item.offWorkers && item.offWorkers.trim() !== "") {
+                    if (!offDates[item.date]) offDates[item.date] = new Set();
+                    item.offWorkers.split(',').forEach(w => {
+                        if (w.trim() !== "") offDates[item.date].add(w.trim());
+                    });
+                }
+            });
+            Object.keys(offDates).forEach(date => {
+                Array.from(offDates[date]).forEach(worker => {
+                    events.push({ title: `🏖️ ${worker}`, start: date, backgroundColor: '#fef2f2', textColor: '#ef4444', borderColor: '#fca5a5', extendedProps: { isOff: true } });
                 });
             });
-        });
-    }
-
-    if (calendar) calendar.destroy();
-    calendar = new FullCalendar.Calendar(el, {
-        initialView: 'dayGridMonth', locale: 'ko', height: 'auto',
-        longPressDelay: 300, eventLongPressDelay: 300, selectLongPressDelay: 300,
-        headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-        dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
-        
-        // 휴무 모드일 때는 클릭해서 일정 등록하는 것을 막습니다.
-        selectable: calendarMode === 'work', 
-        selectMirror: true,
-        select: (info) => {
-            if (calendarMode === 'work') openModal('add', info.startStr, null, info.endStr);
-        },
-        eventClick: (info) => {
-            if (calendarMode === 'work' && !info.event.extendedProps.isOff) {
-                openModal('edit', null, info.event.extendedProps);
-            }
-        },
-        events: events
-    });
-    calendar.render();
-}
-   
-
-
- // [4] 하단 리스트 그리기 (수정됨)
-function renderScheduleList() {
-    const box = document.getElementById('upcoming-list'); 
-    if (!box) return;
-
-    const today = new Date().toISOString().split('T')[0];
-    const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
-
-    // 🏗️ 작업 모드 하단 리스트
-    if (calendarMode === 'work') {
-        const list = scheduleData
-            .filter(i => (i.client && i.client.trim() !== "") || (i.site && i.site.trim() !== ""))
-            .filter(i => i.date >= today)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        if (list.length === 0) {
-            box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">예정된 일정이 없습니다.</div>';
-            return;
         }
 
-        box.innerHTML = list.map(item => {
-            let siteAddr = "";
-            let masterNote = ""; 
-            const clientKey = (item.client || "").trim();
-            const siteKey = (item.site || "").trim();
+        if (calendar) calendar.destroy();
+        calendar = new FullCalendar.Calendar(el, {
+            initialView: 'dayGridMonth', locale: 'ko', height: 'auto',
+            longPressDelay: 300, eventLongPressDelay: 300, selectLongPressDelay: 300,
+            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+            dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
+            selectable: calendarMode === 'work', selectMirror: true,
+            select: (info) => { if (calendarMode === 'work') openModal('add', info.startStr, null, info.endStr); },
+            eventClick: (info) => { if (calendarMode === 'work' && !info.event.extendedProps.isOff) { openModal('edit', null, info.event.extendedProps); } },
+            events: events
+        });
+        calendar.render();
+    }
+      
 
-            if (globalTitanData[clientKey]) {
-                const masterSite = globalTitanData[clientKey].find(m => (m.name || "").trim() === siteKey);
-                if (masterSite) {
-                    siteAddr = masterSite.addr || masterSite.address || "";
-                    masterNote = masterSite.note || ""; 
+
+ function renderScheduleList() {
+        const box = document.getElementById('upcoming-list'); 
+        if (!box) return;
+        const today = new Date().toISOString().split('T')[0];
+        const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
+
+        if (calendarMode === 'work') {
+            const list = scheduleData.filter(i => (i.client && i.client.trim() !== "") || (i.site && i.site.trim() !== "")).filter(i => i.date >= today).sort((a, b) => new Date(a.date) - new Date(b.date));
+            if (list.length === 0) { box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">예정된 일정이 없습니다.</div>'; return; }
+            box.innerHTML = list.map(item => {
+                let siteAddr = ""; let masterNote = ""; 
+                const clientKey = (item.client || "").trim(); const siteKey = (item.site || "").trim();
+                if (globalTitanData[clientKey]) {
+                    const masterSite = globalTitanData[clientKey].find(m => (m.name || "").trim() === siteKey);
+                    if (masterSite) { siteAddr = masterSite.addr || masterSite.address || ""; masterNote = masterSite.note || ""; }
                 }
-            }
-
-            const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
-            const borderColor = item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#2563eb');
-
-            return `
-                <div class="card" style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; cursor:pointer;" 
-                     onclick="openModalSafe('${safeData}')">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <div style="width: 100%;">
-                            <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">📅 ${item.date} (${item.shift})</div>
-                            <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
-                            <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
-                            ${siteAddr ? `<div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" style="margin-top:10px; display: block; width: fit-content;">📍 ${siteAddr}</div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px;">📍 주소 정보 없음</div>`}
+                const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
+                const borderColor = item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#2563eb');
+                return `
+                    <div class="card" style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; cursor:pointer;" onclick="openModalSafe('${safeData}')">
+                        <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">📅 ${item.date} (${item.shift})</div>
+                        <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
+                        <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
+                        ${siteAddr ? `<div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" style="margin-top:10px; display: block; width: fit-content;">📍 ${siteAddr}</div>` : ''}
+                        ${masterNote ? `<div style="background:#fef3c7; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#92400e; margin-top:10px; border:1px solid #fde68a;">📢 <b>현장 안내:</b> ${masterNote}</div>` : ''}
+                        ${(item.note || item.memo) ? `<div style="background:#fee2e2; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#991b1b; border:1px solid #fca5a5; margin-top:10px;">⚠️ <b>일정 비고:</b> ${item.note || item.memo}</div>` : ''}
+                        <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:12px 0; border:1px solid #e2e8f0;">🛠️ ${item.content || '작업 내용 없음'}</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
+                            ${(item.workers || '').split(',').filter(n => n.trim() !== '').map(name => `<span style="background:#fff; border:1px solid #e2e8f0; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`).join('')}
+                            ${item.car ? `<span style="font-size:0.9rem; color:#1e293b; font-weight:bold; margin-left:5px;">🚛 ${item.car}</span>` : ''}
                         </div>
-                    </div>
-                    ${masterNote ? `<div style="background:#fef3c7; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#92400e; margin-top:10px; border:1px solid #fde68a; display: block; width: fit-content;">📢 <b>현장 안내:</b> ${masterNote}</div>` : ''}
-                    ${(item.note || item.memo) ? `<div style="background:#fee2e2; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#991b1b; border:1px solid #fca5a5; margin-top:10px; display: block; width: fit-content;">⚠️ <b>일정 비고:</b> ${item.note || item.memo}</div>` : ''}
-                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:12px 0; border:1px solid #e2e8f0;">🛠️ ${item.content || item.workContent || '작업 내용 없음'}</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
-                        ${(item.workers || '').split(',').filter(n => n.trim() !== '').map(name => `<span style="background:#fff; border:1px solid #e2e8f0; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`).join('')}
-                        ${item.car ? `<span style="font-size:0.9rem; color:#1e293b; font-weight:bold; margin-left:5px;">🚛 ${item.car}</span>` : ''}
+                    </div>`;
+            }).join('');
+        } else {
+            const offSchedules = scheduleData.filter(s => s.offWorkers && s.offWorkers.trim() !== "" && s.date >= today);
+            if (offSchedules.length === 0) { box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">다가오는 휴무 일정이 없습니다.</div>'; return; }
+            const offsByDate = {};
+            offSchedules.forEach(s => {
+                if (!offsByDate[s.date]) offsByDate[s.date] = new Set();
+                s.offWorkers.split(',').forEach(w => { if (w.trim() !== "") offsByDate[s.date].add(w.trim()); });
+            });
+            const sortedDates = Object.keys(offsByDate).sort();
+            box.innerHTML = sortedDates.map(date => {
+                const workers = Array.from(offsByDate[date]);
+                return `
+                <div class="card" style="margin-bottom:12px; padding:15px; border-left:5px solid #ef4444;">
+                    <div style="font-size: 0.95rem; color: #475569; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">📅 ${date} 휴무자</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${workers.map(w => `<span style="background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: bold;">🏖️ ${w}</span>`).join('')}
                     </div>
                 </div>`;
-        }).join('');
-    } 
-    // 🏖️ 휴무 모드 하단 리스트
-    else {
-        const offSchedules = scheduleData.filter(s => s.offWorkers && s.offWorkers.trim() !== "" && s.date >= today);
-        
-        if (offSchedules.length === 0) {
-            box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">다가오는 휴무 일정이 없습니다.</div>';
-            return;
+            }).join('');
         }
-
-        const offsByDate = {};
-        offSchedules.forEach(s => {
-            if (!offsByDate[s.date]) offsByDate[s.date] = new Set();
-            s.offWorkers.split(',').forEach(w => {
-                if (w.trim() !== "") offsByDate[s.date].add(w.trim());
-            });
-        });
-
-        // 날짜 오름차순(가까운 날짜순) 정렬
-        const sortedDates = Object.keys(offsByDate).sort();
-
-        box.innerHTML = sortedDates.map(date => {
-            const workers = Array.from(offsByDate[date]);
-            return `
-            <div class="card" style="margin-bottom:12px; padding:15px; border-left:5px solid #ef4444;">
-                <div style="font-size: 0.95rem; color: #475569; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
-                    📅 ${date} 휴무자
-                </div>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    ${workers.map(w => `
-                        <span style="background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: bold;">
-                            🏖️ ${w}
-                        </span>`).join('')}
-                </div>
-            </div>`;
-        }).join('');
     }
-}
       
       
 function openModal(mode, dateStr, data, endStr = null) {
