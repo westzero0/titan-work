@@ -1205,7 +1205,7 @@ function toggleWorkerSelection(n) {
 
 
       
-// 🚀 데이터 저장 시 휴무자 처리
+// 🚀 데이터 저장 시 휴무자 처리 (날짜 초과 버그 수정)
 async function saveSchedule(mode) {
     const isAllOff = document.getElementById('chk-all-off').checked;
     
@@ -1222,12 +1222,12 @@ async function saveSchedule(mode) {
         // 전체 휴무일 경우 가짜 데이터 '휴무' 세팅
         clientVal = '휴무';
         siteVal = '휴무';
-        workersVal = ''; // 출근자는 0명으로 초기화
+        workersVal = ''; 
         
-        // 🚨 [핵심 추가] 전체 휴무인데 이름이 안 뽑혔다면, 모든 재직자 이름을 강제로 넣습니다!
+        // 전체 휴무인데 이름이 안 뽑혔다면, 모든 재직자 이름을 강제로 넣습니다!
         if (!offWorkersVal) {
             const activeWorkers = globalWorkerData.filter(w => w.status === '재직').map(w => w.name);
-            offWorkersVal = activeWorkers.join(', '); // "홍길동, 김철수, 이영희..." 로 꽉 채움
+            offWorkersVal = activeWorkers.join(', '); 
         }
     } else {
         if(!clientVal || !siteVal) return alert("거래처와 현장을 선택하세요.");
@@ -1241,7 +1241,7 @@ async function saveSchedule(mode) {
         site: siteVal,
         shift: finalShift, 
         workers: workersVal,
-        offWorkers: offWorkersVal, // 🔴 이제 전 직원 이름이 꽉 채워져서 날아갑니다!
+        offWorkers: offWorkersVal, 
         car: isAllOff ? "" : document.getElementById('sched-car').value,
         content: isAllOff ? "" : document.getElementById('sched-content').value,
         note: document.getElementById('sched-note').value,
@@ -1257,7 +1257,9 @@ async function saveSchedule(mode) {
         const list = [];
         let cur = new Date(payload.date);
         const end = new Date(document.getElementById('sched-end-date').value);
-        while(cur <= end) {
+        
+        // 🔴 [원인 해결!] FullCalendar의 종료일 특성상 반드시 '<' 를 써야 다음날이 초과 저장되지 않습니다!
+        while(cur < end) { 
             list.push({...payload, date: cur.toISOString().split('T')[0]});
             cur.setDate(cur.getDate() + 1);
         }
