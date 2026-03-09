@@ -468,7 +468,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 </div>
 
 
-   <div id="schedule-modal" class="modal">
+<div id="schedule-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
             <h3 id="modal-date-title" style="margin:0; color:#2563eb;">일정 수정</h3>
@@ -482,66 +482,77 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         <input type="hidden" id="sched-site">
         <input type="hidden" id="sched-shift">
         <input type="hidden" id="sched-workers-text">
-
-        <div class="input-group">
-            <label>🏢 거래처 (진행중인 현장)</label>
-            <div id="sched-client-chips-area" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
-
-            <label>🏗️ 현장 선택</label>
-            <div id="sched-site-chips-area" style="min-height:40px; margin-bottom:15px; display:flex; flex-wrap:wrap;">
-                <span style="color:#aaa; font-size:0.9rem;">거래처를 먼저 선택하세요.</span>
-            </div>
-
-            <label>⏰ 근무 형태</label>
-            <div id="shift-toggle-btn" onclick="toggleShift()" style="background:#3b82f6; color:white; padding:12px; text-align:center; border-radius:8px; font-weight:bold; cursor:pointer; font-size:1.1rem; margin-bottom:20px;">
-                🌞 주간
-            </div>
-
-            <label>👷 투입 인원 <span id="worker-count-display">(0명)</span></label>
-            <div id="worker-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; padding:10px 0;">
-                </div>
-
-          <div class="header-row">
-    <label style="margin:0;">🚛 사용 차량 (중복 가능)</label>
-    <div class="delete-toggle" onclick="toggleDeleteMode('car')">🗑️ 삭제</div>
-</div>
-
-<input type="text" id="sched-car" placeholder="칩을 클릭하면 여기에 표시됩니다" readonly style="margin-bottom:8px; border: 2px solid #dbeafe; background-color: #f8fafc;">
-
-<div id="car-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
-
-<div class="input-with-btn">
-    <input type="text" id="new-car-input" placeholder="새로운 차량 리스트에 추가">
-    <button type="button" class="btn-add-chip" onclick="addPreset('car')">추가</button>
-</div>
-          
-
-           <div class="header-row">
-    <label style="margin:0;">📝 작업 내용 (공정 선택)</label>
-    <div class="delete-toggle" onclick="toggleDeleteMode('work')">🗑️ 삭제</div>
-</div>
-
-<input type="text" id="sched-content" placeholder="공정 칩을 클릭하거나 직접 입력하세요" oninput="renderWorkPresets()" style="margin-bottom:8px; border: 2px solid #dbeafe;">
-
-<div id="work-preset-list" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
-
-<div class="input-with-btn">
-    <input type="text" id="new-work-input" placeholder="새로운 공정 리스트에 추가">
-    <button type="button" class="btn-add-chip" onclick="addPreset('work')">추가</button>
-</div>
-
-          
-            
-            <label>전달사항</label>
-            <textarea id="sched-note" rows="2" placeholder="전달사항 입력"></textarea>
-            
-            <div style="display:flex; gap:10px; margin-top:30px;">
-                <button type="button" id="btn-save" onclick="saveSchedule('add')" style="flex:2;">저장</button>
-                <button type="button" id="btn-update" onclick="saveSchedule('update')" style="flex:2; display:none;">수정</button>
-                <button type="button" id="btn-delete" onclick="deleteSchedule()" style="flex:1; display:none; background:#fee2e2; color:#ef4444;">삭제</button>
+        <input type="hidden" id="sched-off-workers-text"> <div style="background: #fef2f2; padding: 12px 15px; border-radius: 8px; border: 1px solid #fca5a5; margin-bottom: 15px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; color: #ef4444; margin: 0; font-size: 1rem;">
+                <input type="checkbox" id="chk-all-off" onchange="toggleAllOff()" style="width: 20px; height: 20px; cursor: pointer;">
+                전체 직원 휴무일 지정 (현장 없음)
+            </label>
+            <div style="font-size: 0.75rem; color: #b91c1c; margin-top: 5px; padding-left: 28px;">
+                체크 시 일반 현장 입력칸이 숨겨지고 전 직원이 휴무로 처리됩니다.
             </div>
         </div>
+
+        <div id="normal-work-section">
+            <div class="input-group">
+                <label>🏢 거래처 (진행중인 현장)</label>
+                <div id="sched-client-chips-area" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
+
+                <label>🏗️ 현장 선택</label>
+                <div id="sched-site-chips-area" style="min-height:40px; margin-bottom:15px; display:flex; flex-wrap:wrap;">
+                    <span style="color:#aaa; font-size:0.9rem;">거래처를 먼저 선택하세요.</span>
+                </div>
+
+                <label>⏰ 근무 형태</label>
+                <div id="shift-toggle-btn" onclick="toggleShift()" style="background:#3b82f6; color:white; padding:12px; text-align:center; border-radius:8px; font-weight:bold; cursor:pointer; font-size:1.1rem; margin-bottom:20px;">
+                    🌞 주간
+                </div>
+
+                <label>👷 투입 인원 <span id="worker-count-display">(0명)</span></label>
+                <div id="worker-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; padding:10px 0;"></div>
+
+                <div class="header-row">
+                    <label style="margin:0;">🚛 사용 차량 (중복 가능)</label>
+                    <div class="delete-toggle" onclick="toggleDeleteMode('car')">🗑️ 삭제</div>
+                </div>
+                <input type="text" id="sched-car" placeholder="칩을 클릭하면 여기에 표시됩니다" readonly style="margin-bottom:8px; border: 2px solid #dbeafe; background-color: #f8fafc;">
+                <div id="car-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
+                <div class="input-with-btn">
+                    <input type="text" id="new-car-input" placeholder="새로운 차량 리스트에 추가">
+                    <button type="button" class="btn-add-chip" onclick="addPreset('car')">추가</button>
+                </div>
+
+                <div class="header-row">
+                    <label style="margin:0;">📝 작업 내용 (공정 선택)</label>
+                    <div class="delete-toggle" onclick="toggleDeleteMode('work')">🗑️ 삭제</div>
+                </div>
+                <input type="text" id="sched-content" placeholder="공정 칩을 클릭하거나 직접 입력하세요" oninput="renderWorkPresets()" style="margin-bottom:8px; border: 2px solid #dbeafe;">
+                <div id="work-preset-list" class="no-border-box" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
+                <div class="input-with-btn">
+                    <input type="text" id="new-work-input" placeholder="새로운 공정 리스트에 추가">
+                    <button type="button" class="btn-add-chip" onclick="addPreset('work')">추가</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px; padding-top: 15px; border-top: 2px dashed #fca5a5;">
+            <label style="margin:0; color:#ef4444;">🏖️ 휴무자 지정 <span id="off-worker-count-display">(0명)</span></label>
+            <div style="font-size: 0.75rem; color: #b91c1c; margin-bottom: 10px; margin-top: 4px;">
+                ※투입 인원과 중복 선택 불가
+            </div>
+            <div id="off-worker-chips-area" class="no-border-box" style="display:flex; flex-wrap:wrap; padding:5px 0;"></div>
+        </div>
+
+        <label>전달사항 (특이사항)</label>
+        <textarea id="sched-note" rows="2" placeholder="전달사항 입력"></textarea>
+        
+        <div style="display:flex; gap:10px; margin-top:30px;">
+            <button type="button" id="btn-save" onclick="saveSchedule('add')" style="flex:2;">저장</button>
+            <button type="button" id="btn-update" onclick="saveSchedule('update')" style="flex:2; display:none;">수정</button>
+            <button type="button" id="btn-delete" onclick="deleteSchedule()" style="flex:1; display:none; background:#fee2e2; color:#ef4444;">삭제</button>
+        </div>
     </div>
+</div>
+  
   </div>
 
   
@@ -551,6 +562,8 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
   
     <script>
+
+      
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzgjhpLwkrDc--BNkZOyZrtvcfTkPGxiCujQ9DO60LofIJ2oEV4e2qVBDphWaGZbk71/exec"; // 👈 꼭 본인 주소로 수정하세요!
 // 전역 변수 선언 (에러 방지용)
     let calendar = null;
@@ -562,6 +575,27 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     let selectedWorkSet = new Set();   // 공정 선택용
 let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니다!
 
+
+      // 🎨 직원 이름으로 예쁜 고유 색상을 뽑아내는 함수
+function getColorByName(name) {
+    const palettes = [
+        { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' }, // 파랑
+        { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' }, // 초록
+        { bg: '#fdf2f8', text: '#be185d', border: '#fbcfe8' }, // 핑크
+        { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' }, // 주황
+        { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' }, // 보라
+        { bg: '#f0fdfa', text: '#0f766e', border: '#ccfbf1' }, // 청록
+        { bg: '#fef2f2', text: '#b91c1c', border: '#fecaca' }  // 빨강
+    ];
+
+    let sum = 0;
+    for (let i = 0; i < name.length; i++) {
+        sum += name.charCodeAt(i);
+    }
+    return palettes[sum % palettes.length];
+}
+
+      
     // [1] 초기화
     window.addEventListener('DOMContentLoaded', async () => {
         initSwiper();
@@ -697,26 +731,106 @@ var calendarMode = 'work';
             });
             Object.keys(offDates).forEach(date => {
                 Array.from(offDates[date]).forEach(worker => {
-                    events.push({ title: `🏖️ ${worker}`, start: date, backgroundColor: '#fef2f2', textColor: '#ef4444', borderColor: '#fca5a5', extendedProps: { isOff: true } });
+
+              // 🎨 여기서 직원의 고유 색상을 불러옵니다!
+                const color = getColorByName(worker); 
+                
+                events.push({
+                    title: `🏖️ ${worker}`,
+                    start: date,
+                    backgroundColor: color.bg,       // 개별 배경색
+                    textColor: color.text,           // 개별 글자색
+                    borderColor: color.border,       // 개별 테두리색
+                    extendedProps: { isOff: true }
                 });
             });
-        }
-
-        if (calendar) calendar.destroy();
-        calendar = new FullCalendar.Calendar(el, {
-            initialView: 'dayGridMonth', locale: 'ko', height: 'auto',
-            longPressDelay: 300, eventLongPressDelay: 300, selectLongPressDelay: 300,
-            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-            dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
-            selectable: calendarMode === 'work', selectMirror: true,
-            select: (info) => { if (calendarMode === 'work') openModal('add', info.startStr, null, info.endStr); },
-            eventClick: (info) => { if (calendarMode === 'work' && !info.event.extendedProps.isOff) { openModal('edit', null, info.event.extendedProps); } },
-            events: events
         });
-        calendar.render();
     }
+
+      if (calendar) calendar.destroy();
+    calendar = new FullCalendar.Calendar(el, {
+        initialView: 'dayGridMonth', locale: 'ko', height: 'auto',
+        longPressDelay: 300, eventLongPressDelay: 300, selectLongPressDelay: 300,
+        headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+        dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
+        selectable: calendarMode === 'work', 
+        selectMirror: true,
+        select: (info) => {
+            if (calendarMode === 'work') openModal('add', info.startStr, null, info.endStr);
+        },
+        eventClick: (info) => {
+            if (calendarMode === 'work' && !info.event.extendedProps.isOff) {
+                openModal('edit', null, info.event.extendedProps);
+            }
+        },
+        events: events
+    });
+    calendar.render();
+}
       
 
+      // 🔴 휴무자 전용 변수 세팅
+let selectedOffWorkerSet = new Set();
+
+// 🔴 전체 휴무 토글 스위치 
+function toggleAllOff() {
+    const isAllOff = document.getElementById('chk-all-off').checked;
+    const workSection = document.getElementById('normal-work-section');
+    
+    if (isAllOff) {
+        workSection.style.display = 'none'; // 일반 작업칸 숨김
+        selectedWorkerSet.clear(); // 출근자 초기화
+        
+        // 모든 재직자를 휴무자에 추가
+        selectedOffWorkerSet.clear();
+        globalWorkerData.filter(w => w.status === '재직').forEach(w => selectedOffWorkerSet.add(w.name));
+    } else {
+        workSection.style.display = 'block'; // 일반 작업칸 표시
+        selectedOffWorkerSet.clear(); // 휴무자 초기화
+    }
+    
+    renderWorkerChips(Array.from(selectedWorkerSet).join(','));
+    renderOffWorkerChips(Array.from(selectedOffWorkerSet).join(','));
+}
+
+// 🔴 휴무자 칩 렌더링 (빨간색 톤 적용)
+function renderOffWorkerChips(namesStr) {
+    const container = document.getElementById('off-worker-chips-area');
+    selectedOffWorkerSet.clear();
+    if (namesStr) namesStr.split(',').forEach(n => n.trim() && selectedOffWorkerSet.add(n.trim()));
+    
+    document.getElementById('off-worker-count-display').innerText = `(${selectedOffWorkerSet.size}명)`;
+    document.getElementById('sched-off-workers-text').value = Array.from(selectedOffWorkerSet).join(', ');
+
+    if(container) {
+        container.innerHTML = globalWorkerData.filter(w => w.status === '재직').map(w => {
+            const active = selectedOffWorkerSet.has(w.name);
+            const activeStyle = active ? 'background:#fef2f2; color:#ef4444; border-color:#fca5a5; font-weight:bold;' : '';
+            return `<div class="chip" style="${activeStyle}" onclick="toggleOffWorkerSelection('${w.name}')">${w.name}</div>`;
+        }).join('');
+    }
+}
+
+// 🔴 개별 휴무자 클릭 시 동작 (중복 방지)
+function toggleOffWorkerSelection(n) {
+    if (document.getElementById('chk-all-off').checked) {
+        return alert("전체 휴무가 체크되어 있습니다. 개별 조정을 원하시면 체크를 먼저 해제해주세요.");
+    }
+
+    if (selectedOffWorkerSet.has(n)) {
+        selectedOffWorkerSet.delete(n);
+    } else {
+        selectedOffWorkerSet.add(n);
+        // 만약 출근자에 이미 있다면 자동으로 뺌!
+        if (selectedWorkerSet.has(n)) {
+            selectedWorkerSet.delete(n);
+            renderWorkerChips(Array.from(selectedWorkerSet).join(','));
+        }
+    }
+    renderOffWorkerChips(Array.from(selectedOffWorkerSet).join(','));
+}
+
+      
 
  function renderScheduleList() {
         const box = document.getElementById('upcoming-list'); 
@@ -751,102 +865,94 @@ var calendarMode = 'work';
                         </div>
                     </div>`;
             }).join('');
-        } else {
-            const offSchedules = scheduleData.filter(s => s.offWorkers && s.offWorkers.trim() !== "" && s.date >= today);
-            if (offSchedules.length === 0) { box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">다가오는 휴무 일정이 없습니다.</div>'; return; }
-            const offsByDate = {};
-            offSchedules.forEach(s => {
-                if (!offsByDate[s.date]) offsByDate[s.date] = new Set();
-                s.offWorkers.split(',').forEach(w => { if (w.trim() !== "") offsByDate[s.date].add(w.trim()); });
-            });
-            const sortedDates = Object.keys(offsByDate).sort();
-            box.innerHTML = sortedDates.map(date => {
-                const workers = Array.from(offsByDate[date]);
-                return `
-                <div class="card" style="margin-bottom:12px; padding:15px; border-left:5px solid #ef4444;">
-                    <div style="font-size: 0.95rem; color: #475569; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">📅 ${date} 휴무자</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        ${workers.map(w => `<span style="background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: bold;">🏖️ ${w}</span>`).join('')}
-                    </div>
-                </div>`;
-            }).join('');
+       } else {
+        const offSchedules = scheduleData.filter(s => s.offWorkers && s.offWorkers.trim() !== "" && s.date >= today);
+        
+        if (offSchedules.length === 0) {
+            box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">다가오는 휴무 일정이 없습니다.</div>';
+            return;
         }
+
+        const offsByDate = {};
+        offSchedules.forEach(s => {
+            if (!offsByDate[s.date]) offsByDate[s.date] = new Set();
+            s.offWorkers.split(',').forEach(w => {
+                if (w.trim() !== "") offsByDate[s.date].add(w.trim());
+            });
+        });
+
+        const sortedDates = Object.keys(offsByDate).sort();
+        
+        box.innerHTML = sortedDates.map(date => {
+            const workers = Array.from(offsByDate[date]);
+            return `
+            <div class="card" style="margin-bottom:12px; padding:15px; border-left:5px solid #cbd5e1;">
+                <div style="font-size: 0.95rem; color: #475569; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                    📅 ${date} 휴무자
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    ${workers.map(w => {
+                        // 🎨 하단 리스트 칩에도 고유 색상 적용!
+                        const color = getColorByName(w);
+                        return `<span style="background: ${color.bg}; color: ${color.text}; border: 1px solid ${color.border}; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: bold;">🏖️ ${w}</span>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        }).join('');
+    }
     }
       
       
 function openModal(mode, dateStr, data, endStr = null) {
     const modal = document.getElementById('schedule-modal');
     if (!modal) return;
-
-    // 🔴 중요: display를 'flex'로 줘야 중앙에 정렬됩니다.
     modal.style.display = 'flex'; 
-
-    // 🔴 [추가] 뒤에 있는 모든 슬라이드의 스크롤을 잠금
-    document.querySelectorAll('.swiper-slide').forEach(slide => {
-        slide.style.overflowY = 'hidden';
-    });
-
-    const content = modal.querySelector('.modal-content');
-    if (content) content.scrollTop = 0;
-
-    // 뒷배경 화면이 움직이지 않게 고정
+    document.querySelectorAll('.swiper-slide').forEach(slide => { slide.style.overflowY = 'hidden'; });
     document.body.style.overflow = 'hidden';
 
-        try {
-            if (mode === 'add') {
-                // [기존 등록 기능 유지]
-                document.getElementById('sched-date').value = dateStr;
-                document.getElementById('sched-end-date').value = endStr || "";
-                let title = dateStr + " 일정 등록";
-                if (endStr) {
-                    const diff = (new Date(endStr) - new Date(dateStr)) / (1000 * 60 * 60 * 24);
-                    if (diff > 1) title = `${dateStr} ~ (${Math.ceil(diff)}일간)`;
-                }
-                document.getElementById('modal-date-title').innerText = title;
-                resetForm();
-                
-                renderChips('', '');
-                renderWorkerChips("");
-                renderVehicleChips("");
-                initWorkPresets(""); // 빈값 초기화
-                currentShiftIndex = 0; 
-                updateShiftBtn();
-
-                document.getElementById('btn-save').style.display = 'block';
-                document.getElementById('btn-update').style.display = 'none';
-                document.getElementById('btn-delete').style.display = 'none';
-            } else {
-                // [수정 모드: 동기화 보강]
-                document.getElementById('modal-date-title').innerText = "일정 수정";
-                document.getElementById('sched-row-id').value = data.rowId;
-                document.getElementById('sched-date').value = data.date;
-                document.getElementById('sched-end-date').value = "";
-                document.getElementById('sched-note').value = data.note || "";
-              
-             // 🔴 [수정] 변수를 먼저 정의해줘야 아래에서 쓸 수 있습니다.
-                const workValue = data.content || ""; 
-                document.getElementById('sched-content').value = workValue;
-                
-                const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
-                currentShiftIndex = shiftIdx >= 0 ? shiftIdx : 0;
-                updateShiftBtn();
-
-                renderChips(data.client, data.site);
-                renderWorkerChips(data.workers || "");
-                renderVehicleChips(data.car || "");
-                
-                // 🔵 텍스트가 먼저 들어간 후 칩 색깔을 입힙니다.
-                initWorkPresets(workValue);
-
-                document.getElementById('btn-save').style.display = 'none';
-                document.getElementById('btn-update').style.display = 'block';
-                document.getElementById('btn-delete').style.display = 'block';
-            }
-        } catch (err) {
-            console.error("Modal Error:", err);
-            alert("팝업을 여는 중 오류가 발생했습니다. 새로고침 해주세요.");
+    if (mode === 'add') {
+        document.getElementById('sched-date').value = dateStr;
+        document.getElementById('sched-end-date').value = endStr || "";
+        document.getElementById('modal-date-title').innerText = dateStr + " 일정 등록";
+        resetForm();
+        renderChips('', ''); renderWorkerChips(""); renderOffWorkerChips(""); renderVehicleChips(""); initWorkPresets("");
+        currentShiftIndex = 0; updateShiftBtn();
+        document.getElementById('btn-save').style.display = 'block';
+        document.getElementById('btn-update').style.display = 'none';
+        document.getElementById('btn-delete').style.display = 'none';
+    } else {
+        document.getElementById('modal-date-title').innerText = "일정 수정";
+        document.getElementById('sched-row-id').value = data.rowId;
+        document.getElementById('sched-date').value = data.date;
+        document.getElementById('sched-end-date').value = "";
+        document.getElementById('sched-note').value = data.note || "";
+        
+        // 전체 휴무인지 확인 (거래처 이름이 '휴무'로 저장된 경우)
+        if (data.client === '휴무') {
+            document.getElementById('chk-all-off').checked = true;
+            toggleAllOff();
+        } else {
+            document.getElementById('chk-all-off').checked = false;
+            document.getElementById('normal-work-section').style.display = 'block';
+            
+            const workValue = data.content || ""; 
+            document.getElementById('sched-content').value = workValue;
+            const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
+            currentShiftIndex = shiftIdx >= 0 ? shiftIdx : 0;
+            updateShiftBtn();
+            
+            renderChips(data.client, data.site);
+            renderWorkerChips(data.workers || "");
+            renderOffWorkerChips(data.offWorkers || "");
+            renderVehicleChips(data.car || "");
+            initWorkPresets(workValue);
         }
+
+        document.getElementById('btn-save').style.display = 'none';
+        document.getElementById('btn-update').style.display = 'block';
+        document.getElementById('btn-delete').style.display = 'block';
     }
+}
 
       // 🔴 작업내용 입력창(sched-content)에 글자를 쓸 때마다 칩 실시간 업데이트
 document.addEventListener('DOMContentLoaded', () => {
@@ -884,12 +990,16 @@ function closeModal() {
 
       
     function resetForm() {
-        ['sched-client', 'sched-site', 'sched-workers-text', 'sched-car', 'sched-content', 'sched-note', 'worker-search-input', 'new-work-input'].forEach(id => {
-            const el = document.getElementById(id); if(el) el.value = "";
-        });
-        selectedWorkerSet.clear();
-        selectedWorkSet.clear();
-    }
+    ['sched-client', 'sched-site', 'sched-workers-text', 'sched-car', 'sched-content', 'sched-note', 'sched-off-workers-text'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.value = "";
+    });
+    document.getElementById('chk-all-off').checked = false;
+    document.getElementById('normal-work-section').style.display = 'block';
+    
+    selectedWorkerSet.clear(); 
+    selectedOffWorkerSet.clear();
+    selectedWorkSet.clear();
+}
 
  function renderChips(sClient, sSite) {
     const cBox = document.getElementById('sched-client-chips-area');
@@ -966,8 +1076,22 @@ function closeModal() {
             }).join('');
         }
     }
-    function toggleWorkerSelection(n) { selectedWorkerSet.has(n) ? selectedWorkerSet.delete(n) : selectedWorkerSet.add(n); renderWorkerChips(Array.from(selectedWorkerSet).join(',')); }
+
       
+// 🔵 기존 작업자(출근자) 클릭 함수 수정 (휴무자와 중복 방지 추가)
+function toggleWorkerSelection(n) {
+    if (selectedWorkerSet.has(n)) {
+        selectedWorkerSet.delete(n);
+    } else {
+        selectedWorkerSet.add(n);
+        // 만약 휴무자에 이미 있다면 자동으로 뺌!
+        if (selectedOffWorkerSet.has(n)) {
+            selectedOffWorkerSet.delete(n);
+            renderOffWorkerChips(Array.from(selectedOffWorkerSet).join(','));
+        }
+    }
+    renderWorkerChips(Array.from(selectedWorkerSet).join(','));
+}      
 
       
     function filterWorkerChips() {
@@ -1037,61 +1161,58 @@ function closeModal() {
 
 
       
- async function saveSchedule(mode) {
-   let rawShift = document.getElementById('sched-shift').value;
-    let finalShift = '주'; 
-    if (rawShift.includes('야')) finalShift = '야';
-    else if (rawShift.includes('조')) finalShift = '조';
-   
-    // 1. 데이터 수집
+ // 🚀 데이터 저장 시 휴무자 처리
+async function saveSchedule(mode) {
+    const isAllOff = document.getElementById('chk-all-off').checked;
+    
+    let clientVal = document.getElementById('sched-client').value;
+    let siteVal = document.getElementById('sched-site').value;
+    let workersVal = document.getElementById('sched-workers-text').value;
+    let offWorkersVal = document.getElementById('sched-off-workers-text').value;
+    let finalShift = '주';
+
+    if (isAllOff) {
+        // 전체 휴무일 경우 가짜 데이터 '휴무'를 보냅니다.
+        clientVal = '휴무';
+        siteVal = '휴무';
+        workersVal = '';
+    } else {
+        if(!clientVal || !siteVal) return alert("거래처와 현장을 선택하세요.");
+        let rawShift = document.getElementById('sched-shift').value;
+        if (rawShift.includes('야')) finalShift = '야'; else if (rawShift.includes('조')) finalShift = '조';
+    }
+
     const payload = {
         date: document.getElementById('sched-date').value,
-        client: document.getElementById('sched-client').value,
-        site: document.getElementById('sched-site').value,
-        shift: finalShift, // '주', '야', '조'로 꽂힘
-      workers: document.getElementById('sched-workers-text').value,
-        car: document.getElementById('sched-car').value,
-        content: document.getElementById('sched-content').value,
+        client: clientVal,
+        site: siteVal,
+        shift: finalShift, 
+        workers: workersVal,
+        offWorkers: offWorkersVal, // 🔴 휴무자 데이터!
+        car: isAllOff ? "" : document.getElementById('sched-car').value,
+        content: isAllOff ? "" : document.getElementById('sched-content').value,
         note: document.getElementById('sched-note').value,
-        rowId: document.getElementById('sched-row-id').value // 수정 시 필요
+        rowId: document.getElementById('sched-row-id').value 
     };
 
-    // 2. 필수값 검사
-    if(!payload.client || !payload.site) return alert("거래처와 현장을 선택하세요.");
-
-    // 🚀 [핵심] 검사 통과하면 모달부터 즉시 닫기!
     closeModal();
     
-    // 3. 데이터 가공 및 액션 설정
-    let action = 'addSchedule';
+    let action = mode === 'add' ? (document.getElementById('sched-end-date').value ? 'addScheduleBatch' : 'addSchedule') : 'updateSchedule';
     let dataToSend = payload;
-    const endDateStr = document.getElementById('sched-end-date').value;
 
-    if (mode === 'add' && endDateStr) {
-        action = 'addScheduleBatch';
-        // (일괄 등록 로직 생략 - 기존과 동일)
+    if (action === 'addScheduleBatch') {
         const list = [];
         let cur = new Date(payload.date);
-        const end = new Date(endDateStr);
-        while(cur < end) {
+        const end = new Date(document.getElementById('sched-end-date').value);
+        while(cur <= end) {
             list.push({...payload, date: cur.toISOString().split('T')[0]});
             cur.setDate(cur.getDate() + 1);
         }
         dataToSend = list;
-    } else if (mode === 'update') {
-        action = 'updateSchedule';
-        // payload에 이미 rowId가 포함되어 있음
     }
 
-    // 4. 서버 전송 (백그라운드 처리)
-    try {
-        await sendToGas(action, dataToSend); 
-    } catch (e) {
-        console.error("저장 실패:", e);
-        alert("⚠️ 저장에 실패했습니다. 다시 시도해주세요.");
-    }
+    try { await sendToGas(action, dataToSend); } catch (e) { alert("⚠️ 저장에 실패했습니다."); }
 }
-      
 
 
       
