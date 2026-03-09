@@ -821,20 +821,11 @@ function toggleAllOff() {
 
 // 🔴 휴무자 칩 렌더링 (빨간색 톤 적용)
 function renderOffWorkerChips(namesStr) {
-    const container = document.getElementById('off-worker-chips-area');
-    selectedOffWorkerSet.clear();
-    if (namesStr) namesStr.split(',').forEach(n => n.trim() && selectedOffWorkerSet.add(n.trim()));
-    
-    document.getElementById('off-worker-count-display').innerText = `(${selectedOffWorkerSet.size}명)`;
-    document.getElementById('sched-off-workers-text').value = Array.from(selectedOffWorkerSet).join(', ');
-
-    if(container) {
-        container.innerHTML = globalWorkerData.filter(w => w.status === '재직').map(w => {
-            const active = selectedOffWorkerSet.has(w.name);
-            const activeStyle = active ? 'background:#fef2f2; color:#ef4444; border-color:#fca5a5; font-weight:bold;' : '';
-            return `<div class="chip" style="${activeStyle}" onclick="toggleOffWorkerSelection('${w.name}')">${w.name}</div>`;
-        }).join('');
+    if (namesStr !== undefined) {
+        selectedOffWorkerSet.clear();
+        if (namesStr) namesStr.split(',').forEach(n => n.trim() && selectedOffWorkerSet.add(n.trim()));
     }
+    updateAllWorkerChipsUI(); // 양쪽 동시 갱신
 }
 
 // 🔴 개별 휴무자 클릭 시 동작 (중복 방지)
@@ -842,18 +833,13 @@ function toggleOffWorkerSelection(n) {
     if (document.getElementById('chk-all-off').checked) {
         return alert("전체 휴무가 체크되어 있습니다. 개별 조정을 원하시면 체크를 먼저 해제해주세요.");
     }
-
+    
     if (selectedOffWorkerSet.has(n)) {
         selectedOffWorkerSet.delete(n);
     } else {
         selectedOffWorkerSet.add(n);
-        // 만약 출근자에 이미 있다면 자동으로 뺌!
-        if (selectedWorkerSet.has(n)) {
-            selectedWorkerSet.delete(n);
-            renderWorkerChips(Array.from(selectedWorkerSet).join(','));
-        }
     }
-    renderOffWorkerChips(Array.from(selectedOffWorkerSet).join(','));
+    updateAllWorkerChipsUI(); // 양쪽 동시 갱신
 }
 
       
@@ -1095,37 +1081,24 @@ function closeModal() {
     }
 
  // [5] 칩 관련 (X 표시 제거 & 색상만 변경)
-    function renderWorkerChips(namesStr) {
-        const container = document.getElementById('worker-chips-area');
+function renderWorkerChips(namesStr) {
+    if (namesStr !== undefined) {
         selectedWorkerSet.clear();
         if (namesStr) namesStr.split(',').forEach(n => n.trim() && selectedWorkerSet.add(n.trim()));
-        document.getElementById('worker-count-display').innerText = `(${selectedWorkerSet.size}명)`;
-        document.getElementById('sched-workers-text').value = Array.from(selectedWorkerSet).join(', ');
-
-        if(container) {
-            container.innerHTML = globalWorkerData.filter(w => w.status === '재직').map(w => {
-                const active = selectedWorkerSet.has(w.name);
-                // 🟢 X 표시 없이 이름만 출력, 클래스로 색상 제어
-                return `<div class="chip ${active ? 'active' : ''}" onclick="toggleWorkerSelection('${w.name}')">${w.name}</div>`;
-            }).join('');
-        }
     }
+    updateAllWorkerChipsUI(); // 양쪽 동시 갱신
+}
 
       
 // 🔵 기존 작업자(출근자) 클릭 함수 수정 (휴무자와 중복 방지 추가)
 function toggleWorkerSelection(n) {
     if (selectedWorkerSet.has(n)) {
-        selectedWorkerSet.delete(n);
+        selectedWorkerSet.delete(n); 
     } else {
-        selectedWorkerSet.add(n);
-        // 만약 휴무자에 이미 있다면 자동으로 뺌!
-        if (selectedOffWorkerSet.has(n)) {
-            selectedOffWorkerSet.delete(n);
-            renderOffWorkerChips(Array.from(selectedOffWorkerSet).join(','));
-        }
+        selectedWorkerSet.add(n);    
     }
-    renderWorkerChips(Array.from(selectedWorkerSet).join(','));
-}      
+    updateAllWorkerChipsUI(); // 양쪽 동시 갱신 (마법처럼 반대쪽에서 사라짐!)
+}
 
       
     function filterWorkerChips() {
@@ -1431,6 +1404,41 @@ if (rawData.titanData) {
             if(container) container.innerHTML = '<div style="color:#ef4444; text-align:center; padding:20px;">데이터 연결 실패</div>';
         }
     }
+
+// 🔴 1. 양쪽 칩을 동시에 관리하고 서로 숨겨주는 핵심 통합 함수!
+function updateAllWorkerChipsUI() {
+    // 텍스트 및 인원수 세팅
+    document.getElementById('worker-count-display').innerText = `(${selectedWorkerSet.size}명)`;
+    document.getElementById('sched-workers-text').value = Array.from(selectedWorkerSet).join(', ');
+
+    document.getElementById('off-worker-count-display').innerText = `(${selectedOffWorkerSet.size}명)`;
+    document.getElementById('sched-off-workers-text').value = Array.from(selectedOffWorkerSet).join(', ');
+
+    // 🟢 출근자 칩 그리기 (휴무자로 선택된 사람은 아예 안 보이게 숨김!)
+    const wContainer = document.getElementById('worker-chips-area');
+    if (wContainer) {
+        wContainer.innerHTML = globalWorkerData.filter(w => w.status === '재직')
+            .filter(w => !selectedOffWorkerSet.has(w.name)) // 👈 휴무자 명단에 없어야만 보임
+            .map(w => {
+                const active = selectedWorkerSet.has(w.name);
+                // 🟢 X 표시 없이 이름만 출력, 클래스로 색상 제어
+                return `<div class="chip ${active ? 'active' : ''}" onclick="toggleWorkerSelection('${w.name}')">${w.name}</div>`;
+            }).join('');
+    }
+
+    // 🔴 휴무자 칩 그리기 (출근자로 선택된 사람은 아예 안 보이게 숨김!)
+    const offContainer = document.getElementById('off-worker-chips-area');
+    if (offContainer) {
+        offContainer.innerHTML = globalWorkerData.filter(w => w.status === '재직')
+            .filter(w => !selectedWorkerSet.has(w.name)) // 👈 출근자 명단에 없어야만 보임
+            .map(w => {
+                const active = selectedOffWorkerSet.has(w.name);
+                const activeStyle = active ? 'background:#fef2f2; color:#ef4444; border-color:#fca5a5; font-weight:bold;' : '';
+                return `<div class="chip" style="${activeStyle}" onclick="toggleOffWorkerSelection('${w.name}')">${w.name}</div>`;
+            }).join('');
+    }
+}
+      
 
 function renderClientList() {
     const container = document.getElementById('client-management-list');
