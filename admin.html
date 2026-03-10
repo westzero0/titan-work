@@ -576,37 +576,53 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니다!
 
 
-// 🎨 직원 이름마다 절대 변하지 않는 '퍼스널 컬러'를 만들어주는 함수
-function getWorkerColor(workerName) {
-    const name = workerName.trim();
-    // 사용할 예쁜 파스텔톤 색상표 8가지
-   const palettes = [
-        { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' }, // 0: 초록
-        { bg: '#fef9c3', text: '#a16207', border: '#fef08a' }, // 1: 노랑
-        { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' }, // 2: 파랑
-        { bg: '#fdf2f8', text: '#be185d', border: '#fbcfe8' }, // 3: 핑크
-        { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' }, // 4: 주황
-        { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' }, // 5: 보라
-        { bg: '#f0fdfa', text: '#0f766e', border: '#ccfbf1' }, // 6: 청록
-        { bg: '#f1f5f9', text: '#334155', border: '#cbd5e1' }, // 7: 남색
-        { bg: '#ffe4e6', text: '#e11d48', border: '#fecdd3' }, // 8: 로즈(빨강)
-        { bg: '#ecfccb', text: '#65a30d', border: '#d9f99d' }, // 9: 라임(연두)
-        { bg: '#e0f2fe', text: '#0284c7', border: '#bae6fd' }, // 10: 스카이(하늘)
-        { bg: '#fae8ff', text: '#c026d3', border: '#f5d0fe' }, // 11: 퓨샤(자주)
-        { bg: '#fef3c7', text: '#d97706', border: '#fde68a' }, // 12: 앰버(호박색)
-        { bg: '#cffafe', text: '#0891b2', border: '#a5f3fc' }, // 13: 시안(밝은청록)
-        { bg: '#eef2ff', text: '#4338ca', border: '#c7d2fe' }, // 14: 인디고(진보라)
-        { bg: '#f5f5f4', text: '#57534e', border: '#e7e5e4' }  // 15: 스톤(회색)
+// 🎨 직원별 고유 색상을 기억하는 메모장 (이 두 줄은 반드시 함수 바로 위에 있어야 합니다!)
+const assignedWorkerColors = {};
+let colorIndex = 0;
+
+// 🎨 마법의 직원별 고유 색상 생성기 (중복 원천 차단)
+function getWorkerColor(name) {
+    if (!name) return { bg: '#f8fafc', text: '#475569', border: '#cbd5e1' }; // 이름 없을 때 기본 회색
+    
+    const cleanName = name.trim();
+
+    // 무려 20가지의 뚜렷하고 예쁜 파스텔 톤 색상표
+    const colorPalette = [
+        { bg: '#eff6ff', text: '#1e40af', border: '#93c5fd' }, // 1. 맑은 파랑
+        { bg: '#fefce8', text: '#854d0e', border: '#fde047' }, // 2. 밝은 노랑
+        { bg: '#f0fdf4', text: '#166534', border: '#86efac' }, // 3. 산뜻한 초록
+        { bg: '#fdf2f8', text: '#86198f', border: '#f9a8d4' }, // 4. 딸기우유 핑크
+        { bg: '#fff7ed', text: '#9a3412', border: '#fdba74' }, // 5. 귤색 주황
+        { bg: '#ecfeff', text: '#155e75', border: '#67e8f9' }, // 6. 시원한 청록
+        { bg: '#faf5ff', text: '#6b21a8', border: '#d8b4fe' }, // 7. 연보라
+        { bg: '#fef2f2', text: '#991b1b', border: '#fca5a5' }, // 8. 연한 빨강
+        { bg: '#eef2ff', text: '#3730a3', border: '#a5b4fc' }, // 9. 남색 섞인 보라
+        { bg: '#ecfccb', text: '#3f6212', border: '#bef264' }, // 10. 상큼한 라임
+        { bg: '#f0f9ff', text: '#075985', border: '#7dd3fc' }, // 11. 스카이 블루
+        { bg: '#fff1f2', text: '#be123c', border: '#fda4af' }, // 12. 로즈 핑크
+        { bg: '#ccfbf1', text: '#0f766e', border: '#5eead4' }, // 13. 민트
+        { bg: '#ffedd5', text: '#c2410c', border: '#fdba74' }, // 14. 살구색
+        { bg: '#f5f3ff', text: '#5b21b6', border: '#c4b5fd' }, // 15. 진한 바이올렛
+        { bg: '#dcfce7', text: '#15803d', border: '#86efac' }, // 16. 연두색
+        { bg: '#fae8ff', text: '#a21caf', border: '#d8b4fe' }, // 17. 푸시아 핑크
+        { bg: '#e0e7ff', text: '#4338ca', border: '#a5b4fc' }, // 18. 페리윙클 (청보라)
+        { bg: '#ffe4e6', text: '#e11d48', border: '#fda4af' }, // 19. 진분홍
+        { bg: '#f8fafc', text: '#334155', border: '#cbd5e1' }  // 20. 진한 슬레이트 회색
     ];
 
-   let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    // 💡 [핵심 로직] 이미 색상을 배정받은 직원이면 메모장에서 찾아서 그대로 돌려줌 (색상 변동 방지)
+    if (assignedWorkerColors[cleanName]) {
+        return assignedWorkerColors[cleanName];
     }
-    hash = Math.abs(hash); 
+
+    // 새 직원이 등장하면 순서대로 새로운 색상을 꺼내서 배정하고 메모장에 기록함
+    const newColor = colorPalette[colorIndex % colorPalette.length];
+    assignedWorkerColors[cleanName] = newColor;
     
-    // 16개 색상 중 하나를 배정 (직원이 16명까지는 겹칠 확률이 아주 낮아짐!)
-    return palettes[hash % palettes.length];
+    // 다음 직원을 위해 색상 순서를 1칸 올림
+    colorIndex++;
+
+    return newColor;
 }
       
     // [1] 초기화
@@ -715,36 +731,52 @@ var calendarMode = 'work';
     }
 
 
-// 📅 2. 달력 그리기 (직원별 고유 색상 + 메모리 최적화!)
+// 📅 2. 달력 그리기 (작업 달력에 '전체 휴무' 표시 추가 + 최적화 완벽 유지)
 function initCalendar() {
     const el = document.getElementById('calendar-container');
     if (!el) return;
 
     const events = [];
 
-    // 💡 [최적화 포인트] filter와 map을 하나로 통합하여 단 한 번만 순회합니다!
+    // 💡 [최적화 포인트] 단 한 번만 순회합니다!
     globalScheduleData.forEach(item => {
-        if (calendarMode === 'work') {
-            // 🔵 작업 달력 모드
-            const clientStr = (item.client || "").trim();
-            const siteStr = (item.site || "").trim();
+        // 휴무인지 미리 체크
+        const isAllOff = (item.client === '휴무' || item.site === '휴무');
 
-            if (clientStr !== '휴무' && siteStr !== '휴무' && (clientStr !== "" || siteStr !== "")) {
-                const workersStr = item.workers || "";
-                const workerCount = workersStr.trim() ? workersStr.split(',').filter(n => n.trim()).length : 0;
-                
+        if (calendarMode === 'work') {
+            // 🔵 1. 작업 달력 모드
+            if (isAllOff) {
+                // 👉 [추가된 핵심 기능] 전체 휴무면 작업 달력에도 빨간색으로 띄워줍니다!
                 events.push({
-                    id: item.rowId,
-                    title: `${item.site || '현장미상'} (${workerCount}명)`,
+                    title: `🏖️ 휴무 (전체)`,
                     start: item.date,
-                    backgroundColor: item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#3b82f6'),
-                    borderColor: 'transparent', 
+                    backgroundColor: '#fef2f2',
+                    textColor: '#ef4444',
+                    borderColor: '#fca5a5',
                     extendedProps: item 
                 });
+            } else {
+                // 👉 기존 기능: 일반 현장은 그대로 띄워줍니다.
+                const clientStr = (item.client || "").trim();
+                const siteStr = (item.site || "").trim();
+
+                if (clientStr !== "" || siteStr !== "") {
+                    const workersStr = item.workers || "";
+                    const workerCount = workersStr.trim() ? workersStr.split(',').filter(n => n.trim()).length : 0;
+                    
+                    events.push({
+                        id: item.rowId,
+                        title: `${item.site || '현장미상'} (${workerCount}명)`,
+                        start: item.date,
+                        backgroundColor: item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#3b82f6'),
+                        borderColor: 'transparent', 
+                        extendedProps: item 
+                    });
+                }
             }
         } else {
-            // 🔴 휴무 달력 모드
-            if (item.client === '휴무') {
+            // 🔴 2. 휴무 달력 모드 (기존 기능 100% 동일)
+            if (isAllOff) {
                 events.push({
                     title: `🏖️ 휴무 (전체)`,
                     start: item.date,
