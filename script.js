@@ -809,17 +809,15 @@ function renderTimeline() {
     }
 }
 
-// 🔴 [복구] 작업일보 전용 달력 렌더링 함수 (원본 유지 + 휴무 로직 추가)
+// 🔴 [복구] 작업일보 전용 달력 렌더링 함수 (휴무 표시 디테일 강화!)
 function renderCalendar() {
     const container = document.getElementById('schedule-container');
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
 
-    // 🔴 [추가] 오늘 날짜 구하기 (한국 시간 기준 정확한 날짜)
     const now = new Date();
     const todayStrLocal = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-    // 현재 필터링된 직원 선택값
     const selectedWorker = document.getElementById('worker-select').value;
     
     let html = `<div class="card calendar-card" style="padding:10px;">
@@ -838,9 +836,8 @@ function renderCalendar() {
     for(let d=1; d<=lastDate; d++) {
         const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         
-        // 🔴 [핵심] 오늘 날짜인지 확인해서 배경색/동그라미 스타일 세팅
         const isToday = (dStr === todayStrLocal);
-        const cellBg = isToday ? '#eff6ff' : 'white'; // 오늘이면 연한 파란색 배경
+        const cellBg = isToday ? '#eff6ff' : 'white'; 
         const dateStyle = isToday 
             ? 'font-size:0.8rem; font-weight:bold; background:#2563eb; color:white; border-radius:50%; display:inline-block; width:22px; height:22px; text-align:center; line-height:22px;' 
             : 'font-size:0.8rem; font-weight:bold;';
@@ -848,7 +845,6 @@ function renderCalendar() {
         html += `<div class="calendar-day-cell" style="background:${cellBg}; min-height:80px; padding:2px; border:1px solid #eee;">
             <span style="${dateStyle}">${d}</span>`;
 
-        // ⬇️ [수정됨] 이 날짜에 해당하는 모든 일정을 가져와서 그리기 (원본 로직 베이스) ⬇️
         const jobsForToday = allSchedules.filter(s => s.date === dStr);
         let dayHtml = "";
 
@@ -858,7 +854,7 @@ function renderCalendar() {
             const offWorkersArr = (j.offWorkers || "").toString().split(',').map(n => n.trim()).filter(n => n);
 
             if (selectedWorker === "전체") {
-                // 1) 전체보기: 전체 휴무는 빨간색, 일반 현장은 기존 방식 그대로(파랑/회/주황)
+                // 1) 전체보기 모드
                 if (isAllOff) {
                     dayHtml += `<div style="background:#fef2f2; color:#ef4444 !important; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; border:1px solid #fca5a5; font-weight:bold; text-align:center;">🏖️ 휴무(전체)</div>`;
                 } else if (j.client && j.site) {
@@ -873,10 +869,16 @@ function renderCalendar() {
                             </div>`;
                 }
             } else {
-                // 2) 개인보기: 해당 직원이 쉬는 날(개별휴무 or 전체휴무)은 빨간색, 일하는 곳은 기존 색상 그대로
-                if (isAllOff || offWorkersArr.includes(selectedWorker)) {
+                // 2) 개인 필터 모드 (디테일 업그레이드!)
+                if (isAllOff) {
+                    // 전체 휴무일 때는 무조건 "휴무(전체)"로 표시
+                    dayHtml += `<div style="background:#fef2f2; color:#ef4444 !important; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; border:1px solid #fca5a5; font-weight:bold; text-align:center;">🏖️ 휴무(전체)</div>`;
+                } else if (offWorkersArr.includes(selectedWorker)) {
+                    // 전체 휴무가 아닌데 내가 쉬는 날이면 "휴무(내이름)"으로 표시
                     dayHtml += `<div style="background:#fef2f2; color:#ef4444 !important; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; border:1px solid #fca5a5; font-weight:bold; text-align:center;">🏖️ 휴무(${selectedWorker})</div>`;
                 }
+                
+                // 일하는 현장 표시
                 if (!isAllOff && workersArr.includes(selectedWorker)) {
                     const workerCount = workersArr.length;
                     const sType = (j.shift || "").toString().trim();
