@@ -809,7 +809,7 @@ function renderTimeline() {
     }
 }
 
-// 🔴 [복구] 작업일보 전용 달력 렌더링 함수
+// 🔴 [복구] 작업일보 전용 달력 렌더링 함수 (원본 유지 + 휴무 로직 추가)
 function renderCalendar() {
     const container = document.getElementById('schedule-container');
     const year = viewDate.getFullYear();
@@ -819,7 +819,6 @@ function renderCalendar() {
     const now = new Date();
     const todayStrLocal = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-    
     // 현재 필터링된 직원 선택값
     const selectedWorker = document.getElementById('worker-select').value;
     
@@ -839,17 +838,6 @@ function renderCalendar() {
     for(let d=1; d<=lastDate; d++) {
         const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         
-   // 🔴 [추가] 오늘 날짜 문자열 만들기 (yyyy-MM-dd)
-        const now = new Date();
-        const todayStrLocal = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-
-        // 날짜와 직원에 맞는 일정 필터링
-        const jobs = allSchedules.filter(s => {
-            const isSameDate = s.date === dStr;
-            const isWorkerMatched = (selectedWorker === "전체" || (s.workers && s.workers.includes(selectedWorker)));
-            return isSameDate && isWorkerMatched;
-        });
-        
         // 🔴 [핵심] 오늘 날짜인지 확인해서 배경색/동그라미 스타일 세팅
         const isToday = (dStr === todayStrLocal);
         const cellBg = isToday ? '#eff6ff' : 'white'; // 오늘이면 연한 파란색 배경
@@ -857,27 +845,54 @@ function renderCalendar() {
             ? 'font-size:0.8rem; font-weight:bold; background:#2563eb; color:white; border-radius:50%; display:inline-block; width:22px; height:22px; text-align:center; line-height:22px;' 
             : 'font-size:0.8rem; font-weight:bold;';
 
-        // ⬇️ 아래 일정 블록(jobs.map)은 대표님 코드 100% 그대로입니다! ⬇️
         html += `<div class="calendar-day-cell" style="background:${cellBg}; min-height:80px; padding:2px; border:1px solid #eee;">
-            <span style="${dateStyle}">${d}</span>
-            ${jobs.map(j => {
-                // 인원수 계산 (글자 쪼개서 숫자 세기)
-                const workerCount = (j.workers || "").toString().split(',').filter(n => n.trim() !== "").length;
-                
-                // 🔴 [색상] 1글자 주/야/조 완벽 대응
-                const sType = (j.shift || "").toString().trim();
-                let bgColor = '#2563eb'; // 기본 주간 (파란색)
-                if (sType === '야') bgColor = '#475569'; // 야간 (진회색)
-                else if (sType === '조') bgColor = '#f59e0b'; // 조출 (주황색)
+            <span style="${dateStyle}">${d}</span>`;
 
-                // 🔴 [줄바꿈] white-space: normal 로 설정해서 아래로 내려가게 함
-                return `<div onclick="jumpToCard('${j.date}','${j.site}')" 
-                             style="background:${bgColor}; color:white !important; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; 
-                                    white-space:normal; word-break:keep-all; cursor:pointer; font-weight:bold;">
-                             ${j.site}(${workerCount})
-                        </div>`;
-            }).join('')}
-        </div>`;
+        // ⬇️ [수정됨] 이 날짜에 해당하는 모든 일정을 가져와서 그리기 (원본 로직 베이스) ⬇️
+        const jobsForToday = allSchedules.filter(s => s.date === dStr);
+        let dayHtml = "";
+
+        jobsForToday.forEach(j => {
+            const isAllOff = (j.client === '휴무' || j.site === '휴무');
+            const workersArr = (j.workers || "").toString().split(',').map(n => n.trim()).filter(n => n);
+            const offWorkersArr = (j.offWorkers || "").toString().split(',').map(n => n.trim()).filter(n => n);
+
+            if (selectedWorker === "전체") {
+                // 1) 전체보기: 전체 휴무는 빨간색, 일반 현장은 기존 방식 그대로(파랑/회/주황)
+                if (isAllOff) {
+                    dayHtml += `<div style="background:#fef2f2; color:#ef4444 !important; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; border:1px solid #fca5a5; font-weight:bold; text-align:center;">🏖️ 휴무(전체)</div>`;
+                } else if (j.client && j.site) {
+                    const workerCount = workersArr.length;
+                    const sType = (j.shift || "").toString().trim();
+                    let bgColor = '#2563eb'; if (sType === '야') bgColor = '#475569'; else if (sType === '조') bgColor = '#f59e0b';
+                    
+                    dayHtml += `<div onclick="jumpToCard('${j.date}','${j.site}')" 
+                                     style="background:${bgColor}; color:white !important; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; 
+                                            white-space:normal; word-break:keep-all; cursor:pointer; font-weight:bold;">
+                                 ${j.site}(${workerCount})
+                            </div>`;
+                }
+            } else {
+                // 2) 개인보기: 해당 직원이 쉬는 날(개별휴무 or 전체휴무)은 빨간색, 일하는 곳은 기존 색상 그대로
+                if (isAllOff || offWorkersArr.includes(selectedWorker)) {
+                    dayHtml += `<div style="background:#fef2f2; color:#ef4444 !important; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; border:1px solid #fca5a5; font-weight:bold; text-align:center;">🏖️ 휴무(${selectedWorker})</div>`;
+                }
+                if (!isAllOff && workersArr.includes(selectedWorker)) {
+                    const workerCount = workersArr.length;
+                    const sType = (j.shift || "").toString().trim();
+                    let bgColor = '#2563eb'; if (sType === '야') bgColor = '#475569'; else if (sType === '조') bgColor = '#f59e0b';
+                    
+                    dayHtml += `<div onclick="jumpToCard('${j.date}','${j.site}')" 
+                                     style="background:${bgColor}; color:white !important; font-size:0.65rem; line-height:1.2; padding:3px; margin-top:2px; border-radius:3px; 
+                                            white-space:normal; word-break:keep-all; cursor:pointer; font-weight:bold;">
+                                 ${j.site}(${workerCount})
+                            </div>`;
+                }
+            }
+        });
+        
+        html += dayHtml;
+        html += `</div>`;
     }
     html += `</div></div>`;
     container.innerHTML = html;
