@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbw1uZmBvRnbuR9Dgv2a0qu9Ko2kzYi3QWoaK4E-qiNrwPsy3JbP8gf90zYBAzX4J628/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbz4Pl186OaqgjuOnCyGzROBIBGEpAH2PKU0sMhhWrBhPmQQ56ylj8-XOdZboguSms45/exec";
 
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
