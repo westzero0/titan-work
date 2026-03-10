@@ -715,34 +715,35 @@ var calendarMode = 'work';
     }
 
 
-// 📅 2. 달력 그리기 (직원별 고유 색상 적용!)
+// 📅 2. 달력 그리기 (직원별 고유 색상 + 메모리 최적화!)
 function initCalendar() {
     const el = document.getElementById('calendar-container');
     if (!el) return;
 
-    let events = [];
+    const events = [];
 
-    if (calendarMode === 'work') {
-        const validSchedules = globalScheduleData.filter(item => 
-            item.client !== '휴무' && item.site !== '휴무' && 
-            ((item.client && item.client.trim() !== "") || (item.site && item.site.trim() !== ""))
-        );
+    // 💡 [최적화 포인트] filter와 map을 하나로 통합하여 단 한 번만 순회합니다!
+    globalScheduleData.forEach(item => {
+        if (calendarMode === 'work') {
+            // 🔵 작업 달력 모드
+            const clientStr = (item.client || "").trim();
+            const siteStr = (item.site || "").trim();
 
-        events = validSchedules.map(item => {
-            const workerCount = item.workers ? item.workers.split(',').filter(n => n.trim() !== '').length : 0;
-            return {
-                id: item.rowId,
-                title: `${item.site || '현장미상'} (${workerCount}명)`,
-                start: item.date,
-                backgroundColor: item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#3b82f6'),
-                borderColor: 'transparent', 
-                extendedProps: item 
-            };
-        });
-    } else {
-        // 🔴 휴무 달력 모드 
-        globalScheduleData.forEach(item => {
-            // 1. 전체 휴무인 경우 (고정 빨간색)
+            if (clientStr !== '휴무' && siteStr !== '휴무' && (clientStr !== "" || siteStr !== "")) {
+                const workersStr = item.workers || "";
+                const workerCount = workersStr.trim() ? workersStr.split(',').filter(n => n.trim()).length : 0;
+                
+                events.push({
+                    id: item.rowId,
+                    title: `${item.site || '현장미상'} (${workerCount}명)`,
+                    start: item.date,
+                    backgroundColor: item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#3b82f6'),
+                    borderColor: 'transparent', 
+                    extendedProps: item 
+                });
+            }
+        } else {
+            // 🔴 휴무 달력 모드
             if (item.client === '휴무') {
                 events.push({
                     title: `🏖️ 휴무 (전체)`,
@@ -752,13 +753,11 @@ function initCalendar() {
                     borderColor: '#fca5a5',
                     extendedProps: item 
                 });
-            } 
-            // 2. 개별 휴무자가 있는 경우 (직원별 고유 퍼스널 컬러!)
-            else if (item.offWorkers && item.offWorkers.trim() !== "") {
+            } else if (item.offWorkers && item.offWorkers.trim() !== "") {
                 item.offWorkers.split(',').forEach(w => {
                     const workerName = w.trim();
-                    if (workerName !== "") {
-                        const color = getWorkerColor(workerName); // 🎨 마법의 색상 가져오기
+                    if (workerName) {
+                        const color = typeof getWorkerColor === 'function' ? getWorkerColor(workerName) : { bg: '#fef2f2', text: '#ef4444', border: '#fca5a5' };
                         events.push({
                             title: `🏖️ ${workerName}`,
                             start: item.date,
@@ -770,8 +769,8 @@ function initCalendar() {
                     }
                 });
             }
-        });
-    }
+        }
+    });
 
     if (calendar) calendar.destroy();
     calendar = new FullCalendar.Calendar(el, {
@@ -843,91 +842,54 @@ function toggleOffWorkerSelection(n) {
 }
 
       
-// 📋 3. 하단 리스트 그리기 (직원별 고유 색상 적용!)
-function renderScheduleList() {
-    const box = document.getElementById('upcoming-list'); 
-    if (!box) return;
-
-    const today = new Date().toISOString().split('T')[0];
-    const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
-
-    if (calendarMode === 'work') {
-        const list = scheduleData
-            .filter(item => item.client !== '휴무' && item.site !== '휴무')
-            .filter(i => (i.client && i.client.trim() !== "") || (i.site && i.site.trim() !== ""))
-            .filter(i => i.date >= today)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        if (list.length === 0) {
-            box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">예정된 일정이 없습니다.</div>';
-            return;
-        }
-
-        box.innerHTML = list.map(item => {
-            let siteAddr = ""; let masterNote = ""; 
-            const clientKey = (item.client || "").trim(); const siteKey = (item.site || "").trim();
-            if (globalTitanData[clientKey]) {
-                const masterSite = globalTitanData[clientKey].find(m => (m.name || "").trim() === siteKey);
-                if (masterSite) { siteAddr = masterSite.addr || masterSite.address || ""; masterNote = masterSite.note || ""; }
-            }
-            const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
-            const borderColor = item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#2563eb');
-    return `
-                <div class="card" style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; cursor:pointer;" onclick="openModalSafe('${safeData}')">
-                    <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">📅 ${item.date} (${item.shift})</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
-                    <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
-                    ${siteAddr ? `<div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" style="margin-top:10px; display: block; width: fit-content;">📍 ${siteAddr}</div>` : ''}
-                    ${masterNote ? `<div style="background:#fef3c7; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#92400e; margin-top:10px; border:1px solid #fde68a;">📢 <b>현장 안내:</b> ${masterNote}</div>` : ''}
-                    ${(item.note || item.memo) ? `<div style="background:#fee2e2; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#991b1b; border:1px solid #fca5a5; margin-top:10px;">⚠️ <b>일정 비고:</b> ${item.note || item.memo}</div>` : ''}
-                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin:12px 0; border:1px solid #e2e8f0;">🛠️ ${item.content || '작업 내용 없음'}</div>
+// 🔴 버튼은 전부 빼고, 카드 최상단 div에 onclick을 걸어 전체를 버튼처럼 만듭니다!
+            return `
+                <div class="card schedule-card-item" data-date="${item.date}" data-site="${item.site}" 
+                     onclick="openModalSafe('${safeData}')" 
+                     style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); cursor:pointer;"> 
                     
-                    <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
-                        ${(item.workers || '').split(',').filter(n => n.trim() !== '').map(name => `<span style="background:#fff; border:1px solid #e2e8f0; padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#475569;">${name.trim()}</span>`).join('')}
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                        <div style="width: 100%;"> <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
+                                📅 ${item.date} <span style="color:${dayColor}">(${dayName})</span> [${sType || '주간'}]
+                            </div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
+                            <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
+                            
+                            ${siteAddr ? `
+                            <div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
+                                 style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:block; width:fit-content; line-height:1.4;">
+                                📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
+                            </div>` : ''}
+                        </div>
                     </div>
 
-                    ${item.car ? `<div style="margin-top:8px;"><span style="font-size:0.85rem; color:#1e293b; font-weight:bold; background:#e2e8f0; padding:4px 10px; border-radius:12px; display:inline-block;">🚛 ${item.car}</span></div>` : ''}
+                    ${masterNote ? `
+                    <div style="background:#fef3c7; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:10px; line-height:1.5;">
+                        📢 <b>현장 안내:</b> ${masterNote}
+                    </div>` : ''}
+
+                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin-top:12px; margin-bottom:${item.note ? '8px' : '12px'}; border:1px solid #e2e8f0;">
+                        🛠️ ${item.content || '작업 내용 없음'}
+                    </div>
+
+                    ${(item.note || item.memo) ? `
+                    <div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:12px; line-height:1.4;">
+                        💡 <b>전달 사항:</b> ${item.note || item.memo}
+                    </div>` : ''}
+
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
+                            ${(item.workers || '').split(',').filter(n => n.trim() !== '').map(name => 
+                                `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${name.trim()}</span>`
+                            ).join('')}
+                        </div>
+                        
+                        ${item.car ? `
+                        <div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap; margin-left: 10px;">
+                            🚛 ${item.car}
+                        </div>` : ''}
+                    </div>
                 </div>`;
-        }).join('');
-    } else {
-        // 🔴 휴무 모드 하단 리스트
-        const offSchedules = scheduleData
-            .filter(s => (s.client === '휴무') || (s.offWorkers && s.offWorkers.trim() !== ""))
-            .filter(s => s.date >= today)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        if (offSchedules.length === 0) {
-            box.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">다가오는 휴무 일정이 없습니다.</div>';
-            return;
-        }
-
-        box.innerHTML = offSchedules.map(item => {
-            const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
-            let contentHtml = '';
-            
-            if (item.client === '휴무') {
-                contentHtml = `<span style="background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: bold;">🏖️ 휴무 (전체)</span>`;
-            } else {
-                const workers = item.offWorkers.split(',').filter(w => w.trim() !== "");
-                contentHtml = workers.map(w => {
-                    const color = getWorkerColor(w.trim()); // 🎨 마법의 색상 가져오기
-                    return `<span style="background: ${color.bg}; color: ${color.text}; border: 1px solid ${color.border}; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: bold;">🏖️ ${w.trim()}</span>`;
-                }).join('');
-            }
-
-            return `
-            <div class="card" style="margin-bottom:12px; padding:15px; border-left:5px solid #ef4444; cursor:pointer;" onclick="openModalSafe('${safeData}')">
-                <div style="font-size: 0.95rem; color: #475569; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; display:flex; justify-content:space-between;">
-                    <span>📅 ${item.date} 휴무현황</span>
-                    <span style="font-size:0.75rem; color:#94a3b8; background:#f1f5f9; padding:2px 8px; border-radius:8px;">수정/삭제 ✏️</span>
-                </div>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    ${contentHtml}
-                </div>
-            </div>`;
-        }).join('');
-    }
-}
       
 function openModal(mode, dateStr, data, endStr = null) {
     const modal = document.getElementById('schedule-modal');
