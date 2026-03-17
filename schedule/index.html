@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>업무 스케줄 - 월간</title>
     <style>
-        :root { --bg: #f4f7f6; --white: #ffffff; --red: #ff4d4f; --blue: #007bff; --green: #e2fbe5; --text: #333; --border: #eee; --today-bg: #fff9db; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        :root { --bg: #f4f7f6; --white: #ffffff; --red: #ff4d4f; --blue: #007bff; --green: #e2fbe5; --text: #333; --border: #eee; --today-bg: #fff9db; --select-bg: rgba(0, 123, 255, 0.2); }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; user-select: none; -webkit-user-select: none; }
         
         header { width: 100%; max-width: 600px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .nav-month { display: flex; align-items: center; gap: 12px; font-weight: bold; font-size: 1rem; }
@@ -16,23 +16,24 @@
         .role-me { background: var(--green); color: #155724; border: 1px solid #a3cfbb; }
         .role-oppa { background: #cfe2ff; color: #084298; border: 1px solid #b6d4fe; }
 
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); width: 100%; max-width: 600px; background: var(--white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); width: 100%; max-width: 600px; background: var(--white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); position: relative; }
         .day-label { text-align: center; font-size: 0.65rem; color: #888; font-weight: 600; padding: 8px 0; border-bottom: 1px solid var(--border); }
         .day-label:nth-child(7n+1) { color: var(--red); }
         
-        .cell { position: relative; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 90px; padding: 2px; display: flex; flex-direction: column; transition: background 0.2s; }
+        .cell { position: relative; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 95px; padding: 2px; display: flex; flex-direction: column; transition: background 0.1s; cursor: pointer; }
         .cell:nth-child(7n) { border-right: none; }
         
-        /* 오늘 날짜 강조 스타일 */
+        /* 오늘 및 드래그 선택 스타일 */
+        .cell.selecting { background-color: var(--select-bg) !important; }
         .cell.today { background-color: var(--today-bg) !important; border: 2px solid var(--blue) !important; z-index: 5; }
         .cell.today .date-num { color: var(--blue); font-size: 0.9rem; font-weight: 800; }
 
-        .date-num { font-size: 0.8rem; font-weight: 600; margin-bottom: 2px; padding: 2px; z-index: 3; }
+        .date-num { font-size: 0.8rem; font-weight: 600; margin-bottom: 2px; padding: 2px; z-index: 3; pointer-events: none; }
         .is-holiday .date-num { color: var(--red); }
         .holiday-label { font-size: 0.55rem; font-weight: normal; margin-left: 4px; opacity: 0.8; }
         .other-month { opacity: 0.2; pointer-events: none; }
 
-        .btn-group { display: flex; flex-direction: column; gap: 2px; margin-top: auto; z-index: 3; }
+        .btn-group { display: flex; flex-direction: column; gap: 2px; margin-top: auto; z-index: 4; }
         button.status { border: 1px solid var(--border); border-radius: 4px; padding: 5px 0; font-size: 0.6rem; cursor: pointer; background: rgba(255,255,255,0.8); line-height: 1; }
         button.status-1 { background: var(--green) !important; color: #155724; border-color: #a3cfbb; font-weight: bold; }
         button.status-2 { background: var(--blue) !important; color: white; border-color: #0056b3; font-weight: bold; }
@@ -60,10 +61,11 @@
     </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycby4b4qF3TgjlISH0cBlaEWlxJymbzxw4adNmWwRsT1EMQJq50tL9y43ZuHcsAdtD_ZF0Q/exec'; 
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzQjDmHI3JSD3YH6XnrAiRaZJe7xPkHAfU8DTw8yFZmmGm_94dysp3TQLhoGXcyDCWs5Q/exec'; 
         const urlParams = new URLSearchParams(window.location.search);
         const user = urlParams.get('user') || 'me';
         let currentYear, currentMonth; 
+        let isDragging = false, startId = null, endId = null;
 
         const holidayData = { "2026-01-01": "신정", "2026-02-16": "설날 연휴", "2026-02-17": "설날", "2026-02-18": "설날 연휴", "2026-03-01": "삼일절", "2026-03-02": "대체공휴일", "2026-05-05": "어린이날", "2026-05-24": "부처님오신날", "2026-05-25": "대체공휴일", "2026-06-03": "지방선거", "2026-06-06": "현충일", "2026-08-15": "광복절", "2026-08-17": "대체공휴일", "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴", "2026-10-03": "개천절", "2026-10-05": "대체공휴일", "2026-10-09": "한글날", "2026-12-25": "성탄절" };
 
@@ -74,6 +76,7 @@
             const now = new Date();
             currentYear = now.getFullYear(); currentMonth = now.getMonth();
             await fetchData();
+            if(user === 'me') setupDragEvents();
         }
 
         async function fetchData() {
@@ -108,15 +111,11 @@
             const cell = document.createElement('div');
             const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${date.toString().padStart(2, '0')}`;
             const holidayName = holidayData[dateStr];
-            
-            // 오늘 날짜인지 확인
             const now = new Date();
-            const isToday = !isOther && 
-                            date === now.getDate() && 
-                            currentMonth === now.getMonth() && 
-                            currentYear === now.getFullYear();
+            const isToday = !isOther && date === now.getDate() && currentMonth === now.getMonth() && currentYear === now.getFullYear();
 
             cell.className = `cell ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''}`;
+            if (!isOther) cell.dataset.id = dateStr; 
             
             if (holidayName) cell.classList.add('is-holiday');
             cell.innerHTML = `<div class="date-num">${date}${holidayName ? ` <span class="holiday-label">${holidayName}</span>` : ''}</div>`;
@@ -142,13 +141,61 @@
                         const btn = document.createElement('button');
                         btn.className = `status status-${item.status}`;
                         btn.innerText = (time === 'AM' ? '☀️' : '🌙') + (item.status === 2 ? ' 확정' : (item.status === 1 ? ' 가능' : ''));
-                        btn.onclick = () => handleToggle(id, item.status, time, allData);
+                        btn.onclick = (e) => { e.stopPropagation(); handleToggle(id, item.status, time, allData); };
                         btnGroup.appendChild(btn);
                     });
                     cell.appendChild(btnGroup);
                 }
             }
             document.getElementById('calendar').appendChild(cell);
+        }
+
+        function setupDragEvents() {
+            const container = document.getElementById('calendar');
+            const getCellId = (e) => {
+                const x = e.clientX || (e.touches && e.touches[0].clientX);
+                const y = e.clientY || (e.touches && e.touches[0].clientY);
+                return document.elementFromPoint(x, y)?.closest('.cell:not(.other-month)')?.dataset.id;
+            };
+            const startAction = (e) => {
+                const id = getCellId(e); if (!id) return;
+                isDragging = true; startId = endId = id; updateHighlight();
+            };
+            const moveAction = (e) => {
+                if (!isDragging) return;
+                const id = getCellId(e); if (id && id !== endId) { endId = id; updateHighlight(); }
+            };
+            const endAction = async () => {
+                if (!isDragging) return; isDragging = false;
+                const title = prompt("일정 명칭을 입력하세요 (예: 네팔 원정):");
+                if (title) await saveEvent(startId, endId, title);
+                startId = endId = null; updateHighlight();
+            };
+            container.addEventListener('mousedown', startAction);
+            window.addEventListener('mousemove', moveAction);
+            window.addEventListener('mouseup', endAction);
+            container.addEventListener('touchstart', (e) => { if(e.touches.length === 1) startAction(e); }, {passive: false});
+            window.addEventListener('touchmove', (e) => { if(isDragging) moveAction(e); }, {passive: false});
+            window.addEventListener('touchend', endAction);
+        }
+
+        function updateHighlight() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                const id = cell.dataset.id; if (!id) return;
+                const isBetween = (id >= startId && id <= endId) || (id <= startId && id >= endId);
+                cell.classList.toggle('selecting', isDragging && isBetween);
+            });
+        }
+
+        async function saveEvent(s, e, title) {
+            const startDate = s < e ? s : e; const endDate = s < e ? e : s;
+            document.getElementById('loading-bar').style.width = '100%';
+            await fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ type: 'event', start: startDate, end: endDate, title: title, color: '#FF5733' }),
+                mode: 'no-cors'
+            });
+            location.reload();
         }
 
         async function handleToggle(id, currentStatus, time, allData) {
@@ -159,7 +206,7 @@
             if (nextStatus !== currentStatus) {
                 document.getElementById('loading-bar').style.width = '100%';
                 try {
-                    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ id, status: nextStatus }), mode: 'no-cors' });
+                    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ type: 'status', id, status: nextStatus }), mode: 'no-cors' });
                     const idx = allData.daily.findIndex(d => d.id === id);
                     if (idx > -1) allData.daily[idx].status = nextStatus;
                     else allData.daily.push({ id, status: nextStatus });
@@ -175,8 +222,6 @@
             currentMonth += dir;
             if (currentMonth < 0) { currentMonth = 11; currentYear--; }
             else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-            const cached = localStorage.getItem('full_data_cache');
-            if (cached) render(JSON.parse(cached));
             fetchData();
         }
         init();
