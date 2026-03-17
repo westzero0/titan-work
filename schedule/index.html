@@ -23,7 +23,6 @@
         .cell { position: relative; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 95px; padding: 2px; display: flex; flex-direction: column; transition: background 0.1s; cursor: pointer; }
         .cell:nth-child(7n) { border-right: none; }
         
-        /* 오늘 및 드래그 선택 스타일 */
         .cell.selecting { background-color: var(--select-bg) !important; }
         .cell.today { background-color: var(--today-bg) !important; border: 2px solid var(--blue) !important; z-index: 5; }
         .cell.today .date-num { color: var(--blue); font-size: 0.9rem; font-weight: 800; }
@@ -39,7 +38,12 @@
         button.status-2 { background: var(--blue) !important; color: white; border-color: #0056b3; font-weight: bold; }
 
         .cell.has-event { border-top: 1px solid rgba(0,0,0,0.05); }
-        .event-title { font-size: 0.55rem; color: #444; padding: 2px 4px; z-index: 3; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        
+        /* 일정 바 스타일 수정 (클릭 가능하게 변경) */
+        .event-bar { position: absolute; left: 0; right: 0; height: 14px; color: white; font-size: 0.55rem; padding: 0 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-radius: 2px; z-index: 10; cursor: pointer; pointer-events: auto; line-height: 14px; transition: transform 0.1s; }
+        .event-bar:active { transform: scale(0.98); }
+        
+        .event-title { font-size: 0.55rem; color: #444; padding: 2px 4px; z-index: 3; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
 
         .loading-bar { position: fixed; top: 0; left: 0; width: 0%; height: 3px; background: var(--blue); transition: width 0.3s; z-index: 1000; }
     </style>
@@ -61,7 +65,7 @@
     </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzQjDmHI3JSD3YH6XnrAiRaZJe7xPkHAfU8DTw8yFZmmGm_94dysp3TQLhoGXcyDCWs5Q/exec'; 
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyGauZPGjsXbbmFdh5NPUJUgPOCi5E8Y7VRpNkiT_hPTMoz64Ukyej3v2ksF4YUtqRNwA/exec'; 
         const urlParams = new URLSearchParams(window.location.search);
         const user = urlParams.get('user') || 'me';
         let currentYear, currentMonth; 
@@ -131,7 +135,37 @@
                 if (eventOnThisDay) {
                     cell.classList.add('has-event');
                     cell.style.backgroundColor = eventOnThisDay.color + '33'; 
-                    cell.innerHTML += `<div class="event-title">${eventOnThisDay.title}</div>`;
+                    
+                    // 삭제 및 수정이 가능한 이벤트 바 생성
+                    const bar = document.createElement('div');
+                    bar.className = 'event-bar';
+                    bar.style.background = eventOnThisDay.color;
+                    bar.style.top = "20px";
+                    bar.innerText = eventOnThisDay.title;
+                    
+                    // 내 화면일 때만 클릭하여 수정/삭제 가능
+                    bar.onclick = (e) => {
+                        e.stopPropagation(); // 셀 클릭(드래그) 방지
+                        if (user !== 'me') return; 
+
+                        const action = prompt(`[${eventOnThisDay.title}]\n\n- 수정: 새로운 일정 명칭 입력\n- 삭제: '삭제' 라고 입력하세요.`, eventOnThisDay.title);
+                        if (action === null || action === eventOnThisDay.title) return;
+
+                        if (action === '삭제') {
+                            if(confirm('정말로 이 일정을 삭제하시겠습니까?')) {
+                                manageEvent('delete_event', eventOnThisDay, null);
+                            }
+                        } else {
+                            manageEvent('edit_event', eventOnThisDay, action);
+                        }
+                    };
+                    
+                    if (new Date(dateStr).toDateString() === new Date(eventOnThisDay.start).toDateString() || new Date(dateStr).getDay() === 0 || date === 1) {
+                        cell.appendChild(bar); // 시작일이나 주/달의 첫날에만 글씨가 있는 바 표시
+                    } else {
+                        bar.innerText = ''; // 이어지는 날은 색상 바만 표시
+                        cell.appendChild(bar);
+                    }
                 } else {
                     const btnGroup = document.createElement('div');
                     btnGroup.className = 'btn-group';
@@ -150,6 +184,27 @@
             document.getElementById('calendar').appendChild(cell);
         }
 
+        // 서버에 수정/삭제 요청 보내기
+        async function manageEvent(actionType, ev, newTitle) {
+            document.getElementById('loading-bar').style.width = '100%';
+            try {
+                await fetch(API_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ 
+                        type: actionType, 
+                        oldTitle: ev.title, 
+                        newTitle: newTitle 
+                    }),
+                    mode: 'no-cors'
+                });
+                alert(actionType === 'delete_event' ? "삭제되었습니다." : "수정되었습니다.");
+                location.reload();
+            } finally {
+                document.getElementById('loading-bar').style.width = '0%';
+            }
+        }
+
+        // 기존 드래그 및 토글 함수들은 그대로 유지
         function setupDragEvents() {
             const container = document.getElementById('calendar');
             const getCellId = (e) => {
@@ -158,6 +213,7 @@
                 return document.elementFromPoint(x, y)?.closest('.cell:not(.other-month)')?.dataset.id;
             };
             const startAction = (e) => {
+                if(e.target.classList.contains('event-bar')) return; // 바 클릭 시 드래그 방지
                 const id = getCellId(e); if (!id) return;
                 isDragging = true; startId = endId = id; updateHighlight();
             };
@@ -167,7 +223,7 @@
             };
             const endAction = async () => {
                 if (!isDragging) return; isDragging = false;
-                const title = prompt("일정 명칭을 입력하세요 (예: 네팔 원정):");
+                const title = prompt("장기 일정 명칭을 입력하세요 (예: 네팔 원정):");
                 if (title) await saveEvent(startId, endId, title);
                 startId = endId = null; updateHighlight();
             };
