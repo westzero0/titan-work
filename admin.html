@@ -1949,9 +1949,8 @@ function formatJobList(jobs) {
     }).join('');
 }
 
+// 1. 💰 수금 데이터 로드 및 업체별 그룹화 화면 그리기
 async function loadReceivables() {
-    // 💡 수금 데이터를 불러올 서버(GAS)가 준비되지 않았다면 아래 코드는 작동하지 않습니다.
-    // 일단 화면 UI만 확인하려면 이 함수 안의 내용을 비워두셔도 됩니다!
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: "getReceivables" }) });
         const result = await res.json();
@@ -1959,26 +1958,104 @@ async function loadReceivables() {
 
         const data = result.data;
         let totalUnpaid = 0;
-        let unpaidSites = data.filter(item => Number(item.unpaidAmount) > 0);
-        
-        let listHtml = '';
-        unpaidSites.forEach((item, idx) => {
-            totalUnpaid += Number(item.unpaidAmount);
-            if (idx < 3) { // 3개까지만 노출
-                listHtml += `
-                <div style="display:flex; justify-content:space-between; background:white; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; font-size:0.85rem;">
-                    <span style="font-weight:bold; color:#1e293b;">${item.client}</span>
-                    <span style="color:#ef4444; font-weight:bold;">${Number(item.unpaidAmount).toLocaleString()}원</span>
-                </div>`;
+        let unpaidCount = 0;
+        let clientGroups = {}; // 🏢 업체별로 묶어줄 바구니
+
+        // 데이터 분류 및 합계 계산
+        data.forEach(item => {
+            const unpaid = Number(item.unpaidAmount);
+            if (unpaid > 0) {
+                totalUnpaid += unpaid;
+                unpaidCount++;
+                
+                // 업체 이름표가 없으면 새 바구니 만들기
+                if (!clientGroups[item.client]) {
+                    clientGroups[item.client] = { total: 0, sites: [] };
+                }
+                // 바구니에 금액 더하고 현장 데이터 넣기
+                clientGroups[item.client].total += unpaid;
+                clientGroups[item.client].sites.push(item);
             }
         });
 
+        // 🔴 총 미수금 업데이트
         document.getElementById('dash-total-unpaid').innerText = totalUnpaid.toLocaleString() + ' 원';
-        document.getElementById('dash-unpaid-count').innerText = `미수 현장 ${unpaidSites.length}곳`;
+        document.getElementById('dash-unpaid-count').innerText = `총 미수 현장 ${unpaidCount}곳`;
+
+        // 🎨 그룹화된 리스트 UI 그리기
+        let listHtml = '';
+        for (const client in clientGroups) {
+            const group = clientGroups[client];
+            
+            // 업체 헤더 (회색 배경)
+            listHtml += `
+            <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="background: #f1f5f9; padding: 10px 12px; font-weight: bold; color: #1e293b; display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0;">
+                    <span>🏢 ${client}</span>
+                    <span style="color: #ef4444;">${group.total.toLocaleString()}원</span>
+                </div>
+                <div style="padding: 10px 12px;">
+            `;
+            
+            // 그 안의 현장 리스트 (흰색 배경)
+            group.sites.forEach(site => {
+                listHtml += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed #e2e8f0; font-size: 0.85rem;">
+                        <div style="flex: 1;">
+                            <div style="color: #475569; font-weight: bold;">${site.site}</div>
+                            <div style="color: #ef4444; font-weight: 800; margin-top: 3px; font-size: 0.95rem;">잔액: ${Number(site.unpaidAmount).toLocaleString()}원</div>
+                        </div>
+                        <button onclick="openPaymentPrompt(${site.rowId}, '${client}', '${site.site}', ${site.unpaidAmount})" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.8rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                            💸 입금 등록
+                        </button>
+                    </div>
+                `;
+            });
+            listHtml += `</div></div>`;
+        }
+
+        if (listHtml === '') {
+            listHtml = '<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 0.85rem;">🎉 현재 받아야 할 미수금이 없습니다!</div>';
+        }
+
         document.getElementById('dash-receivables-brief').innerHTML = listHtml;
 
     } catch (e) {
         console.error("수금 데이터 로드 실패", e);
+    }
+}
+
+// 2. 💸 대시보드 안에서 즉시 입금액 입력하는 팝업 로직
+async function openPaymentPrompt(rowId, client, site, maxAmount) {
+    const amountStr = prompt(`[${client} - ${site}]\n입금된 금액을 숫자만 입력하세요.\n(남은 잔액: ${maxAmount.toLocaleString()}원)`);
+    if (!amountStr) return; // 취소 누르면 종료
+    
+    // 콤마 제거하고 순수 숫자로 변환
+    const amount = parseInt(amountStr.replace(/,/g, ''));
+    if (isNaN(amount) || amount <= 0) return alert('올바른 금액을 입력하세요.');
+
+    const bankStr = prompt(`어느 은행/경로로 입금되었나요?\n(예: 농협, 국민, 현금 등)`);
+    if (!bankStr) return; // 취소 누르면 종료
+
+    const today = new Date();
+    const dateStr = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+    const newHistory = `✔️ ${dateStr} (${bankStr}) : +${amount.toLocaleString()}원`;
+
+    if (!confirm(`${amount.toLocaleString()}원을 정말 입금 처리하시겠습니까?`)) return;
+
+    try {
+        // 이미 구현해둔 서버 통신 함수(sendToGas) 활용
+        await sendToGas('addPayment', {
+            rowId: rowId,
+            addAmount: amount,
+            newHistory: newHistory
+        });
+        
+        alert('✅ 입금 처리가 완료되었습니다.');
+        loadReceivables(); // 대시보드 미수금 즉시 새로고침 (숫자 깎이는 거 확인용!)
+        
+    } catch(e) {
+        alert('서버 통신 실패');
     }
 }
       
