@@ -437,6 +437,44 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
     <div class="swiper-slide">
         <div style="padding: 20px 10px 10px 10px; display: flex; justify-content: space-between; align-items: flex-end;">
+
+          
+          <div id="dashboard-wrapper" style="margin-bottom: 20px;">
+    <div onclick="toggleDashboard()" style="background: #1e293b; color: white; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <span style="font-weight: bold; font-size: 1.05rem;">📊 오늘의 현황 및 수금 브리핑</span>
+        <span id="dashboard-arrow" style="transition: transform 0.3s;">▼</span>
+    </div>
+
+    <div id="dashboard-content" style="display: none; padding-top: 15px;">
+        <div id="dashboard-inner" style="padding: 10px 0;">
+            
+            <div style="margin-bottom: 20px; display: flex; gap: 8px;">
+                <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.75rem; color: #3b82f6; font-weight: bold; margin-bottom: 8px;">📅 오늘 작업</div>
+                    <div id="dash-today-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
+                </div>
+                <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 8px;">⏭️ 내일 예정</div>
+                    <div id="dash-tomorrow-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
+                </div>
+            </div>
+
+            <div style="background: #1e293b; border-radius: 12px; padding: 15px; color: white; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">🔴 미수금 총액</div>
+                    <div id="dash-total-unpaid" style="font-size: 1.3rem; font-weight: 900;">0 원</div>
+                </div>
+                <div id="dash-unpaid-count" style="font-size: 0.75rem; opacity: 0.8;">미수 현장 0곳</div>
+            </div>
+
+            <div id="dash-receivables-brief" style="display: flex; flex-direction: column; gap: 8px;">
+                </div>
+
+        </div>
+    </div>
+</div>
+
+          
             <div>
                 <h3 id="cal-main-title" style="margin:0; color:#1e293b;">📅 작업 일정</h3>
                 <p id="cal-sub-title" style="margin:5px 0 0 0; font-size:0.8rem; color:#64748b;">
@@ -564,7 +602,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     <script>
 
       
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbz4Pl186OaqgjuOnCyGzROBIBGEpAH2PKU0sMhhWrBhPmQQ56ylj8-XOdZboguSms45/exec"; // 👈 꼭 본인 주소로 수정하세요!
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbx5gNS6laaj4rMuYs0Pec79QCsjetdb9em7EYqM6i6-HTgW3F547AWPDEt5MRoGsCki/exec"; // 👈 꼭 본인 주소로 수정하세요!
 // 전역 변수 선언 (에러 방지용)
     let calendar = null;
     let swiper = null;
@@ -634,6 +672,7 @@ function getWorkerColor(name) {
             console.log("데이터 로드 완료");
             initCalendar();
             renderScheduleList();
+          initDashboardToggle();
         } catch (e) {
             console.error("로딩 실패:", e);
             initCalendar();
@@ -1831,6 +1870,114 @@ window.onclick = function(event) {
     }
 }
 
+      // ==========================================
+// 🚀 대시보드 전용 스크립트 (접기/펴기 + 데이터 로드)
+// ==========================================
+
+function initDashboardToggle() {
+    const content = document.getElementById('dashboard-content');
+    const arrow = document.getElementById('dashboard-arrow');
+    if (!content || !arrow) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const lastAccessDate = localStorage.getItem('dashLastDate');
+    let isFolded = localStorage.getItem('dashIsFolded') === 'true';
+
+    // 오늘 처음 접속하면 강제로 펼치기!
+    if (lastAccessDate !== today) {
+        isFolded = false;
+        localStorage.setItem('dashLastDate', today);
+        localStorage.setItem('dashIsFolded', 'false');
+    }
+
+    if (isFolded) {
+        content.style.display = 'none';
+        arrow.style.transform = 'rotate(-90deg)';
+    } else {
+        content.style.display = 'block';
+        arrow.style.transform = 'rotate(0deg)';
+    }
+
+    // 대시보드 화면 켤 때 데이터도 같이 불러오기
+    renderDashboard();
+}
+
+function toggleDashboard() {
+    const content = document.getElementById('dashboard-content');
+    const arrow = document.getElementById('dashboard-arrow');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        arrow.style.transform = 'rotate(0deg)';
+        localStorage.setItem('dashIsFolded', 'false');
+    } else {
+        content.style.display = 'none';
+        arrow.style.transform = 'rotate(-90deg)';
+        localStorage.setItem('dashIsFolded', 'true');
+    }
+}
+
+function renderDashboard() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
+
+    // --- 1. 작업 현황 ---
+    const todayJobs = scheduleData.filter(item => item.date === todayStr);
+    const tomorrowJobs = scheduleData.filter(item => item.date === tomorrowStr);
+
+    document.getElementById('dash-today-list').innerHTML = formatJobList(todayJobs);
+    document.getElementById('dash-tomorrow-list').innerHTML = formatJobList(tomorrowJobs);
+
+    // --- 2. 수금 현황 ---
+    loadReceivables();
+}
+
+function formatJobList(jobs) {
+    if (jobs.length === 0) return '<span style="color:#cbd5e1;">일정 없음</span>';
+    return jobs.map(j => {
+        if (j.client === '휴무') return '<span style="color:#ef4444;">🏖️ 전체 휴무</span>';
+        const site = j.site || '현장미상';
+        return `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">• ${site}</div>`;
+    }).join('');
+}
+
+async function loadReceivables() {
+    // 💡 수금 데이터를 불러올 서버(GAS)가 준비되지 않았다면 아래 코드는 작동하지 않습니다.
+    // 일단 화면 UI만 확인하려면 이 함수 안의 내용을 비워두셔도 됩니다!
+    try {
+        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: "getReceivables" }) });
+        const result = await res.json();
+        if (result.res !== "SUCCESS") return;
+
+        const data = result.data;
+        let totalUnpaid = 0;
+        let unpaidSites = data.filter(item => Number(item.unpaidAmount) > 0);
+        
+        let listHtml = '';
+        unpaidSites.forEach((item, idx) => {
+            totalUnpaid += Number(item.unpaidAmount);
+            if (idx < 3) { // 3개까지만 노출
+                listHtml += `
+                <div style="display:flex; justify-content:space-between; background:white; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; font-size:0.85rem;">
+                    <span style="font-weight:bold; color:#1e293b;">${item.client}</span>
+                    <span style="color:#ef4444; font-weight:bold;">${Number(item.unpaidAmount).toLocaleString()}원</span>
+                </div>`;
+            }
+        });
+
+        document.getElementById('dash-total-unpaid').innerText = totalUnpaid.toLocaleString() + ' 원';
+        document.getElementById('dash-unpaid-count').innerText = `미수 현장 ${unpaidSites.length}곳`;
+        document.getElementById('dash-receivables-brief').innerHTML = listHtml;
+
+    } catch (e) {
+        console.error("수금 데이터 로드 실패", e);
+    }
+}
+      
       
     </script>
 
