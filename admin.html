@@ -366,9 +366,73 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
     <div class="swiper">
   <div class="swiper-wrapper">
-    <div class="swiper-slide">
 
-        
+ <div class="swiper-slide">
+
+      <div id="dashboard-wrapper" style="position: relative; margin: 15px 10px 5px 10px; z-index: 100;">
+          <div onclick="toggleDashboard()" style="background: #1e293b; color: white; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <span style="font-weight: bold; font-size: 1.05rem;">📊 오늘의 현황 및 수금 브리핑</span>
+              <span id="dashboard-arrow" style="transition: transform 0.3s;">▼</span>
+          </div>
+
+          <div id="dashboard-content" style="display: none; position: absolute; top: 60px; left: 0; width: 100%; z-index: 999; box-sizing: border-box;">
+              <div id="dashboard-inner" style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 2px solid #cbd5e1; box-shadow: 0 15px 30px rgba(0,0,0,0.3); max-height: 70vh; overflow-y: auto;">
+                  
+                  <div style="margin-bottom: 20px; display: flex; gap: 8px;">
+                      <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                          <div style="font-size: 0.75rem; color: #3b82f6; font-weight: bold; margin-bottom: 8px;">📅 오늘 작업</div>
+                          <div id="dash-today-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
+                      </div>
+                      <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                          <div style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 8px;">⏭️ 내일 예정</div>
+                          <div id="dash-tomorrow-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
+                      </div>
+                  </div>
+
+                  <div style="background: #1e293b; border-radius: 12px; padding: 15px; color: white; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
+                      <div>
+                          <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">🔴 미수금 총액</div>
+                          <div id="dash-total-unpaid" style="font-size: 1.3rem; font-weight: 900;">0 원</div>
+                      </div>
+                      <div id="dash-unpaid-count" style="font-size: 0.75rem; opacity: 0.8;">미수 현장 0곳</div>
+                  </div>
+
+                  <div id="dash-receivables-brief" style="display: flex; flex-direction: column; gap: 8px;"></div>
+
+                  <div style="text-align: center; margin-top: 15px;">
+                      <button onclick="toggleDashboard()" style="background: #e2e8f0; color: #475569; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;">
+                          닫기 👆
+                      </button>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <div style="padding: 10px 10px 10px 10px; display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+              <h3 id="cal-main-title" style="margin:0; color:#1e293b;">📅 작업 일정</h3>
+              <p id="cal-sub-title" style="margin:5px 0 0 0; font-size:0.8rem; color:#64748b;">
+                  날짜 클릭: 등록 / 바 클릭: 수정
+              </p>
+          </div>
+          <div style="display: flex; background: #e2e8f0; padding: 4px; border-radius: 10px;">
+              <button id="btn-cal-work" onclick="setCalendarMode('work')" style="border:none; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: white; font-weight: bold; color: #2563eb; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin:0; width:auto; font-size: 0.9rem;">🏗️ 작업</button>
+              <button id="btn-cal-off" onclick="setCalendarMode('off')" style="border:none; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: transparent; font-weight: bold; color: #64748b; margin:0; width:auto; font-size: 0.9rem;">🏖️ 휴무</button>
+          </div>
+      </div>
+
+      <div id="calendar-container" style="background:white; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; margin-bottom: 30px;"></div>
+
+      <div class="card" style="margin: 0 10px 100px 10px;">
+          <h4 id="upcoming-title" style="margin:0 0 15px 0; color:#334155;">📋 다가오는 상세 일정</h4>
+          <div id="upcoming-list"></div>
+      </div>
+      
+    </div>
+
+    
+    
+    <div class="swiper-slide">      
     <div class="card">
     <h3>👤 신규 인원 등록</h3>
     <input type="text" id="new-name" placeholder="이름 (예: 홍길동)">
@@ -435,79 +499,17 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     </div>
 
 
-  <div class="swiper-slide">
-
-      <div id="dashboard-wrapper" style="position: relative; margin: 15px 10px 5px 10px; z-index: 100;">
-          <div onclick="toggleDashboard()" style="background: #1e293b; color: white; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <span style="font-weight: bold; font-size: 1.05rem;">📊 오늘의 현황 및 수금 브리핑</span>
-              <span id="dashboard-arrow" style="transition: transform 0.3s;">▼</span>
-          </div>
-
-          <div id="dashboard-content" style="display: none; position: absolute; top: 60px; left: 0; width: 100%; z-index: 999; box-sizing: border-box;">
-              <div id="dashboard-inner" style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 2px solid #cbd5e1; box-shadow: 0 15px 30px rgba(0,0,0,0.3); max-height: 70vh; overflow-y: auto;">
-                  
-                  <div style="margin-bottom: 20px; display: flex; gap: 8px;">
-                      <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                          <div style="font-size: 0.75rem; color: #3b82f6; font-weight: bold; margin-bottom: 8px;">📅 오늘 작업</div>
-                          <div id="dash-today-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
-                      </div>
-                      <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                          <div style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 8px;">⏭️ 내일 예정</div>
-                          <div id="dash-tomorrow-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
-                      </div>
-                  </div>
-
-                  <div style="background: #1e293b; border-radius: 12px; padding: 15px; color: white; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
-                      <div>
-                          <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">🔴 미수금 총액</div>
-                          <div id="dash-total-unpaid" style="font-size: 1.3rem; font-weight: 900;">0 원</div>
-                      </div>
-                      <div id="dash-unpaid-count" style="font-size: 0.75rem; opacity: 0.8;">미수 현장 0곳</div>
-                  </div>
-
-                  <div id="dash-receivables-brief" style="display: flex; flex-direction: column; gap: 8px;"></div>
-
-                  <div style="text-align: center; margin-top: 15px;">
-                      <button onclick="toggleDashboard()" style="background: #e2e8f0; color: #475569; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;">
-                          닫기 👆
-                      </button>
-                  </div>
-              </div>
-          </div>
-      </div>
-
-      <div style="padding: 10px 10px 10px 10px; display: flex; justify-content: space-between; align-items: flex-end;">
-          <div>
-              <h3 id="cal-main-title" style="margin:0; color:#1e293b;">📅 작업 일정</h3>
-              <p id="cal-sub-title" style="margin:5px 0 0 0; font-size:0.8rem; color:#64748b;">
-                  날짜 클릭: 등록 / 바 클릭: 수정
-              </p>
-          </div>
-          <div style="display: flex; background: #e2e8f0; padding: 4px; border-radius: 10px;">
-              <button id="btn-cal-work" onclick="setCalendarMode('work')" style="border:none; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: white; font-weight: bold; color: #2563eb; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin:0; width:auto; font-size: 0.9rem;">🏗️ 작업</button>
-              <button id="btn-cal-off" onclick="setCalendarMode('off')" style="border:none; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: transparent; font-weight: bold; color: #64748b; margin:0; width:auto; font-size: 0.9rem;">🏖️ 휴무</button>
-          </div>
-      </div>
-
-      <div id="calendar-container" style="background:white; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; margin-bottom: 30px;"></div>
-
-      <div class="card" style="margin: 0 10px 100px 10px;">
-          <h4 id="upcoming-title" style="margin:0 0 15px 0; color:#334155;">📋 다가오는 상세 일정</h4>
-          <div id="upcoming-list"></div>
-      </div>
-      
-    </div>
+ 
     
        </div>
 </div>
 
 <div class="bottom-nav" id="main-nav">
-    <div class="nav-item active" onclick="jumpTo(0)">👥 <span>인원</span></div>
-    <div class="nav-item" onclick="jumpTo(1)">🏢 <span>거래처</span></div>
-    <div class="nav-item" onclick="jumpTo(2)">📦 <span>자재</span></div>
-    <div class="nav-item" onclick="jumpTo(3)">📅 <span>일정</span></div>
+    <div class="nav-item active" onclick="jumpTo(0)">📅 <span>일정</span></div>
+    <div class="nav-item" onclick="jumpTo(1)">👥 <span>인원</span></div>
+    <div class="nav-item" onclick="jumpTo(2)">🏢 <span>거래처</span></div>
+    <div class="nav-item" onclick="jumpTo(3)">📦 <span>자재</span></div>
 </div>
-
 
 <div id="schedule-modal" class="modal">
     <div class="modal-content">
@@ -691,17 +693,17 @@ function getWorkerColor(name) {
             speed: 400,
             loop: false,
             allowTouchMove: true, // 기본은 스와이프 허용
-            on: {
+         on: {
                 slideChange: function () {
                     const idx = this.activeIndex;
                     updateNav(idx);
 
-                    // 🔴 [핵심] 3번 탭(일정)일 때만 스와이프 잠금
-                    if (idx === 3) {
-                        this.allowTouchMove = false; // 터치로 옆으로 넘기기 금지
-                        console.log("📅 일정 탭: 드래그 보호를 위해 스와이프 잠금");
+                    // 🔴 [수정] idx === 3 을 idx === 0 으로 바꿉니다!
+                    if (idx === 0) { 
+                        this.allowTouchMove = false; // 달력 화면 스와이프 잠금
+                        console.log("📅 일정 탭: 스와이프 잠금");
                     } else {
-                        this.allowTouchMove = true;  // 다른 탭은 스와이프 허용
+                        this.allowTouchMove = true;
                     }
                 }
             }
@@ -715,11 +717,10 @@ function getWorkerColor(name) {
             swiper.allowTouchMove = true; 
             swiper.slideTo(index);
             
-            // 이동 후 만약 일정 탭(3)이라면 다시 잠금
-            if (index === 3) swiper.allowTouchMove = false;
+          // 🔴 [수정] index === 3 을 index === 0 으로 바꿉니다!
+            if (index === 0) swiper.allowTouchMove = false;
         }
     }
-
       
     function updateNav(index) {
         document.querySelectorAll('.nav-item').forEach((item, i) => {
