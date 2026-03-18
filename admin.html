@@ -439,14 +439,15 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         <div style="padding: 20px 10px 10px 10px; display: flex; justify-content: space-between; align-items: flex-end;">
 
           
-          <div id="dashboard-wrapper" style="margin-bottom: 20px;">
+   <div id="dashboard-wrapper" style="position: relative; margin-bottom: 20px; z-index: 100;">
     <div onclick="toggleDashboard()" style="background: #1e293b; color: white; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <span style="font-weight: bold; font-size: 1.05rem;">📊 오늘의 현황 및 수금 브리핑</span>
         <span id="dashboard-arrow" style="transition: transform 0.3s;">▼</span>
     </div>
 
-    <div id="dashboard-content" style="display: none; padding-top: 15px;">
-        <div id="dashboard-inner" style="padding: 10px 0;">
+    <div id="dashboard-content" style="display: none; position: absolute; top: 60px; left: 0; width: 100%; z-index: 999; box-sizing: border-box;">
+        
+        <div id="dashboard-inner" style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 2px solid #cbd5e1; box-shadow: 0 15px 30px rgba(0,0,0,0.3); max-height: 70vh; overflow-y: auto;">
             
             <div style="margin-bottom: 20px; display: flex; gap: 8px;">
                 <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
@@ -470,9 +471,16 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
             <div id="dash-receivables-brief" style="display: flex; flex-direction: column; gap: 8px;">
                 </div>
 
+            <div style="text-align: center; margin-top: 15px;">
+                <button onclick="toggleDashboard()" style="background: #e2e8f0; color: #475569; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;">
+                    닫기 👆
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
+          
 
           
             <div>
