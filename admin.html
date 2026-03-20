@@ -401,25 +401,27 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
                 
                 <div style="display: flex; gap: 8px;">
                     <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                        <div style="font-size: 0.75rem; color: #8b5cf6; font-weight: bold; margin-bottom: 5px;">🚛 차량 배차</div>
+                        <div style="flex: 1; min-width: 0; font-size: 0.75rem; color: #8b5cf6; font-weight: bold; margin-bottom: 5px;">🚛 차량 배차</div>
                         <div id="dash-car-stat" style="font-size: 0.85rem; color: #334155;">⏳ 계산중...</div>
                     </div>
                     <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                        <div style="font-size: 0.75rem; color: #f59e0b; font-weight: bold; margin-bottom: 5px;">🛠️ 주력 공정</div>
+                        <div style="flex: 1; min-width: 0; font-size: 0.75rem; color: #f59e0b; font-weight: bold; margin-bottom: 5px;">🛠️ 주력 공정</div>
                         <div id="dash-work-stat" style="font-size: 0.85rem; color: #334155;">⏳ 계산중...</div>
                     </div>
                 </div>
             </div>
             <div style="margin-bottom: 20px; display: flex; gap: 8px;">
-                <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                    <div style="font-size: 0.75rem; color: #3b82f6; font-weight: bold; margin-bottom: 8px;">📅 오늘 작업 요약</div>
-                    <div id="dash-today-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
-                </div>
-                <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                    <div style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 8px;">⏭️ 내일 예정 요약</div>
-                    <div id="dash-tomorrow-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
-                </div>
-            </div>
+              <div style="margin-bottom: 20px; display: flex; gap: 8px; width: 100%;">
+    <div style="flex: 1; min-width: 0; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+        <div style="font-size: 0.75rem; color: #3b82f6; font-weight: bold; margin-bottom: 8px;">📅 오늘 작업 요약</div>
+        <div id="dash-today-list" style="font-size: 0.8rem; color: #1e293b; line-height: 1.4; word-break: break-all;">⏳ 로딩중...</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+        <div style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 8px;">⏭️ 내일 예정 요약</div>
+        <div id="dash-tomorrow-list" style="font-size: 0.8rem; color: #1e293b; line-height: 1.4; word-break: break-all;">⏳ 로딩중...</div>
+    </div>
+</div>
 
             <div style="background: #1e293b; border-radius: 12px; padding: 15px; color: white; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
                 <div>
