@@ -348,9 +348,24 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     .fc-day-sun .fc-daygrid-day-number { color: #ef4444 !important; }
     .fc-day-sat .fc-daygrid-day-number { color: #2563eb !important; }
     
-    /* 5. 오늘 날짜 강조 (배경색 연하게) */
+   /* 5. 🌟 오늘 날짜 확실하게 강조하기 */
     .fc-day-today {
-        background-color: #f8fafc !important;
+        background-color: #eff6ff !important; /* 전체 배경: 아주 연하고 시원한 파란색 */
+    }
+    
+    /* 오늘 날짜 숫자 부분 (파란색 동그라미 포인트) */
+    .fc-day-today .fc-daygrid-day-number {
+        background-color: #2563eb !important; /* 동그라미 배경: 진한 파란색 */
+        color: white !important;             /* 글자색: 흰색 */
+        border-radius: 50% !important;       /* 완벽한 동그라미 모양 */
+        width: 24px !important;
+        height: 24px !important;
+        display: inline-flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin: 2px 4px 0 0 !important;      /* 여백 조절 */
+        font-weight: bold !important;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3) !important; /* 살짝 붕 뜬 그림자 효과 */
     }
     
     
