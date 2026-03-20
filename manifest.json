@@ -3,8 +3,8 @@
   "short_name": "타이탄",
   "start_url": "index.html",
   "display": "standalone",
-"background_color": "#f8fafc",
-  "theme_color": "#f8fafc"
+"background_color": "#E60012",
+  "theme_color": "#E60012"
   "icons": [
     {
       "src": "https://github.com/westzero0/titan-work/blob/main/192.png?raw=true",
