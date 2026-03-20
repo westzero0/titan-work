@@ -668,25 +668,35 @@ function getWorkerColor(name) {
     return newColor;
 }
       
-window.addEventListener('DOMContentLoaded', async () => {
+window.addEventListener('DOMContentLoaded', () => {
+    // 1. 화면 뼈대 즉시 생성 (0.01초)
     initSwiper();
-    initCalendar(); 
     initDashboardToggle(); 
+    initCalendar(); // 빈 달력이라도 일단 띄움
+
+    // 2. [핵심] 폰에 저장된 데이터가 있으면 '즉시' 화면 채우기 (0.1초)
+    // 서버 응답 기다리지 않고 바로 실행합니다.
+    const cachedSchedules = localStorage.getItem('titan_schedules');
+    const cachedClients = localStorage.getItem('titan_clients');
+
+    if (cachedSchedules) {
+        globalScheduleData = JSON.parse(cachedSchedules);
+        console.log("⚡ 캐시에서 일정 즉시 로드");
+        renderAfterLoad(); // 일단 화면 그리기
+    }
     
-    // 💡 핵심: 현장 기본정보(주소, 안내사항)를 먼저 다 가져온 후 일정을 그립니다.
-    try {
-        await loadClientManagement(); // 거래처/현장 정보 우선 로드
-        await loadScheduleData();     // 그 다음 일정 로드
-        
-        initCalendar();       
-        renderScheduleList(); 
-        renderDashboard();    
-    } catch (e) {
-        console.error("데이터 로딩 실패:", e);
+    if (cachedClients) {
+        globalTitanData = JSON.parse(cachedClients);
+        console.log("⚡ 캐시에서 거래처 즉시 로드");
+        renderRegistrationClientChips(); // 칩 미리 만들어두기
     }
 
-    // 상대적으로 덜 중요한 직원 정보만 나중에 로드
-    setTimeout(() => { loadAdminData(); }, 500);
+    // 3. 화면은 떴으니, 이제 뒷단에서 조용히 서버 데이터를 가져와서 업데이트 (백그라운드)
+    loadScheduleData();     
+    loadClientManagement(); 
+    
+    // 상대적으로 가벼운 인원 정보는 천천히
+    setTimeout(() => { loadAdminData(); }, 1000);
 });
       
 
@@ -1536,38 +1546,49 @@ function renderAfterLoad() {
       
     }  
       
-// [1] 데이터 로딩 함수 (박스 뜯어서 알맹이만 꺼내기)
-    async function loadClientManagement() {
-        const container = document.getElementById('client-management-list');
-        if(container) container.innerHTML = '<div style="text-align:center; padding:40px; color:#64748b;">⏳ 현장 카드를 생성 중입니다...</div>';
+// [2] 거래처 및 현장 정보 로딩 (0초 로딩 캐시 적용 완료!)
+async function loadClientManagement() {
+    const container = document.getElementById('client-management-list');
 
-        try {
-            const res = await fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'getTitanData' }) 
-            });
-            
-            const rawData = await res.json();
-          console.log("서버 원본 데이터:", rawData); // 👈 확인용 로그 추가
-            
-         // 🟢 [수정] titanData 알맹이만 확실히 추출
-if (rawData.titanData) {
-    globalTitanData = rawData.titanData;
-} else if (rawData.result) {
-    globalTitanData = rawData.result;
-} else {
-    globalTitanData = rawData;
-}
-
-            // 진짜 UI(카드) 그리기 함수 호출
-            renderClientList();
-          renderRegistrationClientChips(); // 🔴 [추가] 등록용 칩 생성 실행!
-
-        } catch (e) {
-            console.error("로딩 실패:", e);
-            if(container) container.innerHTML = '<div style="color:#ef4444; text-align:center; padding:20px;">데이터 연결 실패</div>';
-        }
+    // 1. 폰에 저장된 거래처 데이터(캐시)가 있는지 먼저 확인!
+    const cached = localStorage.getItem('titan_clients');
+    if (cached) {
+        globalTitanData = JSON.parse(cached);
+        renderClientList();
+        renderRegistrationClientChips();
+        // 저장된 게 있으면 로딩 글씨를 안 보여주고 즉시 띄웁니다.
+    } else {
+        if(container) container.innerHTML = '<div style="text-align:center; padding:40px; color:#64748b;">⏳ 현장 정보를 불러오는 중입니다...</div>';
     }
+
+    // 2. 뒷단에서 조용히 서버 최신 데이터 가져오기
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getTitanData' }) 
+        });
+        const rawData = await res.json();
+        
+        // 데이터 알맹이 추출
+        let newData = rawData.titanData ? rawData.titanData : (rawData.result ? rawData.result : rawData);
+
+        // 3. 서버에서 가져온 게 폰에 있는 거랑 다를 때만 화면 새로고침!
+        if (cached !== JSON.stringify(newData)) {
+            globalTitanData = newData;
+            localStorage.setItem('titan_clients', JSON.stringify(newData)); // 🔴 폰에 새 데이터 저장!
+            
+            renderClientList();
+            renderRegistrationClientChips();
+            
+            // 💡 [중요] 현장 안내사항/주소가 바뀌었으니 달력 밑 일정 리스트도 한 번 다시 그려줍니다!
+            if(typeof renderScheduleList === 'function') renderScheduleList();
+            console.log("🔄 현장/거래처 캐시 업데이트 완료");
+        }
+    } catch (e) {
+        console.error("거래처 로딩 실패:", e);
+        if(container && !cached) container.innerHTML = '<div style="color:#ef4444; text-align:center; padding:20px;">데이터 연결 실패</div>';
+    }
+}
 
 // 🔴 1. 양쪽 칩을 동시에 관리하고 서로 숨겨주는 핵심 통합 함수!
 function updateAllWorkerChipsUI() {
