@@ -1457,8 +1457,37 @@ async function sendToGas(action, data) {
     }
 }
 
-    async function loadScheduleData() { const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getScheduleList' }) }); globalScheduleData = await res.json(); }
+async function loadScheduleData() {
+    // 1. 일단 폰에 저장된 데이터가 있는지 확인해서 있으면 즉시 보여줌
+    const cached = localStorage.getItem('titan_schedules');
+    if (cached) {
+        globalScheduleData = JSON.parse(cached);
+        renderAfterLoad(); // 일단 화면부터 띄움 (0.1초!)
+    }
 
+    try {
+        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getScheduleList' }) });
+        const newData = await res.json();
+        
+        // 2. 서버에서 가져온 데이터가 폰에 저장된 것과 다를 때만 슥 교체
+        if (cached !== JSON.stringify(newData)) {
+            globalScheduleData = newData;
+            localStorage.setItem('titan_schedules', JSON.stringify(newData)); // 새 데이터 저장
+            renderAfterLoad(); // 바뀐 내용 반영
+        }
+    } catch (e) { 
+        console.error("일정 동기화 실패", e); 
+    }
+}
+
+// 렌더링 호출을 한곳으로 모으는 함수 (기존에 쓰던 거 그대로 활용)
+function renderAfterLoad() {
+    if(typeof initCalendar === 'function') initCalendar();       
+    if(typeof renderScheduleList === 'function') renderScheduleList(); 
+    if(typeof renderDashboard === 'function') renderDashboard();
+}
+
+      
       // [직원 관리] 상세 정보 표시 기능 복구
           async function loadAdminData() { 
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) }); 
