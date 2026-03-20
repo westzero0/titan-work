@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="theme-color" content="#E60012">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="https://github.com/westzero0/titan-work/blob/main/192.png?raw=true">
 
@@ -423,7 +428,18 @@ html { scroll-behavior: smooth; }
 }
 
 
-
+/* 🌟 동기화 토스트 알림창 스타일 */
+        #sync-toast {
+            display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(30, 41, 59, 0.9); color: white; padding: 8px 16px; border-radius: 20px;
+            font-size: 0.85rem; font-weight: bold; z-index: 10001; /* 스플래시보다 높게 */
+            align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: opacity 0.3s;
+        }
+        .sync-spinner {
+            width: 14px; height: 14px; border: 2px solid #cbd5e1; border-top-color: #3b82f6;
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
         
 
         
@@ -657,6 +673,13 @@ html { scroll-behavior: smooth; }
         </div>
     </div>
 </div>
+
+
+    <div id="sync-toast">
+        <div class="sync-spinner" id="sync-spinner-icon"></div>
+        <span id="sync-message">최신 데이터 확인 중...</span>
+    </div>
+
     
     <script src="script.js"></script>
 
