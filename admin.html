@@ -392,53 +392,50 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     </div>
 
 <div id="dashboard-content" style="display: none; width: 100%; margin-top: 10px; z-index: 999; box-sizing: border-box;">
-<div id="dashboard-inner" style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 2px solid #cbd5e1; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">            
-            <div style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px;">
-                <div style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                    <div style="font-size: 0.75rem; color: #10b981; font-weight: bold; margin-bottom: 5px;">👥 오늘 인력 가동 현황</div>
-                    <div id="dash-manpower-stat" style="font-size: 0.85rem; color: #334155;">⏳ 계산중...</div>
-                </div>
-                
-                <div style="display: flex; gap: 8px;">
-                    <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                        <div style="flex: 1; min-width: 0; font-size: 0.75rem; color: #8b5cf6; font-weight: bold; margin-bottom: 5px;">🚛 차량 배차</div>
-                        <div id="dash-car-stat" style="font-size: 0.85rem; color: #334155;">⏳ 계산중...</div>
-                    </div>
-                    <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                        <div style="flex: 1; min-width: 0; font-size: 0.75rem; color: #f59e0b; font-weight: bold; margin-bottom: 5px;">🛠️ 주력 공정</div>
-                        <div id="dash-work-stat" style="font-size: 0.85rem; color: #334155;">⏳ 계산중...</div>
-                    </div>
-                </div>
-            </div>
-            <div style="margin-bottom: 20px; display: flex; gap: 8px;">
-           <div style="margin-bottom: 15px; display: flex; gap: 8px; width: 100%; box-sizing: border-box;">
-    <div style="flex: 1; min-width: 0; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-        <div style="font-size: 0.75rem; color: #3b82f6; font-weight: bold; margin-bottom: 5px;">📅 오늘 요약</div>
-        <div id="dash-today-list" style="font-size: 0.8rem; color: #1e293b; line-height: 1.4; word-break: break-all;">⏳</div>
-    </div>
-
-    <div style="flex: 1; min-width: 0; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-        <div style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 5px;">⏭️ 내일 요약</div>
-        <div id="dash-tomorrow-list" style="font-size: 0.8rem; color: #1e293b; line-height: 1.4; word-break: break-all;">⏳</div>
-    </div>
-</div>
-
-<div style="clear: both; width: 100%; background: #1e293b; border-radius: 12px; padding: 15px; color: white; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; box-sizing: border-box;">
-    <div>
-        <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">🔴 미수금 총액</div>
-        <div id="dash-total-unpaid" style="font-size: 1.3rem; font-weight: 900;">0 원</div>
-    </div>
-    <div id="dash-unpaid-count" style="font-size: 0.75rem; opacity: 0.8;">미수 현장 0곳</div>
-</div>
-
-            <div id="dash-receivables-brief" style="display: flex; flex-direction: column; gap: 10px;"></div>
-
-            <div style="text-align: center; margin-top: 15px;">
-                <button onclick="toggleDashboard()" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;">
-                    닫기 👆
-                </button>
-            </div>
+<div id="dashboard-inner" style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 2px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; box-sizing: border-box;">
+    
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+        <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
+            <div style="font-size: 0.75rem; color: #10b981; font-weight: bold; margin-bottom: 4px;">👥 오늘 인력 가동</div>
+            <div id="dash-manpower-stat" style="font-size: 0.9rem; color: #334155;">⏳ 계산중...</div>
         </div>
+        
+        <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
+            <div style="font-size: 0.75rem; color: #8b5cf6; font-weight: bold; margin-bottom: 4px;">🚛 차량 배차</div>
+            <div id="dash-car-stat" style="font-size: 0.9rem; color: #334155;">⏳ 계산중...</div>
+        </div>
+
+        <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
+            <div style="font-size: 0.75rem; color: #f59e0b; font-weight: bold; margin-bottom: 4px;">🛠️ 주력 공정</div>
+            <div id="dash-work-stat" style="font-size: 0.9rem; color: #334155;">⏳ 계산중...</div>
+        </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+        <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
+            <div style="font-size: 0.75rem; color: #3b82f6; font-weight: bold; margin-bottom: 6px;">📅 오늘 작업 요약</div>
+            <div id="dash-today-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5; word-break: break-all;">⏳</div>
+        </div>
+        <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 6px;">⏭️ 내일 예정 요약</div>
+            <div id="dash-tomorrow-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5; word-break: break-all;">⏳</div>
+        </div>
+    </div>
+
+    <div style="background: #1e293b; border-radius: 10px; padding: 15px; color: white; margin-bottom: 15px;">
+        <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">🔴 미수금 총액</div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <span id="dash-total-unpaid" style="font-size: 1.3rem; font-weight: 900;">0 원</span>
+            <span id="dash-unpaid-count" style="font-size: 0.75rem; opacity: 0.8;">미수 0곳</span>
+        </div>
+    </div>
+
+    <div id="dash-receivables-brief" style="display: flex; flex-direction: column; gap: 8px;"></div>
+
+    <div style="text-align: center; margin-top: 10px;">
+        <button onclick="toggleDashboard()" style="background: #e2e8f0; color: #475569; border: none; padding: 12px 40px; border-radius: 8px; font-weight: bold; width: 100%;">닫기 👆</button>
+    </div>
+</div>
     </div>
 </div>
 
