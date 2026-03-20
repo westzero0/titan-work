@@ -30,20 +30,27 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbz4Pl186OaqgjuOnCyGzROB
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
 
-// 💡 1. 통합 초기 로드 로직
+// 💡 1. 통합 초기 로드 로직 (캐시 있으면 로딩창 즉시 패스!)
 document.addEventListener('DOMContentLoaded', async () => {
-    // 스플래시 화면 제어
-    setTimeout(() => {
-        const splash = document.getElementById('splash-screen');
-        if (splash) {
-            splash.style.opacity = '0';
-            setTimeout(() => { splash.style.display = 'none'; }, 500);
-        }
-    }, 2000);
+    // 폰에 저장된 데이터가 있는지 확인
+    const cachedData = localStorage.getItem('titan_full_data_cache');
+    const splash = document.getElementById('splash-screen');
+
+    if (cachedData) {
+        // 캐시가 있으면 빨간 로딩창을 0초 만에 바로 숨김
+        if (splash) splash.style.display = 'none';
+    } else {
+        // 캐시가 없는 최초 접속 시에만 2초 보여줌
+        setTimeout(() => {
+            if (splash) {
+                splash.style.opacity = '0';
+                setTimeout(() => { splash.style.display = 'none'; }, 500);
+            }
+        }, 2000);
+    }
 
     // 로그인 상태 확인
     const savedName = localStorage.getItem('titan_user_name');
-    
     if (!savedName) {
         showLoginScreen();
     } else {
@@ -225,7 +232,20 @@ function copyScheduleToLogSafe(safeData) {
     }
 }
 
+// 💡 2. 거래처/현장 로드 (캐시 + 토스트 동기화)
 async function loadTitanDataWithBackgroundSync() {
+    // 1. 캐시 먼저 로드 & 화면 즉시 그리기
+    const cached = localStorage.getItem('titan_full_data_cache');
+    if (cached) {
+        window.globalTitanData = JSON.parse(cached);
+        const clientNames = Object.keys(window.globalTitanData).filter(k => !['status','message','result'].includes(k));
+        if (typeof renderClientChips === 'function') renderClientChips(clientNames);
+    }
+
+    // 2. 동기화 토스트 띄우기
+    showSyncToast('거래처 목록 확인 중...', true);
+
+    // 3. 서버 요청 및 데이터 비교
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -235,25 +255,23 @@ async function loadTitanDataWithBackgroundSync() {
         const fullData = rawData.titanData || rawData.result || rawData;
 
         if (fullData && typeof fullData === 'object') {
-            // 🔴 [수정] 박스 이름을 'window.globalTitanData'로 통일해서 어디서든 보이게 함
-            window.globalTitanData = fullData; 
-            localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
-            
-            console.log("📍 주소 박스 채우기 완료. 현재 들어있는 거래처:", Object.keys(window.globalTitanData));
-
-
-            // 🔴 [복구 완료] 일보 작성 탭에 거래처 버튼(칩)을 화면에 뿌려줍니다!
-            const clientNames = Object.keys(fullData).filter(k => !['status','message','result'].includes(k));
-            if (typeof renderClientChips === 'function') renderClientChips(clientNames);
-
-            
-            // 🔴 박스가 채워졌으니 즉시 화면을 다시 그립니다.
-            if (typeof renderCards === 'function') renderCards();
+            // 서버 데이터가 캐시와 다를 때만 덮어쓰기
+            if (cached !== JSON.stringify(fullData)) {
+                window.globalTitanData = fullData; 
+                localStorage.setItem('titan_full_data_cache', JSON.stringify(fullData));
+                
+                const clientNames = Object.keys(fullData).filter(k => !['status','message','result'].includes(k));
+                if (typeof renderClientChips === 'function') renderClientChips(clientNames);
+                
+                showSyncToast('✨ 거래처 목록 갱신 완료!', false);
+                setTimeout(hideSyncToast, 2000);
+            } else {
+                hideSyncToast(); // 바뀐 게 없으면 조용히 끔
+            }
         }
     } catch (e) {
-        console.log("연결 실패: 캐시 사용");
-        const cached = localStorage.getItem('titan_full_data_cache');
-        if (cached) window.globalTitanData = JSON.parse(cached);
+        console.error("거래처 로딩 실패:", e);
+        hideSyncToast();
     }
 }
 
@@ -691,39 +709,71 @@ function copyAddr(text) {
     alert("복사되었습니다: " + text);
 }
 
+// 💡 3. 일정 데이터 로드 (캐시 + 토스트 동기화)
 async function loadSchedules() {
     const container = document.getElementById('schedule-container');
-    container.innerHTML = '<p style="text-align:center; padding:20px;">🔌 서버 연결 중...</p>';
+
+    // 1. 캐시 먼저 로드
+    const cached = localStorage.getItem('titan_schedules_cache');
+    if (cached) {
+        allSchedules = JSON.parse(cached);
+        updateWorkerSelectAndRender(); 
+    } else {
+        container.innerHTML = '<p style="text-align:center; padding:20px;">🔌 서버 연결 중...</p>';
+    }
+
+    showSyncToast('최신 일정 확인 중...', true);
 
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'getScheduleList' }) // 또는 'getScheduleData'
+            body: JSON.stringify({ action: 'getScheduleList' }) 
         });
-
         const result = await res.json();
-        
-        // 🔴 [수정] 서버가 주는 모양이 배열이면 그대로 사용합니다.
-        allSchedules = Array.isArray(result) ? result : (result.schedules || []);
+        const newData = Array.isArray(result) ? result : (result.schedules || []);
 
-        const select = document.getElementById('worker-select');
-        select.innerHTML = '<option value="전체">👤 전체 보기</option>';
-        let workerSet = new Set();
-        
-        allSchedules.forEach(s => {
-            // workers가 배열일 수도, 문자열일 수도 있어서 안전하게 처리
-            const wList = Array.isArray(s.workers) ? s.workers : (s.workers || "").split(',');
-            wList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
-        });
-        
-        Array.from(workerSet).sort().forEach(w => select.add(new Option(w, w)));
-        renderView();
-
+        if (cached !== JSON.stringify(newData)) {
+            allSchedules = newData;
+            localStorage.setItem('titan_schedules_cache', JSON.stringify(newData));
+            updateWorkerSelectAndRender();
+            
+            showSyncToast('✨ 최신 일정 갱신 완료!', false);
+            setTimeout(hideSyncToast, 2000);
+        } else {
+            hideSyncToast();
+        }
     } catch (e) {
-        console.error("로드 에러:", e);
-        container.innerHTML = '<p style="text-align:center; color:red; padding:20px;">⚠️ 일정 로드 실패</p>';
+        console.error("일정 로드 에러:", e);
+        if (!cached) container.innerHTML = '<p style="text-align:center; color:red; padding:20px;">⚠️ 일정 로드 실패</p>';
+        showSyncToast('⚠️ 통신 실패', false);
+        setTimeout(hideSyncToast, 2000);
     }
 }
+
+// 💡 일정 로드 후 화면을 갱신하는 헬퍼 함수
+function updateWorkerSelectAndRender() {
+    const select = document.getElementById('worker-select');
+    const currentVal = select.value; // 현재 선택한 이름 기억해두기
+
+    select.innerHTML = '<option value="전체">👤 전체 보기</option>';
+    let workerSet = new Set();
+    
+    allSchedules.forEach(s => {
+        const wList = Array.isArray(s.workers) ? s.workers : (s.workers || "").split(',');
+        wList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
+    });
+    
+    Array.from(workerSet).sort().forEach(w => select.add(new Option(w, w)));
+    
+    // 이전에 선택했던 이름이 새 목록에도 있으면 유지
+    if (Array.from(select.options).some(opt => opt.value === currentVal)) {
+        select.value = currentVal;
+    }
+    
+    renderView(); // 캘린더/카드뷰 다시 그리기
+}
+
+
 
 function renderView() {
     const timeline = document.getElementById('timeline-grid');
@@ -1189,34 +1239,55 @@ async function toggleMaterialUI() {
     }
 }
 
-// 서버에서 자재 데이터 로드 (fetch)
+// 💡 4. 자재 데이터 로드 (캐시 + 토스트 동기화)
 async function loadMaterialData() {
     const listContainer = document.getElementById('material-list');
     const tabContainer = document.getElementById('category-tabs');
 
-    tabContainer.innerHTML = "<span style='font-size:0.8rem; padding:10px;'>⏳ 분류 로딩 중...</span>";
-    listContainer.innerHTML = "<p style='text-align:center; padding:20px;'>⏳ 서버에서 자재 목록을 불러오고 있습니다...</p>";
+    // 1. 캐시 확인
+    const cached = localStorage.getItem('titan_materials_cache');
+    if (cached) {
+        allMaterials = JSON.parse(cached);
+        isMatLoaded = true;
+        renderCategoryTabs(); 
+        document.getElementById('sub-category-chips').innerHTML = "<span style='font-size:0.8rem; color:#94a3b8; padding:5px;'>상단 대분류를 선택하세요.</span>";
+        listContainer.innerHTML = "<p style='text-align:center; padding:20px; color:#94a3b8;'>분류를 선택해주세요.</p>";
+    } else {
+        tabContainer.innerHTML = "<span style='font-size:0.8rem; padding:10px;'>⏳ 분류 로딩 중...</span>";
+        listContainer.innerHTML = "<p style='text-align:center; padding:20px;'>⏳ 서버에서 자재 목록을 불러오고 있습니다...</p>";
+    }
+
+    showSyncToast('자재 목록 동기화 중...', true);
 
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
             body: JSON.stringify({ action: "getMaterialData" })
         });
-        
         const text = await res.text();
-        allMaterials = JSON.parse(text); // 서버에서 온 { "배관": [...], "전선": [...] }
+        const newData = JSON.parse(text); 
         
-        isMatLoaded = true;
-        renderCategoryTabs(); 
-        
-        document.getElementById('sub-category-chips').innerHTML = 
-            "<span style='font-size:0.8rem; color:#94a3b8; padding:5px;'>상단 대분류를 선택하세요.</span>";
-        listContainer.innerHTML = "<p style='text-align:center; padding:20px; color:#94a3b8;'>분류를 선택해주세요.</p>";
-
+        if (cached !== JSON.stringify(newData)) {
+            allMaterials = newData;
+            localStorage.setItem('titan_materials_cache', JSON.stringify(newData));
+            isMatLoaded = true;
+            renderCategoryTabs(); 
+            document.getElementById('sub-category-chips').innerHTML = "<span style='font-size:0.8rem; color:#94a3b8; padding:5px;'>상단 대분류를 선택하세요.</span>";
+            listContainer.innerHTML = "<p style='text-align:center; padding:20px; color:#94a3b8;'>분류를 선택해주세요.</p>";
+            
+            showSyncToast('✨ 자재 목록 갱신 완료!', false);
+            setTimeout(hideSyncToast, 2000);
+        } else {
+            hideSyncToast();
+        }
     } catch (e) {
         console.error(e);
-        listContainer.innerHTML = "<p style='text-align:center; color:red;'>⚠️ 데이터 로드 실패. 새로고침 해주세요.</p>";
-        tabContainer.innerHTML = "";
+        if (!cached) {
+            listContainer.innerHTML = "<p style='text-align:center; color:red;'>⚠️ 데이터 로드 실패. 새로고침 해주세요.</p>";
+            tabContainer.innerHTML = "";
+        }
+        showSyncToast('⚠️ 통신 실패', false);
+        setTimeout(hideSyncToast, 2000);
     }
 }
 
@@ -1690,3 +1761,27 @@ function closeMatModal() {
     const modal = document.getElementById('mat-check-modal');
     if (modal) modal.style.display = 'none';
 }
+
+
+// 🔔 동기화 알림 켜기
+function showSyncToast(msg, isLoading = true) {
+    const toast = document.getElementById('sync-toast');
+    const spinner = document.getElementById('sync-spinner-icon');
+    const message = document.getElementById('sync-message');
+    
+    if(!toast) return;
+    toast.style.display = 'flex';
+    toast.style.opacity = '1';
+    message.innerText = msg;
+    spinner.style.display = isLoading ? 'block' : 'none';
+}
+
+// 🔕 동기화 알림 끄기
+function hideSyncToast() {
+    const toast = document.getElementById('sync-toast');
+    if(!toast) return;
+    toast.style.opacity = '0';
+    setTimeout(() => { toast.style.display = 'none'; }, 300);
+}
+
+
