@@ -382,9 +382,10 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     <div class="swiper">
   <div class="swiper-wrapper">
 
- <div class="swiper-slide">
-
-  <div id="dashboard-wrapper" style="position: relative; margin: 15px 15px 5px 15px; z-index: 100;">
+<div class="swiper-slide" style="height: auto !important; min-height: 100%;">
+  
+ <div id="dashboard-wrapper" style="position: relative; margin: 15px 15px 5px 15px; z-index: 100;">
+   
     <div onclick="toggleDashboard()" style="background: #1e293b; color: white; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <span style="font-weight: bold; font-size: 1.05rem;">📊 오늘의 현장 브리핑 & 수금</span>
         <span id="dashboard-arrow" style="transition: transform 0.3s;">▼</span>
