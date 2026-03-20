@@ -709,15 +709,15 @@ function copyAddr(text) {
     alert("복사되었습니다: " + text);
 }
 
-// 💡 3. 일정 데이터 로드 (캐시 + 토스트 동기화)
+// 💡 3. 일정 데이터 로드 (스크롤 튕김 방지 + 완벽한 캐시 동기화)
 async function loadSchedules() {
     const container = document.getElementById('schedule-container');
 
-    // 1. 캐시 먼저 로드
-    const cached = localStorage.getItem('titan_schedules_cache');
-    if (cached) {
-        allSchedules = JSON.parse(cached);
-        updateWorkerSelectAndRender(); 
+    // 1. 캐시(기억) 꺼내기
+    const cachedStr = localStorage.getItem('titan_schedules_cache');
+    if (cachedStr) {
+        allSchedules = JSON.parse(cachedStr);
+        updateWorkerSelectAndRender(); // 0.1초 만에 화면 띄움
     } else {
         container.innerHTML = '<p style="text-align:center; padding:20px;">🔌 서버 연결 중...</p>';
     }
@@ -731,20 +731,33 @@ async function loadSchedules() {
         });
         const result = await res.json();
         const newData = Array.isArray(result) ? result : (result.schedules || []);
+        
+        // 서버에서 방금 가져온 데이터를 문자열로 변환
+        const newDataStr = JSON.stringify(newData);
 
-        if (cached !== JSON.stringify(newData)) {
+        // 2. ★ 핵심: 폰에 있던 데이터랑 서버 데이터가 "진짜로 다를 때만" 화면을 다시 그림!
+        if (cachedStr !== newDataStr) {
             allSchedules = newData;
-            localStorage.setItem('titan_schedules_cache', JSON.stringify(newData));
-            updateWorkerSelectAndRender();
+            localStorage.setItem('titan_schedules_cache', newDataStr); // 새 데이터 저장
             
+            // 🌟 [마법의 꼼수] 화면 갈아엎기 직전에 현재 내 스크롤 위치 기억!
+            const currentScrollY = window.scrollY; 
+
+            // 바뀐 정보로 화면 다시 그리기
+            updateWorkerSelectAndRender(); 
+            
+            // 🌟 화면 다시 그렸어도 0.001초 만에 아까 그 스크롤 위치로 강제 고정! (깜빡임 최소화)
+            window.scrollTo(0, currentScrollY);
+
             showSyncToast('✨ 최신 일정 갱신 완료!', false);
             setTimeout(hideSyncToast, 2000);
         } else {
+            // 바뀐 게 1도 없으면 새로고침 안 하고 토스트 알림만 스르륵 끔
             hideSyncToast();
         }
     } catch (e) {
         console.error("일정 로드 에러:", e);
-        if (!cached) container.innerHTML = '<p style="text-align:center; color:red; padding:20px;">⚠️ 일정 로드 실패</p>';
+        if (!cachedStr) container.innerHTML = '<p style="text-align:center; color:red; padding:20px;">⚠️ 일정 로드 실패</p>';
         showSyncToast('⚠️ 통신 실패', false);
         setTimeout(hideSyncToast, 2000);
     }
