@@ -34,34 +34,59 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbz4Pl186OaqgjuOnCyGzROB
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
 
-// 💡 1. 통합 초기 로드 로직 (캐시 있으면 로딩창 즉시 패스!)
+// 💡 1. 통합 초기 로드 로직 (로그인 체크 + 스플래시 시간 보장)
 document.addEventListener('DOMContentLoaded', async () => {
-    // 폰에 저장된 데이터가 있는지 확인
-    const cachedData = localStorage.getItem('titan_full_data_cache');
     const splash = document.getElementById('splash-screen');
+    const startTime = Date.now(); // ⏱️ 로딩 시작 시간 기록
 
-    if (cachedData) {
-        // 캐시가 있으면 빨간 로딩창을 0초 만에 바로 숨김
-        if (splash) splash.style.display = 'none';
-    } else {
-        // 캐시가 없는 최초 접속 시에만 2초 보여줌
+    // 🎨 스플래시를 부드럽게 끄는 리모컨 (기본 1.2초 보장)
+    const fadeOutSplash = (minDuration = 1200) => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, minDuration - elapsed);
+
         setTimeout(() => {
             if (splash) {
+                splash.style.transition = 'opacity 0.6s ease'; 
                 splash.style.opacity = '0';
-                setTimeout(() => { splash.style.display = 'none'; }, 500);
+                setTimeout(() => { splash.style.display = 'none'; }, 600);
             }
-        }, 2000);
-    }
+        }, remaining);
+    };
 
-    // 로그인 상태 확인
+    // ---------------------------------------------------------
+    // 🔍 [로그인 및 데이터 체크 시작]
+    // ---------------------------------------------------------
     const savedName = localStorage.getItem('titan_user_name');
+    const cachedData = localStorage.getItem('titan_full_data_cache');
+
+    // 1. 이름이 아예 없으면? 바로 로그인 화면으로!
     if (!savedName) {
         showLoginScreen();
-    } else {
-        const isActive = await checkAuth(savedName);
+        fadeOutSplash(800); // 로그인창은 조금 더 빨리 보여줌 (0.8초)
+        return;
+    }
+
+    // 2. 이름이 있으면? 진짜 살아있는 계정인지 서버에 물어봄 (checkAuth)
+    try {
+        // 서버에 물어보는 동안은 빨간 화면이 계속 유지됩니다! (중요)
+        const isActive = await checkAuth(savedName); 
+        
         if (isActive) {
+            // ✅ 승인된 사용자면 앱 실행!
             initApp(savedName); 
+            fadeOutSplash(1200); // 로고를 1.2초간 폼나게 보여주고 퇴장
+        } else {
+            // ❌ 차단된 사용자면 다시 로그인으로!
+            localStorage.removeItem('titan_user_name'); // 잘못된 정보 삭제
+            showLoginScreen();
+            fadeOutSplash(500);
         }
+    } catch (e) {
+        // 🌐 인터넷이 불안정해서 서버 응답이 없으면? 
+        // 일단 폰에 저장된 캐시 데이터로 접속시켜줌 (오프라인 모드)
+        console.error("인증 체크 실패, 오프라인 모드 진입");
+        initApp(savedName);
+        fadeOutSplash(1000);
     }
 });
 
