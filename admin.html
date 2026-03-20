@@ -369,44 +369,61 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
  <div class="swiper-slide">
 
-    <div id="dashboard-wrapper" style="position: relative; margin: 15px 15px 5px 15px; z-index: 100;">
-        <div onclick="toggleDashboard()" style="background: #1e293b; color: white; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <span style="font-weight: bold; font-size: 1.05rem;">📊 오늘의 현황 및 수금 브리핑</span>
-            <span id="dashboard-arrow" style="transition: transform 0.3s;">▼</span>
-        </div>
+  <div id="dashboard-wrapper" style="position: relative; margin: 15px 15px 5px 15px; z-index: 100;">
+    <div onclick="toggleDashboard()" style="background: #1e293b; color: white; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <span style="font-weight: bold; font-size: 1.05rem;">📊 오늘의 현장 브리핑 & 수금</span>
+        <span id="dashboard-arrow" style="transition: transform 0.3s;">▼</span>
+    </div>
 
-        <div id="dashboard-content" style="display: none; position: absolute; top: 60px; left: 0; width: 100%; z-index: 999; box-sizing: border-box;">
-            <div id="dashboard-inner" style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 2px solid #cbd5e1; box-shadow: 0 15px 30px rgba(0,0,0,0.3); max-height: 75vh; overflow-y: auto;">
+    <div id="dashboard-content" style="display: none; position: absolute; top: 60px; left: 0; width: 100%; z-index: 999; box-sizing: border-box;">
+        <div id="dashboard-inner" style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 2px solid #cbd5e1; box-shadow: 0 15px 30px rgba(0,0,0,0.3); max-height: 75vh; overflow-y: auto;">
+            
+            <div style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.75rem; color: #10b981; font-weight: bold; margin-bottom: 5px;">👥 오늘 인력 가동 현황</div>
+                    <div id="dash-manpower-stat" style="font-size: 0.85rem; color: #334155;">⏳ 계산중...</div>
+                </div>
                 
-                <div style="margin-bottom: 20px; display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px;">
                     <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                        <div style="font-size: 0.75rem; color: #3b82f6; font-weight: bold; margin-bottom: 8px;">📅 오늘 작업</div>
-                        <div id="dash-today-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
+                        <div style="font-size: 0.75rem; color: #8b5cf6; font-weight: bold; margin-bottom: 5px;">🚛 차량 배차</div>
+                        <div id="dash-car-stat" style="font-size: 0.85rem; color: #334155;">⏳ 계산중...</div>
                     </div>
                     <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                        <div style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 8px;">⏭️ 내일 예정</div>
-                        <div id="dash-tomorrow-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
+                        <div style="font-size: 0.75rem; color: #f59e0b; font-weight: bold; margin-bottom: 5px;">🛠️ 주력 공정</div>
+                        <div id="dash-work-stat" style="font-size: 0.85rem; color: #334155;">⏳ 계산중...</div>
                     </div>
                 </div>
-
-                <div style="background: #1e293b; border-radius: 12px; padding: 15px; color: white; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div>
-                        <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">🔴 미수금 총액</div>
-                        <div id="dash-total-unpaid" style="font-size: 1.4rem; font-weight: 900;">0 원</div>
-                    </div>
-                    <div id="dash-unpaid-count" style="font-size: 0.75rem; opacity: 0.8;">미수 현장 0곳</div>
+            </div>
+            <div style="margin-bottom: 20px; display: flex; gap: 8px;">
+                <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.75rem; color: #3b82f6; font-weight: bold; margin-bottom: 8px;">📅 오늘 작업 요약</div>
+                    <div id="dash-today-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
                 </div>
-
-                <div id="dash-receivables-brief" style="display: flex; flex-direction: column; gap: 10px;"></div>
-
-                <div style="text-align: center; margin-top: 15px;">
-                    <button onclick="toggleDashboard()" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;">
-                        닫기 👆
-                    </button>
+                <div style="flex: 1; background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 8px;">⏭️ 내일 예정 요약</div>
+                    <div id="dash-tomorrow-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5;">⏳ 로딩중...</div>
                 </div>
+            </div>
+
+            <div style="background: #1e293b; border-radius: 12px; padding: 15px; color: white; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">🔴 미수금 총액</div>
+                    <div id="dash-total-unpaid" style="font-size: 1.4rem; font-weight: 900;">0 원</div>
+                </div>
+                <div id="dash-unpaid-count" style="font-size: 0.75rem; opacity: 0.8;">미수 현장 0곳</div>
+            </div>
+
+            <div id="dash-receivables-brief" style="display: flex; flex-direction: column; gap: 10px;"></div>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <button onclick="toggleDashboard()" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem;">
+                    닫기 👆
+                </button>
             </div>
         </div>
     </div>
+</div>
 
       <div style="padding: 10px 10px 10px 10px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
@@ -1985,14 +2002,97 @@ function renderDashboard() {
 
     const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
 
-    // --- 1. 작업 현황 ---
+    // --- 1. 오늘 & 내일 일정 필터링 ---
     const todayJobs = scheduleData.filter(item => item.date === todayStr);
     const tomorrowJobs = scheduleData.filter(item => item.date === tomorrowStr);
 
     document.getElementById('dash-today-list').innerHTML = formatJobList(todayJobs);
     document.getElementById('dash-tomorrow-list').innerHTML = formatJobList(tomorrowJobs);
 
-    // --- 2. 수금 현황 ---
+    // --- 🚀 [신규] 인력, 차량, 공정 데이터 자동 집계 ---
+    let workingSet = new Set();
+    let offSet = new Set();
+    let carMap = {};  // {'봉고': ['강남', '서초']}
+    let workMap = {}; // {'포설': 2팀, '단말': 1팀}
+
+    todayJobs.forEach(j => {
+        if (j.client === '휴무' || j.site === '휴무') {
+            // 전체 휴무일 때
+            if (j.offWorkers) j.offWorkers.split(',').forEach(w => w.trim() && offSet.add(w.trim()));
+        } else {
+            // 출근자 & 개별 휴무자 모으기
+            if (j.workers) j.workers.split(',').forEach(w => w.trim() && workingSet.add(w.trim()));
+            if (j.offWorkers) j.offWorkers.split(',').forEach(w => w.trim() && offSet.add(w.trim()));
+
+            // 배차 차량 묶기
+            if (j.car) {
+                j.car.split(',').forEach(c => {
+                    const carName = c.trim();
+                    if (carName) {
+                        if (!carMap[carName]) carMap[carName] = [];
+                        carMap[carName].push(j.site);
+                    }
+                });
+            }
+
+            // 주력 공정 세기
+            if (j.content) {
+                j.content.split(',').forEach(w => {
+                    const workName = w.trim();
+                    if (workName) workMap[workName] = (workMap[workName] || 0) + 1;
+                });
+            }
+        }
+    });
+
+    // 🎯 1. 인력 현황 업데이트
+    const dashManpower = document.getElementById('dash-manpower-stat');
+    if (dashManpower) {
+        const wCount = workingSet.size;
+        const oCount = offSet.size;
+        const offList = Array.from(offSet).join(', ');
+        
+        let html = `<div style="font-size:1.05rem; font-weight:900;">🟢 투입 <span style="color:#2563eb;">${wCount}명</span> / 🔴 휴무 <span style="color:#ef4444;">${oCount}명</span></div>`;
+        if (oCount > 0) {
+            html += `<div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">휴무자: ${offList}</div>`;
+        }
+        dashManpower.innerHTML = html;
+    }
+
+    // 🎯 2. 차량 배차 현황 업데이트
+    const dashCar = document.getElementById('dash-car-stat');
+    if (dashCar) {
+        const carKeys = Object.keys(carMap);
+        if (carKeys.length === 0) {
+            dashCar.innerHTML = '<span style="color:#cbd5e1;">배차 없음</span>';
+        } else {
+            let html = `<div style="font-weight:bold; margin-bottom:6px;">총 ${carKeys.length}대 운행</div>`;
+            carKeys.forEach(c => {
+                const sites = carMap[c].join(', ');
+                html += `<div style="font-size:0.75rem; color:#475569; margin-top:4px; background:#f1f5f9; padding:4px 8px; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🚛 <b>${c}</b> ➡️ ${sites}</div>`;
+            });
+            dashCar.innerHTML = html;
+        }
+    }
+
+    // 🎯 4. 주력 공정 현황 업데이트
+    const dashWork = document.getElementById('dash-work-stat');
+    if (dashWork) {
+        // 공정 팀 수가 많은 순서대로 정렬
+        const workKeys = Object.keys(workMap).sort((a,b) => workMap[b] - workMap[a]);
+        if (workKeys.length === 0) {
+            dashWork.innerHTML = '<span style="color:#cbd5e1;">입력 없음</span>';
+        } else {
+            let html = `<div style="display:flex; flex-wrap:wrap; gap:6px;">`;
+            workKeys.forEach(w => {
+                html += `<span style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:bold;">⚡ ${w} (${workMap[w]}팀)</span>`;
+            });
+            html += `</div>`;
+            dashWork.innerHTML = html;
+        }
+    }
+
+    // --- 2. 수금 현황 로드 ---
     loadReceivables();
 }
 
