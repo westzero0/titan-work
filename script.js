@@ -861,10 +861,18 @@ function renderTimeline() {
         date.setDate(date.getDate() + i);
         const dateStr = date.toISOString().split('T')[0];
         
-        // 해당 날짜의 일정 필터링
-        let dayJobs = allSchedules.filter(j => 
-            j.date === dateStr && (worker === "전체" || (j.workers && j.workers.includes(worker)))
-        );
+        // 🌟 1. 해당 날짜의 일정 필터링 (휴무자 명단도 같이 검사!)
+        let dayJobs = allSchedules.filter(j => {
+            if (j.date !== dateStr) return false;
+            if (worker === "전체") return true;
+            
+            // 일하는 사람과 쉬는 사람 명단을 모두 배열로 만듦
+            const wList = (j.workers || "").toString().split(',').map(n => n.trim());
+            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
+            
+            // 둘 중 한 곳에라도 이름이 있으면 통과!
+            return wList.includes(worker) || offList.includes(worker);
+        });
 
         const col = document.createElement('div');
         col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
@@ -872,15 +880,30 @@ function renderTimeline() {
             <div style="font-size:0.75rem; text-align:center; margin-bottom:5px; font-weight:bold;">${dateStr === todayStr ? '🌟' : (date.getMonth()+1)+'/'+date.getDate()}</div>
             <div style="display:flex; flex-direction:column; gap:4px;">
                 ${dayJobs.map(j => {
-                    // 🔴 1. 인원수 계산 (쉼표로 쪼개서 정확히 카운트)
-                    const wCount = (j.workers || "").toString().split(',').filter(n => n.trim() !== "").length;
-                    const displayTitle = `${j.site}(${wCount})`;
+                    // 🌟 2. 휴무 상태인지 확인
+                    const isOffDuty = (j.site === '휴무' || j.site === 'X');
 
-                    // 🔴 2. 주/야 색상 판별
-                    const isNight = (j.shift || "").toString().includes('야');
-                    const bgColor = isNight ? '#475569' : '#2563eb';
+                    // 🌟 3. 인원수 계산 (근무자 / 휴무자 따로 계산)
+                    const wList = (j.workers || "").toString().split(',').filter(n => n.trim() !== "");
+                    const offList = (j.offWorkers || "").toString().split(',').filter(n => n.trim() !== "");
+                    
+                    let displayTitle = "";
+                    let bgColor = "";
 
-                    // 🔴 3. 줄바꿈 및 흰색 글씨 적용
+                    // 🌟 4. 휴무일 때와 아닐 때를 나누어서 디자인 적용
+                    if (isOffDuty) {
+                        // 휴무일 때: 인원수는 휴무자 명단 기준, 배경은 빨간색
+                        const offCount = offList.length > 0 ? offList.length : wList.length; // (만약 workers에 들어갔을 경우를 대비한 안전장치)
+                        displayTitle = `🏖️휴무(${offCount})`;
+                        bgColor = '#ef4444'; // 눈에 띄는 빨간색!
+                    } else {
+                        // 일반 현장일 때: 인원수는 근무자 명단 기준, 배경은 주/야간 판별
+                        displayTitle = `${j.site}(${wList.length})`;
+                        const isNight = (j.shift || "").toString().includes('야');
+                        bgColor = isNight ? '#475569' : '#2563eb';
+                    }
+
+                    // 🔴 5. 줄바꿈 및 흰색 글씨 적용 (기존 스타일 유지)
                     return `<div class="job-bar" 
                                  onclick="scrollToCard('${j.date}', '${j.site}')"
                                  style="background-color: ${bgColor}; 
@@ -1008,9 +1031,15 @@ function renderCards() {
     // 관리자 패널과 동일한 데이터 주머니 사용
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
+    // 🌟 [수정 1] 현장 근무자(workers)뿐만 아니라 휴무자(offWorkers)도 필터링에 포함시킵니다!
     const filtered = allSchedules.filter(s => {
         const wList = (s.workers || "").toString().split(',').map(name => name.trim());
-        return (worker === "전체" || wList.includes(worker)) && (showPast ? s.date < today : s.date >= today);
+        const offList = (s.offWorkers || "").toString().split(',').map(name => name.trim());
+        
+        // 검색한 사람이 '전체'이거나, 근무자 명단에 있거나, 휴무자 명단에 있으면 통과!
+        const isIncluded = (worker === "전체" || wList.includes(worker) || offList.includes(worker));
+        
+        return isIncluded && (showPast ? s.date < today : s.date >= today);
     });
 
     filtered.sort((a, b) => showPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
@@ -1055,7 +1084,7 @@ function renderCards() {
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
             
-            // 🌟 [추가/수정됨] 휴무 카드인지 판별하고 색상 결정하기!
+            // 🌟 [수정 2] 휴무 카드인지 판별하고 색상 결정하기!
             const sType = (s.shift || "").toString().trim();
             const isOffDuty = (siteName === '휴무' || siteName === 'X'); // 휴무 판별
             
@@ -1073,7 +1102,15 @@ function renderCards() {
 
             const hasMaterials = s.materials && s.materials.trim() !== "";
 
-            // 🌟 아래 HTML 생성 부분에 background:${cardBg} 와 span 스타일을 적용했습니다!
+            // 🌟 [수정 3] 카드 하단에 표시할 인원 명단 (휴무면 쉬는 사람, 일하면 일하는 사람)
+            const targetWorkers = isOffDuty ? (s.offWorkers || s.workers || "") : (s.workers || "");
+            const workerChipsHtml = targetWorkers.toString().split(',').filter(n => n.trim() !== "").map(w => 
+                `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
+            ).join('');
+
+            // 🌟 [수정 4] 현장명 표시 (휴무일 경우 '휴무' 나 'X' 대신 안내 문구로 표시)
+            const displaySiteName = isOffDuty ? '🏖️ 개인 휴무/대기' : s.site;
+
             return `
             <div class="card schedule-card-item" 
                  data-date="${s.date}" data-site="${s.site}" 
@@ -1094,7 +1131,7 @@ function renderCards() {
                         <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
                             📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span> <span style="${shiftStyle}">[${displayShift}]</span>
                         </div>
-                        <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
+                        <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${displaySiteName}</div>
                         <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
                         
                         ${siteAddr ? `
@@ -1121,10 +1158,7 @@ function renderCards() {
 
                  <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                      <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
-                         ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => 
-                             `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
-                         ).join('')}
-                     </div>
+                         ${workerChipsHtml} </div>
                      
                      ${s.car ? `
                      <div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap; margin-left: 10px;">
