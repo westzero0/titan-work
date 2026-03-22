@@ -1027,17 +1027,21 @@ function renderCards() {
 
     const worker = document.getElementById('worker-select').value;
     const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
-    
-    // 관리자 패널과 동일한 데이터 주머니 사용
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
-    // 🌟 [수정 1] 현장 근무자(workers)뿐만 아니라 휴무자(offWorkers)도 필터링에 포함시킵니다!
     const filtered = allSchedules.filter(s => {
-        const wList = (s.workers || "").toString().split(',').map(name => name.trim());
-        const offList = (s.offWorkers || "").toString().split(',').map(name => name.trim());
+        const isTotalOff = (s.client === '휴무' || s.site === '휴무');
+        const isPartialOff = (s.site === 'X');
+
+        let isIncluded = false;
         
-        // 검색한 사람이 '전체'이거나, 근무자 명단에 있거나, 휴무자 명단에 있으면 통과!
-        const isIncluded = (worker === "전체" || wList.includes(worker) || offList.includes(worker));
+        if (worker === "전체") {
+            isIncluded = !isPartialOff; 
+        } else {
+            const wList = (s.workers || "").toString().split(',').map(name => name.trim());
+            const offList = (s.offWorkers || "").toString().split(',').map(name => name.trim());
+            isIncluded = wList.includes(worker) || offList.includes(worker);
+        }
         
         return isIncluded && (showPast ? s.date < today : s.date >= today);
     });
@@ -1049,8 +1053,6 @@ function renderCards() {
     if (filtered.length === 0) {
         html += `<p style="text-align:center; padding:20px;">일정이 없습니다.</p>`;
     } else {
-
-        // 1. 요일 배열 만들기
         const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
         
         html += filtered.map(s => {
@@ -1058,11 +1060,11 @@ function renderCards() {
             const dayName = weekDays[dateObj.getDay()];
             
             let siteAddr = "";
-            let siteNote = ""; // 👈 1. 현장 고정 특이사항(E열) 변수
+            let siteNote = ""; 
 
-            let dayColor = "#64748b"; // 기본 회색
-            if (dateObj.getDay() === 0) dayColor = "#ef4444"; // 일요일
-            if (dateObj.getDay() === 6) dayColor = "#3b82f6"; // 토요일
+            let dayColor = "#64748b"; 
+            if (dateObj.getDay() === 0) dayColor = "#ef4444"; 
+            if (dateObj.getDay() === 6) dayColor = "#3b82f6"; 
 
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
@@ -1072,44 +1074,59 @@ function renderCards() {
             if (clientKey && masterData[clientKey]) {
                 const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteName);
                 if (found) {
-                    // 주소 찾기 로직
                     const allKeys = Object.keys(found);
                     const addrKey = allKeys.find(k => k.trim().includes('주소') || k.toLowerCase().includes('addr'));
                     if (addrKey) siteAddr = found[addrKey];
-                    
-                    // 👈 2. 고정 특이사항 데이터 꺼내기 (E열)
                     siteNote = found.note || found.특이사항 || found.비고 || "";
                 }
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
             
-            // 🌟 [수정 2] 휴무 카드인지 판별하고 색상 결정하기!
             const sType = (s.shift || "").toString().trim();
-            const isOffDuty = (siteName === '휴무' || siteName === 'X'); // 휴무 판별
+            const isTotalOff = (clientName === '휴무' || siteName === '휴무');
+            const isPartialOff = (siteName === 'X');
+            const isOffDuty = isTotalOff || isPartialOff;
             
+            const wList = (s.workers || "").toString().split(',').filter(n => n.trim() !== "");
+            const offList = (s.offWorkers || "").toString().split(',').filter(n => n.trim() !== "");
+            const isMyOffDay = (worker !== "전체" && offList.includes(worker));
+
             let borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
-            let cardBg = 'white'; // 기본 카드 배경색
-            let displayShift = sType || '주간'; // 괄호 안에 들어갈 기본 글자
-            let shiftStyle = "color:#64748b;"; // 괄호 글자 기본 스타일
+            let cardBg = 'white'; 
+            let displayShift = sType || '주간'; 
+            let shiftStyle = "color:#64748b;"; 
+            let displaySiteName = s.site; 
 
             if (isOffDuty) {
-                borderColor = '#ef4444'; // 휴무: 테두리 빨간색
-                cardBg = '#fef2f2';      // 휴무: 배경 연한 분홍색
-                displayShift = '휴무';   // 글자를 [휴무]로 고정
-                shiftStyle = "color:#ef4444; font-weight:900;"; // 글자색 빨갛고 굵게
+                borderColor = '#ef4444'; 
+                cardBg = '#fef2f2';      
+                displayShift = '휴무';   
+                shiftStyle = "color:#ef4444; font-weight:900;"; 
+                if (isTotalOff) displaySiteName = '🏖️ 전체 휴무';
+                else if (isPartialOff) displaySiteName = '🏖️ 개인 휴무/대기';
+            } else if (isMyOffDay) {
+                // 🌟 [핵심 수정] 잡다한 거 다 빼고 심플하게 '휴무'로만 표시!
+                borderColor = '#ef4444'; 
+                cardBg = '#fef2f2';      
+                displayShift = '휴무';   
+                shiftStyle = "color:#ef4444; font-weight:900;"; 
+                displaySiteName = '🏖️ 휴무'; 
             }
 
             const hasMaterials = s.materials && s.materials.trim() !== "";
-
-            // 🌟 [수정 3] 카드 하단에 표시할 인원 명단 (휴무면 쉬는 사람, 일하면 일하는 사람)
-            const targetWorkers = isOffDuty ? (s.offWorkers || s.workers || "") : (s.workers || "");
-            const workerChipsHtml = targetWorkers.toString().split(',').filter(n => n.trim() !== "").map(w => 
-                `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
-            ).join('');
-
-            // 🌟 [수정 4] 현장명 표시 (휴무일 경우 '휴무' 나 'X' 대신 안내 문구로 표시)
-            const displaySiteName = isOffDuty ? '🏖️ 개인 휴무/대기' : s.site;
+            
+            let workerChipsHtml = "";
+            if (wList.length > 0) {
+                workerChipsHtml += wList.map(w => 
+                    `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
+                ).join('');
+            }
+            if (offList.length > 0) {
+                workerChipsHtml += offList.map(w => 
+                    `<span style="background:#fef2f2; border:1px solid #fca5a5; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#ef4444; font-weight:bold;">🏖️ ${w.trim()} (휴무)</span>`
+                ).join('');
+            }
 
             return `
             <div class="card schedule-card-item" 
@@ -1158,7 +1175,8 @@ function renderCards() {
 
                  <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                      <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
-                         ${workerChipsHtml} </div>
+                         ${workerChipsHtml}
+                     </div>
                      
                      ${s.car ? `
                      <div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap; margin-left: 10px;">
