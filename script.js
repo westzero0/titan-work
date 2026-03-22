@@ -192,7 +192,7 @@ async function checkAuth(userName) {
 /**
  * 💡 앱 초기화 (로그인 성공 후)
  */
-function initApp(name) {
+async function initApp(name) {
     // 1. UI 전환
     document.getElementById('login-screen').style.display = 'none';
     document.querySelector('.container').style.display = 'block';
