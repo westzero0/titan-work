@@ -1964,10 +1964,9 @@ function showTomorrowOffBanner() {
             </style>
         `;
         
-        // 헤더 바로 밑에 착! 붙이기
-        const header = document.querySelector('.header');
-        if (header) {
-            header.insertAdjacentHTML('afterend', bannerHTML);
+   // 🌟 [수정] 헤더가 없으면 .container나 body 맨 위에 강제로 찰싹! 붙입니다.
+        const targetContainer = document.querySelector('.header') || document.querySelector('.container') || document.body;
+        targetContainer.insertAdjacentHTML('afterbegin', bannerHTML);
         }
     }
-}
+
