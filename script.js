@@ -861,70 +861,77 @@ function renderTimeline() {
         date.setDate(date.getDate() + i);
         const dateStr = date.toISOString().split('T')[0];
         
-        // 🌟 1. 해당 날짜의 일정 필터링 (휴무자 명단도 같이 검사!)
+        // 🌟 1. 해당 날짜의 일정 필터링
         let dayJobs = allSchedules.filter(j => {
             if (j.date !== dateStr) return false;
-            if (worker === "전체") return true;
             
-            // 일하는 사람과 쉬는 사람 명단을 모두 배열로 만듦
-            const wList = (j.workers || "").toString().split(',').map(n => n.trim());
-            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
-            
-            // 둘 중 한 곳에라도 이름이 있으면 통과!
-            return wList.includes(worker) || offList.includes(worker);
+            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
+            const isPartialOff = (j.site === 'X');
+
+            if (worker === "전체") {
+                return !isPartialOff; // 전체보기: 개인 휴무(X) 제외
+            } else {
+                const wList = (j.workers || "").toString().split(',').map(n => n.trim());
+                const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
+                return wList.includes(worker) || offList.includes(worker);
+            }
         });
 
         const col = document.createElement('div');
         col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
+        
+        let barsHtml = dayJobs.map(j => {
+            // 🌟 2. 상태 판별
+            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
+            const isPartialOff = (j.site === 'X');
+            const isOffDuty = isTotalOff || isPartialOff;
+
+            const wList = (j.workers || "").toString().split(',').filter(n => n.trim() !== "");
+            
+            let displayTitle = "";
+            let bgColor = "";
+
+            // 🌟 3. 휴무일 때와 아닐 때 조건 분기 (여기서 에러가 났던 부분을 완벽하게 고쳤습니다!)
+            if (isOffDuty) {
+                if (isTotalOff) {
+                    displayTitle = "🏖️전체휴무"; // 인원수 안 붙음!
+                } else {
+                    displayTitle = "🏖️휴무<br>(" + worker + ")"; // 개인 필터링 시 이름만 붙음!
+                }
+                bgColor = "#ef4444"; 
+            } else {
+                displayTitle = j.site + "(" + wList.length + ")";
+                const isNight = (j.shift || "").toString().includes('야');
+                bgColor = isNight ? "#475569" : "#2563eb";
+            }
+
+            return `<div class="job-bar" 
+                         onclick="scrollToCard('${j.date}', '${j.site}')"
+                         style="background-color: ${bgColor}; 
+                                color: white !important; 
+                                font-weight: bold; 
+                                font-size: 0.65rem; 
+                                padding: 4px 2px; 
+                                border-radius: 4px; 
+                                text-align: center;
+                                white-space: normal;    
+                                word-break: break-all;  
+                                line-height: 1.2;       
+                                min-height: 1.5rem;     
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                cursor: pointer;">
+                         ${displayTitle}
+                    </div>`;
+        }).join('');
+
         col.innerHTML = `
-            <div style="font-size:0.75rem; text-align:center; margin-bottom:5px; font-weight:bold;">${dateStr === todayStr ? '🌟' : (date.getMonth()+1)+'/'+date.getDate()}</div>
+            <div style="font-size:0.75rem; text-align:center; margin-bottom:5px; font-weight:bold;">
+                ${dateStr === todayStr ? '🌟' : (date.getMonth()+1)+'/'+date.getDate()}
+            </div>
             <div style="display:flex; flex-direction:column; gap:4px;">
-                ${dayJobs.map(j => {
-                    // 🌟 2. 휴무 상태인지 확인
-                    const isOffDuty = (j.site === '휴무' || j.site === 'X');
-
-                    // 🌟 3. 인원수 계산 (근무자 / 휴무자 따로 계산)
-                    const wList = (j.workers || "").toString().split(',').filter(n => n.trim() !== "");
-                    const offList = (j.offWorkers || "").toString().split(',').filter(n => n.trim() !== "");
-                    
-                    let displayTitle = "";
-                    let bgColor = "";
-
-                    // 🌟 4. 휴무일 때와 아닐 때를 나누어서 디자인 적용
-                  if (isTotalOff) {
-                            displayTitle = `🏖️전체휴무`; // 숫자 없이 깔끔하게!
-                        } else {
-                            displayTitle = `🏖️휴무<br>(${worker})`; // 개인은 이름만!
-                        }
-                        bgColor = '#ef4444';
-                    } else {
-                        // 일반 현장일 때: 인원수는 근무자 명단 기준, 배경은 주/야간 판별
-                        displayTitle = `${j.site}(${wList.length})`;
-                        const isNight = (j.shift || "").toString().includes('야');
-                        bgColor = isNight ? '#475569' : '#2563eb';
-                    }
-
-                    // 🔴 5. 줄바꿈 및 흰색 글씨 적용 (기존 스타일 유지)
-                    return `<div class="job-bar" 
-                                 onclick="scrollToCard('${j.date}', '${j.site}')"
-                                 style="background-color: ${bgColor}; 
-                                        color: white !important; 
-                                        font-weight: bold; 
-                                        font-size: 0.65rem; 
-                                        padding: 4px 2px; 
-                                        border-radius: 4px; 
-                                        text-align: center;
-                                        white-space: normal;    /* 👈 줄바꿈 허용 */
-                                        word-break: break-all;  /* 👈 좁으면 글자단위로 쪼갬 */
-                                        line-height: 1.1;       /* 👈 줄간격 좁게 */
-                                        min-height: 1.5rem;     /* 👈 최소 높이 확보 */
-                                        display: flex;
-                                        align-items: center;
-                                        justify-content: center;
-                                        cursor: pointer;">
-                                 ${displayTitle}
-                            </div>`;
-                }).join('')}
+                ${barsHtml}
             </div>
         `;
         grid.appendChild(col);
