@@ -208,7 +208,11 @@ function initApp(name) {
     // 3. 필수 함수 실행
     generateTimeOptions(); // 시간 옵션 생성
     renderAllChips();      // 로컬 리스트 칩 렌더링
-    loadTitanDataWithBackgroundSync(); // 👈 여기서 거래처/현장을 서버에서 가져옵니다!
+  // 🌟 2. await를 붙여서 서버 데이터가 완전히 도착할 때까지 기다리게 합니다!
+    await loadTitanDataWithBackgroundSync(); 
+    
+    // 🌟 3. 데이터가 완벽하게 세팅된 직후에 배너를 띄웁니다!
+    showTomorrowOffBanner();
 
     // 4. 검색 이벤트 리스너 등록
     const searchEl = document.getElementById('siteSearch');
@@ -1826,4 +1830,54 @@ function hideSyncToast() {
     setTimeout(() => { toast.style.display = 'none'; }, 300);
 }
 
+
+// 📢 내일 전체 휴무인지 확인하고 알림 배너 띄우는 함수
+function showTomorrowOffBanner() {
+    // 1. 오늘 날짜를 기준으로 '내일' 날짜 계산하기
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    
+    // YYYY-MM-DD 형태로 변환 (기존 데이터 형식과 맞추기)
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]; 
+    const month = tomorrow.getMonth() + 1;
+    const date = tomorrow.getDate();
+
+    // 2. 내일 일정이 있는지 확인 (projects 배열 기준)
+    // ⚠️ projects 변수명이 다르다면 현재 쓰시는 일정 배열 이름으로 바꿔주세요!
+    const tomorrowSchedules = projects.filter(p => p.date === tomorrowStr);
+
+    // 3. 내일이 '전체 휴무'인지 판단
+    // 조건: 내일 데이터가 존재하면서, 등록된 모든 현장명이 '휴무' 이거나 'X'일 때
+    const isAllOff = tomorrowSchedules.length > 0 && 
+                     tomorrowSchedules.every(p => p.site === '휴무' || p.site === 'X');
+
+    // 4. 기존에 떠있는 배너가 있다면 지우기 (중복 방지)
+    const existingBanner = document.getElementById('tomorrow-off-banner');
+    if (existingBanner) existingBanner.remove();
+
+    // 5. 전체 휴무라면 눈에 띄는 빨간 배너 띄우기
+    if (isAllOff) {
+        const bannerHTML = `
+            <div id="tomorrow-off-banner" style="background: #ef4444; color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 99; position: relative; animation: slideDown 0.5s ease-out;">
+                <div style="font-size: 0.95rem;">
+                    📢 <b>내일(${month}/${date})은 전체 휴무입니다!</b> 푹 쉬세요 🍻
+                </div>
+                <button onclick="this.parentElement.style.display='none'" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0 5px; line-height: 1;">×</button>
+            </div>
+            <style>
+                @keyframes slideDown {
+                    from { transform: translateY(-100%); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+            </style>
+        `;
+        
+        // 헤더('타이탄 통합 관리자') 바로 밑에 배너를 찰싹 붙여줍니다!
+        const header = document.querySelector('.header');
+        if (header) {
+            header.insertAdjacentHTML('afterend', bannerHTML);
+        }
+    }
+}
 
