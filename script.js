@@ -211,8 +211,6 @@ async function initApp(name) {
   // 🌟 2. await를 붙여서 서버 데이터가 완전히 도착할 때까지 기다리게 합니다!
     await loadTitanDataWithBackgroundSync(); 
     
-    // 🌟 3. 데이터가 완벽하게 세팅된 직후에 배너를 띄웁니다!
-    showTomorrowOffBanner();
 
     // 4. 검색 이벤트 리스너 등록
     const searchEl = document.getElementById('siteSearch');
@@ -784,9 +782,13 @@ async function loadSchedules() {
 
             showSyncToast('✨ 최신 일정 갱신 완료!', false);
             setTimeout(hideSyncToast, 2000);
+
+          showTomorrowOffBanner();
+          
         } else {
             // 바뀐 게 1도 없으면 새로고침 안 하고 토스트 알림만 스르륵 끔
             hideSyncToast();
+          showTomorrowOffBanner();
         }
     } catch (e) {
         console.error("일정 로드 에러:", e);
@@ -1833,30 +1835,27 @@ function hideSyncToast() {
 
 // 📢 내일 전체 휴무인지 확인하고 알림 배너 띄우는 함수
 function showTomorrowOffBanner() {
-    // 1. 오늘 날짜를 기준으로 '내일' 날짜 계산하기
+    // 1. 데이터가 아직 안 불러와졌으면 무시
+    if (!allSchedules || allSchedules.length === 0) return;
+
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
     
-    // YYYY-MM-DD 형태로 변환 (기존 데이터 형식과 맞추기)
     const tomorrowStr = tomorrow.toISOString().split('T')[0]; 
     const month = tomorrow.getMonth() + 1;
     const date = tomorrow.getDate();
 
-    // 2. 내일 일정이 있는지 확인 (projects 배열 기준)
-    // ⚠️ projects 변수명이 다르다면 현재 쓰시는 일정 배열 이름으로 바꿔주세요!
-    const tomorrowSchedules = projects.filter(p => p.date === tomorrowStr);
+    // 🌟 [핵심 수정] projects 대신 오빠분의 진짜 데이터인 allSchedules를 뒤집니다!
+    const tomorrowSchedules = allSchedules.filter(p => p.date === tomorrowStr);
 
-    // 3. 내일이 '전체 휴무'인지 판단
-    // 조건: 내일 데이터가 존재하면서, 등록된 모든 현장명이 '휴무' 이거나 'X'일 때
+    // 내일 일정이 1개라도 있고, 그 일정들의 현장명이 전부 '휴무' 또는 'X'일 때
     const isAllOff = tomorrowSchedules.length > 0 && 
                      tomorrowSchedules.every(p => p.site === '휴무' || p.site === 'X');
 
-    // 4. 기존에 떠있는 배너가 있다면 지우기 (중복 방지)
     const existingBanner = document.getElementById('tomorrow-off-banner');
     if (existingBanner) existingBanner.remove();
 
-    // 5. 전체 휴무라면 눈에 띄는 빨간 배너 띄우기
     if (isAllOff) {
         const bannerHTML = `
             <div id="tomorrow-off-banner" style="background: #ef4444; color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 99; position: relative; animation: slideDown 0.5s ease-out;">
@@ -1873,7 +1872,6 @@ function showTomorrowOffBanner() {
             </style>
         `;
         
-        // 헤더('타이탄 통합 관리자') 바로 밑에 배너를 찰싹 붙여줍니다!
         const header = document.querySelector('.header');
         if (header) {
             header.insertAdjacentHTML('afterend', bannerHTML);
