@@ -1344,7 +1344,7 @@ function toggleWorkerSelection(n) {
 
 
       
-// 🚀 데이터 저장 시 휴무자 처리 (날짜 초과 버그 수정)
+// 🚀 데이터 저장 시 휴무자 처리 (날짜 초과 버그 수정 + 부분 휴무자 등록 허용)
 async function saveSchedule(mode) {
     const isAllOff = document.getElementById('chk-all-off').checked;
     
@@ -1358,7 +1358,7 @@ async function saveSchedule(mode) {
     let finalShift = '주';
 
     if (isAllOff) {
-        // 전체 휴무일 경우 가짜 데이터 '휴무' 세팅
+        // [기존 유지] 전체 휴무일 경우 가짜 데이터 '휴무' 세팅
         clientVal = '휴무';
         siteVal = '휴무';
         workersVal = ''; 
@@ -1369,11 +1369,28 @@ async function saveSchedule(mode) {
             offWorkersVal = activeWorkers.join(', '); 
         }
     } else {
-        if(!clientVal || !siteVal) return alert("거래처와 현장을 선택하세요.");
-        let rawShift = document.getElementById('sched-shift').value;
-        if (rawShift.includes('야')) finalShift = '야'; else if (rawShift.includes('조')) finalShift = '조';
+        // 🌟 [추가된 핵심 로직] 전체 휴무 체크는 안 했지만 현장 정보가 없을 때
+        if(!clientVal || !siteVal) {
+            // 휴무자 명단은 있는데, 근무자 명단은 없다면? -> "부분 휴무자 등록"으로 간주!
+            if (offWorkersVal && !workersVal) {
+                if (confirm("현장 정보가 없습니다. 선택한 휴무 인원들을 '휴무(X)'로 등록할까요?")) {
+                    clientVal = "-"; // 시트 거래처에 찍힐 값
+                    siteVal = "X";   // 시트 현장명에 찍힐 값
+                } else {
+                    return; // 취소 누르면 중단
+                }
+            } else {
+                // 휴무자도 안 골랐거나, 근무자는 골랐는데 현장이 없으면 원래대로 경고창!
+                return alert("거래처와 현장을 선택하세요.");
+            }
+        } else {
+            // [기존 유지] 현장이 정상적으로 선택된 경우
+            let rawShift = document.getElementById('sched-shift').value;
+            if (rawShift.includes('야')) finalShift = '야'; else if (rawShift.includes('조')) finalShift = '조';
+        }
     }
 
+    // [기존 유지] Payload 세팅
     const payload = {
         date: document.getElementById('sched-date').value,
         client: clientVal,
@@ -1389,6 +1406,7 @@ async function saveSchedule(mode) {
 
     closeModal();
     
+    // [기존 유지] 저장/수정 액션 및 날짜 배열화
     let action = mode === 'add' ? (document.getElementById('sched-end-date').value ? 'addScheduleBatch' : 'addSchedule') : 'updateSchedule';
     let dataToSend = payload;
 
@@ -1405,13 +1423,13 @@ async function saveSchedule(mode) {
         dataToSend = list;
     }
 
+    // [기존 유지] 가스(GAS)로 전송
     try { 
         await sendToGas(action, dataToSend); 
     } catch (e) { 
         alert("⚠️ 저장에 실패했습니다."); 
     }
 }
-
 
       
    async function deleteSchedule() {
