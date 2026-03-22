@@ -1022,20 +1022,19 @@ function renderCards() {
     } else {
 
         // 1. 요일 배열 만들기
-const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+        const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
         
         html += filtered.map(s => {
-const dateObj = new Date(s.date);
-    const dayName = weekDays[dateObj.getDay()];
+            const dateObj = new Date(s.date);
+            const dayName = weekDays[dateObj.getDay()];
             
             let siteAddr = "";
-            let siteNote = ""; // 👈 1. 현장 고정 특이사항(E열) 변수 추가
+            let siteNote = ""; // 👈 1. 현장 고정 특이사항(E열) 변수
 
             let dayColor = "#64748b"; // 기본 회색
-    if (dateObj.getDay() === 0) dayColor = "#ef4444"; // 일요일
-    if (dateObj.getDay() === 6) dayColor = "#3b82f6"; // 토요일
+            if (dateObj.getDay() === 0) dayColor = "#ef4444"; // 일요일
+            if (dateObj.getDay() === 6) dayColor = "#3b82f6"; // 토요일
 
-            
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
             
@@ -1049,81 +1048,90 @@ const dateObj = new Date(s.date);
                     const addrKey = allKeys.find(k => k.trim().includes('주소') || k.toLowerCase().includes('addr'));
                     if (addrKey) siteAddr = found[addrKey];
                     
-                    // 👈 2. [추가] 고정 특이사항 데이터 꺼내기 (E열)
+                    // 👈 2. 고정 특이사항 데이터 꺼내기 (E열)
                     siteNote = found.note || found.특이사항 || found.비고 || "";
                 }
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
+            
+            // 🌟 [추가/수정됨] 휴무 카드인지 판별하고 색상 결정하기!
             const sType = (s.shift || "").toString().trim();
-            const borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
+            const isOffDuty = (siteName === '휴무' || siteName === 'X'); // 휴무 판별
+            
+            let borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
+            let cardBg = 'white'; // 기본 카드 배경색
+            let displayShift = sType || '주간'; // 괄호 안에 들어갈 기본 글자
+            let shiftStyle = "color:#64748b;"; // 괄호 글자 기본 스타일
+
+            if (isOffDuty) {
+                borderColor = '#ef4444'; // 휴무: 테두리 빨간색
+                cardBg = '#fef2f2';      // 휴무: 배경 연한 분홍색
+                displayShift = '휴무';   // 글자를 [휴무]로 고정
+                shiftStyle = "color:#ef4444; font-weight:900;"; // 글자색 빨갛고 굵게
+            }
 
             const hasMaterials = s.materials && s.materials.trim() !== "";
 
-            
+            // 🌟 아래 HTML 생성 부분에 background:${cardBg} 와 span 스타일을 적용했습니다!
+            return `
+            <div class="card schedule-card-item" 
+                 data-date="${s.date}" data-site="${s.site}" 
+                 style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:${cardBg}; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);"> 
 
-       return `
-    <div class="card schedule-card-item" 
-         data-date="${s.date}" data-site="${s.site}" 
-         style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);"> 
-
-         <div onclick="openMaterialCheckModal('${safeData}')" 
-             style="position:absolute; top:12px; right:60px; font-size:1.4rem; cursor:pointer; 
-                    background:${hasMaterials ? '#ecfdf5' : '#f8fafc'}; 
-                    width:42px; height:42px; display:flex; align-items:center; justify-content:center; 
-                    border-radius:50%; border:1px solid ${hasMaterials ? '#10b981' : '#e2e8f0'}; z-index:5;">
-            📦${hasMaterials ? '<span style="position:absolute; top:-2px; right:-2px; font-size:0.7rem;">✅</span>' : ''}
-        </div>
-                    <div onclick="copyScheduleToLogSafe('${safeData}')" 
-                         style="position:absolute; top:12px; right:12px; font-size:1.4rem; cursor:pointer; background:#f8fafc; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #e2e8f0; z-index:5;">📝</div>
-
-              
-                    
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                        <div style="width: calc(100% - 50px);">
-                           <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
-                    📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span> [${sType || '주간'}]
+                 <div onclick="openMaterialCheckModal('${safeData}')" 
+                      style="position:absolute; top:12px; right:60px; font-size:1.4rem; cursor:pointer; 
+                             background:${hasMaterials ? '#ecfdf5' : '#f8fafc'}; 
+                             width:42px; height:42px; display:flex; align-items:center; justify-content:center; 
+                             border-radius:50%; border:1px solid ${hasMaterials ? '#10b981' : '#e2e8f0'}; z-index:5;">
+                    📦${hasMaterials ? '<span style="position:absolute; top:-2px; right:-2px; font-size:0.7rem;">✅</span>' : ''}
                 </div>
-                            <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
-                            <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
-                            
-                            ${siteAddr ? `
-                            <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
-                                 style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:block; width:fit-content; line-height:1.4;">
-                                📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                            </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:block; width:fit-content;">📍 주소 정보 없음</div>`}
+                 <div onclick="copyScheduleToLogSafe('${safeData}')" 
+                      style="position:absolute; top:12px; right:12px; font-size:1.4rem; cursor:pointer; background:#f8fafc; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #e2e8f0; z-index:5;">📝</div>
+
+                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                     <div style="width: calc(100% - 50px);">
+                        <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
+                            📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span> <span style="${shiftStyle}">[${displayShift}]</span>
                         </div>
-                    </div>
-
-                    ${siteNote ? `
-                    <div style="background:#fef3c7; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:10px; line-height:1.5;">
-                        📢 <b>현장 안내:</b> ${siteNote}
-                    </div>` : ''}
-
-                    <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin-top:12px; margin-bottom:${s.note ? '8px' : '12px'}; border:1px solid #e2e8f0;">
-                        🛠️ ${s.content || s.workContent || '작업내용 없음'}
-                    </div>
-
-                    ${s.note ? `
-                    <div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:12px; line-height:1.4;">
-                        💡 <b>전달 사항:</b> ${s.note}
-                    </div>` : ''}
-
-                 
-
-                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                        <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
-                            ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => 
-                                `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
-                            ).join('')}
-                        </div>
+                        <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
+                        <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
                         
-                        ${s.car ? `
-                        <div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap; margin-left: 10px;">
-                            🚛 ${s.car}
-                        </div>` : ''}
-                    </div>
-                </div>
+                        ${siteAddr ? `
+                        <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
+                             style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:block; width:fit-content; line-height:1.4;">
+                            📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
+                        </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:block; width:fit-content;">📍 주소 정보 없음</div>`}
+                     </div>
+                 </div>
+
+                 ${siteNote ? `
+                 <div style="background:#fef3c7; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:10px; line-height:1.5;">
+                     📢 <b>현장 안내:</b> ${siteNote}
+                 </div>` : ''}
+
+                 <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin-top:12px; margin-bottom:${s.note ? '8px' : '12px'}; border:1px solid #e2e8f0;">
+                     🛠️ ${s.content || s.workContent || '작업내용 없음'}
+                 </div>
+
+                 ${s.note ? `
+                 <div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:12px; line-height:1.4;">
+                     💡 <b>전달 사항:</b> ${s.note}
+                 </div>` : ''}
+
+                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                     <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
+                         ${(s.workers || "").toString().split(',').filter(n => n.trim() !== "").map(w => 
+                             `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
+                         ).join('')}
+                     </div>
+                     
+                     ${s.car ? `
+                     <div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap; margin-left: 10px;">
+                         🚛 ${s.car}
+                     </div>` : ''}
+                 </div>
+             </div>
             `;
         }).join('');
     }
@@ -1832,31 +1840,47 @@ function hideSyncToast() {
     setTimeout(() => { toast.style.display = 'none'; }, 300);
 }
 
-
-// 📢 내일 전체 휴무인지 확인하고 알림 배너 띄우는 함수
+// 📢 내일 전체 휴무인지 확인하고 알림 배너 띄우는 함수 (완벽 개선판)
 function showTomorrowOffBanner() {
-    // 1. 데이터가 아직 안 불러와졌으면 무시
-    if (!allSchedules || allSchedules.length === 0) return;
+    // 1. 데이터 찾기: 메모리(allSchedules)가 비어있으면 폰에 저장된 캐시에서라도 꺼내옵니다!
+    let schedulesToCheck = allSchedules;
+    if (!schedulesToCheck || schedulesToCheck.length === 0) {
+        const cached = localStorage.getItem('titan_schedules_cache');
+        if (cached) {
+            schedulesToCheck = JSON.parse(cached);
+        } else {
+            return; // 캐시조차 없으면 진짜 데이터가 없는 거니까 조용히 종료
+        }
+    }
 
+    // 2. 정확한 '내일 날짜' 계산 (한국 시간 기준 100% 일치하게)
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
     
-    const tomorrowStr = tomorrow.toISOString().split('T')[0]; 
-    const month = tomorrow.getMonth() + 1;
-    const date = tomorrow.getDate();
+    const yyyy = tomorrow.getFullYear();
+    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const dd = String(tomorrow.getDate()).padStart(2, '0');
+    const tomorrowStr = `${yyyy}-${mm}-${dd}`; // 예: "2024-05-22"
 
-    // 🌟 [핵심 수정] projects 대신 오빠분의 진짜 데이터인 allSchedules를 뒤집니다!
-    const tomorrowSchedules = allSchedules.filter(p => p.date === tomorrowStr);
+    // 3. 내일 일정 데이터만 쏙 빼오기
+    const tomorrowSchedules = schedulesToCheck.filter(p => p.date === tomorrowStr);
 
-    // 내일 일정이 1개라도 있고, 그 일정들의 현장명이 전부 '휴무' 또는 'X'일 때
+    // 4. 내일이 '전체 휴무'인지 깐깐하게 판단 (띄어쓰기 오타까지 방지!)
     const isAllOff = tomorrowSchedules.length > 0 && 
-                     tomorrowSchedules.every(p => p.site === '휴무' || p.site === 'X');
+                     tomorrowSchedules.every(p => {
+                         const siteName = (p.site || "").toString().trim();
+                         return siteName === '휴무' || siteName === 'X';
+                     });
 
+    // 5. 배너 띄우기
     const existingBanner = document.getElementById('tomorrow-off-banner');
-    if (existingBanner) existingBanner.remove();
+    if (existingBanner) existingBanner.remove(); // 기존에 떠있으면 지우기
 
     if (isAllOff) {
+        const month = tomorrow.getMonth() + 1;
+        const date = tomorrow.getDate();
+        
         const bannerHTML = `
             <div id="tomorrow-off-banner" style="background: #ef4444; color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 99; position: relative; animation: slideDown 0.5s ease-out;">
                 <div style="font-size: 0.95rem;">
@@ -1872,10 +1896,10 @@ function showTomorrowOffBanner() {
             </style>
         `;
         
+        // 헤더 바로 밑에 착! 붙이기
         const header = document.querySelector('.header');
         if (header) {
             header.insertAdjacentHTML('afterend', bannerHTML);
         }
     }
 }
-
