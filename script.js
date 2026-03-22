@@ -1036,7 +1036,7 @@ function renderCards() {
         let isIncluded = false;
         
         if (worker === "전체") {
-            isIncluded = !isPartialOff; 
+            isIncluded = !isPartialOff; // 전체보기: 부분 휴무(X) 현장은 아예 안 보임
         } else {
             const wList = (s.workers || "").toString().split(',').map(name => name.trim());
             const offList = (s.offWorkers || "").toString().split(',').map(name => name.trim());
@@ -1059,29 +1059,12 @@ function renderCards() {
             const dateObj = new Date(s.date);
             const dayName = weekDays[dateObj.getDay()];
             
-            let siteAddr = "";
-            let siteNote = ""; 
-
             let dayColor = "#64748b"; 
             if (dateObj.getDay() === 0) dayColor = "#ef4444"; 
             if (dateObj.getDay() === 6) dayColor = "#3b82f6"; 
 
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
-            
-            let clientKey = Object.keys(masterData).find(k => k.trim() === clientName || clientName.includes(k.trim()));
-
-            if (clientKey && masterData[clientKey]) {
-                const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteName);
-                if (found) {
-                    const allKeys = Object.keys(found);
-                    const addrKey = allKeys.find(k => k.trim().includes('주소') || k.toLowerCase().includes('addr'));
-                    if (addrKey) siteAddr = found[addrKey];
-                    siteNote = found.note || found.특이사항 || found.비고 || "";
-                }
-            }
-
-            const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
             
             const sType = (s.shift || "").toString().trim();
             const isTotalOff = (clientName === '휴무' || siteName === '휴무');
@@ -1090,49 +1073,66 @@ function renderCards() {
             
             const wList = (s.workers || "").toString().split(',').filter(n => n.trim() !== "");
             const offList = (s.offWorkers || "").toString().split(',').filter(n => n.trim() !== "");
-            const isMyOffDay = (worker !== "전체" && offList.includes(worker));
 
             let borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
             let cardBg = 'white'; 
-            let displayShift = sType || '주간'; 
-            let shiftStyle = "color:#64748b;"; 
-            let displaySiteName = s.site; 
+            let cardContentHtml = ""; // 카드 안쪽에 들어갈 내용을 상황에 따라 아예 다르게 만듦!
 
-            if (isOffDuty) {
+            // 🌟 1. [전체보기] + 전체 휴무인 경우
+            if (worker === "전체" && isTotalOff) {
                 borderColor = '#ef4444'; 
                 cardBg = '#fef2f2';      
-                displayShift = '휴무';   
-                shiftStyle = "color:#ef4444; font-weight:900;"; 
-                if (isTotalOff) displaySiteName = '🏖️ 전체 휴무';
-                else if (isPartialOff) displaySiteName = '🏖️ 개인 휴무/대기';
-            } else if (isMyOffDay) {
-                // 🌟 [핵심 수정] 잡다한 거 다 빼고 심플하게 '휴무'로만 표시!
+                cardContentHtml = `
+                     <div style="font-weight:bold; font-size:0.85rem; color:#64748b; margin-bottom:8px;">
+                        📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span>
+                     </div>
+                     <div style="font-size:1.3rem; font-weight:900; color:#ef4444; text-align:center; padding: 15px 0;">
+                        🏖️ 전체 휴무
+                     </div>
+                `;
+            } 
+            // 🌟 2. [개인검색] + 본인이 휴무인 경우
+            else if (worker !== "전체" && (isOffDuty || offList.includes(worker))) {
                 borderColor = '#ef4444'; 
                 cardBg = '#fef2f2';      
-                displayShift = '휴무';   
-                shiftStyle = "color:#ef4444; font-weight:900;"; 
-                displaySiteName = '🏖️ 휴무'; 
-            }
+                cardContentHtml = `
+                     <div style="font-weight:bold; font-size:0.85rem; color:#64748b; margin-bottom:8px;">
+                        📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span>
+                     </div>
+                     <div style="font-size:1.3rem; font-weight:900; color:#ef4444; text-align:center; padding: 15px 0;">
+                        🏖️ 휴무
+                     </div>
+                `;
+            } 
+            // 🌟 3. 정상 근무인 경우 (일반 카드)
+            else {
+                let siteAddr = "";
+                let siteNote = ""; 
+                let clientKey = Object.keys(masterData).find(k => k.trim() === clientName || clientName.includes(k.trim()));
 
-            const hasMaterials = s.materials && s.materials.trim() !== "";
-            
-            let workerChipsHtml = "";
-            if (wList.length > 0) {
-                workerChipsHtml += wList.map(w => 
-                    `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
-                ).join('');
-            }
-            if (offList.length > 0) {
-                workerChipsHtml += offList.map(w => 
-                    `<span style="background:#fef2f2; border:1px solid #fca5a5; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#ef4444; font-weight:bold;">🏖️ ${w.trim()} (휴무)</span>`
-                ).join('');
-            }
+                if (clientKey && masterData[clientKey]) {
+                    const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteName);
+                    if (found) {
+                        const allKeys = Object.keys(found);
+                        const addrKey = allKeys.find(k => k.trim().includes('주소') || k.toLowerCase().includes('addr'));
+                        if (addrKey) siteAddr = found[addrKey];
+                        siteNote = found.note || found.특이사항 || found.비고 || "";
+                    }
+                }
 
-            return `
-            <div class="card schedule-card-item" 
-                 data-date="${s.date}" data-site="${s.site}" 
-                 style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:${cardBg}; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);"> 
+                const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
+                const displayShift = sType || '주간'; 
+                const hasMaterials = s.materials && s.materials.trim() !== "";
 
+                // 휴무자 명단(offList)은 이제 카드에 그리지 않음! 오직 근무자만 그림.
+                let workerChipsHtml = "";
+                if (wList.length > 0) {
+                    workerChipsHtml += wList.map(w => 
+                        `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
+                    ).join('');
+                }
+
+                cardContentHtml = `
                  <div onclick="openMaterialCheckModal('${safeData}')" 
                       style="position:absolute; top:12px; right:60px; font-size:1.4rem; cursor:pointer; 
                              background:${hasMaterials ? '#ecfdf5' : '#f8fafc'}; 
@@ -1146,9 +1146,9 @@ function renderCards() {
                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                      <div style="width: calc(100% - 50px);">
                         <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
-                            📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span> <span style="${shiftStyle}">[${displayShift}]</span>
+                            📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span> <span style="color:#64748b;">[${displayShift}]</span>
                         </div>
-                        <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${displaySiteName}</div>
+                        <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
                         <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
                         
                         ${siteAddr ? `
@@ -1183,7 +1183,15 @@ function renderCards() {
                          🚛 ${s.car}
                      </div>` : ''}
                  </div>
-             </div>
+                `;
+            }
+
+            return `
+            <div class="card schedule-card-item" 
+                 data-date="${s.date}" data-site="${s.site}" 
+                 style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:${cardBg}; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);"> 
+                 ${cardContentHtml}
+            </div>
             `;
         }).join('');
     }
