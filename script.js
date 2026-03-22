@@ -891,11 +891,12 @@ function renderTimeline() {
                     let bgColor = "";
 
                     // 🌟 4. 휴무일 때와 아닐 때를 나누어서 디자인 적용
-                    if (isOffDuty) {
-                        // 휴무일 때: 인원수는 휴무자 명단 기준, 배경은 빨간색
-                        const offCount = offList.length > 0 ? offList.length : wList.length; // (만약 workers에 들어갔을 경우를 대비한 안전장치)
-                        displayTitle = `🏖️휴무(${offCount})`;
-                        bgColor = '#ef4444'; // 눈에 띄는 빨간색!
+                  if (isTotalOff) {
+                            displayTitle = `🏖️전체휴무`; // 숫자 없이 깔끔하게!
+                        } else {
+                            displayTitle = `🏖️휴무<br>(${worker})`; // 개인은 이름만!
+                        }
+                        bgColor = '#ef4444';
                     } else {
                         // 일반 현장일 때: 인원수는 근무자 명단 기준, 배경은 주/야간 판별
                         displayTitle = `${j.site}(${wList.length})`;
