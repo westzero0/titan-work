@@ -965,10 +965,13 @@ function toggleOffWorkerSelection(n) {
 
       // 📋 3. 하단 리스트 그리기 (관리자 패널용: 카드 터치로 수정창 열기)
 function renderScheduleList() {
-    const box = document.getElementById('upcoming-list'); 
+  const box = document.getElementById('upcoming-list'); 
     if (!box) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    // 🌟 [수정] 하단 리스트의 오늘 날짜도 한국 시간으로 고정!
+    const now = new Date();
+    const today = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+    
     const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
 
     if (calendarMode === 'work') {
@@ -1984,11 +1987,14 @@ window.onclick = function(event) {
 // ==========================================
 
 function initDashboardToggle() {
-    const content = document.getElementById('dashboard-content');
+  const content = document.getElementById('dashboard-content');
     const arrow = document.getElementById('dashboard-arrow');
     if (!content || !arrow) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    // 🌟 [수정] 여기도 한국 시간으로 고정!
+    const now = new Date();
+    const today = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+    
     const lastAccessDate = localStorage.getItem('dashLastDate');
     let isFolded = localStorage.getItem('dashIsFolded') === 'true';
 
@@ -2027,11 +2033,15 @@ function toggleDashboard() {
 }
 
 function renderDashboard() {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    // 🌟 [수정] 오늘과 내일 모두 KST(한국 시간)로 강제 고정!
+    const now = new Date();
+    const todayKst = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+    const todayStr = todayKst.toISOString().split('T')[0];
 
+    const tomorrowKst = new Date(todayKst);
+    tomorrowKst.setDate(tomorrowKst.getDate() + 1);
+    const tomorrowStr = tomorrowKst.toISOString().split('T')[0];
+    
     const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
 
     // --- 1. 오늘 & 내일 일정 필터링 ---
