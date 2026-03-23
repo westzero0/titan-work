@@ -854,14 +854,17 @@ function renderTimeline() {
     grid.innerHTML = '';
     const worker = document.getElementById('worker-select').value;
     
-    const todayStr = new Date().toISOString().split('T')[0]; 
+    // 🌟 [시간 수정 1] 영국의 방해를 막고 '한국 시간(+9시간)'으로 오늘 날짜 고정!
+    const now = new Date();
+    const todayStr = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0]; 
 
     for (let i = 0; i < 14; i++) {
         const date = new Date();
         date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
         
-        // 🌟 1. 해당 날짜의 일정 필터링
+        // 🌟 [시간 수정 2] 앞으로의 14일 날짜들도 전부 한국 시간으로 고정!
+        const dateStr = new Date(date.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+        
         let dayJobs = allSchedules.filter(j => {
             if (j.date !== dateStr) return false;
             
@@ -881,24 +884,28 @@ function renderTimeline() {
         col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
         
         let barsHtml = dayJobs.map(j => {
-            // 🌟 2. 상태 판별
             const isTotalOff = (j.client === '휴무' || j.site === '휴무');
             const isPartialOff = (j.site === 'X');
             const isOffDuty = isTotalOff || isPartialOff;
 
             const wList = (j.workers || "").toString().split(',').filter(n => n.trim() !== "");
+            const offList = (j.offWorkers || "").toString().split(',').filter(n => n.trim() !== "");
             
+            const isMyOffDay = (worker !== "전체" && offList.includes(worker));
+
             let displayTitle = "";
             let bgColor = "";
 
-            // 🌟 3. 휴무일 때와 아닐 때 조건 분기 (여기서 에러가 났던 부분을 완벽하게 고쳤습니다!)
             if (isOffDuty) {
                 if (isTotalOff) {
-                    displayTitle = "🏖️전체휴무"; // 인원수 안 붙음!
+                    displayTitle = "🏖️전체휴무"; 
                 } else {
-                    displayTitle = "🏖️휴무<br>(" + worker + ")"; // 개인 필터링 시 이름만 붙음!
+                    displayTitle = "🏖️휴무<br>(" + worker + ")"; 
                 }
                 bgColor = "#ef4444"; 
+            } else if (isMyOffDay) {
+                displayTitle = "🏖️휴무"; 
+                bgColor = "#ef4444";
             } else {
                 displayTitle = j.site + "(" + wList.length + ")";
                 const isNight = (j.shift || "").toString().includes('야');
