@@ -14,169 +14,19 @@
 
     <title>타이탄 일보 v3.5</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --chip-bg: #f1f5f9; }
-        body {
-        font-family: -apple-system, sans-serif; 
-        background: var(--bg); 
-        color: var(--text); 
-        margin: 0; 
-        padding: 0; 
-        /* 내비바에 버튼이 가려지지 않도록 아래쪽 공간 확보 */
-        padding-bottom: 100px;
-        }
-        .container { max-width: 500px; margin: auto; padding: 15px; }
-        .card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #f1f5f9; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9rem; color: #475569; }
-        input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 1rem; box-sizing: border-box; margin-bottom: 10px; }
-        
-        /* 레이아웃 수정 */
-        .site-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .checkbox-group { display: flex; align-items: center; font-size: 0.8rem; gap: 5px; cursor: pointer; color: #64748b; }
-        .checkbox-group input { width: auto; margin: 0; }
+      :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --chip-bg: #f1f5f9; }
 
-        .chip-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; }
-        .chip-input-group { display: flex; flex: 1; gap: 5px; }
-        .chip-input-group input { margin-bottom: 0; flex: 1; padding: 8px; font-size: 0.9rem; }
-        .add-btn { background: #334155; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; white-space: nowrap; cursor: pointer; }
-        .del-mode-btn { color: #ef4444; font-size: 0.8rem; cursor: pointer; white-space: nowrap; font-weight: bold; }
-        
-        .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; min-height: 20px; }
-        .chip { padding: 8px 14px; background: var(--chip-bg); border-radius: 20px; font-size: 0.9rem; cursor: pointer; border: 1px solid #e2e8f0; transition: 0.2s; }
-        .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
-        .chip.delete-target { background: #fee2e2; color: #ef4444; border: 1px dashed #ef4444; }
-
-        .row { display: flex; gap: 10px; }
-        .col { flex: 1; }
-        .submit-btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        .loading-text { font-size: 0.8rem; color: #94a3b8; font-style: italic; }
-
-        
-        /* 💡 추가된 네비게이션 스타일 */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: white; display: flex; border-top: 1px solid #e2e8f0; z-index: 1000; }
-        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8rem; color: #64748b; cursor: pointer; }
-        .nav-item.active { color: var(--primary); font-weight: bold; }
-        
-        /* 💡 스플래시 화면 스타일 추가 */
-        #splash-screen {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background-color: #E60012; /* 배경을 빨간색으로 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999; /* 모든 요소보다 위에 표시 */
-            transition: opacity 0.5s ease-out;
-        }
-        .splash-content { text-align: center; }
-        .splash-content img { width: 150px; display: block; margin-bottom: 20px; }
-        
-        /* 로딩 휠 애니메이션 */
-        .loader {
-            width: 30px; height: 30px;
-            border: 3px solid #333;
-            border-top: 3px solid #ef4444; /* 타이탄 포인트 컬러 */
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-/* 💡 타임라인 그리드: 높이 고정 및 내부 세로 스크롤 허용 */
-.timeline-grid {
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden; /* 가로 스크롤만 메인으로 */
-    max-height: 200px;  /* 👈 너무 길어지지 않게 상한선 설정 */
-    gap: 12px;
-    padding: 15px 10px;
-    background: white;
-    border-radius: 16px;
-    margin-bottom: 20px;
-    scrollbar-width: none;
-    align-items: flex-start; /* 막대들을 위쪽으로 정렬 */
+body {
+    font-family: -apple-system, sans-serif; 
+    background: var(--bg); 
+    color: var(--text); 
+    margin: 0; padding: 0;
+    padding-bottom: 100px; /* 내비바 공간 */
 }
 
-/* 💡 개별 날짜 기둥: 내부 일정이 많을 경우 자체 스크롤 */
-.time-col {
-    min-width: 95px;
-    max-height: 170px; /* 기둥 높이 제한 */
-    overflow-y: auto;  /* 현장이 많으면 기둥 안에서 스크롤 */
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 10px 4px;
-    scrollbar-width: none; /* 기둥 스크롤바 숨기기 */
-}
-.time-col::-webkit-scrollbar { display: none; }
+.container { max-width: 500px; margin: auto; padding: 15px; }
 
-        
-/* 💡 화면 전체에 부드러운 스크롤 적용 */
-html { scroll-behavior: smooth; }
-
-        /* 요일 또는 날짜 칸 전체 */
-.date-column {
-    flex: 0 0 100px;    /* 늘어나지도(grow), 줄어들지도(shrink) 말고 딱 100px 유지 */
-    min-width: 100px;   /* 최소 너비 보장 */
-    text-align: center;
-}
-
-        /* 현장명 바(Bar) 처리 */
-.site-bar {
-    width: 100%;
-    white-space: nowrap;    /* 글자를 한 줄로만 표시 */
-    overflow: hidden;       /* 칸을 넘어가는 글자는 숨김 */
-    text-overflow: ellipsis; /* 넘치는 부분 끝에 '...' 표시 */
-    padding: 4px 8px;
-    box-sizing: border-box;
-}
-
-        /* 요일 칸들을 감싸는 전체 박스 */
-.schedule-grid {
-    display: flex;
-    overflow-x: auto;   /* 가로 내용이 많으면 스크롤바 생성 */
-    gap: 10px;          /* 칸 사이 간격 */
-    padding-bottom: 5px;
-}
-        
-        
-        
-/* 타임라인 막대 글씨 흰색으로 강제 변경 */
-.vis-item, .vis-item-content, .timeline-event {
-    color: #ffffff !important;
-}
-        
-
-.bar-day { background: #2563eb; }    /* 주간: 파랑 */
-.bar-night { background: #1e293b; }  /* 야간: 검정 */
-
-/* 💡 카드 점프 시 하이라이트 효과 */
-.schedule-card-item {
-    transition: all 0.4s ease;
-}
-        
-.past-btn {
-    width: 100%;
-    padding: 10px;
-    background: #f1f5f9;
-    border: 1px dashed #cbd5e1;
-    border-radius: 10px;
-    margin-bottom: 15px;
-    color: #64748b;
-    font-size: 0.9rem;
-}
-        /* 인원 표시 칩 스타일 */
-.worker-chip {
-    display: inline-block;
-    padding: 2px 8px;
-    background: #e2e8f0;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    margin-right: 4px;
-    color: #475569;
-    font-weight: 600;
-}
-
-/* 💡 1. [공통] 기본 카드 스타일 (리스트 모드용 마진 유지) */
+/* 1. 공통 카드 스타일 */
 .card { 
     background: white; 
     border-radius: 16px; 
@@ -184,222 +34,89 @@ html { scroll-behavior: smooth; }
     margin-bottom: 16px; 
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
     border: 1px solid #f1f5f9; 
-    box-sizing: border-box; /* 테두리 포함 크기 고정 */
-}
-
-
-
-/* 💡 3. 리스트 모드(카드뷰)일 때 중복 간섭 차단 */
-#schedule-container .card:not(.calendar-card) {
-    margin-left: 0;
-    margin-right: 0;
-    width: 100%;
-}
-
-
-        
-/* 야간/주간 포인트 배선 */
-.calendar-event-bar.bar-night { background: #1e293b !important; border-left: 3px solid #facc15 !important; }
-.calendar-event-bar.bar-day { background: #2563eb !important; border-left: 3px solid #60a5fa !important; }
-
-/* 💡 6. 기타 UI 효과 */
-.sun { color: #ef4444 !important; }
-.sat { color: #2563eb !important; }
-.is-today { background-color: #eff6ff !important; border: 1.5px solid var(--primary) !important; }
-.worker-chip { display: inline-block; padding: 2px 8px; background: #e2e8f0; border-radius: 12px; font-size: 0.75rem; margin-right: 4px; color: #475569; font-weight: 600; }
-.schedule-card-item { transition: all 0.4s ease; }
-
-        
-        /* 💡 요일 헤더 시인성 보강 */
-.calendar-card div[style*="grid-template-columns"] > div:nth-child(1) { color: #ef4444 !important; } /* 일요일 빨강 */
-.calendar-card div[style*="grid-template-columns"] > div:nth-child(7) { color: #2563eb !important; } /* 토요일 파랑 */
-
-/* 💡 날짜 숫자 위치 최적화 */
-.calendar-day-cell {
-    position: relative;
-    justify-content: flex-start;
-}
-
-/* 💡 스크롤바 숨기기 (타임라인용) */
-.timeline-grid::-webkit-scrollbar { display: none; }
-
-
-/* --- [Final Ver.2] 자재 UI 스타일 --- */
-/* 1. 중분류 칩 (확실한 버튼 모양) */
-        #sub-category-chips {
-            display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 5px;
-            background: #f8fafc; border-bottom: 1px solid #e2e8f0;
-        }
-        .sub-chip {
-            padding: 6px 14px !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 20px !important;
-            background-color: white !important;
-            color: #64748b !important;
-            font-size: 0.85rem; font-weight: 600;
-            cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-        .sub-chip.active {
-            background-color: #2563eb !important;
-            color: white !important;
-            border-color: #2563eb !important;
-        }
-
-        /* 2. 자재 리스트 표 (테두리 적용, 3칸 고정) */
-        .mat-table { 
-            width: 100%; border-collapse: collapse; 
-            table-layout: fixed; /* 셀 너비 고정 필수 */
-            margin-top: 0;
-        }
-        .mat-table th {
-            background: #f1f5f9; padding: 8px 2px;
-            font-size: 0.8rem; color: #334155;
-            border: 1px solid #cbd5e1; /* 진한 테두리 */
-            text-align: center;
-        }
-        .mat-table td {
-            padding: 6px 2px;
-            border: 1px solid #cbd5e1; /* 진한 테두리 */
-            vertical-align: middle;
-            font-size: 0.85rem; color: #1e293b;
-            word-break: break-all; text-align: center;
-        }
-        /* 품목과 규격은 왼쪽 정렬 */
-        .mat-table td:nth-child(1), .mat-table td:nth-child(2) {
-            text-align: left; padding-left: 8px;
-        }
-
-        /* 규격(Spec) 칸 전용 스타일 */
-        .spec-cell {
-            color: #1e293b; font-size: 0.9rem; font-weight: 600;
-            text-align: left; cursor: pointer;
-        }
-        /* 단위(Unit) 스타일 */
-        .unit-text {
-            font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 4px;
-        }
-
-        /* 3. 수량 조절 (외곽선 제거 & 타이핑 가능) */
-        .qty-control-box {
-            display: flex; align-items: stretch; justify-content: center;
-            width: 100%; height: 36px;
-            border: none !important; /* 박스 전체 외곽선 제거 */
-        }
-        .qty-input-box {
-            width: 100%; /* 공간 채우기 */
-            text-align: center; font-weight: bold; font-size: 1.1rem;
-            color: #2563eb;
-            border: 1px solid #e2e8f0; border-right: none; border-radius: 4px 0 0 4px;
-            padding: 0; outline: none; background: #fff;
-            -moz-appearance: textfield; /* 화살표 제거 */
-        }
-        .qty-input-box::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .qty-input-box:focus { background: #f0f9ff; border-color: #2563eb; }
-
-        .qty-btn-col {
-            display: flex; flex-direction: column; width: 30px; 
-            flex-shrink: 0; /* 너비 줄어듦 방지 */
-        }
-        .qty-btn-up, .qty-btn-down {
-            flex: 1; border: 1px solid #e2e8f0; background: #f8fafc;
-            cursor: pointer; display: flex; justify-content: center; align-items: center;
-            padding: 0; font-size: 0.6rem; color: #64748b;
-        }
-        .qty-btn-up:active, .qty-btn-down:active { background: #2563eb; color: white; }
-
-        /* --- [신규] 자재 직접 입력 팝업 스타일 --- */
-.modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.5); z-index: 10000;
-    display: none; justify-content: center; align-items: center;
-}
-.modal-box {
-    background: white; width: 85%; max-width: 350px;
-    padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-}
-.modal-title {
-    font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; color: #1e293b;
-}
-.modal-subtitle {
-    font-size: 0.85rem; color: #2563eb; margin-bottom: 15px; font-weight: 600;
-}
-.modal-input {
-    width: 100%; padding: 10px; margin-bottom: 10px;
-    border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem;
-    box-sizing: border-box; /* 중요: 패딩 포함 너비 계산 */
-}
-.modal-btn-group {
-    display: flex; gap: 10px; margin-top: 10px;
-}
-.modal-btn-cancel {
-    flex: 1; padding: 12px; border: 1px solid #cbd5e1; background: #f1f5f9;
-    border-radius: 8px; font-weight: bold; color: #64748b; cursor: pointer;
-}
-.modal-btn-confirm {
-    flex: 1; padding: 12px; border: none; background: #2563eb;
-    border-radius: 8px; font-weight: bold; color: white; cursor: pointer;
-}
-        
-/* 💡 기존 .modal 스타일을 아래 내용으로 교체하거나 추가하세요 */
-.modal {
-    display: none; /* 평소엔 숨김 */
-    position: fixed; /* 👈 화면에 딱 고정 (이게 핵심!) */
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.5); /* 배경 어둡게 */
-    z-index: 10000; /* 최상단 배치 */
-    
-    /* 💡 중앙 정렬 삼총사 */
-    display: none; /* JS에서 flex로 바꿀 예정 */
-    align-items: center; 
-    justify-content: center;
-}
-
-/* index.html에 넣으신 .modal-content 서식 */
-.modal-content {
-    background: white;
-    width: 90%;
-    max-width: 380px;
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    position: relative;
-    /* 💡 폰 화면에서 너무 길어지면 스크롤 생기게 */
-    max-height: 85vh;
-    overflow-y: auto;
-}
-
-        
-        /* 2. 타임라인 내부 현장명 막대 (말줄임 처리) */
-.job-bar {
-    width: 95%; /* 기둥 너비 안에서 꽉 차게 */
-    white-space: nowrap;    /* 🟢 줄바꿈 금지 */
-    overflow: hidden;       /* 🟢 넘치는 부분 숨김 */
-    text-overflow: ellipsis; /* 🟢 끝에 ... 표시 */
-    margin: 3px auto;
-    font-size: 0.8rem;
-    padding: 6px 4px;
-    border-radius: 6px;
-    text-align: center;
     box-sizing: border-box;
 }
 
+label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9rem; color: #475569; }
+input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 1rem; box-sizing: border-box; margin-bottom: 10px; }
 
+/* 2. 칩(Chip) 관리 UI */
+.chip-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; }
+.chip-input-group { display: flex; flex: 1; gap: 5px; }
+.chip-input-group input { margin-bottom: 0; flex: 1; padding: 8px; font-size: 0.9rem; }
+.add-btn { background: #334155; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; white-space: nowrap; cursor: pointer; }
+.del-mode-btn { color: #ef4444; font-size: 0.8rem; cursor: pointer; white-space: nowrap; font-weight: bold; }
+.chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; min-height: 20px; }
+.chip { padding: 8px 14px; background: var(--chip-bg); border-radius: 20px; font-size: 0.9rem; cursor: pointer; border: 1px solid #e2e8f0; transition: 0.2s; }
+.chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+.chip.delete-target { background: #fee2e2; color: #ef4444; border: 1px dashed #ef4444; }
 
+/* 3. 하단 네비 및 스플래시 */
+.bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: white; display: flex; border-top: 1px solid #e2e8f0; z-index: 1000; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8rem; color: #64748b; cursor: pointer; }
+.nav-item.active { color: var(--primary); font-weight: bold; }
 
-/* 🌟 동기화 토스트 알림창 스타일 */
-        #sync-toast {
-            display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(30, 41, 59, 0.9); color: white; padding: 8px 16px; border-radius: 20px;
-            font-size: 0.85rem; font-weight: bold; z-index: 10001; /* 스플래시보다 높게 */
-            align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            transition: opacity 0.3s;
-        }
-        .sync-spinner {
-            width: 14px; height: 14px; border: 2px solid #cbd5e1; border-top-color: #3b82f6;
-            border-radius: 50%; animation: spin 1s linear infinite;
-        }
-        
+#splash-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #E60012; display: flex; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s ease-out; }
+.loader { width: 30px; height: 30px; border: 3px solid #333; border-top: 3px solid #ef4444; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* 4. 타임라인 그리드 (14일 일정) */
+.timeline-grid {
+    display: flex; overflow-x: auto; overflow-y: hidden;
+    max-height: 200px; gap: 12px; padding: 15px 10px;
+    background: white; border-radius: 16px; margin-bottom: 20px;
+    scrollbar-width: none; align-items: flex-start;
+}
+.timeline-grid::-webkit-scrollbar { display: none; }
+
+.time-col {
+    min-width: 95px; max-height: 170px; overflow-y: auto;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 12px; padding: 10px 4px; scrollbar-width: none;
+}
+.time-col::-webkit-scrollbar { display: none; }
+
+.job-bar {
+    width: 95%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin: 3px auto; font-size: 0.8rem; padding: 6px 4px;
+    border-radius: 6px; text-align: center; box-sizing: border-box;
+    color: #ffffff !important; font-weight: bold;
+}
+
+/* 5. 카드뷰 전용 스타일 */
+.schedule-card-item { transition: all 0.4s ease; }
+.past-btn { width: 100%; padding: 10px; background: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 10px; margin-bottom: 15px; color: #64748b; font-size: 0.9rem; }
+.worker-chip { display: inline-block; padding: 2px 8px; background: #e2e8f0; border-radius: 12px; font-size: 0.75rem; margin-right: 4px; color: #475569; font-weight: 600; }
+.sun { color: #ef4444 !important; }
+.sat { color: #2563eb !important; }
+
+/* 6. 자재 UI 시스템 */
+#sub-category-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 5px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.sub-chip { padding: 6px 14px; border: 1px solid #cbd5e1; border-radius: 20px; background: white; color: #64748b; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.sub-chip.active { background: #2563eb; color: white; border-color: #2563eb; }
+
+.mat-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.mat-table th, .mat-table td { border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 0.85rem; vertical-align: middle; text-align: center; }
+.mat-table td:nth-child(1), .mat-table td:nth-child(2) { text-align: left; padding-left: 8px; }
+.qty-control-box { display: flex; width: 100%; height: 36px; }
+.qty-input-box { width: 100%; text-align: center; font-weight: bold; font-size: 1.1rem; color: #2563eb; border: 1px solid #e2e8f0; }
+.qty-btn-col { display: flex; flex-direction: column; width: 30px; }
+.qty-btn-up, .qty-btn-down { flex: 1; border: 1px solid #e2e8f0; font-size: 0.6rem; cursor: pointer; }
+
+/* 7. 모달(팝업) 시스템 */
+.modal {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5); z-index: 10000; align-items: center; justify-content: center;
+}
+.modal-content { background: white; width: 90%; max-width: 380px; border-radius: 20px; padding: 20px; max-height: 85vh; overflow-y: auto; position: relative; }
+
+/* 동기화 토스트 */
+#sync-toast {
+    display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(30, 41, 59, 0.9); color: white; padding: 8px 16px; border-radius: 20px;
+    font-size: 0.85rem; font-weight: bold; z-index: 10001; align-items: center; gap: 8px;
+}
+.sync-spinner { width: 14px; height: 14px; border: 2px solid #cbd5e1; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
 
         
         
