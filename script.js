@@ -2,7 +2,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
 }
 
-const APP_VERSION = "2.2"; // 👈 기능 수정할 때마다 이 숫자를 1.6, 1.7로 올리세요!
+const APP_VERSION = "2.3"; // 👈 기능 수정할 때마다 이 숫자를 1.6, 1.7로 올리세요!
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedVer = localStorage.getItem('titan_app_version');
