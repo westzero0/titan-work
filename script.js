@@ -854,13 +854,17 @@ function renderTimeline() {
     grid.innerHTML = '';
     const worker = document.getElementById('worker-select').value;
     
+    // 한국 시간 기준 오늘 날짜 구하기
     const now = new Date();
     const todayStr = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0]; 
 
+    const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+
     for (let i = 0; i < 14; i++) {
-        const date = new Date();
+        // 날짜를 하루씩 증가 (한국 시간 기준)
+        const date = new Date(now.getTime() + (9 * 60 * 60 * 1000));
         date.setDate(date.getDate() + i);
-        const dateStr = new Date(date.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+        const dateStr = date.toISOString().split('T')[0];
         
         let dayJobs = allSchedules.filter(j => {
             if (j.date !== dateStr) return false;
@@ -887,8 +891,11 @@ function renderTimeline() {
             } else {
                 const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
                 displayTitle = `${j.site}(${wCount})`;
-                const isNight = (j.shift || "").toString().includes('야');
-                bgColor = isNight ? "#475569" : "#2563eb";
+                
+                const sType = (j.shift || "").toString().trim();
+                bgColor = "#0d6efd"; // 주간 (기본)
+                if (sType.includes('야')) bgColor = "#6c757d"; // 야간
+                else if (sType.includes('조')) bgColor = "#fd7e14"; // 조출
             }
 
             return `<div class="job-bar" onclick="scrollToCard('${j.date}', '${j.site}')"
@@ -897,7 +904,22 @@ function renderTimeline() {
                     </div>`;
         }).join('');
 
-        col.innerHTML = `<div style="font-size:0.75rem; text-align:center; margin-bottom:5px; font-weight:bold;">${dateStr === todayStr ? '🌟' : (date.getMonth()+1)+'/'+date.getDate()}</div><div style="display:flex; flex-direction:column; gap:4px;">${barsHtml}</div>`;
+        // 🌟 요일 및 색상 계산 로직 추가
+        const month = date.getMonth() + 1;
+        const d = date.getDate();
+        const dayIndex = date.getDay();
+        const dayName = weekDays[dayIndex];
+        
+        let dayColor = '#64748b'; // 평일 기본 회색
+        if (dayIndex === 0) dayColor = '#ef4444'; // 일요일 빨강
+        if (dayIndex === 6) dayColor = '#2563eb'; // 토요일 파랑
+
+        let headerText = `${month}/${d} <span style="color:${dayColor}">(${dayName})</span>`;
+        if (dateStr === todayStr) {
+            headerText = `🌟 오늘 <span style="color:${dayColor}">(${dayName})</span>`;
+        }
+
+        col.innerHTML = `<div style="font-size:0.75rem; text-align:center; margin-bottom:5px; font-weight:bold; color:#1e293b;">${headerText}</div><div style="display:flex; flex-direction:column; gap:4px;">${barsHtml}</div>`;
         grid.appendChild(col);
     }
 }
