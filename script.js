@@ -908,78 +908,105 @@ function renderCalendar() {
     const container = document.getElementById('schedule-container');
     if (!container) return;
 
-    // 기존 내용을 비우고 FullCalendar가 들어갈 박스 생성
-    container.innerHTML = '<div id="calendar-wrapper" class="card" style="padding:10px; background:white; border-radius:8px; border:1px solid #e2e8f0; box-shadow:none; margin-bottom: 20px;"></div>';
-    const calEl = document.getElementById('calendar-wrapper');
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
 
+    const now = new Date();
+    const todayStrLocal = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
     const selectedWorker = document.getElementById('worker-select').value;
-    const events = [];
-
-    // 일정 데이터를 FullCalendar 양식에 맞게 변환
-    allSchedules.forEach(item => {
-        const isTotalOff = (item.client === '휴무' || item.site === '휴무');
-        const isPartialOff = (item.site === 'X');
+    
+    // 관리자 패널(FullCalendar) 기본 스타일 복제
+    let html = `
+    <div style="border: 1px solid #ddd; border-radius: 4px; background: #fff; margin-top: 10px; font-family: -apple-system, sans-serif;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #ddd;">
+            <button onclick="changeMonth(-1)" style="background: none; border: 1px solid transparent; cursor: pointer; font-size: 14px; color: #333; padding: 4px 8px;">◀</button>
+            <span style="font-size: 1.15em; font-weight: normal; color: #333;">${year}년 ${month+1}월</span>
+            <button onclick="changeMonth(1)" style="background: none; border: 1px solid transparent; cursor: pointer; font-size: 14px; color: #333; padding: 4px 8px;">▶</button>
+        </div>
         
-        const wList = (item.workers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
-        const offList = (item.offWorkers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); background: #fff; border-bottom: 1px solid #ddd;">
+            ${['일','월','화','수','목','금','토'].map((d, i) => {
+                let color = '#333';
+                if (i === 0) color = '#dc3545'; 
+                if (i === 6) color = '#0d6efd'; 
+                return `<div style="text-align: center; font-size: 13px; padding: 8px 0; color: ${color}; font-weight: normal;">${d}</div>`;
+            }).join('')}
+        </div>
 
-        // 필터링 적용
-        if (selectedWorker !== "전체") {
-            if (!wList.includes(selectedWorker) && !offList.includes(selectedWorker) && !isTotalOff) return;
-        } else {
-            if (isPartialOff) return; // 전체보기에서 X(개인휴무) 제외
-        }
-
-        const isMyOff = (selectedWorker !== "전체" && offList.includes(selectedWorker)) || isTotalOff;
-
-        if (isMyOff) {
-            events.push({
-                title: `🏖️휴무`,
-                start: item.date,
-                backgroundColor: '#fef2f2',
-                textColor: '#ef4444',
-                borderColor: '#fca5a5',
-                extendedProps: { date: item.date, site: item.site }
-            });
-        } else {
-            const wCount = wList.length;
-            const isNight = (item.shift || "").toString().includes('야');
-            const bgColor = isNight ? '#475569' : '#3b82f6';
-            events.push({
-                title: `${item.site}(${wCount})`,
-                start: item.date,
-                backgroundColor: bgColor,
-                textColor: 'white',
-                borderColor: 'transparent',
-                extendedProps: { date: item.date, site: item.site }
-            });
-        }
-    });
-
-    // 기존 달력이 남아있다면 파괴
-    if (workerCalendar) workerCalendar.destroy();
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ddd;">
+    `;
     
-    // 달력 생성
-    workerCalendar = new FullCalendar.Calendar(calEl, {
-        initialView: 'dayGridMonth',
-        initialDate: viewDate, // 현재 보고 있는 월 유지
-        locale: 'ko',
-        height: 'auto',
-        contentHeight: 'auto',
-        headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-        dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
-        events: events,
-        eventClick: (info) => {
-            // 막대기 클릭 시 해당 카드로 이동
-            jumpToCard(info.event.extendedProps.date, info.event.extendedProps.site);
-        },
-        datesSet: (info) => {
-            // 사용자가 달력을 넘기면 기준 날짜(viewDate) 동기화
-            viewDate = info.view.currentStart; 
-        }
-    });
+    const firstDay = new Date(year, month, 1).getDay();
+    const lastDate = new Date(year, month + 1, 0).getDate();
     
-    workerCalendar.render();
+    // 빈 칸
+    for (let i = 0; i < firstDay; i++) {
+        html += `<div style="background: #fff; min-height: 90px;"></div>`;
+    }
+    
+    // 날짜 렌더링
+    for (let d = 1; d <= lastDate; d++) {
+        const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const isToday = (dStr === todayStrLocal);
+        const dateObj = new Date(year, month, d);
+        const dayOfWeek = dateObj.getDay();
+        
+        let dateColor = '#333';
+        if (dayOfWeek === 0) dateColor = '#dc3545';
+        if (dayOfWeek === 6) dateColor = '#0d6efd';
+
+        // 오늘 날짜 하이라이트
+        const dateStyle = isToday 
+            ? `background: #0d6efd; color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; justify-content: center; align-items: center; font-size: 12px;` 
+            : `color: ${dateColor}; font-size: 12px;`;
+
+        html += `
+        <div style="background: #fff; min-height: 90px; padding: 2px; display: flex; flex-direction: column;">
+            <div style="text-align: right; padding: 2px 2px 4px 0;">
+                <span style="${dateStyle}">${d}</span>
+            </div>`;
+
+        const jobsForToday = allSchedules.filter(s => {
+            if (s.date !== dStr) return false;
+            if (selectedWorker === "전체") return (s.site !== 'X');
+            const wList = (s.workers || "").toString().split(',').map(n => n.trim());
+            const offList = (s.offWorkers || "").toString().split(',').map(n => n.trim());
+            return wList.includes(selectedWorker) || offList.includes(selectedWorker);
+        });
+
+        jobsForToday.forEach(j => {
+            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
+            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
+            const isMyOff = (selectedWorker !== "전체" && offList.includes(selectedWorker)) || isTotalOff;
+
+            // 일정 막대 스타일 (FullCalendar 디자인)
+            const baseBarStyle = `font-size: 11px; padding: 2px 4px; margin-bottom: 2px; border-radius: 2px; cursor: pointer; text-align: left; line-height: 1.3; white-space: normal; word-break: break-all; display: block;`;
+
+            if (isMyOff) {
+                html += `<div style="${baseBarStyle} background: rgba(220,53,69,0.1); color: #dc3545; border: 1px solid rgba(220,53,69,0.2);">🏖️휴무</div>`;
+            } else {
+                const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
+                const isNight = (j.shift || "").toString().includes('야');
+                const bgColor = isNight ? "#6c757d" : "#3788d8";
+                
+                html += `
+                <div onclick="jumpToCard('${j.date}','${j.site}')" 
+                     style="${baseBarStyle} background: ${bgColor}; color: #fff; border: 1px solid ${bgColor};">
+                    ${j.site}(${wCount})
+                </div>`;
+            }
+        });
+        
+        html += `</div>`;
+    }
+    
+    // 남은 빈 칸 마감
+    const totalCells = firstDay + lastDate;
+    const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for(let i=0; i<remaining; i++) html += `<div style="background: #fff;"></div>`;
+
+    html += `</div></div>`;
+    container.innerHTML = html;
 }
 
 function renderCards() {
