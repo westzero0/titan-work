@@ -902,115 +902,84 @@ function renderTimeline() {
     }
 }
 
+let workerCalendar = null; // 달력 객체를 담을 변수
+
 function renderCalendar() {
     const container = document.getElementById('schedule-container');
     if (!container) return;
 
-    const year = viewDate.getFullYear();
-    const month = viewDate.getMonth();
+    // 기존 내용을 비우고 FullCalendar가 들어갈 박스 생성
+    container.innerHTML = '<div id="calendar-wrapper" class="card" style="padding:10px; background:white; border-radius:8px; border:1px solid #e2e8f0; box-shadow:none; margin-bottom: 20px;"></div>';
+    const calEl = document.getElementById('calendar-wrapper');
 
-    const now = new Date();
-    const todayStrLocal = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
     const selectedWorker = document.getElementById('worker-select').value;
-    
-    // 🎨 [관리자 패널 스타일] 폰트를 얇고 깔끔하게, 불필요한 그림자 제거
-    let html = `
-    <div class="card calendar-card" style="padding:0 !important; background:white !important; border-radius:8px !important; overflow:hidden !important; border:1px solid #e2e8f0 !important; box-shadow:none !important; margin: 10px !important; font-family: 'Noto Sans KR', sans-serif;">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; background:#fff; border-bottom:1px solid #e2e8f0;">
-            <button onclick="changeMonth(-1)" style="background:transparent; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer; color:#475569; font-size:0.85rem;">◀</button> 
-            <span style="font-size:1.1rem; color:#1e293b; font-weight:bold;">${year}년 ${month+1}월</span> 
-            <button onclick="changeMonth(1)" style="background:transparent; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer; color:#475569; font-size:0.85rem;">▶</button>
-        </div>
+    const events = [];
+
+    // 일정 데이터를 FullCalendar 양식에 맞게 변환
+    allSchedules.forEach(item => {
+        const isTotalOff = (item.client === '휴무' || item.site === '휴무');
+        const isPartialOff = (item.site === 'X');
         
-        <div style="display:grid; grid-template-columns:repeat(7, 1fr); background:#fff; border-bottom:1px solid #e2e8f0;">
-            ${['일','월','화','수','목','금','토'].map((d, i) => {
-                let color = '#64748b';
-                if(i === 0) color = '#ef4444'; 
-                if(i === 6) color = '#2563eb'; 
-                return `<div style="text-align:center; font-size:0.8rem; padding:8px 0; font-weight:normal; color:${color};">${d}</div>`
-            }).join('')}
-        </div>
+        const wList = (item.workers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
+        const offList = (item.offWorkers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
 
-        <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:1px; background:#e2e8f0; border-bottom:1px solid #e2e8f0;">
-    `;
+        // 필터링 적용
+        if (selectedWorker !== "전체") {
+            if (!wList.includes(selectedWorker) && !offList.includes(selectedWorker) && !isTotalOff) return;
+        } else {
+            if (isPartialOff) return; // 전체보기에서 X(개인휴무) 제외
+        }
+
+        const isMyOff = (selectedWorker !== "전체" && offList.includes(selectedWorker)) || isTotalOff;
+
+        if (isMyOff) {
+            events.push({
+                title: `🏖️휴무`,
+                start: item.date,
+                backgroundColor: '#fef2f2',
+                textColor: '#ef4444',
+                borderColor: '#fca5a5',
+                extendedProps: { date: item.date, site: item.site }
+            });
+        } else {
+            const wCount = wList.length;
+            const isNight = (item.shift || "").toString().includes('야');
+            const bgColor = isNight ? '#475569' : '#3b82f6';
+            events.push({
+                title: `${item.site}(${wCount})`,
+                start: item.date,
+                backgroundColor: bgColor,
+                textColor: 'white',
+                borderColor: 'transparent',
+                extendedProps: { date: item.date, site: item.site }
+            });
+        }
+    });
+
+    // 기존 달력이 남아있다면 파괴
+    if (workerCalendar) workerCalendar.destroy();
     
-    const firstDay = new Date(year, month, 1).getDay();
-    const lastDate = new Date(year, month + 1, 0).getDate();
+    // 달력 생성
+    workerCalendar = new FullCalendar.Calendar(calEl, {
+        initialView: 'dayGridMonth',
+        initialDate: viewDate, // 현재 보고 있는 월 유지
+        locale: 'ko',
+        height: 'auto',
+        contentHeight: 'auto',
+        headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+        dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
+        events: events,
+        eventClick: (info) => {
+            // 막대기 클릭 시 해당 카드로 이동
+            jumpToCard(info.event.extendedProps.date, info.event.extendedProps.site);
+        },
+        datesSet: (info) => {
+            // 사용자가 달력을 넘기면 기준 날짜(viewDate) 동기화
+            viewDate = info.view.currentStart; 
+        }
+    });
     
-    for(let i=0; i<firstDay; i++) html += `<div style="background:#fff; min-height:85px;"></div>`;
-    
-    for(let d=1; d<=lastDate; d++) {
-        const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const isToday = (dStr === todayStrLocal);
-        const dateObj = new Date(year, month, d);
-        const dayOfWeek = dateObj.getDay();
-        
-        let dateColor = '#64748b';
-        if (dayOfWeek === 0) dateColor = '#ef4444';
-        if (dayOfWeek === 6) dateColor = '#2563eb';
-
-        // 🔵 오늘 날짜 포인트 (폰트 굵기를 bold로, 나머지는 normal로)
-        const dateStyle = isToday 
-            ? `background:#2563eb !important; color:white !important; border-radius:50% !important; width:24px !important; height:24px !important; display:inline-flex !important; justify-content:center !important; align-items:center !important; font-size:0.8rem !important; font-weight:bold !important;` 
-            : `color:${dateColor}; font-size:0.8rem; font-weight:normal;`;
-
-        html += `
-        <div class="calendar-day-cell" style="background:white; min-height:85px; padding:2px; display:flex; flex-direction:column; gap:1px;">
-            <div style="text-align:right; padding:4px;">
-                <span style="${dateStyle}">${d}</span>
-            </div>`;
-
-        const jobsForToday = allSchedules.filter(s => {
-            if (s.date !== dStr) return false;
-            if (selectedWorker === "전체") return (s.site !== 'X');
-            const wList = (s.workers || "").toString().split(',').map(n => n.trim());
-            const offList = (s.offWorkers || "").toString().split(',').map(n => n.trim());
-            return wList.includes(selectedWorker) || offList.includes(selectedWorker);
-        });
-
-        jobsForToday.forEach(j => {
-            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
-            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
-            const isMyOff = (selectedWorker !== "전체" && offList.includes(selectedWorker)) || isTotalOff;
-
-            // 🌟 일정 바 (폰트 얇게 normal, 꽉 찬 사각형 느낌, 그림자 제거)
-            const barStyle = `
-                font-size: 0.65rem !important; 
-                padding: 2px !important; 
-                border-radius: 3px !important; 
-                font-weight: normal !important; 
-                line-height: 1.2 !important; 
-                text-align: left; 
-                cursor: pointer;
-                white-space: normal !important; 
-                word-break: break-all !important; 
-                display: block;
-            `;
-
-            if (isMyOff) {
-                html += `<div style="${barStyle} background:#fef2f2; color:#ef4444; border:1px solid #fca5a5; text-align:center;">🏖️휴무</div>`;
-            } else {
-                const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
-                const isNight = (j.shift || "").toString().includes('야');
-                const bgColor = isNight ? "#475569" : "#3b82f6";
-                
-                html += `
-                <div onclick="jumpToCard('${j.date}','${j.site}')" 
-                     style="${barStyle} background:${bgColor}; color:white; padding-left:4px !important;">
-                    ${j.site}(${wCount})
-                </div>`;
-            }
-        });
-        
-        html += `</div>`;
-    }
-    
-    const totalCells = firstDay + lastDate;
-    const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-    for(let i=0; i<remaining; i++) html += `<div style="background:#fff;"></div>`;
-
-    html += `</div></div>`;
-    container.innerHTML = html;
+    workerCalendar.render();
 }
 
 function renderCards() {
