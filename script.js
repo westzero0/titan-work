@@ -854,93 +854,50 @@ function renderTimeline() {
     grid.innerHTML = '';
     const worker = document.getElementById('worker-select').value;
     
-    // 🌟 [시간 수정 1] 영국의 방해를 막고 '한국 시간(+9시간)'으로 오늘 날짜 고정!
     const now = new Date();
     const todayStr = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0]; 
 
     for (let i = 0; i < 14; i++) {
         const date = new Date();
         date.setDate(date.getDate() + i);
-        
-        // 🌟 [시간 수정 2] 앞으로의 14일 날짜들도 전부 한국 시간으로 고정!
         const dateStr = new Date(date.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
         
         let dayJobs = allSchedules.filter(j => {
             if (j.date !== dateStr) return false;
-            
-            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
-            const isPartialOff = (j.site === 'X');
+            if (worker === "전체") return (j.site !== 'X'); // 전체보기는 개인휴무 제외
 
-            if (worker === "전체") {
-                return !isPartialOff; // 전체보기: 개인 휴무(X) 제외
-            } else {
-                const wList = (j.workers || "").toString().split(',').map(n => n.trim());
-                const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
-                return wList.includes(worker) || offList.includes(worker);
-            }
+            const wList = (j.workers || "").toString().split(',').map(n => n.trim());
+            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
+            return wList.includes(worker) || offList.includes(worker);
         });
 
         const col = document.createElement('div');
         col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
         
         let barsHtml = dayJobs.map(j => {
-            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
-            const isPartialOff = (j.site === 'X');
-            const isOffDuty = isTotalOff || isPartialOff;
-
-            const wList = (j.workers || "").toString().split(',').filter(n => n.trim() !== "");
-            const offList = (j.offWorkers || "").toString().split(',').filter(n => n.trim() !== "");
-            
-            const isMyOffDay = (worker !== "전체" && offList.includes(worker));
+            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
+            const isMyOff = (worker !== "전체" && offList.includes(worker)) || (j.client === '휴무' || j.site === '휴무');
 
             let displayTitle = "";
             let bgColor = "";
 
-            if (isOffDuty) {
-                if (isTotalOff) {
-                    displayTitle = "🏖️전체휴무"; 
-                } else {
-                    displayTitle = "🏖️휴무<br>(" + worker + ")"; 
-                }
+            if (isMyOff) {
+                displayTitle = "🏖️휴무";
                 bgColor = "#ef4444"; 
-            } else if (isMyOffDay) {
-                displayTitle = "🏖️휴무"; 
-                bgColor = "#ef4444";
             } else {
-                displayTitle = j.site + "(" + wList.length + ")";
+                const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
+                displayTitle = `${j.site}(${wCount})`;
                 const isNight = (j.shift || "").toString().includes('야');
                 bgColor = isNight ? "#475569" : "#2563eb";
             }
 
-            return `<div class="job-bar" 
-                         onclick="scrollToCard('${j.date}', '${j.site}')"
-                         style="background-color: ${bgColor}; 
-                                color: white !important; 
-                                font-weight: bold; 
-                                font-size: 0.65rem; 
-                                padding: 4px 2px; 
-                                border-radius: 4px; 
-                                text-align: center;
-                                white-space: normal;    
-                                word-break: break-all;  
-                                line-height: 1.2;       
-                                min-height: 1.5rem;     
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                cursor: pointer;">
+            return `<div class="job-bar" onclick="scrollToCard('${j.date}', '${j.site}')"
+                         style="background-color: ${bgColor}; color: white !important; font-weight: bold; font-size: 0.65rem; padding: 4px 2px; border-radius: 4px; text-align: center; white-space: normal; word-break: break-all; line-height: 1.2; min-height: 1.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                          ${displayTitle}
                     </div>`;
         }).join('');
 
-        col.innerHTML = `
-            <div style="font-size:0.75rem; text-align:center; margin-bottom:5px; font-weight:bold;">
-                ${dateStr === todayStr ? '🌟' : (date.getMonth()+1)+'/'+date.getDate()}
-            </div>
-            <div style="display:flex; flex-direction:column; gap:4px;">
-                ${barsHtml}
-            </div>
-        `;
+        col.innerHTML = `<div style="font-size:0.75rem; text-align:center; margin-bottom:5px; font-weight:bold;">${dateStr === todayStr ? '🌟' : (date.getMonth()+1)+'/'+date.getDate()}</div><div style="display:flex; flex-direction:column; gap:4px;">${barsHtml}</div>`;
         grid.appendChild(col);
     }
 }
@@ -1067,7 +1024,8 @@ function renderCards() {
     if (!container) return;
 
     const worker = document.getElementById('worker-select').value;
-    const today = new Date(new Date().getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
+    const now = new Date();
+    const today = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
@@ -1077,11 +1035,14 @@ function renderCards() {
         let isIncluded = false;
         
         if (worker === "전체") {
-            isIncluded = !isPartialOff; // 전체보기: 부분 휴무(X) 현장은 아예 안 보임
+            isIncluded = !isPartialOff; 
         } else {
-            const wList = (s.workers || "").toString().split(',').map(name => name.trim());
-            const offList = (s.offWorkers || "").toString().split(',').map(name => name.trim());
-            isIncluded = wList.includes(worker) || offList.includes(worker);
+            const wList = (s.workers || "").toString().split(',').map(name => name.trim()).filter(n => n !== "");
+            const offList = (s.offWorkers || "").toString().split(',').map(name => name.trim()).filter(n => n !== "");
+            
+            // 🌟 [수정된 핵심 로직] 
+            // 1. 내가 근무자거나 2. 내가 휴무자거나 3. 아예 '전체 휴무'인 날이면 카드를 보여줌
+            isIncluded = wList.includes(worker) || offList.includes(worker) || isTotalOff;
         }
         
         return isIncluded && (showPast ? s.date < today : s.date >= today);
@@ -1099,28 +1060,23 @@ function renderCards() {
         html += filtered.map(s => {
             const dateObj = new Date(s.date);
             const dayName = weekDays[dateObj.getDay()];
-            
-            let dayColor = "#64748b"; 
-            if (dateObj.getDay() === 0) dayColor = "#ef4444"; 
-            if (dateObj.getDay() === 6) dayColor = "#3b82f6"; 
+            let dayColor = (dateObj.getDay() === 0) ? "#ef4444" : (dateObj.getDay() === 6 ? "#3b82f6" : "#64748b");
 
             const clientName = (s.client || "").toString().trim();
             const siteName = (s.site || "").toString().trim();
-            
             const sType = (s.shift || "").toString().trim();
+            
             const isTotalOff = (clientName === '휴무' || siteName === '휴무');
             const isPartialOff = (siteName === 'X');
-            const isOffDuty = isTotalOff || isPartialOff;
-            
-            const wList = (s.workers || "").toString().split(',').filter(n => n.trim() !== "");
-            const offList = (s.offWorkers || "").toString().split(',').filter(n => n.trim() !== "");
+            const offList = (s.offWorkers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
+            const isMyOffDay = (worker !== "전체" && offList.includes(worker));
 
             let borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
             let cardBg = 'white'; 
-            let cardContentHtml = ""; // 카드 안쪽에 들어갈 내용을 상황에 따라 아예 다르게 만듦!
+            let cardContentHtml = ""; 
 
-            // 🌟 1. [전체보기] + 전체 휴무인 경우
-            if (worker === "전체" && isTotalOff) {
+            // 휴무 카드 디자인 (기능 누락 없음)
+            if (isTotalOff || isMyOffDay || isPartialOff) {
                 borderColor = '#ef4444'; 
                 cardBg = '#fef2f2';      
                 cardContentHtml = `
@@ -1128,24 +1084,11 @@ function renderCards() {
                         📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span>
                      </div>
                      <div style="font-size:1.3rem; font-weight:900; color:#ef4444; text-align:center; padding: 15px 0;">
-                        🏖️ 전체 휴무
+                        🏖️ ${isTotalOff ? '전체 휴무' : '휴무'}
                      </div>
                 `;
             } 
-            // 🌟 2. [개인검색] + 본인이 휴무인 경우
-            else if (worker !== "전체" && (isOffDuty || offList.includes(worker))) {
-                borderColor = '#ef4444'; 
-                cardBg = '#fef2f2';      
-                cardContentHtml = `
-                     <div style="font-weight:bold; font-size:0.85rem; color:#64748b; margin-bottom:8px;">
-                        📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span>
-                     </div>
-                     <div style="font-size:1.3rem; font-weight:900; color:#ef4444; text-align:center; padding: 15px 0;">
-                        🏖️ 휴무
-                     </div>
-                `;
-            } 
-            // 🌟 3. 정상 근무인 경우 (일반 카드)
+            // 정상 근무 카드 디자인 (모든 항목 포함 확인됨)
             else {
                 let siteAddr = "";
                 let siteNote = ""; 
@@ -1154,86 +1097,45 @@ function renderCards() {
                 if (clientKey && masterData[clientKey]) {
                     const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteName);
                     if (found) {
-                        const allKeys = Object.keys(found);
-                        const addrKey = allKeys.find(k => k.trim().includes('주소') || k.toLowerCase().includes('addr'));
+                        const addrKey = Object.keys(found).find(k => k.trim().includes('주소') || k.toLowerCase().includes('addr'));
                         if (addrKey) siteAddr = found[addrKey];
                         siteNote = found.note || found.특이사항 || found.비고 || "";
                     }
                 }
 
                 const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
-                const displayShift = sType || '주간'; 
+                const wList = (s.workers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
                 const hasMaterials = s.materials && s.materials.trim() !== "";
-
-                // 휴무자 명단(offList)은 이제 카드에 그리지 않음! 오직 근무자만 그림.
-                let workerChipsHtml = "";
-                if (wList.length > 0) {
-                    workerChipsHtml += wList.map(w => 
-                        `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w.trim()}</span>`
-                    ).join('');
-                }
+                const workerChipsHtml = wList.map(w => `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w}</span>`).join('');
 
                 cardContentHtml = `
                  <div onclick="openMaterialCheckModal('${safeData}')" 
-                      style="position:absolute; top:12px; right:60px; font-size:1.4rem; cursor:pointer; 
-                             background:${hasMaterials ? '#ecfdf5' : '#f8fafc'}; 
-                             width:42px; height:42px; display:flex; align-items:center; justify-content:center; 
-                             border-radius:50%; border:1px solid ${hasMaterials ? '#10b981' : '#e2e8f0'}; z-index:5;">
+                      style="position:absolute; top:12px; right:60px; font-size:1.4rem; cursor:pointer; background:${hasMaterials ? '#ecfdf5' : '#f8fafc'}; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid ${hasMaterials ? '#10b981' : '#e2e8f0'}; z-index:5;">
                     📦${hasMaterials ? '<span style="position:absolute; top:-2px; right:-2px; font-size:0.7rem;">✅</span>' : ''}
                 </div>
-                 <div onclick="copyScheduleToLogSafe('${safeData}')" 
-                      style="position:absolute; top:12px; right:12px; font-size:1.4rem; cursor:pointer; background:#f8fafc; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #e2e8f0; z-index:5;">📝</div>
+                 <div onclick="copyScheduleToLogSafe('${safeData}')" style="position:absolute; top:12px; right:12px; font-size:1.4rem; cursor:pointer; background:#f8fafc; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #e2e8f0; z-index:5;">📝</div>
 
                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                      <div style="width: calc(100% - 50px);">
                         <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
-                            📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span> <span style="color:#64748b;">[${displayShift}]</span>
+                            📅 ${s.date} <span style="color:${dayColor}">(${dayName})</span> <span>[${sType || '주간'}]</span>
                         </div>
                         <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
                         <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
-                        
-                        ${siteAddr ? `
-                        <div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" 
-                             style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:block; width:fit-content; line-height:1.4;">
-                            📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
-                        </div>` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px; background:#f8fafc; padding:4px 8px; border-radius:4px; display:block; width:fit-content;">📍 주소 정보 없음</div>`}
+                        ${siteAddr ? `<div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:block; width:fit-content; line-height:1.4;">📍 ${siteAddr}</div>` : '<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px;">📍 주소 정보 없음</div>'}
                      </div>
                  </div>
-
-                 ${siteNote ? `
-                 <div style="background:#fef3c7; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:10px; line-height:1.5;">
-                     📢 <b>현장 안내:</b> ${siteNote}
-                 </div>` : ''}
-
-                 <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin-top:12px; margin-bottom:${s.note ? '8px' : '12px'}; border:1px solid #e2e8f0;">
-                     🛠️ ${s.content || s.workContent || '작업내용 없음'}
-                 </div>
-
-                 ${s.note ? `
-                 <div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-bottom:12px; line-height:1.4;">
-                     💡 <b>전달 사항:</b> ${s.note}
-                 </div>` : ''}
-
-                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                     <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
-                         ${workerChipsHtml}
-                     </div>
-                     
-                     ${s.car ? `
-                     <div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap; margin-left: 10px;">
-                         🚛 ${s.car}
-                     </div>` : ''}
+                 ${siteNote ? `<div style="background:#fef3c7; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:10px; line-height:1.5;">📢 <b>현장 안내:</b> ${siteNote}</div>` : ''}
+                 <div style="background:#f1f5f9; padding:10px 12px; border-radius:10px; font-size:0.9rem; color:#1e40af; font-weight:bold; margin-top:12px; border:1px solid #e2e8f0;">🛠️ ${s.content || s.workContent || '작업내용 없음'}</div>
+                 ${s.note ? `<div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-top:8px;">💡 <b>전달 사항:</b> ${s.note}</div>` : ''}
+                 <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:12px;">
+                     <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">${workerChipsHtml}</div>
+                     ${s.car ? `<div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap; margin-left: 10px;">🚛 ${s.car}</div>` : ''}
                  </div>
                 `;
             }
 
-            return `
-            <div class="card schedule-card-item" 
-                 data-date="${s.date}" data-site="${s.site}" 
-                 style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:${cardBg}; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);"> 
-                 ${cardContentHtml}
-            </div>
-            `;
+            return `<div class="card schedule-card-item" data-date="${s.date}" data-site="${s.site}" style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:${cardBg}; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">${cardContentHtml}</div>`;
         }).join('');
     }
     container.innerHTML = html;
