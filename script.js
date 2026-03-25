@@ -904,6 +904,8 @@ function renderTimeline() {
 
 function renderCalendar() {
     const container = document.getElementById('schedule-container');
+    if (!container) return;
+
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
 
@@ -911,32 +913,31 @@ function renderCalendar() {
     const todayStrLocal = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
     const selectedWorker = document.getElementById('worker-select').value;
     
-    // 🎨 [관리자 패널 스타일] 헤더 및 전체 틀
+    // 🎨 [관리자 패널 스타일] 폰트를 얇고 깔끔하게, 불필요한 그림자 제거
     let html = `
-    <div class="card calendar-card" style="padding:0; background:white; border-radius:12px; overflow:hidden; border:1px solid #e2e8f0; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; background:#fff; border-bottom:1px solid #f1f5f9;">
-            <button onclick="changeMonth(-1)" style="background:none; border:1px solid #e2e8f0; padding:5px 12px; border-radius:6px; cursor:pointer; color:#64748b; font-size:0.9rem;">◀</button> 
-            <b style="font-size:1.1rem; color:#1e293b;">${year}년 ${month+1}월</b> 
-            <button onclick="changeMonth(1)" style="background:none; border:1px solid #e2e8f0; padding:5px 12px; border-radius:6px; cursor:pointer; color:#64748b; font-size:0.9rem;">▶</button>
+    <div class="card calendar-card" style="padding:0 !important; background:white !important; border-radius:8px !important; overflow:hidden !important; border:1px solid #e2e8f0 !important; box-shadow:none !important; margin: 10px !important; font-family: 'Noto Sans KR', sans-serif;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; background:#fff; border-bottom:1px solid #e2e8f0;">
+            <button onclick="changeMonth(-1)" style="background:transparent; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer; color:#475569; font-size:0.85rem;">◀</button> 
+            <span style="font-size:1.1rem; color:#1e293b; font-weight:bold;">${year}년 ${month+1}월</span> 
+            <button onclick="changeMonth(1)" style="background:transparent; border:1px solid #cbd5e1; padding:4px 10px; border-radius:4px; cursor:pointer; color:#475569; font-size:0.85rem;">▶</button>
         </div>
         
-        <div style="display:grid; grid-template-columns:repeat(7, 1fr); background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+        <div style="display:grid; grid-template-columns:repeat(7, 1fr); background:#fff; border-bottom:1px solid #e2e8f0;">
             ${['일','월','화','수','목','금','토'].map((d, i) => {
                 let color = '#64748b';
-                if(i === 0) color = '#ef4444'; // 일요일
-                if(i === 6) color = '#2563eb'; // 토요일
-                return `<div style="text-align:center; font-size:0.75rem; padding:10px 0; font-weight:bold; color:${color};">${d}</div>`
+                if(i === 0) color = '#ef4444'; 
+                if(i === 6) color = '#2563eb'; 
+                return `<div style="text-align:center; font-size:0.8rem; padding:8px 0; font-weight:normal; color:${color};">${d}</div>`
             }).join('')}
         </div>
 
-        <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:0; background:#e2e8f0; border-bottom:1px solid #e2e8f0;">
+        <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:1px; background:#e2e8f0; border-bottom:1px solid #e2e8f0;">
     `;
     
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
     
-    // 빈 칸 채우기 (연한 회색 배경)
-    for(let i=0; i<firstDay; i++) html += `<div style="background:#f8fafc; min-height:90px; border-right:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9;"></div>`;
+    for(let i=0; i<firstDay; i++) html += `<div style="background:#fff; min-height:85px;"></div>`;
     
     for(let d=1; d<=lastDate; d++) {
         const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -944,18 +945,18 @@ function renderCalendar() {
         const dateObj = new Date(year, month, d);
         const dayOfWeek = dateObj.getDay();
         
-        let dateColor = '#475569';
+        let dateColor = '#64748b';
         if (dayOfWeek === 0) dateColor = '#ef4444';
         if (dayOfWeek === 6) dateColor = '#2563eb';
 
-        // 🎨 오늘 날짜 강조 스타일 (관리자 패널과 동일하게 숫자 배경 원형)
+        // 🔵 오늘 날짜 포인트 (폰트 굵기를 bold로, 나머지는 normal로)
         const dateStyle = isToday 
-            ? `background:#2563eb; color:white; border-radius:50%; width:22px; height:22px; display:inline-flex; justify-content:center; align-items:center;` 
-            : `color:${dateColor};`;
+            ? `background:#2563eb !important; color:white !important; border-radius:50% !important; width:24px !important; height:24px !important; display:inline-flex !important; justify-content:center !important; align-items:center !important; font-size:0.8rem !important; font-weight:bold !important;` 
+            : `color:${dateColor}; font-size:0.8rem; font-weight:normal;`;
 
         html += `
-        <div class="calendar-day-cell" style="background:white; min-height:95px; padding:4px; border-right:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9; display:flex; flex-direction:column; gap:2px;">
-            <div style="text-align:right; font-size:0.75rem; font-weight:bold; padding:2px 4px;">
+        <div class="calendar-day-cell" style="background:white; min-height:85px; padding:2px; display:flex; flex-direction:column; gap:1px;">
+            <div style="text-align:right; padding:4px;">
                 <span style="${dateStyle}">${d}</span>
             </div>`;
 
@@ -972,21 +973,30 @@ function renderCalendar() {
             const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
             const isMyOff = (selectedWorker !== "전체" && offList.includes(selectedWorker)) || isTotalOff;
 
-            // 🎨 일정 바 스타일 (FullCalendar 특유의 둥근 직사각형 느낌)
-            const barBaseStyle = `font-size:0.65rem; padding:3px 4px; border-radius:3px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; transition:opacity 0.2s;`;
+            // 🌟 일정 바 (폰트 얇게 normal, 꽉 찬 사각형 느낌, 그림자 제거)
+            const barStyle = `
+                font-size: 0.65rem !important; 
+                padding: 2px !important; 
+                border-radius: 3px !important; 
+                font-weight: normal !important; 
+                line-height: 1.2 !important; 
+                text-align: left; 
+                cursor: pointer;
+                white-space: normal !important; 
+                word-break: break-all !important; 
+                display: block;
+            `;
 
             if (isMyOff) {
-                // 휴무 스타일
-                html += `<div style="${barBaseStyle} background:#fee2e2; color:#ef4444; border-left:3px solid #ef4444;">🏖️ 휴무</div>`;
+                html += `<div style="${barStyle} background:#fef2f2; color:#ef4444; border:1px solid #fca5a5; text-align:center;">🏖️휴무</div>`;
             } else {
-                // 근무 스타일
                 const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
                 const isNight = (j.shift || "").toString().includes('야');
-                const bgColor = isNight ? '#475569' : '#3b82f6';
+                const bgColor = isNight ? "#475569" : "#3b82f6";
                 
                 html += `
                 <div onclick="jumpToCard('${j.date}','${j.site}')" 
-                     style="${barBaseStyle} background:${bgColor}; color:white; box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+                     style="${barStyle} background:${bgColor}; color:white; padding-left:4px !important;">
                     ${j.site}(${wCount})
                 </div>`;
             }
@@ -995,10 +1005,9 @@ function renderCalendar() {
         html += `</div>`;
     }
     
-    // 남은 칸 채우기
     const totalCells = firstDay + lastDate;
     const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-    for(let i=0; i<remaining; i++) html += `<div style="background:#f8fafc; border-right:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9;"></div>`;
+    for(let i=0; i<remaining; i++) html += `<div style="background:#fff;"></div>`;
 
     html += `</div></div>`;
     container.innerHTML = html;
