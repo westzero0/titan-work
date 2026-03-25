@@ -915,7 +915,7 @@ function renderCalendar() {
     const todayStrLocal = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
     const selectedWorker = document.getElementById('worker-select').value;
     
-    // 관리자 패널(FullCalendar) 기본 스타일 복제
+    // 관리자 패널(FullCalendar) 기본 스타일
     let html = `
     <div style="border: 1px solid #ddd; border-radius: 4px; background: #fff; margin-top: 10px; font-family: -apple-system, sans-serif;">
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #ddd;">
@@ -955,7 +955,6 @@ function renderCalendar() {
         if (dayOfWeek === 0) dateColor = '#dc3545';
         if (dayOfWeek === 6) dateColor = '#0d6efd';
 
-        // 오늘 날짜 하이라이트
         const dateStyle = isToday 
             ? `background: #0d6efd; color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; justify-content: center; align-items: center; font-size: 12px;` 
             : `color: ${dateColor}; font-size: 12px;`;
@@ -979,15 +978,18 @@ function renderCalendar() {
             const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
             const isMyOff = (selectedWorker !== "전체" && offList.includes(selectedWorker)) || isTotalOff;
 
-            // 일정 막대 스타일 (FullCalendar 디자인)
             const baseBarStyle = `font-size: 11px; padding: 2px 4px; margin-bottom: 2px; border-radius: 2px; cursor: pointer; text-align: left; line-height: 1.3; white-space: normal; word-break: break-all; display: block;`;
 
             if (isMyOff) {
                 html += `<div style="${baseBarStyle} background: rgba(220,53,69,0.1); color: #dc3545; border: 1px solid rgba(220,53,69,0.2);">🏖️휴무</div>`;
             } else {
                 const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
-                const isNight = (j.shift || "").toString().includes('야');
-                const bgColor = isNight ? "#6c757d" : "#3788d8";
+                const sType = (j.shift || "").toString().trim();
+                
+                // 주/야/조 색상 구분 적용
+                let bgColor = "#0d6efd"; // 파란색 (주간)
+                if (sType.includes('야')) bgColor = "#6c757d"; // 회색 (야간)
+                else if (sType.includes('조')) bgColor = "#fd7e14"; // 주황색 (조출)
                 
                 html += `
                 <div onclick="jumpToCard('${j.date}','${j.site}')" 
