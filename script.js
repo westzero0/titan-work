@@ -907,114 +907,99 @@ function renderCalendar() {
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
 
-    // 🌟 [시간 버그 수정] 달력의 '오늘' 기준도 한국 시간(KST)으로 꽉 묶음!
     const now = new Date();
     const todayStrLocal = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
-
     const selectedWorker = document.getElementById('worker-select').value;
     
-    // 🎨 [디자인 1] 달력 전체 틀과 둥근 모서리, 헤더 간격 조절
-    let html = `<div class="card calendar-card" style="padding:15px 10px; background:white; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 10px;">
-            <button onclick="changeMonth(-1)" style="background:#f1f5f9; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; color:#475569; font-weight:bold; font-size:0.9rem;">◀ 이전</button> 
-            <b style="font-size:1.15rem; color:#1e293b; font-weight:900;">${year}년 ${month+1}월</b> 
-            <button onclick="changeMonth(1)" style="background:#f1f5f9; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; color:#475569; font-weight:bold; font-size:0.9rem;">다음 ▶</button>
+    // 🎨 [관리자 패널 스타일] 헤더 및 전체 틀
+    let html = `
+    <div class="card calendar-card" style="padding:0; background:white; border-radius:12px; overflow:hidden; border:1px solid #e2e8f0; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; background:#fff; border-bottom:1px solid #f1f5f9;">
+            <button onclick="changeMonth(-1)" style="background:none; border:1px solid #e2e8f0; padding:5px 12px; border-radius:6px; cursor:pointer; color:#64748b; font-size:0.9rem;">◀</button> 
+            <b style="font-size:1.1rem; color:#1e293b;">${year}년 ${month+1}월</b> 
+            <button onclick="changeMonth(1)" style="background:none; border:1px solid #e2e8f0; padding:5px 12px; border-radius:6px; cursor:pointer; color:#64748b; font-size:0.9rem;">▶</button>
         </div>
         
-        <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:1px; background:#e2e8f0; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+        <div style="display:grid; grid-template-columns:repeat(7, 1fr); background:#f8fafc; border-bottom:1px solid #e2e8f0;">
             ${['일','월','화','수','목','금','토'].map((d, i) => {
-                // 🎨 [디자인 2] 요일별 색상 명확히 구분
-                let color = '#475569';
-                if(i === 0) color = '#ef4444'; // 일요일 빨강
-                if(i === 6) color = '#2563eb'; // 토요일 파랑
-                return `<div style="background:#f8fafc; text-align:center; font-size:0.8rem; padding:10px 0; font-weight:900; color:${color}; border-bottom:1px solid #e2e8f0;">${d}</div>`
+                let color = '#64748b';
+                if(i === 0) color = '#ef4444'; // 일요일
+                if(i === 6) color = '#2563eb'; // 토요일
+                return `<div style="text-align:center; font-size:0.75rem; padding:10px 0; font-weight:bold; color:${color};">${d}</div>`
             }).join('')}
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:0; background:#e2e8f0; border-bottom:1px solid #e2e8f0;">
     `;
     
     const firstDay = new Date(year, month, 1).getDay();
     const lastDate = new Date(year, month + 1, 0).getDate();
     
-    // 빈 칸 채우기
-    for(let i=0; i<firstDay; i++) html += `<div style="background:#f8fafc; min-height:85px;"></div>`;
+    // 빈 칸 채우기 (연한 회색 배경)
+    for(let i=0; i<firstDay; i++) html += `<div style="background:#f8fafc; min-height:90px; border-right:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9;"></div>`;
     
-    // 날짜 칸 채우기
     for(let d=1; d<=lastDate; d++) {
         const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        
         const isToday = (dStr === todayStrLocal);
         const dateObj = new Date(year, month, d);
         const dayOfWeek = dateObj.getDay();
         
-        // 🎨 [디자인 3] 날짜 숫자 색상 (일/토 구분)
-        let dateColor = '#334155';
+        let dateColor = '#475569';
         if (dayOfWeek === 0) dateColor = '#ef4444';
         if (dayOfWeek === 6) dateColor = '#2563eb';
 
-        const cellBg = isToday ? '#eff6ff' : 'white'; 
-        
-        // 🎨 [디자인 4] 오늘 날짜 파란색 둥근 포인트 적용
+        // 🎨 오늘 날짜 강조 스타일 (관리자 패널과 동일하게 숫자 배경 원형)
         const dateStyle = isToday 
-            ? `font-size:0.85rem; font-weight:bold; background:#2563eb; color:white; border-radius:50%; display:inline-flex; justify-content:center; align-items:center; width:24px; height:24px; margin-bottom:2px; box-shadow:0 2px 4px rgba(37,99,235,0.3);` 
-            : `font-size:0.85rem; font-weight:bold; color:${dateColor}; padding:2px;`;
+            ? `background:#2563eb; color:white; border-radius:50%; width:22px; height:22px; display:inline-flex; justify-content:center; align-items:center;` 
+            : `color:${dateColor};`;
 
-        html += `<div class="calendar-day-cell" style="background:${cellBg}; min-height:85px; padding:5px 3px; display:flex; flex-direction:column;">
-            <div style="text-align:right; margin-bottom:2px;"><span style="${dateStyle}">${d}</span></div>`;
+        html += `
+        <div class="calendar-day-cell" style="background:white; min-height:95px; padding:4px; border-right:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9; display:flex; flex-direction:column; gap:2px;">
+            <div style="text-align:right; font-size:0.75rem; font-weight:bold; padding:2px 4px;">
+                <span style="${dateStyle}">${d}</span>
+            </div>`;
 
-        const jobsForToday = allSchedules.filter(s => s.date === dStr);
-        let dayHtml = "";
+        const jobsForToday = allSchedules.filter(s => {
+            if (s.date !== dStr) return false;
+            if (selectedWorker === "전체") return (s.site !== 'X');
+            const wList = (s.workers || "").toString().split(',').map(n => n.trim());
+            const offList = (s.offWorkers || "").toString().split(',').map(n => n.trim());
+            return wList.includes(selectedWorker) || offList.includes(selectedWorker);
+        });
 
         jobsForToday.forEach(j => {
             const isTotalOff = (j.client === '휴무' || j.site === '휴무');
-            const isPartialOff = (j.site === 'X');
-            
-            const workersArr = (j.workers || "").toString().split(',').map(n => n.trim()).filter(n => n);
-            const offWorkersArr = (j.offWorkers || "").toString().split(',').map(n => n.trim()).filter(n => n);
+            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
+            const isMyOff = (selectedWorker !== "전체" && offList.includes(selectedWorker)) || isTotalOff;
 
-            // 🎨 [디자인 5] 일정 바(Bar) 공통 스타일 (그림자, 모서리 둥글게, 여백 조절)
-            const barBaseStyle = `font-size:0.65rem; line-height:1.2; padding:4px 2px; margin-top:3px; border-radius:4px; text-align:center; word-break:keep-all; cursor:pointer; font-weight:bold;`;
+            // 🎨 일정 바 스타일 (FullCalendar 특유의 둥근 직사각형 느낌)
+            const barBaseStyle = `font-size:0.65rem; padding:3px 4px; border-radius:3px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; transition:opacity 0.2s;`;
 
-            if (selectedWorker === "전체") {
-                // [전체보기 모드]
-                if (isTotalOff) {
-                    dayHtml += `<div style="${barBaseStyle} background:#fef2f2; color:#ef4444; border:1px solid #fca5a5;">🏖️ 전체휴무</div>`;
-                } else if (!isPartialOff) { // X(개인휴무)는 전체보기에서 숨김
-                    const workerCount = workersArr.length;
-                    const sType = (j.shift || "").toString().trim();
-                    let bgColor = '#2563eb'; if (sType === '야') bgColor = '#475569'; else if (sType === '조') bgColor = '#f59e0b';
-                    
-                    // 🎨 글자 시인성을 위한 텍스트 섀도우(text-shadow) 추가
-                    dayHtml += `<div onclick="jumpToCard('${j.date}','${j.site}')" 
-                                     style="${barBaseStyle} background:${bgColor}; color:white; text-shadow:0 1px 2px rgba(0,0,0,0.3); box-shadow:0 1px 2px rgba(0,0,0,0.1);">
-                             ${j.site}(${workerCount})
-                        </div>`;
-                }
+            if (isMyOff) {
+                // 휴무 스타일
+                html += `<div style="${barBaseStyle} background:#fee2e2; color:#ef4444; border-left:3px solid #ef4444;">🏖️ 휴무</div>`;
             } else {
-                // [개인 검색 모드]
-                const isMyOffDay = offWorkersArr.includes(selectedWorker);
-
-                if (isTotalOff) {
-                    dayHtml += `<div style="${barBaseStyle} background:#fef2f2; color:#ef4444; border:1px solid #fca5a5;">🏖️ 전체휴무</div>`;
-                } else if (isMyOffDay) {
-                    dayHtml += `<div style="${barBaseStyle} background:#fef2f2; color:#ef4444; border:1px solid #fca5a5;">🏖️ 휴무</div>`;
-                }
+                // 근무 스타일
+                const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
+                const isNight = (j.shift || "").toString().includes('야');
+                const bgColor = isNight ? '#475569' : '#3b82f6';
                 
-                // 일하는 현장 표시
-                if (!isTotalOff && workersArr.includes(selectedWorker)) {
-                    const workerCount = workersArr.length;
-                    const sType = (j.shift || "").toString().trim();
-                    let bgColor = '#2563eb'; if (sType === '야') bgColor = '#475569'; else if (sType === '조') bgColor = '#f59e0b';
-                    
-                    dayHtml += `<div onclick="jumpToCard('${j.date}','${j.site}')" 
-                                     style="${barBaseStyle} background:${bgColor}; color:white; text-shadow:0 1px 2px rgba(0,0,0,0.3); box-shadow:0 1px 2px rgba(0,0,0,0.1);">
-                             ${j.site}(${workerCount})
-                        </div>`;
-                }
+                html += `
+                <div onclick="jumpToCard('${j.date}','${j.site}')" 
+                     style="${barBaseStyle} background:${bgColor}; color:white; box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+                    ${j.site}(${wCount})
+                </div>`;
             }
         });
         
-        html += dayHtml;
         html += `</div>`;
     }
+    
+    // 남은 칸 채우기
+    const totalCells = firstDay + lastDate;
+    const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for(let i=0; i<remaining; i++) html += `<div style="background:#f8fafc; border-right:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9;"></div>`;
+
     html += `</div></div>`;
     container.innerHTML = html;
 }
