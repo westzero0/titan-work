@@ -854,33 +854,37 @@ function renderTimeline() {
     grid.innerHTML = '';
     const worker = document.getElementById('worker-select').value;
     
-    // 한국 시간 기준 오늘 날짜 구하기
-    const now = new Date();
-    const todayStr = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0]; 
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
     const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
 
     for (let i = 0; i < 14; i++) {
-        // 날짜를 하루씩 증가 (한국 시간 기준)
-        const date = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-        date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
+        const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         
         let dayJobs = allSchedules.filter(j => {
             if (j.date !== dateStr) return false;
-            if (worker === "전체") return (j.site !== 'X'); // 전체보기는 개인휴무 제외
+            
+            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
+            const isPartialOff = (j.site === 'X');
 
-            const wList = (j.workers || "").toString().split(',').map(n => n.trim());
-            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
-            return wList.includes(worker) || offList.includes(worker);
+            if (worker === "전체") {
+                return !isPartialOff; 
+            } else {
+                const wList = (j.workers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
+                const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
+                return wList.includes(worker) || offList.includes(worker) || isTotalOff;
+            }
         });
 
         const col = document.createElement('div');
         col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
         
         let barsHtml = dayJobs.map(j => {
+            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
             const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
-            const isMyOff = (worker !== "전체" && offList.includes(worker)) || (j.client === '휴무' || j.site === '휴무');
+            const isMyOff = (worker !== "전체" && offList.includes(worker)) || isTotalOff;
 
             let displayTitle = "";
             let bgColor = "";
@@ -893,9 +897,9 @@ function renderTimeline() {
                 displayTitle = `${j.site}(${wCount})`;
                 
                 const sType = (j.shift || "").toString().trim();
-                bgColor = "#0d6efd"; // 주간 (기본)
-                if (sType.includes('야')) bgColor = "#6c757d"; // 야간
-                else if (sType.includes('조')) bgColor = "#fd7e14"; // 조출
+                bgColor = "#0d6efd"; 
+                if (sType.includes('야')) bgColor = "#6c757d"; 
+                else if (sType.includes('조')) bgColor = "#fd7e14"; 
             }
 
             return `<div class="job-bar" onclick="scrollToCard('${j.date}', '${j.site}')"
@@ -904,15 +908,14 @@ function renderTimeline() {
                     </div>`;
         }).join('');
 
-        // 🌟 요일 및 색상 계산 로직 추가
         const month = date.getMonth() + 1;
         const d = date.getDate();
         const dayIndex = date.getDay();
         const dayName = weekDays[dayIndex];
         
-        let dayColor = '#64748b'; // 평일 기본 회색
-        if (dayIndex === 0) dayColor = '#ef4444'; // 일요일 빨강
-        if (dayIndex === 6) dayColor = '#2563eb'; // 토요일 파랑
+        let dayColor = '#64748b'; 
+        if (dayIndex === 0) dayColor = '#ef4444'; 
+        if (dayIndex === 6) dayColor = '#2563eb'; 
 
         let headerText = `${month}/${d} <span style="color:${dayColor}">(${dayName})</span>`;
         if (dateStr === todayStr) {
