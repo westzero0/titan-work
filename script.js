@@ -892,6 +892,57 @@ function renderTimeline() {
                 const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
                 displayTitle = `${j.site}(${wCount})`;
                 
+function renderTimeline() {
+    const grid = document.getElementById('timeline-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const worker = document.getElementById('worker-select').value;
+    
+    // 1. 시간 오류 수정: 9시간 더하는 꼼수 제거, 순수 로컬 날짜 기준으로 깔끔하게 계산
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+
+    for (let i = 0; i < 14; i++) {
+        // 오늘 날짜에서 +1일씩 정확히 더함
+        const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        
+        let dayJobs = allSchedules.filter(j => {
+            if (j.date !== dateStr) return false;
+            
+            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
+            const isPartialOff = (j.site === 'X');
+
+            // 2. 필터링 오류 수정: 카드뷰와 100% 동일한 필터링 로직 적용 (전체휴무 포함)
+            if (worker === "전체") {
+                return !isPartialOff; 
+            } else {
+                const wList = (j.workers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
+                const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
+                return wList.includes(worker) || offList.includes(worker) || isTotalOff;
+            }
+        });
+
+        const col = document.createElement('div');
+        col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
+        
+        let barsHtml = dayJobs.map(j => {
+            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
+            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
+            const isMyOff = (worker !== "전체" && offList.includes(worker)) || isTotalOff;
+
+            let displayTitle = "";
+            let bgColor = "";
+
+            if (isMyOff) {
+                displayTitle = "🏖️휴무";
+                bgColor = "#ef4444"; 
+            } else {
+                const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
+                displayTitle = `${j.site}(${wCount})`;
+                
                 const sType = (j.shift || "").toString().trim();
                 bgColor = "#0d6efd"; // 주간 (기본)
                 if (sType.includes('야')) bgColor = "#6c757d"; // 야간
@@ -904,7 +955,7 @@ function renderTimeline() {
                     </div>`;
         }).join('');
 
-        // 🌟 요일 및 색상 계산 로직 추가
+        // 요일 및 색상 계산
         const month = date.getMonth() + 1;
         const d = date.getDate();
         const dayIndex = date.getDay();
@@ -923,6 +974,7 @@ function renderTimeline() {
         grid.appendChild(col);
     }
 }
+
 
 let workerCalendar = null; // 달력 객체를 담을 변수
 
