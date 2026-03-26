@@ -740,15 +740,15 @@ function copyAddr(text) {
     alert("복사되었습니다: " + text);
 }
 
-// 💡 3. 일정 데이터 로드 (스크롤 튕김 방지 + 완벽한 캐시 동기화)
 async function loadSchedules() {
     const container = document.getElementById('schedule-container');
 
-    // 1. 캐시(기억) 꺼내기
     const cachedStr = localStorage.getItem('titan_schedules_cache');
+    let oldData = [];
     if (cachedStr) {
-        allSchedules = JSON.parse(cachedStr);
-        updateWorkerSelectAndRender(); // 0.1초 만에 화면 띄움
+        oldData = JSON.parse(cachedStr);
+        allSchedules = oldData;
+        updateWorkerSelectAndRender(); 
     } else {
         container.innerHTML = '<p style="text-align:center; padding:20px;">🔌 서버 연결 중...</p>';
     }
@@ -763,32 +763,27 @@ async function loadSchedules() {
         const result = await res.json();
         const newData = Array.isArray(result) ? result : (result.schedules || []);
         
-        // 서버에서 방금 가져온 데이터를 문자열로 변환
         const newDataStr = JSON.stringify(newData);
 
-        // 2. ★ 핵심: 폰에 있던 데이터랑 서버 데이터가 "진짜로 다를 때만" 화면을 다시 그림!
         if (cachedStr !== newDataStr) {
-            allSchedules = newData;
-            localStorage.setItem('titan_schedules_cache', newDataStr); // 새 데이터 저장
-            
-            // 🌟 [마법의 꼼수] 화면 갈아엎기 직전에 현재 내 스크롤 위치 기억!
-            const currentScrollY = window.scrollY; 
+            // 🚨 내일 일정 변경 여부 확인 (함수 호출)
+            if (oldData.length > 0) {
+                checkTomorrowChange(oldData, newData);
+            }
 
-            // 바뀐 정보로 화면 다시 그리기
-            updateWorkerSelectAndRender(); 
+            allSchedules = newData;
+            localStorage.setItem('titan_schedules_cache', newDataStr); 
             
-            // 🌟 화면 다시 그렸어도 0.001초 만에 아까 그 스크롤 위치로 강제 고정! (깜빡임 최소화)
+            const currentScrollY = window.scrollY; 
+            updateWorkerSelectAndRender(); 
             window.scrollTo(0, currentScrollY);
 
             showSyncToast('✨ 최신 일정 갱신 완료!', false);
             setTimeout(hideSyncToast, 2000);
-
-          showTomorrowOffBanner();
-          
+            showTomorrowOffBanner();
         } else {
-            // 바뀐 게 1도 없으면 새로고침 안 하고 토스트 알림만 스르륵 끔
             hideSyncToast();
-          showTomorrowOffBanner();
+            showTomorrowOffBanner();
         }
     } catch (e) {
         console.error("일정 로드 에러:", e);
@@ -821,6 +816,31 @@ function updateWorkerSelectAndRender() {
     renderView(); // 캘린더/카드뷰 다시 그리기
 }
 
+function checkTomorrowChange(oldData, newData) {
+    const worker = document.getElementById('submitter').value || localStorage.getItem('titan_user_name');
+    if (!worker) return;
+
+    const today = new Date();
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+
+    const getMyTomorrowJobs = (data) => {
+        return data.filter(j => {
+            if (j.date !== tomorrowStr) return false;
+            const wList = (j.workers || "").toString().split(',').map(n => n.trim());
+            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
+            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
+            return wList.includes(worker) || offList.includes(worker) || isTotalOff;
+        }).map(j => ({ site: j.site, content: j.content, shift: j.shift }));
+    };
+
+    const oldTomorrow = getMyTomorrowJobs(oldData);
+    const newTomorrow = getMyTomorrowJobs(newData);
+
+    if (JSON.stringify(oldTomorrow) !== JSON.stringify(newTomorrow)) {
+        alert(`🚨 [알림] 내일(${tomorrow.getMonth() + 1}/${tomorrow.getDate()}) 일정이 방금 변경되었습니다!\n현장 및 작업 내용을 다시 확인해 주세요.`);
+    }
+}
 
 
 function renderView() {
