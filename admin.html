@@ -25,8 +25,17 @@
     margin-top: 65px; /* 🟢 기존 50px에서 65px로 증가 */
 }
 
-.card { background: #fff; border-radius: 12px; padding: 18px 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 10px; }
-h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+.card { 
+    background: #fff; 
+    border-radius: 0; /* 👈 화면에 꽉 차게 둥근 모서리 제거 */
+    padding: 18px 15px; /* 👈 하얀 배경은 꽉 차되, 글씨는 끝에 안 붙게 조절 */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+    margin-bottom: 10px; 
+    border-left: none;
+    border-right: none;
+}
+    
+    h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px; }
 
 label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #444; }
 input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
