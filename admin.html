@@ -1389,93 +1389,118 @@ function toggleWorkerSelection(n) {
     }
 
 
-      
-// 🚀 데이터 저장 시 휴무자 처리 (날짜 초과 버그 수정 + 부분 휴무자 등록 허용 + 🔴 자동 충돌 해결)
+      // 🚀 데이터 저장 시 휴무자 처리 및 충돌 해결 (날짜 Timezone 버그 완벽 차단)
 async function saveSchedule(mode) {
     const isAllOff = document.getElementById('chk-all-off').checked;
-    const targetDate = document.getElementById('sched-date').value;
+    const startDateStr = document.getElementById('sched-date').value;
+    const endDateStr = document.getElementById('sched-end-date').value;
     const currentRowId = document.getElementById('sched-row-id').value;
 
-    // 🚨 [자동 덮어쓰기 로직] 현재 날짜에 등록된 기존 일정들 조회 (본인 제외)
+    // 🚨 1. 안전한 날짜 파싱 적용 (UTC 오차 방지)
+    let targetDates = [];
+    if (mode === 'add' && endDateStr) {
+        const [sY, sM, sD] = startDateStr.split('-');
+        const [eY, eM, eD] = endDateStr.split('-');
+        
+        let cur = new Date(sY, sM - 1, sD);
+        const end = new Date(eY, eM - 1, eD);
+        
+        while (cur < end) {
+            const y = cur.getFullYear();
+            const m = String(cur.getMonth() + 1).padStart(2, '0');
+            const d = String(cur.getDate()).padStart(2, '0');
+            targetDates.push(`${y}-${m}-${d}`);
+            cur.setDate(cur.getDate() + 1);
+        }
+    } else {
+        targetDates.push(startDateStr);
+    }
+
+    // 🚨 2. 기존 일정과 충돌 검사
     const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
-    const existingJobsOnDate = scheduleData.filter(s => s.date === targetDate && String(s.rowId) !== String(currentRowId));
-    
-    const totalOffJobs = existingJobsOnDate.filter(s => s.client === '휴무' || s.site === '휴무');
-    const regularJobs = existingJobsOnDate.filter(s => s.client !== '휴무' && s.site !== '휴무' && s.site !== 'X');
+    let hasTotalOffCollision = false;
+    let hasRegularCollision = false;
+    let jobsToDelete = [];
+
+    targetDates.forEach(dateStr => {
+        const existingJobsOnDate = scheduleData.filter(s => {
+            const sDate = s.date ? s.date.split('T')[0].trim() : "";
+            return sDate === dateStr && String(s.rowId) !== String(currentRowId);
+        });
+        
+        const offJobs = existingJobsOnDate.filter(s => (s.client || '').trim() === '휴무' || (s.site || '').trim() === '휴무');
+        const regJobs = existingJobsOnDate.filter(s => (s.client || '').trim() !== '휴무' && (s.site || '').trim() !== '휴무' && (s.site || '').trim() !== 'X');
+
+        if (offJobs.length > 0) {
+            hasTotalOffCollision = true;
+            jobsToDelete.push(...offJobs);
+        }
+        if (regJobs.length > 0) {
+            hasRegularCollision = true;
+            jobsToDelete.push(...regJobs);
+        }
+    });
 
     const btnSave = document.getElementById('btn-save');
     const btnUpdate = document.getElementById('btn-update');
     const activeBtn = mode === 'add' ? btnSave : btnUpdate;
 
-    // 케이스 1: 전체 휴무인 날에 일반 일정 추가 시도
-    if (!isAllOff && totalOffJobs.length > 0) {
-        if (confirm(`🚨 이미 '전체 휴무'로 지정된 날짜입니다.\n전체 휴무를 취소하고 현재 작성한 작업 일정을 등록하시겠습니까?`)) {
+    // 🚨 3. 충돌 경고 및 삭제 처리
+    if (!isAllOff && hasTotalOffCollision) {
+        if (confirm(`🚨 지정하신 날짜에 이미 '전체 휴무'가 등록되어 있습니다.\n전체 휴무를 취소하고 현재 작성한 작업 일정을 등록하시겠습니까?`)) {
             if (activeBtn) { activeBtn.innerText = "기존 휴무 취소 중..."; activeBtn.disabled = true; }
-            for (const job of totalOffJobs) { await silentDelete(job.rowId); }
+            for (const job of jobsToDelete) { await silentDelete(job.rowId); }
         } else {
-            return; // 취소 시 중단
+            return;
         }
     }
 
-    // 케이스 2: 일반 일정이 있는 날에 전체 휴무로 덮어쓰기 시도
-    if (isAllOff && regularJobs.length > 0) {
-        if (confirm(`🚨 해당 날짜에 이미 등록된 '작업 일정'이 ${regularJobs.length}건 있습니다.\n기존 작업을 모두 삭제하고 '전체 휴무'로 덮어씌우시겠습니까?`)) {
+    if (isAllOff && hasRegularCollision) {
+        if (confirm(`🚨 지정하신 날짜에 이미 등록된 '작업 일정'이 있습니다.\n기존 작업을 모두 삭제하고 '전체 휴무'로 덮어씌우시겠습니까?`)) {
             if (activeBtn) { activeBtn.innerText = "기존 일정 삭제 중..."; activeBtn.disabled = true; }
-            for (const job of regularJobs) { await silentDelete(job.rowId); }
+            for (const job of jobsToDelete) { await silentDelete(job.rowId); }
         } else {
-            return; // 취소 시 중단
+            return;
         }
     }
 
-
-    
+    // --- 데이터 세팅 ---
     let clientVal = document.getElementById('sched-client').value;
     let siteVal = document.getElementById('sched-site').value;
-    
-    // 현재 선택된 칩에서 명단 가져오기
     let workersVal = Array.from(selectedWorkerSet).join(', ');
     let offWorkersVal = Array.from(selectedOffWorkerSet).join(', ');
-    
     let finalShift = '주';
 
     if (isAllOff) {
-        // [기존 유지] 전체 휴무일 경우 가짜 데이터 '휴무' 세팅
         clientVal = '휴무';
         siteVal = '휴무';
         workersVal = ''; 
-        
-        // 전체 휴무인데 이름이 안 뽑혔다면, 모든 재직자 이름을 강제로 넣습니다!
         if (!offWorkersVal) {
             const activeWorkers = globalWorkerData.filter(w => w.status === '재직').map(w => w.name);
             offWorkersVal = activeWorkers.join(', '); 
         }
     } else {
-        // 🌟 [추가된 핵심 로직] 전체 휴무 체크는 안 했지만 현장 정보가 없을 때
         if(!clientVal || !siteVal) {
-            // 휴무자 명단은 있는데, 근무자 명단은 없다면? -> "부분 휴무자 등록"으로 간주!
             if (offWorkersVal && !workersVal) {
                 if (confirm("현장 정보가 없습니다. 선택한 휴무 인원들을 '휴무(X)'로 등록할까요?")) {
-                    clientVal = "-"; // 시트 거래처에 찍힐 값
-                    siteVal = "X";   // 시트 현장명에 찍힐 값
+                    clientVal = "-"; 
+                    siteVal = "X";   
                 } else {
                     if (activeBtn) { activeBtn.innerText = mode === 'add' ? "저장" : "수정"; activeBtn.disabled = false; }
-                    return; // 취소 누르면 중단
+                    return; 
                 }
             } else {
-                // 휴무자도 안 골랐거나, 근무자는 골랐는데 현장이 없으면 원래대로 경고창!
                 if (activeBtn) { activeBtn.innerText = mode === 'add' ? "저장" : "수정"; activeBtn.disabled = false; }
                 return alert("거래처와 현장을 선택하세요.");
             }
         } else {
-            // [기존 유지] 현장이 정상적으로 선택된 경우
             let rawShift = document.getElementById('sched-shift').value;
             if (rawShift.includes('야')) finalShift = '야'; else if (rawShift.includes('조')) finalShift = '조';
         }
     }
 
-    // [기존 유지] Payload 세팅
     const payload = {
-        date: document.getElementById('sched-date').value,
+        date: startDateStr,
         client: clientVal,
         site: siteVal,
         shift: finalShift, 
@@ -1484,29 +1509,33 @@ async function saveSchedule(mode) {
         car: isAllOff ? "" : document.getElementById('sched-car').value,
         content: isAllOff ? "" : document.getElementById('sched-content').value,
         note: document.getElementById('sched-note').value,
-        rowId: document.getElementById('sched-row-id').value 
+        rowId: currentRowId 
     };
 
     closeModal();
     
-    // [기존 유지] 저장/수정 액션 및 날짜 배열화
-    let action = mode === 'add' ? (document.getElementById('sched-end-date').value ? 'addScheduleBatch' : 'addSchedule') : 'updateSchedule';
+    let action = mode === 'add' ? (endDateStr ? 'addScheduleBatch' : 'addSchedule') : 'updateSchedule';
     let dataToSend = payload;
 
+    // 🚨 4. Batch 저장 시 동일한 안전 날짜 분할 로직 적용
     if (action === 'addScheduleBatch') {
         const list = [];
-        let cur = new Date(payload.date);
-        const end = new Date(document.getElementById('sched-end-date').value);
+        const [sY, sM, sD] = payload.date.split('-');
+        const [eY, eM, eD] = endDateStr.split('-');
         
-        // 🔴 [원인 해결!] FullCalendar의 종료일 특성상 반드시 '<' 를 써야 다음날이 초과 저장되지 않습니다!
+        let cur = new Date(sY, sM - 1, sD);
+        const end = new Date(eY, eM - 1, eD);
+        
         while(cur < end) { 
-            list.push({...payload, date: cur.toISOString().split('T')[0]});
+            const y = cur.getFullYear();
+            const m = String(cur.getMonth() + 1).padStart(2, '0');
+            const d = String(cur.getDate()).padStart(2, '0');
+            list.push({...payload, date: `${y}-${m}-${d}`});
             cur.setDate(cur.getDate() + 1);
         }
         dataToSend = list;
     }
 
-    // [기존 유지] 가스(GAS)로 전송
     try { 
         await sendToGas(action, dataToSend); 
     } catch (e) { 
@@ -1515,7 +1544,7 @@ async function saveSchedule(mode) {
         if (activeBtn) { activeBtn.innerText = mode === 'add' ? "저장" : "수정"; activeBtn.disabled = false; }
     }
 }
-
+      
       
    async function deleteSchedule() {
     // 1. 사용자 확인
@@ -2405,8 +2434,9 @@ async function submitPayment() {
     }
 }
 
-      // 💡 화면 깜빡임 없이 백그라운드에서 데이터만 삭제하는 함수
+// 1. 청소부 역할 (새로 추가)
 async function silentDelete(rowId) {
+    if (!rowId) return;
     try {
         await fetch(GAS_URL, {
             method: 'POST',
