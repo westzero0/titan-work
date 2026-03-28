@@ -568,6 +568,8 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
         <div id="normal-work-section">
             <div class="input-group">
+
+              
                 <label>🏢 거래처 (진행중인 현장)</label>
                 <div id="sched-client-chips-area" style="display:flex; flex-wrap:wrap; margin-bottom:10px;"></div>
 
@@ -1200,7 +1202,8 @@ function closeModal() {
     selectedWorkSet.clear();
 }
 
- function renderChips(sClient, sSite) {
+// 🔴 칩 렌더링 함수 (검색창 + 완료/AS 토글 기능 통합)
+function renderChips(sClient, sSite) {
     const cBox = document.getElementById('sched-client-chips-area');
     const sBox = document.getElementById('sched-site-chips-area');
     if(!cBox || !sBox) return;
@@ -1210,14 +1213,27 @@ function closeModal() {
         return;
     }
 
-    // 1. 거래처 목록 (진행중인 현장이 있거나, 현재 선택된 거래처만 표시)
+    // 1. 거래처 목록 (현재 선택된 거래처나, 검색조건에 맞는 현장이 있는 거래처만 표시)
     const clientNames = Object.keys(globalTitanData).filter(key => 
         !['message', 'status', 'result', 'undefined'].includes(key)
     );
 
+    // [신규] 검색어 및 토글 상태 가져오기
+    const searchInput = document.getElementById('adminSiteSearch');
+    const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    const toggleInput = document.getElementById('adminCompletedToggle');
+    const isASMode = toggleInput ? toggleInput.checked : false; // true면 완료현장만
+
     const activeClients = clientNames.filter(client => {
         if (client === sClient) return true; 
-        return globalTitanData[client].some(site => (site.status || "").includes('진행'));
+        // 거래처 내 현장 중 필터 조건(검색어+상태)에 맞는 게 하나라도 있는지 확인
+        return globalTitanData[client].some(site => {
+            const isCompleted = (site.status === '완료');
+            if (isASMode && !isCompleted) return false;
+            if (!isASMode && isCompleted) return false;
+            if (searchTerm && !site.name.toLowerCase().includes(searchTerm)) return false;
+            return true;
+        });
     });
 
     cBox.innerHTML = activeClients.sort().map(c => 
@@ -1226,29 +1242,49 @@ function closeModal() {
     
     document.getElementById('sched-client').value = sClient || "";
 
-    // 2. 🔴 현장 목록 필터링 (완료 현장 숨기기 핵심 로직)
+    // 2. 🔴 현장 목록 필터링 (검색어 + 완료/진행 토글 적용)
     if (sClient && globalTitanData[sClient]) {
         const sites = globalTitanData[sClient];
         
-        // 필터링: 진행중인 현장이거나, 현재 일정에 이미 등록된 현장만 보여줌
         const filteredSites = sites.filter(s => {
-            const isCurrentSite = (s.name === sSite); // 현재 이 일정의 현장인가?
-            const isProgressing = (s.status || "").includes('진행'); // 진행 중인가?
-            return isCurrentSite || isProgressing;
+            const isCurrentSite = (s.name === sSite); // 현재 이 일정에 이미 등록된 현장인가?
+            const isCompleted = (s.status === '완료');
+
+            // 검색어 필터
+            if (searchTerm && !s.name.toLowerCase().includes(searchTerm)) return false;
+
+            // 상태(진행/완료) 필터 (단, 이미 이 일정에 선택된 현장이라면 무조건 표시)
+            if (!isCurrentSite) {
+                if (isASMode && !isCompleted) return false;
+                if (!isASMode && isCompleted) return false;
+            }
+            return true;
         });
 
-        sBox.innerHTML = filteredSites.map(s => {
-            const isFinished = s.status === '완료';
-            return `
-            <div class="chip ${s.name === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.name}')">
-                ${isFinished ? '[완료] ' : ''}${s.name}
-            </div>`;
-        }).join('');
+        if (filteredSites.length === 0) {
+            sBox.innerHTML = '<span style="color:#aaa; font-size:0.85rem;">조건에 맞는 현장이 없습니다.</span>';
+        } else {
+            sBox.innerHTML = filteredSites.map(s => {
+                const isFinished = s.status === '완료';
+                return `
+                <div class="chip ${s.name === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.name}')">
+                    ${isFinished ? '[완료] ' : ''}${s.name}
+                </div>`;
+            }).join('');
+        }
 
         document.getElementById('sched-site').value = sSite || "";
     } else {
         sBox.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">거래처를 선택하세요.</span>';
     }
+}
+
+// 💡 [신규] 검색창 입력 또는 토글 버튼 클릭 시 바로 화면에 반영되도록 연결
+function renderAdminSites() {
+    // 현재 선택된 거래처(sched-client 값)를 기준으로 칩을 다시 그립니다.
+    const currentClient = document.getElementById('sched-client').value;
+    const currentSite = document.getElementById('sched-site').value;
+    renderChips(currentClient, currentSite);
 }
 
       
