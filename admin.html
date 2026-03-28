@@ -1390,9 +1390,44 @@ function toggleWorkerSelection(n) {
 
 
       
-// 🚀 데이터 저장 시 휴무자 처리 (날짜 초과 버그 수정 + 부분 휴무자 등록 허용)
+// 🚀 데이터 저장 시 휴무자 처리 (날짜 초과 버그 수정 + 부분 휴무자 등록 허용 + 🔴 자동 충돌 해결)
 async function saveSchedule(mode) {
     const isAllOff = document.getElementById('chk-all-off').checked;
+    const targetDate = document.getElementById('sched-date').value;
+    const currentRowId = document.getElementById('sched-row-id').value;
+
+    // 🚨 [자동 덮어쓰기 로직] 현재 날짜에 등록된 기존 일정들 조회 (본인 제외)
+    const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
+    const existingJobsOnDate = scheduleData.filter(s => s.date === targetDate && String(s.rowId) !== String(currentRowId));
+    
+    const totalOffJobs = existingJobsOnDate.filter(s => s.client === '휴무' || s.site === '휴무');
+    const regularJobs = existingJobsOnDate.filter(s => s.client !== '휴무' && s.site !== '휴무' && s.site !== 'X');
+
+    const btnSave = document.getElementById('btn-save');
+    const btnUpdate = document.getElementById('btn-update');
+    const activeBtn = mode === 'add' ? btnSave : btnUpdate;
+
+    // 케이스 1: 전체 휴무인 날에 일반 일정 추가 시도
+    if (!isAllOff && totalOffJobs.length > 0) {
+        if (confirm(`🚨 이미 '전체 휴무'로 지정된 날짜입니다.\n전체 휴무를 취소하고 현재 작성한 작업 일정을 등록하시겠습니까?`)) {
+            if (activeBtn) { activeBtn.innerText = "기존 휴무 취소 중..."; activeBtn.disabled = true; }
+            for (const job of totalOffJobs) { await silentDelete(job.rowId); }
+        } else {
+            return; // 취소 시 중단
+        }
+    }
+
+    // 케이스 2: 일반 일정이 있는 날에 전체 휴무로 덮어쓰기 시도
+    if (isAllOff && regularJobs.length > 0) {
+        if (confirm(`🚨 해당 날짜에 이미 등록된 '작업 일정'이 ${regularJobs.length}건 있습니다.\n기존 작업을 모두 삭제하고 '전체 휴무'로 덮어씌우시겠습니까?`)) {
+            if (activeBtn) { activeBtn.innerText = "기존 일정 삭제 중..."; activeBtn.disabled = true; }
+            for (const job of regularJobs) { await silentDelete(job.rowId); }
+        } else {
+            return; // 취소 시 중단
+        }
+    }
+
+
     
     let clientVal = document.getElementById('sched-client').value;
     let siteVal = document.getElementById('sched-site').value;
@@ -1423,10 +1458,12 @@ async function saveSchedule(mode) {
                     clientVal = "-"; // 시트 거래처에 찍힐 값
                     siteVal = "X";   // 시트 현장명에 찍힐 값
                 } else {
+                    if (activeBtn) { activeBtn.innerText = mode === 'add' ? "저장" : "수정"; activeBtn.disabled = false; }
                     return; // 취소 누르면 중단
                 }
             } else {
                 // 휴무자도 안 골랐거나, 근무자는 골랐는데 현장이 없으면 원래대로 경고창!
+                if (activeBtn) { activeBtn.innerText = mode === 'add' ? "저장" : "수정"; activeBtn.disabled = false; }
                 return alert("거래처와 현장을 선택하세요.");
             }
         } else {
@@ -1474,6 +1511,8 @@ async function saveSchedule(mode) {
         await sendToGas(action, dataToSend); 
     } catch (e) { 
         alert("⚠️ 저장에 실패했습니다."); 
+    } finally {
+        if (activeBtn) { activeBtn.innerText = mode === 'add' ? "저장" : "수정"; activeBtn.disabled = false; }
     }
 }
 
@@ -2363,6 +2402,19 @@ async function submitPayment() {
     } finally {
         btn.innerText = "입금 완료 처리";
         btn.disabled = false;
+    }
+}
+
+      // 💡 화면 깜빡임 없이 백그라운드에서 데이터만 삭제하는 함수
+async function silentDelete(rowId) {
+    try {
+        await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'deleteSchedule', data: { rowId: rowId } }),
+            redirect: 'follow'
+        });
+    } catch (e) {
+        console.error("자동 삭제 실패", e);
     }
 }
       
