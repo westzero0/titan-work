@@ -793,7 +793,7 @@ async function loadSchedules() {
     }
 }
 
-// 💡 일정 로드 후 화면을 갱신하는 헬퍼 함수
+// 💡 일정 로드 후 화면을 갱신하는 헬퍼 함수 (2주 활성인원 필터링 적용)
 function updateWorkerSelectAndRender() {
     const select = document.getElementById('worker-select');
     const currentVal = select.value; // 현재 선택한 이름 기억해두기
@@ -801,20 +801,38 @@ function updateWorkerSelectAndRender() {
     select.innerHTML = '<option value="전체">👤 전체 보기</option>';
     let workerSet = new Set();
     
+    // 🌟 1. 오늘 기준으로 14일 전, 14일 후 날짜 계산
+    const now = new Date();
+    const twoWeeksAgo = new Date(now.getTime() - (14 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
+    const twoWeeksLater = new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
+
+    // 🌟 2. 2주 범위 내의 일정에서만 이름 수집
     allSchedules.forEach(s => {
-        const wList = Array.isArray(s.workers) ? s.workers : (s.workers || "").split(',');
-        wList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
+        if (s.date >= twoWeeksAgo && s.date <= twoWeeksLater) {
+            // 근무자 수집
+            const wList = Array.isArray(s.workers) ? s.workers : (s.workers || "").split(',');
+            wList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
+            
+            // 휴무자 수집 (휴무자도 목록에 나와야 필터링 가능)
+            const offList = Array.isArray(s.offWorkers) ? s.offWorkers : (s.offWorkers || "").split(',');
+            offList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
+        }
     });
     
+    // 3. 수집된 인원만 가나다순으로 드롭다운에 추가
     Array.from(workerSet).sort().forEach(w => select.add(new Option(w, w)));
     
-    // 이전에 선택했던 이름이 새 목록에도 있으면 유지
+    // 4. 이전에 선택했던 이름이 새 목록에도 있으면 유지, 없으면 '전체'로 초기화
     if (Array.from(select.options).some(opt => opt.value === currentVal)) {
         select.value = currentVal;
+    } else {
+        select.value = "전체";
     }
     
     renderView(); // 캘린더/카드뷰 다시 그리기
 }
+
+
 
 function checkTomorrowChange(oldData, newData) {
     const worker = document.getElementById('submitter').value || localStorage.getItem('titan_user_name');
