@@ -200,16 +200,25 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
                 <label>🏢 거래처</label>
                 <div id="client-chips" class="chip-container"><span class="loading-text">데이터를 불러오는 중...</span></div>
                 
-                <div class="site-header" style="margin-top:15px;">
-                    <label style="margin-bottom:0;">🏗️ 현장명</label>
-                    <label class="checkbox-group">
-                        <input type="checkbox" id="showFinished" onchange="renderSiteChips()"> 완료현장 포함
-                    </label>
-                </div>
-                <input type="text" id="siteSearch" list="site-options" placeholder="현장 검색 또는 직접 입력" oninput="syncSiteSelection()">
-                <datalist id="site-options"></datalist>
-                <div id="site-chips" class="chip-container"></div>
-            </div>
+
+
+            <div class="site-header" style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 8px;">
+    <label style="margin: 0;">🏗️ 현장명</label>
+    
+    <label class="checkbox-group" style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: normal; color: #475569; margin: 0; cursor: pointer;">
+        <input type="checkbox" id="showFinished" onchange="renderSiteChips()" style="width: 16px; height: 16px; margin: 0;">
+        완료현장 포함
+    </label>
+</div>
+
+<input type="text" id="siteSearch" list="site-options" placeholder="현장 검색 또는 직접 입력" oninput="syncSiteSelection()" style="margin-top: 0;">
+<datalist id="site-options"></datalist>
+<div id="site-chips" class="chip-container">
+    
+</div>
+            
+
+            
 
         <div class="card">
     <label>🛠️ 작업 내용</label>
