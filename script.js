@@ -793,29 +793,50 @@ async function loadSchedules() {
     }
 }
 
-// 💡 가장 안전한 기본 형태로 원복 (에러 원인 파악용)
+// 💡 2주 활성인원 필터링 (가장 안전한 최종본)
 function updateWorkerSelectAndRender() {
     const select = document.getElementById('worker-select');
-    const currentVal = select.value;
+    const currentVal = select ? select.value : "전체";
 
-    select.innerHTML = '<option value="전체">👤 전체 보기</option>';
+    if (select) select.innerHTML = '<option value="전체">👤 전체 보기</option>';
     let workerSet = new Set();
     
-    // 복잡한 날짜 계산 빼고 무조건 다 가져오게 처리
+    // 🌟 1. 오늘 자정 기준으로 앞뒤 14일(밀리초) 정확히 계산
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); 
+    const twoWeeksAgo = now.getTime() - (14 * 24 * 60 * 60 * 1000);
+    const twoWeeksLater = now.getTime() + (14 * 24 * 60 * 60 * 1000);
+
     allSchedules.forEach(s => {
-        const wList = Array.isArray(s.workers) ? s.workers : String(s.workers || "").split(',');
-        wList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
+        if (!s || !s.date) return; // 데이터가 비어있으면 패스
+        
+        // 🌟 2. 구글 시트 날짜 형식 방어 (2026.04.06 이든 2026-04-06 이든 모두 호환)
+        const dateStr = String(s.date).replace(/\./g, '-');
+        const jobDate = new Date(dateStr).getTime();
+
+        // 🌟 3. 날짜가 정상이고 2주 범위 안에 있을 때만 명단 수집
+        if (jobDate && jobDate >= twoWeeksAgo && jobDate <= twoWeeksLater) {
+            // 근무자 수집
+            const wList = Array.isArray(s.workers) ? s.workers : String(s.workers || "").split(',');
+            wList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
+            
+            // 휴무자 수집
+            const offList = Array.isArray(s.offWorkers) ? s.offWorkers : String(s.offWorkers || "").split(',');
+            offList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
+        }
     });
     
-    Array.from(workerSet).sort().forEach(w => select.add(new Option(w, w)));
-    
-    if (Array.from(select.options).some(opt => opt.value === currentVal)) {
-        select.value = currentVal;
-    } else {
-        select.value = "전체";
+    // 4. 드롭다운에 가나다순으로 넣고, 기존 선택값 유지
+    if (select) {
+        Array.from(workerSet).sort().forEach(w => select.add(new Option(w, w)));
+        if (Array.from(select.options).some(opt => opt.value === currentVal)) {
+            select.value = currentVal;
+        } else {
+            select.value = "전체";
+        }
     }
     
-    renderView(); // 👈 이 함수가 정상적으로 실행되어야 화면이 나옵니다.
+    renderView(); // 화면 그리기
 }
 
 
