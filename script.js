@@ -2,7 +2,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
 }
 
-const APP_VERSION = "3.1"; // 👈 기능 수정할 때마다 이 숫자를 1.6, 1.7로 올리세요!
+const APP_VERSION = "3.2"; // 👈 기능 수정할 때마다 이 숫자를 1.6, 1.7로 올리세요!
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedVer = localStorage.getItem('titan_app_version');
@@ -793,43 +793,29 @@ async function loadSchedules() {
     }
 }
 
-// 💡 일정 로드 후 화면을 갱신하는 헬퍼 함수 (2주 활성인원 필터링 적용)
+// 💡 가장 안전한 기본 형태로 원복 (에러 원인 파악용)
 function updateWorkerSelectAndRender() {
     const select = document.getElementById('worker-select');
-    const currentVal = select.value; // 현재 선택한 이름 기억해두기
+    const currentVal = select.value;
 
     select.innerHTML = '<option value="전체">👤 전체 보기</option>';
     let workerSet = new Set();
     
-    // 🌟 1. 오늘 기준으로 14일 전, 14일 후 날짜 계산
-    const now = new Date();
-    const twoWeeksAgo = new Date(now.getTime() - (14 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
-    const twoWeeksLater = new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
-
-    // 🌟 2. 2주 범위 내의 일정에서만 이름 수집
+    // 복잡한 날짜 계산 빼고 무조건 다 가져오게 처리
     allSchedules.forEach(s => {
-        if (s.date >= twoWeeksAgo && s.date <= twoWeeksLater) {
-            // 근무자 수집
-            const wList = Array.isArray(s.workers) ? s.workers : (s.workers || "").split(',');
-            wList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
-            
-            // 휴무자 수집 (휴무자도 목록에 나와야 필터링 가능)
-            const offList = Array.isArray(s.offWorkers) ? s.offWorkers : (s.offWorkers || "").split(',');
-            offList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
-        }
+        const wList = Array.isArray(s.workers) ? s.workers : String(s.workers || "").split(',');
+        wList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
     });
     
-    // 3. 수집된 인원만 가나다순으로 드롭다운에 추가
     Array.from(workerSet).sort().forEach(w => select.add(new Option(w, w)));
     
-    // 4. 이전에 선택했던 이름이 새 목록에도 있으면 유지, 없으면 '전체'로 초기화
     if (Array.from(select.options).some(opt => opt.value === currentVal)) {
         select.value = currentVal;
     } else {
         select.value = "전체";
     }
     
-    renderView(); // 캘린더/카드뷰 다시 그리기
+    renderView(); // 👈 이 함수가 정상적으로 실행되어야 화면이 나옵니다.
 }
 
 
