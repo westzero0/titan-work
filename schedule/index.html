@@ -33,14 +33,14 @@
         .other-month { opacity: 0.2; pointer-events: none; }
 
         .btn-group { display: flex; flex-direction: column; gap: 2px; margin-top: auto; z-index: 4; }
-        button.status { border: 1px solid var(--border); border-radius: 4px; padding: 5px 0; font-size: 0.6rem; cursor: pointer; background: rgba(255,255,255,0.8); line-height: 1; }
+        button.status { border: 1px solid var(--border); border-radius: 4px; padding: 5px 0; font-size: 0.6rem; cursor: pointer; background: rgba(255,255,255,0.8); line-height: 1; transition: transform 0.1s; }
+        button.status:active { transform: scale(0.95); }
         button.status-1 { background: var(--green) !important; color: #155724; border-color: #a3cfbb; font-weight: bold; }
         button.status-2 { background: var(--blue) !important; color: white; border-color: #0056b3; font-weight: bold; }
 
         .cell.has-event { border-top: 1px solid rgba(0,0,0,0.05); }
         .event-bar { position: absolute; left: 0; right: 0; height: 14px; color: white; font-size: 0.55rem; padding: 0 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-radius: 2px; z-index: 10; cursor: pointer; pointer-events: auto; line-height: 14px; transition: transform 0.1s; }
         .event-bar:active { transform: scale(0.98); }
-        .event-title { font-size: 0.55rem; color: #444; padding: 2px 4px; z-index: 3; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
 
         /* 모달(팝업창) 스타일 */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; visibility: hidden; transition: 0.2s; }
@@ -71,10 +71,12 @@
     </header>
     
     <div class="calendar-grid" id="calendar">
+        <!-- 요일 헤더 -->
         <div class="day-label">일</div><div class="day-label">월</div><div class="day-label">화</div>
         <div class="day-label">수</div><div class="day-label">목</div><div class="day-label">금</div><div class="day-label">토</div>
     </div>
 
+    <!-- 일정 수정/삭제 모달 -->
     <div id="event-modal" class="modal-overlay">
         <div class="modal-content">
             <h3 class="modal-title">일정 관리</h3>
@@ -90,9 +92,11 @@
         const API_URL = 'https://script.google.com/macros/s/AKfycbyGauZPGjsXbbmFdh5NPUJUgPOCi5E8Y7VRpNkiT_hPTMoz64Ukyej3v2ksF4YUtqRNwA/exec'; 
         const urlParams = new URLSearchParams(window.location.search);
         const user = urlParams.get('user') || 'me';
+        
         let currentYear, currentMonth; 
         let isDragging = false, startId = null, endId = null;
         let currentEditingEvent = null; 
+        let globalData = { daily: [], events: [] }; // 메모리에 데이터를 올려두고 UI를 즉시 변경함
 
         const holidayData = { "2026-01-01": "신정", "2026-02-16": "설날 연휴", "2026-02-17": "설날", "2026-02-18": "설날 연휴", "2026-03-01": "삼일절", "2026-03-02": "대체공휴일", "2026-05-05": "어린이날", "2026-05-24": "부처님오신날", "2026-05-25": "대체공휴일", "2026-06-03": "지방선거", "2026-06-06": "현충일", "2026-08-15": "광복절", "2026-08-17": "대체공휴일", "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴", "2026-10-03": "개천절", "2026-10-05": "대체공휴일", "2026-10-09": "한글날", "2026-12-25": "성탄절" };
 
@@ -100,9 +104,22 @@
             const badge = document.getElementById('badge');
             badge.innerText = user === 'me' ? "🙋‍♀️ 내 설정" : "🙋‍♂️ 오빠 확인";
             badge.className = `role-badge ${user === 'me' ? 'role-me' : 'role-oppa'}`;
+            
             const now = new Date();
             currentYear = now.getFullYear(); currentMonth = now.getMonth();
+            
+            // 1. 접속 즉시 로컬 캐시 데이터를 불러와서 화면에 먼저 그림 (버벅임 제거)
+            const cached = localStorage.getItem('full_data_cache');
+            if (cached) {
+                try {
+                    globalData = JSON.parse(cached);
+                    render();
+                } catch(e) {}
+            }
+            
+            // 2. 백그라운드에서 최신 데이터를 서버에서 가져옴
             await fetchData();
+            
             if(user === 'me') setupDragEvents();
             setupModalEvents();
         }
@@ -111,31 +128,37 @@
             document.getElementById('loading-bar').style.width = '30%';
             try {
                 const res = await fetch(API_URL + "?t=" + new Date().getTime());
-                const allData = await res.json();
-                localStorage.setItem('full_data_cache', JSON.stringify(allData));
-                render(allData);
+                globalData = await res.json();
+                localStorage.setItem('full_data_cache', JSON.stringify(globalData));
+                render(); // 최신 데이터로 화면 갱신
             } catch (e) {
-                const cached = localStorage.getItem('full_data_cache');
-                if (cached) render(JSON.parse(cached));
+                console.error("데이터 동기화 실패:", e);
             } finally {
                 document.getElementById('loading-bar').style.width = '0%';
             }
         }
 
-        function render(allData) {
+        function render() {
             document.getElementById('current-month').innerText = `${currentYear}.${(currentMonth + 1).toString().padStart(2, '0')}`;
             const container = document.getElementById('calendar');
+            
+            // 기존 셀들을 모두 지우고 새로 그림 (이 과정은 0.01초 내로 완료되어 깜빡임 없음)
             container.querySelectorAll('.cell').forEach(el => el.remove());
+            
             const firstDay = new Date(currentYear, currentMonth, 1).getDay();
             const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
             const prevLastDate = new Date(currentYear, currentMonth, 0).getDate();
+            
+            // 이전 달 날짜
             for (let i = firstDay - 1; i >= 0; i--) createCell(prevLastDate - i, true);
-            for (let i = 1; i <= lastDate; i++) createCell(i, false, allData);
+            // 현재 달 날짜
+            for (let i = 1; i <= lastDate; i++) createCell(i, false);
+            // 다음 달 날짜
             const remaining = 42 - container.querySelectorAll('.cell').length;
             for (let i = 1; i <= remaining; i++) createCell(i, true);
         }
 
-        function createCell(date, isOther, allData) {
+        function createCell(date, isOther) {
             const cell = document.createElement('div');
             const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${date.toString().padStart(2, '0')}`;
             const holidayName = holidayData[dateStr];
@@ -148,8 +171,9 @@
             if (holidayName) cell.classList.add('is-holiday');
             cell.innerHTML = `<div class="date-num">${date}${holidayName ? ` <span class="holiday-label">${holidayName}</span>` : ''}</div>`;
             
-            if (!isOther && allData) {
-                const eventOnThisDay = allData.events.find(ev => {
+            if (!isOther && globalData) {
+                // 일정 바(Bar) 확인
+                const eventOnThisDay = globalData.events.find(ev => {
                     const s = new Date(ev.start); s.setHours(0,0,0,0);
                     const e = new Date(ev.end); e.setHours(0,0,0,0);
                     const curr = new Date(dateStr); curr.setHours(0,0,0,0);
@@ -179,15 +203,20 @@
                         cell.appendChild(bar);
                     }
                 } else {
+                    // AM/PM 버튼 생성
                     const btnGroup = document.createElement('div');
                     btnGroup.className = 'btn-group';
                     ['AM', 'PM'].forEach(time => {
                         const id = `${dateStr}-${time}`;
-                        const item = allData.daily.find(d => d.id === id) || { status: 0 };
+                        const item = globalData.daily.find(d => d.id === id) || { status: 0 };
                         const btn = document.createElement('button');
                         btn.className = `status status-${item.status}`;
                         btn.innerText = (time === 'AM' ? '☀️' : '🌙') + (item.status === 2 ? ' 확정' : (item.status === 1 ? ' 가능' : ''));
-                        btn.onclick = (e) => { e.stopPropagation(); handleToggle(id, item.status, time, allData); };
+                        
+                        btn.onclick = (e) => { 
+                            e.stopPropagation(); 
+                            handleToggle(id, item.status); 
+                        };
                         btnGroup.appendChild(btn);
                     });
                     cell.appendChild(btnGroup);
@@ -196,6 +225,68 @@
             document.getElementById('calendar').appendChild(cell);
         }
 
+        // ===== 기능 구현 (UI 즉시 반응형) =====
+
+        function handleToggle(id, currentStatus) {
+            let nextStatus = currentStatus;
+            if (user === 'me') nextStatus = currentStatus === 0 ? 1 : (currentStatus === 1 ? 0 : currentStatus);
+            else if (user === 'oppa' && currentStatus !== 0) nextStatus = currentStatus === 1 ? 2 : 1;
+            
+            if (nextStatus !== currentStatus) {
+                // 1. 전역 데이터(메모리) 즉시 수정
+                const idx = globalData.daily.findIndex(d => d.id === id);
+                if (idx > -1) globalData.daily[idx].status = nextStatus;
+                else globalData.daily.push({ id, status: nextStatus });
+                
+                // 2. 화면 즉시 다시 그리기 (대기 시간 0초)
+                localStorage.setItem('full_data_cache', JSON.stringify(globalData));
+                render();
+
+                // 3. 서버에는 백그라운드에서 조용히 저장 (await 없이 던져둠)
+                fetch(API_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ type: 'status', id, status: nextStatus }), 
+                    mode: 'no-cors' 
+                }).catch(e => console.error("서버 저장 실패:", e));
+            }
+        }
+
+        function manageEvent(actionType, ev, newTitle) {
+            closeModal();
+            
+            // 1. 메모리 상에서 해당 이벤트 삭제/수정
+            if (actionType === 'delete_event') {
+                globalData.events = globalData.events.filter(e => e !== ev);
+            } else if (actionType === 'edit_event') {
+                const target = globalData.events.find(e => e === ev);
+                if (target) target.title = newTitle;
+            }
+            
+            // 2. 캐시 업데이트 및 화면 즉시 렌더링
+            localStorage.setItem('full_data_cache', JSON.stringify(globalData));
+            render();
+
+            // 3. 서버 연동은 백그라운드 처리 (reload 안함)
+            fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ type: actionType, oldTitle: ev.title, newTitle: newTitle }),
+                mode: 'no-cors'
+            }).catch(e => console.error("이벤트 처리 실패:", e));
+        }
+
+        // ===== 달력 달력 이동 (로딩 대기 없음) =====
+        function changeMonth(dir) {
+            currentMonth += dir;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            
+            // 변경된 달의 데이터를 캐시 기반으로 즉시 화면에 그림
+            render(); 
+            // 뒤에서 혹시 모를 타인의 업데이트 내역을 불러옴
+            fetchData();
+        }
+
+        // ===== 모달 관련 기능 =====
         function openModal(ev) {
             currentEditingEvent = ev;
             document.getElementById('modal-input').value = ev.title;
@@ -208,44 +299,21 @@
         }
 
         function setupModalEvents() {
-            // 1. 수정 버튼
             document.getElementById('modal-btn-edit').onclick = () => {
                 const newTitle = document.getElementById('modal-input').value.trim();
                 if (newTitle && newTitle !== currentEditingEvent.title) {
                     manageEvent('edit_event', currentEditingEvent, newTitle);
                 }
             };
-
-            // 2. 삭제 버튼
             document.getElementById('modal-btn-delete').onclick = () => {
-                if(confirm('이 일정을 삭제하시겠습니까?')) {
-                    manageEvent('delete_event', currentEditingEvent, null);
-                }
+                if(confirm('이 일정을 삭제하시겠습니까?')) manageEvent('delete_event', currentEditingEvent, null);
             };
-
-            // 3. 모달 바깥 영역(배경) 클릭 시 닫기
             document.getElementById('event-modal').addEventListener('click', (e) => {
-                if (e.target.id === 'event-modal') {
-                    closeModal();
-                }
+                if (e.target.id === 'event-modal') closeModal();
             });
         }
 
-        async function manageEvent(actionType, ev, newTitle) {
-            closeModal();
-            document.getElementById('loading-bar').style.width = '100%';
-            try {
-                await fetch(API_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify({ type: actionType, oldTitle: ev.title, newTitle: newTitle }),
-                    mode: 'no-cors'
-                });
-                location.reload();
-            } finally {
-                document.getElementById('loading-bar').style.width = '0%';
-            }
-        }
-
+        // ===== 드래그 이벤트 (미세 버그 수정) =====
         function setupDragEvents() {
             const container = document.getElementById('calendar');
             const getCellId = (e) => {
@@ -253,31 +321,48 @@
                 const y = e.clientY || (e.touches && e.touches[0].clientY);
                 return document.elementFromPoint(x, y)?.closest('.cell:not(.other-month)')?.dataset.id;
             };
+            
             const startAction = (e) => {
-                if(e.target.classList.contains('event-bar')) return; 
+                if(e.target.classList.contains('event-bar') || e.target.tagName === 'BUTTON') return; 
                 const id = getCellId(e); if (!id) return;
                 isDragging = true; startId = endId = id; updateHighlight();
             };
+            
             const moveAction = (e) => {
                 if (!isDragging) return;
                 const id = getCellId(e); if (id && id !== endId) { endId = id; updateHighlight(); }
             };
-            const endAction = async () => {
-                if (!isDragging) return; isDragging = false;
-                const title = prompt("장기 일정 명칭을 입력하세요 (예: 네팔 원정):");
-                if (title) {
-                    document.getElementById('loading-bar').style.width = '100%';
-                    const startDate = startId < endId ? startId : endId;
-                    const endDate = startId < endId ? endId : startId;
-                    await fetch(API_URL, { 
-                        method: 'POST', 
-                        body: JSON.stringify({ type: 'event', start: startDate, end: endDate, title: title, color: '#FF5733' }),
-                        mode: 'no-cors'
-                    });
-                    location.reload();
-                }
-                startId = endId = null; updateHighlight();
+            
+            const endAction = () => {
+                if (!isDragging) return; 
+                isDragging = false;
+                
+                // 마우스를 뗄 때 화면 멈춤을 방지하기 위해 0.05초 후 프롬프트 실행
+                setTimeout(() => {
+                    if(!startId || !endId) return;
+                    const title = prompt("장기 일정 명칭을 입력하세요 (예: 네팔 원정):");
+                    
+                    if (title) {
+                        const startDate = startId < endId ? startId : endId;
+                        const endDate = startId < endId ? endId : startId;
+                        
+                        const newEvent = { start: startDate, end: endDate, title: title, color: '#FF5733' };
+                        globalData.events.push(newEvent);
+                        
+                        localStorage.setItem('full_data_cache', JSON.stringify(globalData));
+                        render(); // 새로고침 없이 즉시 그림
+
+                        fetch(API_URL, { 
+                            method: 'POST', 
+                            body: JSON.stringify({ type: 'event', ...newEvent }),
+                            mode: 'no-cors'
+                        });
+                    }
+                    startId = endId = null; 
+                    updateHighlight();
+                }, 50);
             };
+            
             container.addEventListener('mousedown', startAction);
             window.addEventListener('mousemove', moveAction);
             window.addEventListener('mouseup', endAction);
@@ -294,32 +379,6 @@
             });
         }
 
-        async function handleToggle(id, currentStatus, time, allData) {
-            let nextStatus = currentStatus;
-            if (user === 'me') nextStatus = currentStatus === 0 ? 1 : (currentStatus === 1 ? 0 : currentStatus);
-            else if (user === 'oppa' && currentStatus !== 0) nextStatus = currentStatus === 1 ? 2 : 1;
-            
-            if (nextStatus !== currentStatus) {
-                document.getElementById('loading-bar').style.width = '100%';
-                try {
-                    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ type: 'status', id, status: nextStatus }), mode: 'no-cors' });
-                    const idx = allData.daily.findIndex(d => d.id === id);
-                    if (idx > -1) allData.daily[idx].status = nextStatus;
-                    else allData.daily.push({ id, status: nextStatus });
-                    localStorage.setItem('full_data_cache', JSON.stringify(allData));
-                    render(allData);
-                } finally {
-                    setTimeout(() => { document.getElementById('loading-bar').style.width = '0%'; }, 400);
-                }
-            }
-        }
-
-        function changeMonth(dir) {
-            currentMonth += dir;
-            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-            else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-            fetchData();
-        }
         init();
     </script>
 </body>
