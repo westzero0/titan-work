@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>업무 스케줄 - 월간</title>
     <style>
+        /* 가로 스와이프 시 브라우저 뒤로가기 간섭 방지 */
         :root { --bg: #f4f7f6; --white: #ffffff; --red: #ff4d4f; --blue: #007bff; --green: #e2fbe5; --text: #333; --border: #eee; --today-bg: #fff9db; --select-bg: rgba(0, 123, 255, 0.2); }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; user-select: none; -webkit-user-select: none; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; user-select: none; -webkit-user-select: none; overflow-x: hidden; touch-action: pan-y; }
         
         header { width: 100%; max-width: 600px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .nav-month { display: flex; align-items: center; gap: 12px; font-weight: bold; font-size: 1rem; }
@@ -42,14 +43,20 @@
         .event-bar { position: absolute; left: 0; right: 0; height: 14px; color: white; font-size: 0.55rem; padding: 0 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-radius: 2px; z-index: 10; cursor: pointer; pointer-events: auto; line-height: 14px; transition: transform 0.1s; }
         .event-bar:active { transform: scale(0.98); }
 
-        /* 모달(팝업창) 스타일 */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; visibility: hidden; transition: 0.2s; }
         .modal-overlay.active { opacity: 1; visibility: visible; }
-        .modal-content { background: white; padding: 20px; border-radius: 12px; width: 80%; max-width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); transform: translateY(20px); transition: 0.2s; }
+        .modal-content { background: white; padding: 20px; border-radius: 12px; width: 85%; max-width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); transform: translateY(20px); transition: 0.2s; }
         .modal-overlay.active .modal-content { transform: translateY(0); }
         .modal-title { font-size: 1rem; font-weight: bold; margin: 0 0 15px 0; color: var(--text); }
-        .modal-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem; margin-bottom: 15px; box-sizing: border-box; outline: none; }
+        
+        .modal-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem; margin-bottom: 12px; box-sizing: border-box; outline: none; }
         .modal-input:focus { border-color: var(--blue); }
+        
+        .date-row { display: flex; gap: 8px; align-items: center; margin-bottom: 15px; }
+        .date-row input[type="date"] { flex: 1; padding: 10px 5px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.8rem; outline: none; text-align: center; }
+        .date-row input[type="date"]:focus { border-color: var(--blue); }
+        .date-separator { font-weight: bold; color: #888; font-size: 0.9rem; }
+
         .modal-btns { display: flex; gap: 8px; justify-content: space-between; }
         .modal-btn { flex: 1; padding: 12px 0; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
         .modal-btn:active { opacity: 0.8; }
@@ -71,16 +78,19 @@
     </header>
     
     <div class="calendar-grid" id="calendar">
-        <!-- 요일 헤더 -->
         <div class="day-label">일</div><div class="day-label">월</div><div class="day-label">화</div>
         <div class="day-label">수</div><div class="day-label">목</div><div class="day-label">금</div><div class="day-label">토</div>
     </div>
 
-    <!-- 일정 수정/삭제 모달 -->
     <div id="event-modal" class="modal-overlay">
         <div class="modal-content">
             <h3 class="modal-title">일정 관리</h3>
             <input type="text" id="modal-input" class="modal-input" placeholder="일정 명칭을 입력하세요">
+            <div class="date-row">
+                <input type="date" id="modal-start-date">
+                <span class="date-separator">~</span>
+                <input type="date" id="modal-end-date">
+            </div>
             <div class="modal-btns">
                 <button id="modal-btn-edit" class="modal-btn btn-edit">수정</button>
                 <button id="modal-btn-delete" class="modal-btn btn-delete">삭제</button>
@@ -94,9 +104,7 @@
         const user = urlParams.get('user') || 'me';
         
         let currentYear, currentMonth; 
-        let isDragging = false, startId = null, endId = null;
-        let currentEditingEvent = null; 
-        let globalData = { daily: [], events: [] }; // 메모리에 데이터를 올려두고 UI를 즉시 변경함
+        let globalData = { daily: [], events: [] }; 
 
         const holidayData = { "2026-01-01": "신정", "2026-02-16": "설날 연휴", "2026-02-17": "설날", "2026-02-18": "설날 연휴", "2026-03-01": "삼일절", "2026-03-02": "대체공휴일", "2026-05-05": "어린이날", "2026-05-24": "부처님오신날", "2026-05-25": "대체공휴일", "2026-06-03": "지방선거", "2026-06-06": "현충일", "2026-08-15": "광복절", "2026-08-17": "대체공휴일", "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴", "2026-10-03": "개천절", "2026-10-05": "대체공휴일", "2026-10-09": "한글날", "2026-12-25": "성탄절" };
 
@@ -108,19 +116,13 @@
             const now = new Date();
             currentYear = now.getFullYear(); currentMonth = now.getMonth();
             
-            // 1. 접속 즉시 로컬 캐시 데이터를 불러와서 화면에 먼저 그림 (버벅임 제거)
             const cached = localStorage.getItem('full_data_cache');
             if (cached) {
-                try {
-                    globalData = JSON.parse(cached);
-                    render();
-                } catch(e) {}
+                try { globalData = JSON.parse(cached); render(); } catch(e) {}
             }
             
-            // 2. 백그라운드에서 최신 데이터를 서버에서 가져옴
             await fetchData();
-            
-            if(user === 'me') setupDragEvents();
+            if(user === 'me') setupDragAndSwipeEvents(); // 드래그+스와이프 이벤트 함수 등록
             setupModalEvents();
         }
 
@@ -130,30 +132,22 @@
                 const res = await fetch(API_URL + "?t=" + new Date().getTime());
                 globalData = await res.json();
                 localStorage.setItem('full_data_cache', JSON.stringify(globalData));
-                render(); // 최신 데이터로 화면 갱신
-            } catch (e) {
-                console.error("데이터 동기화 실패:", e);
-            } finally {
-                document.getElementById('loading-bar').style.width = '0%';
-            }
+                render(); 
+            } catch (e) { console.error("데이터 동기화 실패:", e); } 
+            finally { document.getElementById('loading-bar').style.width = '0%'; }
         }
 
         function render() {
             document.getElementById('current-month').innerText = `${currentYear}.${(currentMonth + 1).toString().padStart(2, '0')}`;
             const container = document.getElementById('calendar');
-            
-            // 기존 셀들을 모두 지우고 새로 그림 (이 과정은 0.01초 내로 완료되어 깜빡임 없음)
             container.querySelectorAll('.cell').forEach(el => el.remove());
             
             const firstDay = new Date(currentYear, currentMonth, 1).getDay();
             const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
             const prevLastDate = new Date(currentYear, currentMonth, 0).getDate();
             
-            // 이전 달 날짜
             for (let i = firstDay - 1; i >= 0; i--) createCell(prevLastDate - i, true);
-            // 현재 달 날짜
             for (let i = 1; i <= lastDate; i++) createCell(i, false);
-            // 다음 달 날짜
             const remaining = 42 - container.querySelectorAll('.cell').length;
             for (let i = 1; i <= remaining; i++) createCell(i, true);
         }
@@ -172,7 +166,6 @@
             cell.innerHTML = `<div class="date-num">${date}${holidayName ? ` <span class="holiday-label">${holidayName}</span>` : ''}</div>`;
             
             if (!isOther && globalData) {
-                // 일정 바(Bar) 확인
                 const eventOnThisDay = globalData.events.find(ev => {
                     const s = new Date(ev.start); s.setHours(0,0,0,0);
                     const e = new Date(ev.end); e.setHours(0,0,0,0);
@@ -203,7 +196,6 @@
                         cell.appendChild(bar);
                     }
                 } else {
-                    // AM/PM 버튼 생성
                     const btnGroup = document.createElement('div');
                     btnGroup.className = 'btn-group';
                     ['AM', 'PM'].forEach(time => {
@@ -213,10 +205,7 @@
                         btn.className = `status status-${item.status}`;
                         btn.innerText = (time === 'AM' ? '☀️' : '🌙') + (item.status === 2 ? ' 확정' : (item.status === 1 ? ' 가능' : ''));
                         
-                        btn.onclick = (e) => { 
-                            e.stopPropagation(); 
-                            handleToggle(id, item.status); 
-                        };
+                        btn.onclick = (e) => { e.stopPropagation(); handleToggle(id, item.status); };
                         btnGroup.appendChild(btn);
                     });
                     cell.appendChild(btnGroup);
@@ -225,97 +214,85 @@
             document.getElementById('calendar').appendChild(cell);
         }
 
-        // ===== 기능 구현 (UI 즉시 반응형) =====
-
         function handleToggle(id, currentStatus) {
             let nextStatus = currentStatus;
             if (user === 'me') nextStatus = currentStatus === 0 ? 1 : (currentStatus === 1 ? 0 : currentStatus);
             else if (user === 'oppa' && currentStatus !== 0) nextStatus = currentStatus === 1 ? 2 : 1;
             
             if (nextStatus !== currentStatus) {
-                // 1. 전역 데이터(메모리) 즉시 수정
                 const idx = globalData.daily.findIndex(d => d.id === id);
                 if (idx > -1) globalData.daily[idx].status = nextStatus;
                 else globalData.daily.push({ id, status: nextStatus });
                 
-                // 2. 화면 즉시 다시 그리기 (대기 시간 0초)
                 localStorage.setItem('full_data_cache', JSON.stringify(globalData));
                 render();
-
-                // 3. 서버에는 백그라운드에서 조용히 저장 (await 없이 던져둠)
-                fetch(API_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify({ type: 'status', id, status: nextStatus }), 
-                    mode: 'no-cors' 
-                }).catch(e => console.error("서버 저장 실패:", e));
+                fetch(API_URL, { method: 'POST', body: JSON.stringify({ type: 'status', id, status: nextStatus }), mode: 'no-cors' }).catch(e => console.error(e));
             }
         }
 
-        function manageEvent(actionType, ev, newTitle) {
-            closeModal();
-            
-            // 1. 메모리 상에서 해당 이벤트 삭제/수정
-            if (actionType === 'delete_event') {
-                globalData.events = globalData.events.filter(e => e !== ev);
-            } else if (actionType === 'edit_event') {
-                const target = globalData.events.find(e => e === ev);
-                if (target) target.title = newTitle;
-            }
-            
-            // 2. 캐시 업데이트 및 화면 즉시 렌더링
-            localStorage.setItem('full_data_cache', JSON.stringify(globalData));
-            render();
-
-            // 3. 서버 연동은 백그라운드 처리 (reload 안함)
-            fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ type: actionType, oldTitle: ev.title, newTitle: newTitle }),
-                mode: 'no-cors'
-            }).catch(e => console.error("이벤트 처리 실패:", e));
-        }
-
-        // ===== 달력 달력 이동 (로딩 대기 없음) =====
-        function changeMonth(dir) {
-            currentMonth += dir;
-            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-            else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-            
-            // 변경된 달의 데이터를 캐시 기반으로 즉시 화면에 그림
-            render(); 
-            // 뒤에서 혹시 모를 타인의 업데이트 내역을 불러옴
-            fetchData();
-        }
-
-        // ===== 모달 관련 기능 =====
+        let currentEditingEvent = null; 
         function openModal(ev) {
             currentEditingEvent = ev;
             document.getElementById('modal-input').value = ev.title;
+            document.getElementById('modal-start-date').value = ev.start;
+            document.getElementById('modal-end-date').value = ev.end;
             document.getElementById('event-modal').classList.add('active');
         }
 
-        function closeModal() {
-            document.getElementById('event-modal').classList.remove('active');
-            currentEditingEvent = null;
-        }
+        function closeModal() { document.getElementById('event-modal').classList.remove('active'); currentEditingEvent = null; }
 
         function setupModalEvents() {
             document.getElementById('modal-btn-edit').onclick = () => {
                 const newTitle = document.getElementById('modal-input').value.trim();
-                if (newTitle && newTitle !== currentEditingEvent.title) {
-                    manageEvent('edit_event', currentEditingEvent, newTitle);
+                const startVal = document.getElementById('modal-start-date').value;
+                const endVal = document.getElementById('modal-end-date').value;
+                if (newTitle && startVal && endVal) {
+                    const newStart = startVal <= endVal ? startVal : endVal;
+                    const newEnd = startVal <= endVal ? endVal : startVal;
+                    if (newTitle !== currentEditingEvent.title || newStart !== currentEditingEvent.start || newEnd !== currentEditingEvent.end) {
+                        manageEvent('edit_event', currentEditingEvent, newTitle, newStart, newEnd);
+                    } else closeModal();
                 }
             };
             document.getElementById('modal-btn-delete').onclick = () => {
-                if(confirm('이 일정을 삭제하시겠습니까?')) manageEvent('delete_event', currentEditingEvent, null);
+                if(confirm('이 일정을 삭제하시겠습니까?')) manageEvent('delete_event', currentEditingEvent, null, null, null);
             };
-            document.getElementById('event-modal').addEventListener('click', (e) => {
-                if (e.target.id === 'event-modal') closeModal();
-            });
+            document.getElementById('event-modal').addEventListener('click', (e) => { if (e.target.id === 'event-modal') closeModal(); });
         }
 
-        // ===== 드래그 이벤트 (미세 버그 수정) =====
-        function setupDragEvents() {
+        function manageEvent(actionType, ev, newTitle, newStart, newEnd) {
+            closeModal();
+            const oldTitle = ev.title; 
+            if (actionType === 'delete_event') {
+                globalData.events = globalData.events.filter(e => e !== ev);
+            } else if (actionType === 'edit_event') {
+                const target = globalData.events.find(e => e === ev);
+                if (target) { target.title = newTitle; target.start = newStart; target.end = newEnd; }
+            }
+            localStorage.setItem('full_data_cache', JSON.stringify(globalData));
+            render();
+            fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ type: actionType, oldTitle: oldTitle, newTitle: newTitle, newStart: newStart, newEnd: newEnd }),
+                mode: 'no-cors'
+            }).catch(e => console.error(e));
+        }
+
+        function changeMonth(dir) {
+            currentMonth += dir;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            render(); 
+            fetchData();
+        }
+
+        // ===== 꾹 누르기(롱프레스) 및 스와이프 로직 =====
+        let isDragging = false, startId = null, endId = null;
+        function setupDragAndSwipeEvents() {
             const container = document.getElementById('calendar');
+            let pressTimer = null;
+            let touchStartX = 0, touchStartY = 0;
+
             const getCellId = (e) => {
                 const x = e.clientX || (e.touches && e.touches[0].clientX);
                 const y = e.clientY || (e.touches && e.touches[0].clientY);
@@ -325,19 +302,57 @@
             const startAction = (e) => {
                 if(e.target.classList.contains('event-bar') || e.target.tagName === 'BUTTON') return; 
                 const id = getCellId(e); if (!id) return;
-                isDragging = true; startId = endId = id; updateHighlight();
+                
+                touchStartX = e.clientX || (e.touches && e.touches[0].clientX);
+                touchStartY = e.clientY || (e.touches && e.touches[0].clientY);
+
+                // 0.4초 꾹 누르면 드래그(일정 추가) 시작
+                pressTimer = setTimeout(() => {
+                    isDragging = true; 
+                    startId = endId = id; 
+                    updateHighlight();
+                    if (navigator.vibrate) navigator.vibrate(40); // 모바일 진동 효과
+                }, 400); 
             };
             
             const moveAction = (e) => {
-                if (!isDragging) return;
-                const id = getCellId(e); if (id && id !== endId) { endId = id; updateHighlight(); }
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+                if (!isDragging) {
+                    // 꾹 누르기 전에 손가락이 10px 이상 움직이면 스와이프/스크롤 의도로 보고 타이머 취소
+                    if (Math.abs(clientX - touchStartX) > 10 || Math.abs(clientY - touchStartY) > 10) {
+                        clearTimeout(pressTimer);
+                    }
+                    return;
+                }
+
+                if (e.cancelable) e.preventDefault(); // 드래그 시 화면 스크롤 방지
+                
+                const id = getCellId(e); 
+                if (id && id !== endId) { endId = id; updateHighlight(); }
             };
             
-            const endAction = () => {
+            const endAction = (e) => {
+                clearTimeout(pressTimer);
+
+                // 드래그 상태가 아니면 "스와이프(달 이동)" 처리
+                if (!isDragging && e.changedTouches) {
+                    const touchEndX = e.changedTouches[0].clientX;
+                    const touchEndY = e.changedTouches[0].clientY;
+                    const dx = touchEndX - touchStartX;
+                    const dy = touchEndY - touchStartY;
+
+                    // 가로로 이동한 거리가 세로보다 크고, 50px 이상 이동했을 때만 달 변경
+                    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+                        if (dx > 0) changeMonth(-1); // 오른쪽으로 밂 -> 이전 달
+                        else changeMonth(1);         // 왼쪽으로 밂 -> 다음 달
+                    }
+                }
+
                 if (!isDragging) return; 
                 isDragging = false;
                 
-                // 마우스를 뗄 때 화면 멈춤을 방지하기 위해 0.05초 후 프롬프트 실행
                 setTimeout(() => {
                     if(!startId || !endId) return;
                     const title = prompt("장기 일정 명칭을 입력하세요 (예: 네팔 원정):");
@@ -350,7 +365,7 @@
                         globalData.events.push(newEvent);
                         
                         localStorage.setItem('full_data_cache', JSON.stringify(globalData));
-                        render(); // 새로고침 없이 즉시 그림
+                        render(); 
 
                         fetch(API_URL, { 
                             method: 'POST', 
@@ -358,16 +373,18 @@
                             mode: 'no-cors'
                         });
                     }
-                    startId = endId = null; 
-                    updateHighlight();
+                    startId = endId = null; updateHighlight();
                 }, 50);
             };
             
+            // 마우스 이벤트 (PC용)
             container.addEventListener('mousedown', startAction);
-            window.addEventListener('mousemove', moveAction);
+            window.addEventListener('mousemove', moveAction, {passive: false});
             window.addEventListener('mouseup', endAction);
-            container.addEventListener('touchstart', (e) => { if(e.touches.length === 1) startAction(e); }, {passive: false});
-            window.addEventListener('touchmove', (e) => { if(isDragging) moveAction(e); }, {passive: false});
+            
+            // 터치 이벤트 (모바일용)
+            container.addEventListener('touchstart', startAction, {passive: true});
+            window.addEventListener('touchmove', moveAction, {passive: false});
             window.addEventListener('touchend', endAction);
         }
 
