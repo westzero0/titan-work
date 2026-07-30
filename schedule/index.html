@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>업무 스케줄 - 월간</title>
     <style>
-        /* 가로 스와이프 시 브라우저 뒤로가기 간섭 방지 */
         :root { --bg: #f4f7f6; --white: #ffffff; --red: #ff4d4f; --blue: #007bff; --green: #e2fbe5; --text: #333; --border: #eee; --today-bg: #fff9db; --select-bg: rgba(0, 123, 255, 0.2); }
+        /* 스와이프 부드러움을 위해 터치 액션 최적화 */
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; user-select: none; -webkit-user-select: none; overflow-x: hidden; touch-action: pan-y; }
         
         header { width: 100%; max-width: 600px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -17,7 +17,10 @@
         .role-me { background: var(--green); color: #155724; border: 1px solid #a3cfbb; }
         .role-oppa { background: #cfe2ff; color: #084298; border: 1px solid #b6d4fe; }
 
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); width: 100%; max-width: 600px; background: var(--white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); position: relative; }
+        /* 애니메이션을 위해 캘린더를 감싸는 틀 추가 */
+        .calendar-wrapper { width: 100%; max-width: 600px; overflow: hidden; padding-bottom: 5px; }
+        
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); width: 100%; background: var(--white); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); position: relative; will-change: transform; }
         .day-label { text-align: center; font-size: 0.65rem; color: #888; font-weight: 600; padding: 8px 0; border-bottom: 1px solid var(--border); }
         .day-label:nth-child(7n+1) { color: var(--red); }
         
@@ -43,6 +46,7 @@
         .event-bar { position: absolute; left: 0; right: 0; height: 14px; color: white; font-size: 0.55rem; padding: 0 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-radius: 2px; z-index: 10; cursor: pointer; pointer-events: auto; line-height: 14px; transition: transform 0.1s; }
         .event-bar:active { transform: scale(0.98); }
 
+        /* 모달 디자인 */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; visibility: hidden; transition: 0.2s; }
         .modal-overlay.active { opacity: 1; visibility: visible; }
         .modal-content { background: white; padding: 20px; border-radius: 12px; width: 85%; max-width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); transform: translateY(20px); transition: 0.2s; }
@@ -70,18 +74,22 @@
     <div id="loading-bar" class="loading-bar"></div>
     <header>
         <div class="nav-month">
-            <div class="nav-btn" onclick="changeMonth(-1)">◀</div>
+            <div class="nav-btn" onclick="animateChangeMonth(-1)">◀</div>
             <span id="current-month">로딩중...</span>
-            <div class="nav-btn" onclick="changeMonth(1)">▶</div>
+            <div class="nav-btn" onclick="animateChangeMonth(1)">▶</div>
         </div>
         <div id="badge" class="role-badge">로딩중</div>
     </header>
     
-    <div class="calendar-grid" id="calendar">
-        <div class="day-label">일</div><div class="day-label">월</div><div class="day-label">화</div>
-        <div class="day-label">수</div><div class="day-label">목</div><div class="day-label">금</div><div class="day-label">토</div>
+    <!-- 달력이 밀릴 때 화면 밖으로 튀어나가지 않도록 감싸는 Wrapper 추가 -->
+    <div class="calendar-wrapper">
+        <div class="calendar-grid" id="calendar">
+            <div class="day-label">일</div><div class="day-label">월</div><div class="day-label">화</div>
+            <div class="day-label">수</div><div class="day-label">목</div><div class="day-label">금</div><div class="day-label">토</div>
+        </div>
     </div>
 
+    <!-- 일정 관리 모달 -->
     <div id="event-modal" class="modal-overlay">
         <div class="modal-content">
             <h3 class="modal-title">일정 관리</h3>
@@ -117,12 +125,10 @@
             currentYear = now.getFullYear(); currentMonth = now.getMonth();
             
             const cached = localStorage.getItem('full_data_cache');
-            if (cached) {
-                try { globalData = JSON.parse(cached); render(); } catch(e) {}
-            }
+            if (cached) { try { globalData = JSON.parse(cached); render(); } catch(e) {} }
             
             await fetchData();
-            if(user === 'me') setupDragAndSwipeEvents(); // 드래그+스와이프 이벤트 함수 등록
+            if(user === 'me') setupDragAndSwipeEvents(); 
             setupModalEvents();
         }
 
@@ -204,7 +210,6 @@
                         const btn = document.createElement('button');
                         btn.className = `status status-${item.status}`;
                         btn.innerText = (time === 'AM' ? '☀️' : '🌙') + (item.status === 2 ? ' 확정' : (item.status === 1 ? ' 가능' : ''));
-                        
                         btn.onclick = (e) => { e.stopPropagation(); handleToggle(id, item.status); };
                         btnGroup.appendChild(btn);
                     });
@@ -223,13 +228,13 @@
                 const idx = globalData.daily.findIndex(d => d.id === id);
                 if (idx > -1) globalData.daily[idx].status = nextStatus;
                 else globalData.daily.push({ id, status: nextStatus });
-                
                 localStorage.setItem('full_data_cache', JSON.stringify(globalData));
                 render();
                 fetch(API_URL, { method: 'POST', body: JSON.stringify({ type: 'status', id, status: nextStatus }), mode: 'no-cors' }).catch(e => console.error(e));
             }
         }
 
+        // ===== 모달창 함수 =====
         let currentEditingEvent = null; 
         function openModal(ev) {
             currentEditingEvent = ev;
@@ -278,20 +283,49 @@
             }).catch(e => console.error(e));
         }
 
-        function changeMonth(dir) {
+        // ===== 🚀 스와이프 및 슬라이딩 애니메이션 핵심 로직 =====
+        function updateMonthData(dir) {
             currentMonth += dir;
             if (currentMonth < 0) { currentMonth = 11; currentYear--; }
             else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
             render(); 
-            fetchData();
+            fetchData(); // 렌더링 후 백그라운드 데이터 갱신
         }
 
-        // ===== 꾹 누르기(롱프레스) 및 스와이프 로직 =====
+        // 공통 스와이프 슬라이드 함수 (좌우 버튼 클릭 시 & 터치 스와이프 성공 시)
+        function animateChangeMonth(dir) {
+            const calendar = document.getElementById('calendar');
+            
+            // 1. 현재 화면 바깥으로 스르륵 밀어내기
+            calendar.style.transition = 'transform 0.25s ease-out, opacity 0.2s ease-out';
+            calendar.style.transform = dir > 0 ? 'translateX(-70%)' : 'translateX(70%)';
+            calendar.style.opacity = '0';
+            
+            setTimeout(() => {
+                // 2. 화면이 비워진 사이 데이터 즉시 변경
+                updateMonthData(dir);
+                
+                // 3. 애니메이션 끄고 반대편(들어올 준비 위치)으로 캘린더 이동
+                calendar.style.transition = 'none';
+                calendar.style.transform = dir > 0 ? 'translateX(70%)' : 'translateX(-70%)';
+                
+                // 4. 다시 가운데로 부드럽게 진입
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        calendar.style.transition = 'transform 0.25s ease-out, opacity 0.2s ease-out';
+                        calendar.style.transform = 'translateX(0)';
+                        calendar.style.opacity = '1';
+                    });
+                });
+            }, 250); // 밀어내는 시간 동안 대기
+        }
+
         let isDragging = false, startId = null, endId = null;
+        let isSwiping = false, touchStartX = 0, touchStartY = 0, swipeDx = 0;
+
         function setupDragAndSwipeEvents() {
             const container = document.getElementById('calendar');
             let pressTimer = null;
-            let touchStartX = 0, touchStartY = 0;
 
             const getCellId = (e) => {
                 const x = e.clientX || (e.touches && e.touches[0].clientX);
@@ -305,13 +339,19 @@
                 
                 touchStartX = e.clientX || (e.touches && e.touches[0].clientX);
                 touchStartY = e.clientY || (e.touches && e.touches[0].clientY);
+                
+                isSwiping = false; 
+                swipeDx = 0;
+                container.style.transition = 'none'; // 손가락을 즉시 따라가도록 트랜지션 해제
 
-                // 0.4초 꾹 누르면 드래그(일정 추가) 시작
+                // 0.4초간 가만히 누르면 일정 추가(드래그) 모드 진입
                 pressTimer = setTimeout(() => {
-                    isDragging = true; 
-                    startId = endId = id; 
-                    updateHighlight();
-                    if (navigator.vibrate) navigator.vibrate(40); // 모바일 진동 효과
+                    if (!isSwiping) {
+                        isDragging = true; 
+                        startId = endId = id; 
+                        updateHighlight();
+                        if (navigator.vibrate) navigator.vibrate(40);
+                    }
                 }, 400); 
             };
             
@@ -319,37 +359,53 @@
                 const clientX = e.clientX || (e.touches && e.touches[0].clientX);
                 const clientY = e.clientY || (e.touches && e.touches[0].clientY);
 
-                if (!isDragging) {
-                    // 꾹 누르기 전에 손가락이 10px 이상 움직이면 스와이프/스크롤 의도로 보고 타이머 취소
-                    if (Math.abs(clientX - touchStartX) > 10 || Math.abs(clientY - touchStartY) > 10) {
-                        clearTimeout(pressTimer);
-                    }
+                // [일정 추가 모드]
+                if (isDragging) {
+                    if (e.cancelable) e.preventDefault(); // 스크롤 방지
+                    const id = getCellId(e); 
+                    if (id && id !== endId) { endId = id; updateHighlight(); }
                     return;
                 }
 
-                if (e.cancelable) e.preventDefault(); // 드래그 시 화면 스크롤 방지
-                
-                const id = getCellId(e); 
-                if (id && id !== endId) { endId = id; updateHighlight(); }
+                // [달력 넘기기 스와이프 모드]
+                if (e.touches) {
+                    const dx = clientX - touchStartX;
+                    const dy = clientY - touchStartY;
+
+                    // 손가락이 세로보다 가로로 더 많이 움직였으면 스와이프 시작
+                    if (!isSwiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+                        isSwiping = true;
+                        clearTimeout(pressTimer); // 롱프레스 취소
+                    }
+
+                    if (isSwiping) {
+                        if (e.cancelable) e.preventDefault(); // 상하 스크롤 방지
+                        swipeDx = dx;
+                        // 달력이 손가락을 따라 0.8배 속도로 쫀득하게 따라옴
+                        container.style.transform = `translateX(${dx * 0.8}px)`; 
+                    }
+                }
             };
             
             const endAction = (e) => {
                 clearTimeout(pressTimer);
 
-                // 드래그 상태가 아니면 "스와이프(달 이동)" 처리
-                if (!isDragging && e.changedTouches) {
-                    const touchEndX = e.changedTouches[0].clientX;
-                    const touchEndY = e.changedTouches[0].clientY;
-                    const dx = touchEndX - touchStartX;
-                    const dy = touchEndY - touchStartY;
-
-                    // 가로로 이동한 거리가 세로보다 크고, 50px 이상 이동했을 때만 달 변경
-                    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-                        if (dx > 0) changeMonth(-1); // 오른쪽으로 밂 -> 이전 달
-                        else changeMonth(1);         // 왼쪽으로 밂 -> 다음 달
+                // 스와이프 중 손을 뗐을 때 처리
+                if (isSwiping) {
+                    if (swipeDx < -60) {
+                        animateChangeMonth(1); // 왼쪽으로 밀어서 다음 달
+                    } else if (swipeDx > 60) {
+                        animateChangeMonth(-1); // 오른쪽으로 밀어서 이전 달
+                    } else {
+                        // 너무 조금 밀었으면 다시 제자리로 튕겨 돌아옴
+                        container.style.transition = 'transform 0.2s ease-out';
+                        container.style.transform = 'translateX(0)';
                     }
+                    isSwiping = false;
+                    return;
                 }
 
+                // 드래그(일정 추가) 후 손을 뗐을 때 처리
                 if (!isDragging) return; 
                 isDragging = false;
                 
@@ -367,22 +423,17 @@
                         localStorage.setItem('full_data_cache', JSON.stringify(globalData));
                         render(); 
 
-                        fetch(API_URL, { 
-                            method: 'POST', 
-                            body: JSON.stringify({ type: 'event', ...newEvent }),
-                            mode: 'no-cors'
-                        });
+                        fetch(API_URL, { method: 'POST', body: JSON.stringify({ type: 'event', ...newEvent }), mode: 'no-cors'});
                     }
                     startId = endId = null; updateHighlight();
                 }, 50);
             };
             
-            // 마우스 이벤트 (PC용)
+            // 마우스 이벤트(PC 테스트용) 및 터치 이벤트 연결
             container.addEventListener('mousedown', startAction);
             window.addEventListener('mousemove', moveAction, {passive: false});
             window.addEventListener('mouseup', endAction);
             
-            // 터치 이벤트 (모바일용)
             container.addEventListener('touchstart', startAction, {passive: true});
             window.addEventListener('touchmove', moveAction, {passive: false});
             window.addEventListener('touchend', endAction);
