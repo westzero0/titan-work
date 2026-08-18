@@ -1563,6 +1563,33 @@ async function saveSchedule(mode) {
     }
 }
       
+
+      async function downloadPayroll() {
+    const month = document.getElementById('payrollMonth').value;
+    const resultBox = document.getElementById('payrollResult');
+
+    if (!month) return alert("정산할 월을 선택해주세요.");
+
+    resultBox.innerHTML = "⏳ 정산 중입니다... (10~20초 소요될 수 있어요)";
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "generatePayroll", month: month }),
+            redirect: 'follow'
+        });
+        const result = await res.json();
+
+        if (result.status === "SUCCESS") {
+            resultBox.innerHTML = `<a href="${result.downloadUrl}" target="_blank" style="display:block; text-align:center; background:#2563eb; color:white; padding:14px; border-radius:10px; font-weight:bold; text-decoration:none;">✅ 정산 완료! 여기를 눌러 다운로드</a>`;
+        } else {
+            resultBox.innerHTML = `<span style="color:#ef4444;">❌ ${result.message}</span>`;
+        }
+    } catch (e) {
+        resultBox.innerHTML = `<span style="color:#ef4444;">🚨 오류: ${e.message}</span>`;
+    }
+}
+
       
    async function deleteSchedule() {
     // 1. 사용자 확인
