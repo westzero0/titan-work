@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyR3uqkLAlQycrIeb_9sFoFnuRgBDwlz-PfHcH87DpmcsJvPkzjLdVBLmAVEsQgpPKi/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzo4lsJOKPsq01WvsmKRYSog8Rpt1Hdh5Nr0fimtoQkWnG52EkbLeNKtO2y7XBcXenS/exec";
 
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
