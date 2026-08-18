@@ -472,7 +472,15 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
     
     
-    <div class="swiper-slide">      
+    <div class="swiper-slide">    
+
+      <div class="card" style="border: 2px solid #2563eb; background: #eff6ff;">
+        <h3>📊 급여정산 다운로드</h3>
+        <label>정산 월 선택</label>
+        <input type="month" id="payrollMonth">
+        <button class="btn-blue" onclick="downloadPayroll()">엑셀로 다운로드</button>
+        <div id="payrollResult" style="margin-top:12px; font-size:0.95rem;"></div>
+    </div>
     <div class="card">
     <h3>👤 신규 인원 등록</h3>
     <input type="text" id="new-name" placeholder="이름 (예: 홍길동)">
@@ -543,6 +551,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     
        </div>
 </div>
+  
 
 <div class="bottom-nav" id="main-nav">
     <div class="nav-item active" onclick="jumpTo(0)">📅 <span>일정</span></div>
