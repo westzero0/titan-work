@@ -5,119 +5,159 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>타이탄 관리자 패널</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
   <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
   <style>
-    :root { --primary-color: #2563eb; --bg-color: #f8f9fa; }
-    body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg-color); margin: 0; padding: 0; overflow: hidden; }
+    :root {
+      /* 기능별 컬러 시스템 */
+      --primary-color: #2563eb;      /* 일정/작업 */
+      --primary-bg: #eff6ff;
+      --hr-color: #d97706;           /* 인원/급여 */
+      --hr-bg: #fffbeb;
+      --client-color: #0f766e;       /* 거래처/현장 */
+      --client-bg: #f0fdfa;
+      --material-color: #475569;     /* 자재 */
+      --material-bg: #f8fafc;
+      --danger-color: #dc2626;       /* 미수금/경고 */
+      --danger-bg: #fef2f2;
+      --bg-color: #f8f9fa;
 
-      button:active {
-    opacity: 0.8;
-    transform: scale(0.98);
-}
-      
-   /* --- 기본 레이아웃 및 공통 요소 --- */
-.header { background: #fff; padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #ddd; position: fixed; top:0; width: 100%; z-index: 100; }
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+    }
+    body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg-color); margin: 0; padding: 0; overflow: hidden; color: var(--text-primary); }
 
-.swiper { 
-    width: 100%; 
-    height: calc(100vh - 130px); /* 🟢 높이 계산값도 살짝 조정 (내비바 공간 확보) */
-    margin-top: 65px; /* 🟢 기존 50px에서 65px로 증가 */
-}
+    button:active { opacity: 0.8; transform: scale(0.98); }
 
-.card { 
-    background: #fff; 
-    border-radius: 0; /* 👈 화면에 꽉 차게 둥근 모서리 제거 */
-    padding: 18px 15px; /* 👈 하얀 배경은 꽉 차되, 글씨는 끝에 안 붙게 조절 */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-    margin-bottom: 10px; 
-    border-left: none;
-    border-right: none;
-}
-    
+    /* --- 기본 레이아웃 및 공통 요소 --- */
+    .header { background: #fff; padding: 15px; text-align: center; font-weight: 900; border-bottom: 1px solid #ddd; position: fixed; top:0; width: 100%; z-index: 100; letter-spacing: -0.3px; }
+
+    .swiper {
+        width: 100%;
+        height: calc(100vh - 130px);
+        margin-top: 65px;
+    }
+
+    .card {
+        background: #fff;
+        border-radius: 0;
+        padding: 18px 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 10px;
+        border-left: none;
+        border-right: none;
+    }
+
     h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 10px; }
 
-label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #444; }
-input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
+    label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #444; }
+    input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+    button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
 
-/* 1. 하단 내비게이션: 강력 고정 및 그래픽 가속 적용 */
-.bottom-nav {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 65px;
-    background: #fff;
-    display: flex;
-    border-top: 1px solid #ddd;
-    z-index: 2147483647 !important; /* 무조건 맨 위로 */
-    transform: translateZ(0);       /* 스와이프 시 깜빡임 방지 */
-    -webkit-transform: translateZ(0);
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-    touch-action: none;
-}
+    /* 기능군별 섹션 헤더 컬러 오버라이드 */
+    .section-hr h3 { color: var(--hr-color); }
+    .section-client h3 { color: var(--client-color); }
+    .section-material h3 { color: var(--material-color); }
 
-/* 2. 슬라이드 여백: 내비게이션에 가려지지 않게 하단 여백 확보 */
-.swiper-slide { 
-    overflow-y: auto; 
-    padding: 15px 12px; 
-    box-sizing: border-box; 
-    padding-bottom: 90px !important; /* 65px(내비) + 여유 */
-    background-color: #f1f5f9; 
-}
-    
-    
-.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888; font-size: 11px; cursor: pointer; }
-.nav-item.active { color: var(--primary-color); }
-.nav-item i { font-size: 20px; margin-bottom: 4px; }
-
-/* [현장 현황 관리 - 꽉 찬 화면 스타일] */
-
-    /* 1. 리스트 컨테이너 */
-    #client-management-list {
-        width: 100%;
-        padding-bottom: 50px;
+    /* 1. 하단 내비게이션 */
+    .bottom-nav {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 65px;
+        background: #fff;
+        display: flex;
+        border-top: 1px solid #ddd;
+        z-index: 2147483647 !important;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        touch-action: none;
     }
 
-    .client-management-swiper {
-        width: 100%;
-        touch-action: pan-y; /* 🔴 위아래 스크롤은 허용하고 좌우는 스와이퍼가 통제 */
-        overflow: hidden;    /* 🔴 카드가 옆으로 튀어나가는 것 방지 */
+    .swiper-slide {
+        overflow-y: auto;
+        padding: 15px 12px;
+        box-sizing: border-box;
+        padding-bottom: 130px !important; /* 미니바 + 내비 공간 확보 */
+        background-color: #f1f5f9;
     }
-    
 
-    /* 2. 스와이퍼 슬라이드 (화면 가로 100% 꽉 채우기) */
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888; font-size: 11px; cursor: pointer; transition: color 0.15s; }
+    .nav-item.active { color: var(--primary-color); font-weight: bold; }
+    .nav-item[data-tab="1"].active { color: var(--hr-color); }
+    .nav-item[data-tab="2"].active { color: var(--client-color); }
+    .nav-item[data-tab="3"].active { color: var(--material-color); }
+    .nav-item i { font-size: 20px; margin-bottom: 4px; }
+
+    /* 숫자 강조 스타일 */
+    .metric-value {
+        font-size: 1.35rem;
+        font-weight: 900;
+        letter-spacing: -0.5px;
+        color: var(--text-primary);
+    }
+    .metric-label {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    /* 항상 보이는 미니 요약 바 */
+    #mini-summary-bar {
+        position: fixed;
+        bottom: 65px;
+        left: 0;
+        width: 100%;
+        background: #1e293b;
+        color: white;
+        padding: 9px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+        z-index: 2000;
+        box-sizing: border-box;
+    }
+    #mini-summary-bar span { display: flex; align-items: center; gap: 5px; }
+
+    /* [현장 현황 관리] */
+    #client-management-list { width: 100%; padding-bottom: 50px; }
+
+    .client-management-swiper { width: 100%; touch-action: pan-y; overflow: hidden; }
+
     .client-management-swiper .swiper-slide {
-        width: 100% !important; 
-        padding: 0 !important;   /* 좌우 여백 제거 */
+        width: 100% !important;
+        padding: 0 !important;
         background-color: #fff;
-      -webkit-user-select: none;
+        -webkit-user-select: none;
         user-select: none;
     }
 
-    /* 3. 거래처 카드 디자인 (여백 없이 꽉 찬 사각형) */
     .client-card {
         background: #fff;
-        border-radius: 0;        /* 둥근 모서리 제거 */
-        box-shadow: none;        /* 그림자 제거하여 깔끔하게 */
+        border-radius: 0;
+        box-shadow: none;
         border-bottom: 1px solid #e2e8f0;
         min-height: 400px;
     }
 
-    /* 4. 거래처 헤더 (진한 색상으로 무게감 있게) */
     .client-header {
-        background: #1e293b;     /* 진한 네이비 */
+        background: var(--client-color);
         padding: 15px 20px;
         font-size: 1.1rem;
-        font-weight: 800;
+        font-weight: 900;
         color: #fff;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
-    /* 5. 현장 리스트 행 */
     .site-row {
         padding: 16px 20px;
         border-bottom: 1px solid #f1f5f9;
@@ -126,138 +166,107 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         align-items: center;
     }
 
-    /* 6. 주소 복사 버튼 스타일 (클릭하고 싶게 만드는 파란 박스) */
     .site-addr-box {
         font-size: 0.85rem;
-        color: #2563eb;
+        color: var(--client-color);
         margin-top: 6px;
         display: inline-block;
         cursor: pointer;
-        background: #eff6ff;     /* 연한 파랑 배경 */
+        background: var(--client-bg);
         padding: 4px 8px;
         border-radius: 4px;
-        border: 1px solid #dbeafe;
+        border: 1px solid #99f6e4;
         font-weight: 500;
     }
-    .site-addr-box:active {
-        background: #dbeafe;     /* 클릭 시 더 진해짐 */
+    .site-addr-box:active { background: #ccfbf1; }
+
+    .site-row.finished { background: #f8fafc; color: #94a3b8; }
+
+    .swiper-pagination-bullet-active { background: var(--client-color) !important; }
+
+    .job-bar {
+        color: #ffffff !important;
+        font-weight: bold;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
 
-    /* 완료된 현장 스타일 (흐리게 처리) */
-    .site-row.finished {
-        background: #f8fafc;
-        color: #94a3b8;
-    }
+    /* --- 직원 관리 카드 스타일 --- */
+    #worker-list-admin { display: flex; flex-direction: column; gap: 15px; padding-bottom: 20px; }
+    .worker-card { background: #fff; border-radius: 12px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border-top: 4px solid #ddd; position: relative; display: block; }
+    .worker-card .name { font-size: 1.1rem; font-weight: bold; color: #333; }
+    .status-badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 20px; color: #fff; font-weight: bold; }
+    .status-on { background: var(--hr-color); }
+    .status-off { background: var(--danger-color); }
+    .info { margin-top: 10px; font-size: 0.9rem; line-height: 1.6; color: #555; }
+    .copyable { color: var(--hr-color); text-decoration: underline; cursor: pointer; word-break: break-all; }
+    .card-btns { margin-top: 15px; display: flex; gap: 8px; }
 
-
-    
-
-.swiper-pagination-bullet-active { background: #2563eb !important; }
-
-
-    /* 타임라인 현장명 글자색을 무조건 흰색으로 고정 */
-.job-bar {
-    color: #ffffff !important; 
-    font-weight: bold; /* 글자를 좀 더 선명하게 보이게 함 */
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3); /* 배경색에 묻히지 않게 살짝 그림자 추가 */
-}
-
-    
-/* --- 직원 관리 카드 스타일 --- */
-#worker-list-admin { display: flex; flex-direction: column; gap: 15px; padding-bottom: 20px; }
-.worker-card { background: #fff; border-radius: 12px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border-top: 4px solid #ddd; position: relative; display: block; }
-.worker-card .name { font-size: 1.1rem; font-weight: bold; color: #333; }
-.status-badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 20px; color: #fff; font-weight: bold; }
-.status-on { background: #2563eb; }
-.status-off { background: #ef4444; }
-.info { margin-top: 10px; font-size: 0.9rem; line-height: 1.6; color: #555; }
-.copyable { color: #2563eb; text-decoration: underline; cursor: pointer; word-break: break-all; }
-.card-btns { margin-top: 15px; display: flex; gap: 8px; }
-
-
-
-    /* 1. 칩 디자인 (글자 길이에 맞게 자동 조절) */
+    /* 칩 디자인 - 터치영역 확대 */
     .chip {
-        padding: 8px 16px; 
-        background: #fff; 
-        border: 1px solid #e2e8f0; 
-        border-radius: 25px; /* 더 둥글게 */
-        font-size: 0.9rem; 
-        color: #64748b; 
-        cursor: pointer; 
-        margin-right: 6px; 
-        margin-bottom: 8px; 
-        display: inline-flex; /* 내용물만큼 너비 차지 */
-        align-items: center; 
+        padding: 10px 16px;
+        min-height: 40px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 25px;
+        font-size: 0.9rem;
+        color: #64748b;
+        cursor: pointer;
+        margin-right: 6px;
+        margin-bottom: 8px;
+        display: inline-flex;
+        align-items: center;
         transition: all 0.2s;
         font-weight: 500;
     }
     .chip:hover { background-color: #f8fafc; }
-    
-    /* 선택된 칩 (파란색) */
+
     .chip.active {
-        background: #eff6ff; 
-        color: #2563eb; 
-        border-color: #bfdbfe; 
+        background: var(--primary-bg);
+        color: var(--primary-color);
+        border-color: #bfdbfe;
         font-weight: bold;
     }
 
-    /* 삭제 모드일 때 칩 스타일 (빨간 테두리) */
     .chip.delete-mode {
         border-color: #fca5a5;
         background: #fef2f2;
-        color: #ef4444;
-        animation: shake 0.3s; /* 살짝 흔들림 효과 */
+        color: var(--danger-color);
+        animation: shake 0.3s;
     }
 
-    /* 2. 헤더 + 삭제 버튼 줄 */
     .header-row {
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center; 
-        margin-top: 20px; 
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 20px;
         margin-bottom: 8px;
     }
     .delete-toggle {
-        font-size: 0.85rem; 
-        color: #ef4444; 
-        cursor: pointer; 
-        display: flex; 
-        align-items: center; 
+        font-size: 0.85rem;
+        color: var(--danger-color);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
         gap: 4px;
         padding: 4px 8px;
         border-radius: 6px;
     }
     .delete-toggle:hover { background: #fef2f2; }
 
-    /* 3. 입력창 + 추가 버튼 그룹 */
-    .input-with-btn {
-        display: flex; 
-        gap: 8px; 
-        margin-bottom: 12px;
-    }
-    .input-with-btn input {
-        margin-top: 0; 
-        flex: 1;
-    }
+    .input-with-btn { display: flex; gap: 8px; margin-bottom: 12px; }
+    .input-with-btn input { margin-top: 0; flex: 1; }
     .btn-add-chip {
-        width: auto; 
-        padding: 0 20px; 
-        margin-top: 0; 
-        background: #334155; /* 진한 회색 (참고 이미지 색상) */
-        color: white; 
-        border-radius: 8px; 
-        font-weight: bold; 
+        width: auto;
+        padding: 0 20px;
+        margin-top: 0;
+        background: #334155;
+        color: white;
+        border-radius: 8px;
+        font-weight: bold;
         cursor: pointer;
     }
-    
-    /* 4. 박스 테두리 제거용 */
-    .no-border-box {
-        border: none !important; 
-        background: transparent !important; 
-        padding: 0 !important; 
-        box-shadow: none !important;
-    }
+
+    .no-border-box { border: none !important; background: transparent !important; padding: 0 !important; box-shadow: none !important; }
 
     @keyframes shake {
         0% { transform: translateX(0); }
@@ -266,176 +275,124 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         75% { transform: translateX(-2px); }
         100% { transform: translateX(0); }
     }
-    
 
-/* 1. 모달 전체 배경 */
-/* 1. 모달 배경 */
-.modal {
-    display: none; /* JS에서 flex로 켭니다 */
-    position: fixed !important;
-    z-index: 2147483647 !important; /* 내비바보다 높게 최상단 고정 */
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100dvh; /* 🔴 모바일 주소창 변동에 대응하는 높이 */
-    background-color: rgba(0, 0, 0, 0.7);
-    
-    /* 🔴 중앙 정렬 */
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    box-sizing: border-box;
-    pointer-events: auto; /* 터치 가능하게 */
-}
-
-/* 2. 모달 본체 */
-.modal-content {
-    background-color: #fff;
-    width: 100%;
-    max-width: 420px;
-    
-    /* 🔴 잘림 방지: 화면보다 크면 내부 스크롤 */
-    max-height: 85dvh; 
-    overflow-y: auto;
-    
-    border-radius: 20px;
-    padding: 25px;
-    margin: 0 !important; /* 마진 자동 계산 방지 */
-    position: relative;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-    
-    /* 스크롤 가두기 */
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-}
-    
-    
-/* [모바일 달력 최적화 스타일] */
-    
-    /* 1. 달력 툴바(년월 제목, 버튼) 크기 조절 */
-    .fc .fc-toolbar-title {
-        font-size: 1.1rem !important; /* 제목 크기 적당히 */
-    }
-    .fc .fc-button {
-        padding: 4px 8px !important;  /* 버튼 여백 축소 */
-        font-size: 0.85rem !important; /* 버튼 글자 축소 */
+    /* 모달 */
+    .modal {
+        display: none;
+        position: fixed !important;
+        z-index: 2147483647 !important;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: 100dvh;
+        background-color: rgba(0, 0, 0, 0.7);
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        box-sizing: border-box;
+        pointer-events: auto;
     }
 
-    /* 2. 날짜 숫자 크기 축소 */
-    .fc .fc-daygrid-day-top {
-        flex-direction: row; /* 숫자 정렬 */
-    }
-    .fc-daygrid-day-number {
-        font-size: 0.8rem !important; /* 날짜 숫자 줄임 */
-        padding: 4px !important;
-        color: #64748b;
+    .modal-content {
+        background-color: #fff;
+        width: 100%;
+        max-width: 420px;
+        max-height: 85dvh;
+        overflow-y: auto;
+        border-radius: 20px;
+        padding: 25px;
+        margin: 0 !important;
+        position: relative;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
     }
 
-    /* 3. 일정 막대(Event Bar) 최적화 - 요청하신 부분! */
-   .fc-event {
-        margin-top: 1px !important; /* 막대 간 간격 좁힘 */
-        border-radius: 3px !important;
-    }
-    
-  /* 추가로 막대 높이 제한 풀기 */
-.fc-event-main {
-    height: auto !important;
-    padding: 2px !important;
-}
-
-   /* 🔴 작업일보 달력에서도 말줄임표 없애고 줄바꿈 허용 */
+    /* [모바일 달력 최적화 스타일] */
+    .fc .fc-toolbar-title { font-size: 1.1rem !important; }
+    .fc .fc-button { padding: 4px 8px !important; font-size: 0.85rem !important; }
+    .fc .fc-daygrid-day-top { flex-direction: row; }
+    .fc-daygrid-day-number { font-size: 0.8rem !important; padding: 4px !important; color: #64748b; }
+    .fc-event { margin-top: 1px !important; border-radius: 3px !important; }
+    .fc-event-main { height: auto !important; padding: 2px !important; }
     .fc-event-title {
-        font-size: 0.65rem !important; /* 글씨 크기 (원하시는 대로 조절) */
-        font-weight: normal !important; 
-        line-height: 1.2 !important; /* 위아래 간격 */
-        white-space: normal !important; /* 줄바꿈 허용! */
-        word-break: keep-all !important; /* 단어 안 잘리게! */
-        /* overflow: hidden 이나 text-overflow: ellipsis 가 있다면 반드시 지우세요! */
+        font-size: 0.65rem !important;
+        font-weight: normal !important;
+        line-height: 1.2 !important;
+        white-space: normal !important;
+        word-break: keep-all !important;
     }
-
-    /* 4. 일요일/토요일 색상 */
-    .fc-day-sun .fc-daygrid-day-number { color: #ef4444 !important; }
-    .fc-day-sat .fc-daygrid-day-number { color: #2563eb !important; }
-    
-   /* 5. 🌟 오늘 날짜 확실하게 강조하기 */
-    .fc-day-today {
-        background-color: #eff6ff !important; /* 전체 배경: 아주 연하고 시원한 파란색 */
-    }
-    
-    /* 오늘 날짜 숫자 부분 (파란색 동그라미 포인트) */
+    .fc-day-sun .fc-daygrid-day-number { color: var(--danger-color) !important; }
+    .fc-day-sat .fc-daygrid-day-number { color: var(--primary-color) !important; }
+    .fc-day-today { background-color: var(--primary-bg) !important; }
     .fc-day-today .fc-daygrid-day-number {
-        background-color: #2563eb !important; /* 동그라미 배경: 진한 파란색 */
-        color: white !important;             /* 글자색: 흰색 */
-        border-radius: 50% !important;       /* 완벽한 동그라미 모양 */
+        background-color: var(--primary-color) !important;
+        color: white !important;
+        border-radius: 50% !important;
         width: 24px !important;
         height: 24px !important;
         display: inline-flex !important;
         justify-content: center !important;
         align-items: center !important;
-        margin: 2px 4px 0 0 !important;      /* 여백 조절 */
+        margin: 2px 4px 0 0 !important;
         font-weight: bold !important;
-        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3) !important; /* 살짝 붕 뜬 그림자 효과 */
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3) !important;
     }
-    
-    
   </style>
-  
 </head>
 
 
-    
 <body>
   <div class="header">⚡ 타이탄 통합 관리자</div>
-
 
     <div class="swiper">
   <div class="swiper-wrapper">
 
 <div class="swiper-slide" style="height: auto !important; min-height: 100%;">
-  
+
  <div id="dashboard-wrapper" style="position: relative; margin: 15px 15px 5px 15px; z-index: 100;">
-   
+
     <div onclick="toggleDashboard()" style="background: #1e293b; color: white; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <span style="font-weight: bold; font-size: 1.05rem;">📊 오늘의 현장 브리핑 & 수금</span>
+        <span style="font-weight: bold; font-size: 1.05rem;">📊 오늘의 현장 브리핑</span>
         <span id="dashboard-arrow" style="transition: transform 0.3s;">▼</span>
     </div>
 
 <div id="dashboard-content" style="display: none; width: 100%; margin-top: 10px; z-index: 999; box-sizing: border-box;">
 <div id="dashboard-inner" style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 2px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; box-sizing: border-box;">
-    
+
     <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
         <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
-            <div style="font-size: 0.75rem; color: #10b981; font-weight: bold; margin-bottom: 4px;">👥 오늘 인력 가동</div>
-            <div id="dash-manpower-stat" style="font-size: 0.9rem; color: #334155;">⏳ 계산중...</div>
-        </div>
-        
-        <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
-            <div style="font-size: 0.75rem; color: #8b5cf6; font-weight: bold; margin-bottom: 4px;">🚛 차량 배차</div>
-            <div id="dash-car-stat" style="font-size: 0.9rem; color: #334155;">⏳ 계산중...</div>
+            <div class="metric-label" style="color: var(--hr-color);">👥 오늘 인력 가동</div>
+            <div id="dash-manpower-stat" class="metric-value" style="margin-top:4px;">⏳ 계산중...</div>
         </div>
 
         <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
-            <div style="font-size: 0.75rem; color: #f59e0b; font-weight: bold; margin-bottom: 4px;">🛠️ 주력 공정</div>
-            <div id="dash-work-stat" style="font-size: 0.9rem; color: #334155;">⏳ 계산중...</div>
+            <div class="metric-label" style="color: var(--material-color);">🚛 차량 배차</div>
+            <div id="dash-car-stat" style="font-size: 0.9rem; color: #334155; margin-top:4px;">⏳ 계산중...</div>
+        </div>
+
+        <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
+            <div class="metric-label" style="color: var(--primary-color);">🛠️ 주력 공정</div>
+            <div id="dash-work-stat" style="font-size: 0.9rem; color: #334155; margin-top:4px;">⏳ 계산중...</div>
         </div>
     </div>
 
     <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
         <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
-            <div style="font-size: 0.75rem; color: #3b82f6; font-weight: bold; margin-bottom: 6px;">📅 오늘 작업 요약</div>
-            <div id="dash-today-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5; word-break: break-all;">⏳</div>
+            <div class="metric-label" style="color: var(--primary-color);">📅 오늘 작업 요약</div>
+            <div id="dash-today-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5; word-break: break-all; margin-top:6px;">⏳</div>
         </div>
         <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 12px;">
-            <div style="font-size: 0.75rem; color: #64748b; font-weight: bold; margin-bottom: 6px;">⏭️ 내일 예정 요약</div>
-            <div id="dash-tomorrow-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5; word-break: break-all;">⏳</div>
+            <div class="metric-label">⏭️ 내일 예정 요약</div>
+            <div id="dash-tomorrow-list" style="font-size: 0.85rem; color: #1e293b; line-height: 1.5; word-break: break-all; margin-top:6px;">⏳</div>
         </div>
     </div>
 
-    <div style="background: #1e293b; border-radius: 10px; padding: 15px; color: white; margin-bottom: 15px;">
-        <div style="font-size: 0.75rem; opacity: 0.8; margin-bottom: 4px;">🔴 미수금 총액</div>
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-            <span id="dash-total-unpaid" style="font-size: 1.3rem; font-weight: 900;">0 원</span>
-            <span id="dash-unpaid-count" style="font-size: 0.75rem; opacity: 0.8;">미수 0곳</span>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 15px;">
+        <div class="metric-label" style="color: var(--danger-color);">🔴 미수금 총액 (참고용)</div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top:4px;">
+            <span id="dash-total-unpaid" style="font-size: 1rem; font-weight: 700; color: var(--text-secondary);">0 원</span>
+            <span id="dash-unpaid-count" style="font-size: 0.75rem; color: var(--text-muted);">미수 0곳</span>
         </div>
     </div>
 
@@ -456,7 +413,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
               </p>
           </div>
           <div style="display: flex; background: #e2e8f0; padding: 4px; border-radius: 10px;">
-              <button id="btn-cal-work" onclick="setCalendarMode('work')" style="border:none; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: white; font-weight: bold; color: #2563eb; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin:0; width:auto; font-size: 0.9rem;">🏗️ 작업</button>
+              <button id="btn-cal-work" onclick="setCalendarMode('work')" style="border:none; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: white; font-weight: bold; color: var(--primary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin:0; width:auto; font-size: 0.9rem;">🏗️ 작업</button>
               <button id="btn-cal-off" onclick="setCalendarMode('off')" style="border:none; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: transparent; font-weight: bold; color: #64748b; margin:0; width:auto; font-size: 0.9rem;">🏖️ 휴무</button>
           </div>
       </div>
@@ -467,21 +424,21 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
           <h4 id="upcoming-title" style="margin:0 5px 15px 5px; color:#334155;">📋 다가오는 상세 일정</h4>
           <div id="upcoming-list"></div>
       </div>
-      
+
     </div>
 
-    
-    
-    <div class="swiper-slide">    
 
-      <div class="card" style="border: 2px solid #2563eb; background: #eff6ff;">
+
+    <div class="swiper-slide">
+    <div class="card section-hr" style="border: 2px solid var(--hr-color); background: var(--hr-bg);">
         <h3>📊 급여정산 다운로드</h3>
         <label>정산 월 선택</label>
         <input type="month" id="payrollMonth">
-        <button class="btn-blue" onclick="downloadPayroll()">엑셀로 다운로드</button>
+        <button style="background: var(--hr-color);" onclick="downloadPayroll()">엑셀로 다운로드</button>
         <div id="payrollResult" style="margin-top:12px; font-size:0.95rem;"></div>
     </div>
-    <div class="card">
+
+    <div class="card section-hr">
     <h3>👤 신규 인원 등록</h3>
     <input type="text" id="new-name" placeholder="이름 (예: 홍길동)">
     <select id="new-role">
@@ -492,81 +449,84 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
     <input type="text" id="new-phone" placeholder="휴대폰 번호 (예: 010-1234-5678)">
     <input type="text" id="new-address" placeholder="집주소">
     <input type="password" id="new-pw" placeholder="초기 비밀번호 (4자리)" maxlength="4">
-    <button class="btn-blue" onclick="addWorker()">등록하기</button>
+    <button style="background: var(--hr-color);" onclick="addWorker()">등록하기</button>
 </div>
-   
 
-    <div class="card">
+
+    <div class="card section-hr">
         <h3>👥 직원 관리</h3>
         <div id="worker-list-admin">불러오는 중...</div>
     </div>
      </div>
 
       <div class="swiper-slide">
-     <div class="card">
+     <div class="card section-client">
     <h3>🏢 거래처 및 현장 등록</h3>
-    
+
     <div class="copy-hint" style="margin-bottom:8px;">기존 거래처 선택 (또는 직접 입력)</div>
     <div id="client-chips" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
         </div>
-    
+
     <div class="input-group">
         <label>거래처명</label>
         <input type="text" id="c_client" placeholder="칩을 선택하거나 직접 입력하세요">
     </div>
-    
+
     <div class="input-group">
         <label>현장명</label>
         <input type="text" id="c_site" placeholder="현장명을 입력하세요">
     </div>
-    
+
     <div class="input-group">
         <label>현장 주소</label>
         <input type="text" id="c_addr" placeholder="주소를 입력하세요 (D열 저장)">
     </div>
     <input type="text" id="admin-new-site-note" placeholder="현장 특이사항 (예: 비밀번호 1234*, 주차불가 등)" style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #cbd5e1; border-radius:5px; font-size:0.9rem;">
 
-       
-    <button class="btn-blue" onclick="saveClient()" style="width:100%">현장 등록하기</button>
+
+    <button style="background: var(--client-color);" onclick="saveClient()" style="width:100%">현장 등록하기</button>
 </div>
-            
+
         <div id="client-management-list"></div>
-        
+
     </div>
 
     <div class="swiper-slide">
-      <div class="card">
+      <div class="card section-material">
         <h3>📦 자재 마스터 등록</h3>
         <label>대분류</label><input type="text" id="m_cat">
         <label>품목</label><input type="text" id="m_name">
         <label>규격</label><input type="text" id="m_spec">
         <label>단위</label><input type="text" id="m_unit">
         <label>단가</label><input type="number" id="m_price">
-        <button onclick="saveMaterial()">자재 품목 등록</button>
+        <button style="background: var(--material-color);" onclick="saveMaterial()">자재 품목 등록</button>
       </div>
     </div>
 
 
- 
-    
+
        </div>
 </div>
-  
+
+<div id="mini-summary-bar">
+    <span id="mini-manpower">👥 --</span>
+    <span id="mini-today">📅 --</span>
+</div>
 
 <div class="bottom-nav" id="main-nav">
-    <div class="nav-item active" onclick="jumpTo(0)">📅 <span>일정</span></div>
-    <div class="nav-item" onclick="jumpTo(1)">👥 <span>인원</span></div>
-    <div class="nav-item" onclick="jumpTo(2)">🏢 <span>거래처</span></div>
-    <div class="nav-item" onclick="jumpTo(3)">📦 <span>자재</span></div>
+    <div class="nav-item active" data-tab="0" onclick="jumpTo(0)">📅 <span>일정</span></div>
+    <div class="nav-item" data-tab="1" onclick="jumpTo(1)">👥 <span>인원</span></div>
+    <div class="nav-item" data-tab="2" onclick="jumpTo(2)">🏢 <span>거래처</span></div>
+    <div class="nav-item" data-tab="3" onclick="jumpTo(3)">📦 <span>자재</span></div>
 </div>
 
 <div id="schedule-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-            <h3 id="modal-date-title" style="margin:0; color:#2563eb;">일정 수정</h3>
+            <h3 id="modal-date-title" style="margin:0; color:var(--primary-color);">일정 수정</h3>
             <span class="close" onclick="closeModal()" style="font-size:2rem;">&times;</span>
         </div>
-        
+
         <input type="hidden" id="sched-row-id">
         <input type="hidden" id="sched-date">
         <input type="hidden" id="sched-end-date">
@@ -574,8 +534,8 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         <input type="hidden" id="sched-site">
         <input type="hidden" id="sched-shift">
         <input type="hidden" id="sched-workers-text">
-        <input type="hidden" id="sched-off-workers-text"> <div style="background: #fef2f2; padding: 12px 15px; border-radius: 8px; border: 1px solid #fca5a5; margin-bottom: 15px;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; color: #ef4444; margin: 0; font-size: 1rem;">
+        <input type="hidden" id="sched-off-workers-text"> <div style="background: var(--danger-bg); padding: 12px 15px; border-radius: 8px; border: 1px solid #fca5a5; margin-bottom: 15px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; color: var(--danger-color); margin: 0; font-size: 1rem;">
                 <input type="checkbox" id="chk-all-off" onchange="toggleAllOff()" style="width: 20px; height: 20px; cursor: pointer;">
                 전체 직원 휴무일 지정 (현장 없음)
             </label>
@@ -586,13 +546,13 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
         <div id="normal-work-section">
     <div class="input-group">
-        
+
         <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
-            <input type="text" id="adminSiteSearch" placeholder="🔍 현장명 검색" oninput="renderAdminSites()" 
+            <input type="text" id="adminSiteSearch" placeholder="🔍 현장명 검색" oninput="renderAdminSites()"
                    style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem;">
-            
-            <label style="display: flex; align-items: center; font-size: 0.9rem; font-weight: bold; color: #ef4444; cursor: pointer; background: #fef2f2; padding: 8px 12px; border-radius: 8px; border: 1px solid #fca5a5;">
-                <input type="checkbox" id="adminCompletedToggle" onchange="renderAdminSites()" style="width: 18px; height: 18px; margin-right: 6px; accent-color: #ef4444;">
+
+            <label style="display: flex; align-items: center; font-size: 0.9rem; font-weight: bold; color: var(--danger-color); cursor: pointer; background: var(--danger-bg); padding: 8px 12px; border-radius: 8px; border: 1px solid #fca5a5;">
+                <input type="checkbox" id="adminCompletedToggle" onchange="renderAdminSites()" style="width: 18px; height: 18px; margin-right: 6px; accent-color: var(--danger-color);">
                 A/S (완료)
             </label>
         </div>
@@ -636,7 +596,7 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
         </div>
 
         <div style="margin-bottom: 20px; padding-top: 15px; border-top: 2px dashed #fca5a5;">
-            <label style="margin:0; color:#ef4444;">🏖️ 휴무자 지정 <span id="off-worker-count-display">(0명)</span></label>
+            <label style="margin:0; color:var(--danger-color);">🏖️ 휴무자 지정 <span id="off-worker-count-display">(0명)</span></label>
             <div style="font-size: 0.75rem; color: #b91c1c; margin-bottom: 10px; margin-top: 4px;">
                 ※투입 인원과 중복 선택 불가
             </div>
@@ -645,27 +605,27 @@ button { width: 100%; padding: 15px; margin-top: 20px; background: var(--primary
 
         <label>전달사항 (특이사항)</label>
         <textarea id="sched-note" rows="2" placeholder="전달사항 입력"></textarea>
-        
+
         <div style="display:flex; gap:10px; margin-top:30px;">
             <button type="button" id="btn-save" onclick="saveSchedule('add')" style="flex:2;">저장</button>
             <button type="button" id="btn-update" onclick="saveSchedule('update')" style="flex:2; display:none;">수정</button>
-            <button type="button" id="btn-delete" onclick="deleteSchedule()" style="flex:1; display:none; background:#fee2e2; color:#ef4444;">삭제</button>
+            <button type="button" id="btn-delete" onclick="deleteSchedule()" style="flex:1; display:none; background:var(--danger-bg); color:var(--danger-color);">삭제</button>
         </div>
     </div>
 </div>
-  
+
+
   </div>
 
-  
+
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
-    
 
-  
-    <script>
 
-      
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwSJGmARLxnpVIzXNMtSPEQnS3_NkX4vWn-Rm218ENTtDzgPRjkSHWjVRkDE862J9g/exec"; // 👈 꼭 본인 주소로 수정하세요!
+  <script>
+
+
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbx5gNS6laaj4rMuYs0Pec79QCsjetdb9em7EYqM6i6-HTgW3F547AWPDEt5MRoGsCki/exec"; // 👈 꼭 본인 주소로 수정하세요!
 // 전역 변수 선언 (에러 방지용)
     let calendar = null;
     let swiper = null;
@@ -684,7 +644,7 @@ let colorIndex = 0;
 // 🎨 마법의 직원별 고유 색상 생성기 (중복 원천 차단)
 function getWorkerColor(name) {
     if (!name) return { bg: '#f8fafc', text: '#475569', border: '#cbd5e1' }; // 이름 없을 때 기본 회색
-    
+
     const cleanName = name.trim();
 
     // 무려 20가지의 뚜렷하고 예쁜 파스텔 톤 색상표
@@ -711,70 +671,60 @@ function getWorkerColor(name) {
         { bg: '#f8fafc', text: '#334155', border: '#cbd5e1' }  // 20. 진한 슬레이트 회색
     ];
 
-    // 💡 [핵심 로직] 이미 색상을 배정받은 직원이면 메모장에서 찾아서 그대로 돌려줌 (색상 변동 방지)
     if (assignedWorkerColors[cleanName]) {
         return assignedWorkerColors[cleanName];
     }
 
-    // 새 직원이 등장하면 순서대로 새로운 색상을 꺼내서 배정하고 메모장에 기록함
     const newColor = colorPalette[colorIndex % colorPalette.length];
     assignedWorkerColors[cleanName] = newColor;
-    
-    // 다음 직원을 위해 색상 순서를 1칸 올림
+
     colorIndex++;
 
     return newColor;
 }
-      
-window.addEventListener('DOMContentLoaded', () => {
-    // 1. 화면 뼈대 즉시 생성 (0.01초)
-    initSwiper();
-    initDashboardToggle(); 
-    initCalendar(); // 빈 달력이라도 일단 띄움
 
-    // 2. [핵심] 폰에 저장된 데이터가 있으면 '즉시' 화면 채우기 (0.1초)
-    // 서버 응답 기다리지 않고 바로 실행합니다.
+window.addEventListener('DOMContentLoaded', () => {
+    initSwiper();
+    initDashboardToggle();
+    initCalendar();
+
     const cachedSchedules = localStorage.getItem('titan_schedules');
     const cachedClients = localStorage.getItem('titan_clients');
 
     if (cachedSchedules) {
         globalScheduleData = JSON.parse(cachedSchedules);
         console.log("⚡ 캐시에서 일정 즉시 로드");
-        renderAfterLoad(); // 일단 화면 그리기
+        renderAfterLoad();
     }
-    
+
     if (cachedClients) {
         globalTitanData = JSON.parse(cachedClients);
         console.log("⚡ 캐시에서 거래처 즉시 로드");
-        renderRegistrationClientChips(); // 칩 미리 만들어두기
+        renderRegistrationClientChips();
     }
 
-    // 3. 화면은 떴으니, 이제 뒷단에서 조용히 서버 데이터를 가져와서 업데이트 (백그라운드)
-    loadScheduleData();     
-    loadClientManagement(); 
-    
-    // 상대적으로 가벼운 인원 정보는 천천히
+    loadScheduleData();
+    loadClientManagement();
+
     setTimeout(() => { loadAdminData(); }, 1000);
 });
-      
 
-  // [스와이퍼 초기화 수정]
-    function initSwiper() {
+
+  function initSwiper() {
         const el = document.querySelector('.swiper');
         if (!el) return;
 
         swiper = new Swiper('.swiper', {
             speed: 400,
             loop: false,
-            allowTouchMove: true, // 기본은 스와이프 허용
+            allowTouchMove: true,
          on: {
                 slideChange: function () {
                     const idx = this.activeIndex;
                     updateNav(idx);
 
-                    // 🔴 [수정] idx === 3 을 idx === 0 으로 바꿉니다!
-                    if (idx === 0) { 
-                        this.allowTouchMove = false; // 달력 화면 스와이프 잠금
+                    if (idx === 0) {
+                        this.allowTouchMove = false;
                         console.log("📅 일정 탭: 스와이프 잠금");
                     } else {
                         this.allowTouchMove = true;
@@ -784,29 +734,26 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // [하단 네비 클릭 이동 수정]
     function jumpTo(index) {
         if (swiper) {
-            // 잠금 상태여도 버튼 클릭으로 이동하는 것은 항상 허용해야 함
-            swiper.allowTouchMove = true; 
+            swiper.allowTouchMove = true;
             swiper.slideTo(index);
-            
-          // 🔴 [수정] index === 3 을 index === 0 으로 바꿉니다!
+
             if (index === 0) swiper.allowTouchMove = false;
         }
     }
-      
+
     function updateNav(index) {
         document.querySelectorAll('.nav-item').forEach((item, i) => {
             if (i === index) item.classList.add('active'); else item.classList.remove('active');
         });
     }
 
-var calendarMode = 'work'; 
+var calendarMode = 'work';
 
     function setCalendarMode(mode) {
         calendarMode = mode;
-        
+
         const workBtn = document.getElementById('btn-cal-work');
         const offBtn = document.getElementById('btn-cal-off');
         const mainTitle = document.getElementById('cal-main-title');
@@ -814,31 +761,28 @@ var calendarMode = 'work';
         const upcomingTitle = document.getElementById('upcoming-title');
 
         if (mode === 'work') {
-            workBtn.style.background = 'white'; workBtn.style.color = '#2563eb'; workBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            workBtn.style.background = 'white'; workBtn.style.color = 'var(--primary-color)'; workBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
             offBtn.style.background = 'transparent'; offBtn.style.color = '#64748b'; offBtn.style.boxShadow = 'none';
             mainTitle.innerText = "📅 작업 일정";
             subTitle.innerText = "날짜 클릭: 등록 / 바 클릭: 수정";
             upcomingTitle.innerText = "📋 다가오는 상세 일정";
         } else {
-            offBtn.style.background = 'white'; offBtn.style.color = '#ef4444'; offBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            offBtn.style.background = 'white'; offBtn.style.color = 'var(--danger-color)'; offBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
             workBtn.style.background = 'transparent'; workBtn.style.color = '#64748b'; workBtn.style.boxShadow = 'none';
             mainTitle.innerText = "🏖️ 휴무 일정";
             subTitle.innerText = "직원들의 휴무(X) 현황입니다.";
             upcomingTitle.innerText = "🏖️ 다가오는 휴무자";
         }
-        
+
         initCalendar();
         renderScheduleList();
     }
 
-      
 
 
 
-   // [중요] 암호화된 데이터를 다시 한글 JSON으로 복구하여 모달 열기
-    function openModalSafe(safeData) {
+   function openModalSafe(safeData) {
         try {
-            // Base64 해제 -> URI 디코딩 -> JSON 파싱
             const decodedData = JSON.parse(decodeURIComponent(atob(safeData)));
             openModal("edit", null, decodedData);
         } catch (e) {
@@ -848,72 +792,65 @@ var calendarMode = 'work';
     }
 
 
-// 📅 2. 달력 그리기 (작업 달력에 '전체 휴무' 표시 추가 + 최적화 완벽 유지)
 function initCalendar() {
     const el = document.getElementById('calendar-container');
     if (!el) return;
 
     const events = [];
 
-    // 💡 [최적화 포인트] 단 한 번만 순회합니다!
     globalScheduleData.forEach(item => {
-        // 휴무인지 미리 체크
         const isAllOff = (item.client === '휴무' || item.site === '휴무');
 
         if (calendarMode === 'work') {
-            // 🔵 1. 작업 달력 모드
             if (isAllOff) {
-                // 👉 [추가된 핵심 기능] 전체 휴무면 작업 달력에도 빨간색으로 띄워줍니다!
                 events.push({
                     title: `🏖️ 휴무 (전체)`,
                     start: item.date,
                     backgroundColor: '#fef2f2',
-                    textColor: '#ef4444',
+                    textColor: '#dc2626',
                     borderColor: '#fca5a5',
-                    extendedProps: item 
+                    extendedProps: item
                 });
             } else {
-                // 👉 기존 기능: 일반 현장은 그대로 띄워줍니다.
                 const clientStr = (item.client || "").trim();
                 const siteStr = (item.site || "").trim();
 
                 if (clientStr !== "" || siteStr !== "") {
                     const workersStr = item.workers || "";
                     const workerCount = workersStr.trim() ? workersStr.split(',').filter(n => n.trim()).length : 0;
-                    
+
                     events.push({
                         id: item.rowId,
                         title: `${item.site || '현장미상'} (${workerCount}명)`,
                         start: item.date,
-                        backgroundColor: item.shift === '야' ? '#475569' : (item.shift === '조' ? '#f59e0b' : '#3b82f6'),
-                        borderColor: 'transparent', 
-                        extendedProps: item 
+                        backgroundColor: item.shift === '야' ? '#475569' : (item.shift === '조' ? '#d97706' : '#2563eb'),
+                        borderColor: 'transparent',
+                        extendedProps: item
                     });
                 }
             }
         } else {
-            // 🔴 2. 휴무 달력 모드 (기존 기능 100% 동일)
             if (isAllOff) {
                 events.push({
                     title: `🏖️ 휴무 (전체)`,
                     start: item.date,
                     backgroundColor: '#fef2f2',
-                    textColor: '#ef4444',
+                    textColor: '#dc2626',
                     borderColor: '#fca5a5',
-                    extendedProps: item 
+                    extendedProps: item
                 });
             } else if (item.offWorkers && item.offWorkers.trim() !== "") {
                 item.offWorkers.split(',').forEach(w => {
                     const workerName = w.trim();
                     if (workerName) {
-                        const color = typeof getWorkerColor === 'function' ? getWorkerColor(workerName) : { bg: '#fef2f2', text: '#ef4444', border: '#fca5a5' };
+                        const color = typeof getWorkerColor === 'function' ? getWorkerColor(workerName) : { bg: '#fef2f2', text: '#dc2626', border: '#fca5a5' };
                         events.push({
                             title: `🏖️ ${workerName}`,
                             start: item.date,
                             backgroundColor: color.bg,
                             textColor: color.text,
                             borderColor: color.border,
-                            extendedProps: item 
+                            extendedProps: item
                         });
                     }
                 });
@@ -927,7 +864,7 @@ function initCalendar() {
         longPressDelay: 300, eventLongPressDelay: 300, selectLongPressDelay: 300,
         headerToolbar: { left: 'prev', center: 'title', right: 'next' },
         dayCellContent: (info) => ({ html: info.dayNumberText.replace('일', '') }),
-        selectable: calendarMode === 'work', 
+        selectable: calendarMode === 'work',
         selectMirror: true,
         select: (info) => {
             if (calendarMode === 'work') openModal('add', info.startStr, null, info.endStr);
@@ -941,64 +878,57 @@ function initCalendar() {
     });
     calendar.render();
 }
-      
 
-      // 🔴 휴무자 전용 변수 세팅
+
 let selectedOffWorkerSet = new Set();
 
-// 🔴 전체 휴무 토글 스위치 
 function toggleAllOff() {
     const isAllOff = document.getElementById('chk-all-off').checked;
     const workSection = document.getElementById('normal-work-section');
-    
+
     if (isAllOff) {
-        workSection.style.display = 'none'; // 일반 작업칸 숨김
-        selectedWorkerSet.clear(); // 출근자 초기화
-        
-        // 모든 재직자를 휴무자에 추가
+        workSection.style.display = 'none';
+        selectedWorkerSet.clear();
+
         selectedOffWorkerSet.clear();
         globalWorkerData.filter(w => w.status === '재직').forEach(w => selectedOffWorkerSet.add(w.name));
     } else {
-        workSection.style.display = 'block'; // 일반 작업칸 표시
-        selectedOffWorkerSet.clear(); // 휴무자 초기화
+        workSection.style.display = 'block';
+        selectedOffWorkerSet.clear();
     }
-    
+
     renderWorkerChips(Array.from(selectedWorkerSet).join(','));
     renderOffWorkerChips(Array.from(selectedOffWorkerSet).join(','));
 }
 
-// 🔴 휴무자 칩 렌더링 (빨간색 톤 적용)
 function renderOffWorkerChips(namesStr) {
     if (namesStr !== undefined) {
         selectedOffWorkerSet.clear();
         if (namesStr) namesStr.split(',').forEach(n => n.trim() && selectedOffWorkerSet.add(n.trim()));
     }
-    updateAllWorkerChipsUI(); // 양쪽 동시 갱신
+    updateAllWorkerChipsUI();
 }
 
-// 🔴 개별 휴무자 클릭 시 동작 (중복 방지)
 function toggleOffWorkerSelection(n) {
     if (document.getElementById('chk-all-off').checked) {
         return alert("전체 휴무가 체크되어 있습니다. 개별 조정을 원하시면 체크를 먼저 해제해주세요.");
     }
-    
+
     if (selectedOffWorkerSet.has(n)) {
         selectedOffWorkerSet.delete(n);
     } else {
         selectedOffWorkerSet.add(n);
     }
-    updateAllWorkerChipsUI(); // 양쪽 동시 갱신
+    updateAllWorkerChipsUI();
 }
 
-      // 📋 3. 하단 리스트 그리기 (관리자 패널용: 카드 터치로 수정창 열기)
 function renderScheduleList() {
-  const box = document.getElementById('upcoming-list'); 
+  const box = document.getElementById('upcoming-list');
     if (!box) return;
 
-    // 🌟 [수정] 하단 리스트의 오늘 날짜도 한국 시간으로 고정!
     const now = new Date();
     const today = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
-    
+
     const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
 
     if (calendarMode === 'work') {
@@ -1018,33 +948,32 @@ function renderScheduleList() {
         box.innerHTML = list.map(item => {
             const dateObj = new Date(item.date);
             const dayName = weekDays[dateObj.getDay()];
-            let dayColor = "#64748b"; 
-            if (dateObj.getDay() === 0) dayColor = "#ef4444"; 
-            if (dateObj.getDay() === 6) dayColor = "#3b82f6"; 
+            let dayColor = "#64748b";
+            if (dateObj.getDay() === 0) dayColor = "#dc2626";
+            if (dateObj.getDay() === 6) dayColor = "#2563eb";
 
-            let siteAddr = ""; 
-            let masterNote = ""; 
-            const clientKey = (item.client || "").trim(); 
+            let siteAddr = "";
+            let masterNote = "";
+            const clientKey = (item.client || "").trim();
             const siteKey = (item.site || "").trim();
-            
+
             if (globalTitanData && globalTitanData[clientKey]) {
                 const masterSite = globalTitanData[clientKey].find(m => (m.name || "").trim() === siteKey);
-                if (masterSite) { 
-                    siteAddr = masterSite.addr || masterSite.address || ""; 
-                    masterNote = masterSite.note || masterSite.특이사항 || masterSite.비고 || ""; 
+                if (masterSite) {
+                    siteAddr = masterSite.addr || masterSite.address || "";
+                    masterNote = masterSite.note || masterSite.특이사항 || masterSite.비고 || "";
                 }
             }
 
             const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
             const sType = (item.shift || "").toString().trim();
-            const borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
+            const borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#d97706' : '#2563eb');
 
-            // 🔴 카드 전체가 클릭 버튼 역할을 하도록 onclick="openModalSafe(...)" 적용됨
             return `
-                <div class="card schedule-card-item" data-date="${item.date}" data-site="${item.site}" 
-                     onclick="openModalSafe('${safeData}')" 
-                     style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); cursor:pointer;"> 
-                    
+                <div class="card schedule-card-item" data-date="${item.date}" data-site="${item.site}"
+                     onclick="openModalSafe('${safeData}')"
+                     style="position:relative; margin-bottom:15px; padding:15px; border-left:5px solid ${borderColor}; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); cursor:pointer;">
+
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                         <div style="width: 100%;">
                             <div style="font-weight:bold; font-size:0.85rem; color:#64748b;">
@@ -1052,10 +981,10 @@ function renderScheduleList() {
                             </div>
                             <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${item.site}</div>
                             <div style="font-size:0.85rem; color:#64748b;">🏢 ${item.client}</div>
-                            
+
                             ${siteAddr ? `
-                            <div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')" 
-                                 style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:block; width:fit-content; line-height:1.4;">
+                            <div class="site-addr-box" onclick="event.stopPropagation(); copyText('${siteAddr.replace(/'/g, "\\'")}')"
+                                 style="margin-top:10px; cursor:pointer; font-weight:500; display:block; width:fit-content; line-height:1.4;">
                                 📍 ${siteAddr} <span style="font-size:0.7rem; color:#94a3b8; margin-left:5px;">(복사)</span>
                             </div>` : ''}
                         </div>
@@ -1077,11 +1006,11 @@ function renderScheduleList() {
 
                     <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                         <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
-                            ${(item.workers || '').split(',').filter(n => n.trim() !== '').map(name => 
+                            ${(item.workers || '').split(',').filter(n => n.trim() !== '').map(name =>
                                 `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${name.trim()}</span>`
                             ).join('')}
                         </div>
-                        
+
                         ${item.car ? `
                         <div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap; margin-left: 10px;">
                             🚛 ${item.car}
@@ -1090,7 +1019,6 @@ function renderScheduleList() {
                 </div>`;
         }).join('');
     } else {
-        // 🔴 휴무 모드 하단 리스트
         const offSchedules = scheduleData
             .filter(s => (s.client === '휴무') || (s.offWorkers && s.offWorkers.trim() !== ""))
             .filter(s => s.date >= today)
@@ -1104,19 +1032,19 @@ function renderScheduleList() {
         box.innerHTML = offSchedules.map(item => {
             const safeData = btoa(encodeURIComponent(JSON.stringify(item)));
             let contentHtml = '';
-            
+
             if (item.client === '휴무') {
-                contentHtml = `<span style="background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: bold;">🏖️ 휴무 (전체)</span>`;
+                contentHtml = `<span style="background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: bold;">🏖️ 휴무 (전체)</span>`;
             } else {
                 const workers = item.offWorkers.split(',').filter(w => w.trim() !== "");
                 contentHtml = workers.map(w => {
-                    const color = typeof getWorkerColor === 'function' ? getWorkerColor(w.trim()) : { bg: '#fef2f2', text: '#ef4444', border: '#fca5a5' };
+                    const color = typeof getWorkerColor === 'function' ? getWorkerColor(w.trim()) : { bg: '#fef2f2', text: '#dc2626', border: '#fca5a5' };
                     return `<span style="background: ${color.bg}; color: ${color.text}; border: 1px solid ${color.border}; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: bold;">🏖️ ${w.trim()}</span>`;
                 }).join('');
             }
 
             return `
-            <div class="card" style="margin-bottom:12px; padding:15px; border-left:5px solid #ef4444; cursor:pointer; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);" onclick="openModalSafe('${safeData}')">
+            <div class="card" style="margin-bottom:12px; padding:15px; border-left:5px solid #dc2626; cursor:pointer; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05);" onclick="openModalSafe('${safeData}')">
                 <div style="font-size: 0.95rem; color: #475569; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; display:flex; justify-content:space-between;">
                     <span>📅 ${item.date} 휴무현황</span>
                     <span style="font-size:0.75rem; color:#94a3b8; background:#f1f5f9; padding:2px 8px; border-radius:8px;">수정/삭제 ✏️</span>
@@ -1128,11 +1056,11 @@ function renderScheduleList() {
         }).join('');
     }
 }
-      
+
 function openModal(mode, dateStr, data, endStr = null) {
     const modal = document.getElementById('schedule-modal');
     if (!modal) return;
-    modal.style.display = 'flex'; 
+    modal.style.display = 'flex';
     document.querySelectorAll('.swiper-slide').forEach(slide => { slide.style.overflowY = 'hidden'; });
     document.body.style.overflow = 'hidden';
 
@@ -1152,21 +1080,20 @@ function openModal(mode, dateStr, data, endStr = null) {
         document.getElementById('sched-date').value = data.date;
         document.getElementById('sched-end-date').value = "";
         document.getElementById('sched-note').value = data.note || "";
-        
-        // 전체 휴무인지 확인 (거래처 이름이 '휴무'로 저장된 경우)
+
         if (data.client === '휴무') {
             document.getElementById('chk-all-off').checked = true;
             toggleAllOff();
         } else {
             document.getElementById('chk-all-off').checked = false;
             document.getElementById('normal-work-section').style.display = 'block';
-            
-            const workValue = data.content || ""; 
+
+            const workValue = data.content || "";
             document.getElementById('sched-content').value = workValue;
             const shiftIdx = SHIFT_TYPES.indexOf(data.shift);
             currentShiftIndex = shiftIdx >= 0 ? shiftIdx : 0;
             updateShiftBtn();
-            
+
             renderChips(data.client, data.site);
             renderWorkerChips(data.workers || "");
             renderOffWorkerChips(data.offWorkers || "");
@@ -1180,17 +1107,15 @@ function openModal(mode, dateStr, data, endStr = null) {
     }
 }
 
-      // 🔴 작업내용 입력창(sched-content)에 글자를 쓸 때마다 칩 실시간 업데이트
 document.addEventListener('DOMContentLoaded', () => {
     const contentInput = document.getElementById('sched-content');
     if (contentInput) {
         contentInput.addEventListener('input', function() {
-            // 글자가 바뀔 때마다 칩을 다시 그립니다.
             renderWorkPresets();
         });
     }
 });
-      
+
 
 
 
@@ -1198,15 +1123,12 @@ function closeModal() {
     const modal = document.getElementById('schedule-modal');
     if (!modal) return;
 
-    // 1. 모달 닫기
     modal.style.display = 'none';
-    
-// 🔴 [추가] 뒤에 있는 슬라이드 스크롤 다시 허용
+
     document.querySelectorAll('.swiper-slide').forEach(slide => {
         slide.style.overflowY = 'auto';
     });
 
-    // 3. 0.1초 뒤 데이터 리셋
     setTimeout(() => {
         resetForm();
         deleteMode.car = false;
@@ -1214,20 +1136,19 @@ function closeModal() {
     }, 100);
 }
 
-      
+
     function resetForm() {
     ['sched-client', 'sched-site', 'sched-workers-text', 'sched-car', 'sched-content', 'sched-note', 'sched-off-workers-text'].forEach(id => {
         const el = document.getElementById(id); if(el) el.value = "";
     });
     document.getElementById('chk-all-off').checked = false;
     document.getElementById('normal-work-section').style.display = 'block';
-    
-    selectedWorkerSet.clear(); 
+
+    selectedWorkerSet.clear();
     selectedOffWorkerSet.clear();
     selectedWorkSet.clear();
 }
 
-// 🔴 칩 렌더링 함수 (검색창 + 완료/AS 토글 기능 통합)
 function renderChips(sClient, sSite) {
     const cBox = document.getElementById('sched-client-chips-area');
     const sBox = document.getElementById('sched-site-chips-area');
@@ -1238,20 +1159,17 @@ function renderChips(sClient, sSite) {
         return;
     }
 
-    // 1. 거래처 목록 (현재 선택된 거래처나, 검색조건에 맞는 현장이 있는 거래처만 표시)
-    const clientNames = Object.keys(globalTitanData).filter(key => 
+    const clientNames = Object.keys(globalTitanData).filter(key =>
         !['message', 'status', 'result', 'undefined'].includes(key)
     );
 
-    // [신규] 검색어 및 토글 상태 가져오기
     const searchInput = document.getElementById('adminSiteSearch');
     const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : "";
     const toggleInput = document.getElementById('adminCompletedToggle');
-    const isASMode = toggleInput ? toggleInput.checked : false; // true면 완료현장만
+    const isASMode = toggleInput ? toggleInput.checked : false;
 
     const activeClients = clientNames.filter(client => {
-        if (client === sClient) return true; 
-        // 거래처 내 현장 중 필터 조건(검색어+상태)에 맞는 게 하나라도 있는지 확인
+        if (client === sClient) return true;
         return globalTitanData[client].some(site => {
             const isCompleted = (site.status === '완료');
             if (isASMode && !isCompleted) return false;
@@ -1261,24 +1179,21 @@ function renderChips(sClient, sSite) {
         });
     });
 
-    cBox.innerHTML = activeClients.sort().map(c => 
+    cBox.innerHTML = activeClients.sort().map(c =>
         `<div class="chip ${c === sClient ? 'active' : ''}" onclick="clkClient(this, '${c}')">${c}</div>`
     ).join('');
-    
+
     document.getElementById('sched-client').value = sClient || "";
 
-    // 2. 🔴 현장 목록 필터링 (검색어 + 완료/진행 토글 적용)
     if (sClient && globalTitanData[sClient]) {
         const sites = globalTitanData[sClient];
-        
+
         const filteredSites = sites.filter(s => {
-            const isCurrentSite = (s.name === sSite); // 현재 이 일정에 이미 등록된 현장인가?
+            const isCurrentSite = (s.name === sSite);
             const isCompleted = (s.status === '완료');
 
-            // 검색어 필터
             if (searchTerm && !s.name.toLowerCase().includes(searchTerm)) return false;
 
-            // 상태(진행/완료) 필터 (단, 이미 이 일정에 선택된 현장이라면 무조건 표시)
             if (!isCurrentSite) {
                 if (isASMode && !isCompleted) return false;
                 if (!isASMode && isCompleted) return false;
@@ -1304,43 +1219,39 @@ function renderChips(sClient, sSite) {
     }
 }
 
-// 💡 [신규] 검색창 입력 또는 토글 버튼 클릭 시 바로 화면에 반영되도록 연결
 function renderAdminSites() {
-    // 현재 선택된 거래처(sched-client 값)를 기준으로 칩을 다시 그립니다.
     const currentClient = document.getElementById('sched-client').value;
     const currentSite = document.getElementById('sched-site').value;
     renderChips(currentClient, currentSite);
 }
 
-      
+
     function clkClient(el, name) { document.getElementById('sched-client').value = name; renderChips(name, ''); }
-    function clkSite(el, name) { 
-        document.getElementById('sched-site').value = name; 
+    function clkSite(el, name) {
+        document.getElementById('sched-site').value = name;
         Array.from(el.parentNode.children).forEach(c => c.classList.remove('active'));
         el.classList.add('active');
     }
 
- // [5] 칩 관련 (X 표시 제거 & 색상만 변경)
 function renderWorkerChips(namesStr) {
     if (namesStr !== undefined) {
         selectedWorkerSet.clear();
         if (namesStr) namesStr.split(',').forEach(n => n.trim() && selectedWorkerSet.add(n.trim()));
     }
-    updateAllWorkerChipsUI(); // 양쪽 동시 갱신
+    updateAllWorkerChipsUI();
 }
 
-      
-// 🔵 기존 작업자(출근자) 클릭 함수 수정 (휴무자와 중복 방지 추가)
+
 function toggleWorkerSelection(n) {
     if (selectedWorkerSet.has(n)) {
-        selectedWorkerSet.delete(n); 
+        selectedWorkerSet.delete(n);
     } else {
-        selectedWorkerSet.add(n);    
+        selectedWorkerSet.add(n);
     }
-    updateAllWorkerChipsUI(); // 양쪽 동시 갱신 (마법처럼 반대쪽에서 사라짐!)
+    updateAllWorkerChipsUI();
 }
 
-      
+
     function filterWorkerChips() {
         const input = document.getElementById('worker-search-input').value.toLowerCase();
         document.querySelectorAll('.worker-candidate').forEach(chip => {
@@ -1367,37 +1278,32 @@ function toggleWorkerSelection(n) {
         const list = Array.from(selectedWorkerSet);
         if(cnt) cnt.innerText = `(${list.length}명)`;
         document.getElementById('sched-workers-text').value = list.join(', ');
-        
+
         if (list.length === 0) box.innerHTML = '<span style="color:#aaa; font-size:0.8rem; padding:5px;">아래 목록에서 선택하거나 검색하세요.</span>';
         else box.innerHTML = list.map(n => `<div class="chip" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; gap:5px;">${n} <span onclick="removeWorkerFromSelection('${n}')" style="cursor:pointer; font-weight:bold;">&times;</span></div>`).join('');
     }
 
 
 
-      
     function toggleCar(el, name) {
         el.classList.toggle('active');
         const all = document.querySelectorAll('#car-chips-area .chip.active');
         document.getElementById('sched-car').value = Array.from(all).map(c=>c.innerText).join(', ');
     }
 
-    // 6-4. 공정 (태그 방식)
     const WORK_PRESETS = ["양중", "포설", "단말", "트레이", "입선", "결선", "스틸배관", "레이스웨이", "철거", "자재정리", "청소"];
-// [수정] 초기 데이터 로드 시 값을 유지하도록 변경
     function initWorkPresets(currentVal) {
         selectedWorkSet.clear();
         if(currentVal) {
-            currentVal.split(',').map(s=>s.trim()).forEach(t => { 
-                if(t) selectedWorkSet.add(t); 
+            currentVal.split(',').map(s=>s.trim()).forEach(t => {
+                if(t) selectedWorkSet.add(t);
             });
         }
-        
-        // 🟢 인자(currentVal)를 그대로 넘겨줘야 데이터가 안 지워집니다.
-        renderWorkPresets(currentVal || ""); 
+
+        renderWorkPresets(currentVal || "");
     }
 
 
-      
     function addWorkTag(t) { selectedWorkSet.add(t); renderWorkPresets(); }
     function removeWorkTag(t) { selectedWorkSet.delete(t); renderWorkPresets(); }
     function addNewWorkTag() {
@@ -1407,22 +1313,20 @@ function toggleWorkerSelection(n) {
     }
 
 
-      // 🚀 데이터 저장 시 휴무자 처리 및 충돌 해결 (날짜 Timezone 버그 완벽 차단)
 async function saveSchedule(mode) {
     const isAllOff = document.getElementById('chk-all-off').checked;
     const startDateStr = document.getElementById('sched-date').value;
     const endDateStr = document.getElementById('sched-end-date').value;
     const currentRowId = document.getElementById('sched-row-id').value;
 
-    // 🚨 1. 안전한 날짜 파싱 적용 (UTC 오차 방지)
     let targetDates = [];
     if (mode === 'add' && endDateStr) {
         const [sY, sM, sD] = startDateStr.split('-');
         const [eY, eM, eD] = endDateStr.split('-');
-        
+
         let cur = new Date(sY, sM - 1, sD);
         const end = new Date(eY, eM - 1, eD);
-        
+
         while (cur < end) {
             const y = cur.getFullYear();
             const m = String(cur.getMonth() + 1).padStart(2, '0');
@@ -1434,7 +1338,6 @@ async function saveSchedule(mode) {
         targetDates.push(startDateStr);
     }
 
-    // 🚨 2. 기존 일정과 충돌 검사
     const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
     let hasTotalOffCollision = false;
     let hasRegularCollision = false;
@@ -1445,7 +1348,7 @@ async function saveSchedule(mode) {
             const sDate = s.date ? s.date.split('T')[0].trim() : "";
             return sDate === dateStr && String(s.rowId) !== String(currentRowId);
         });
-        
+
         const offJobs = existingJobsOnDate.filter(s => (s.client || '').trim() === '휴무' || (s.site || '').trim() === '휴무');
         const regJobs = existingJobsOnDate.filter(s => (s.client || '').trim() !== '휴무' && (s.site || '').trim() !== '휴무' && (s.site || '').trim() !== 'X');
 
@@ -1463,7 +1366,6 @@ async function saveSchedule(mode) {
     const btnUpdate = document.getElementById('btn-update');
     const activeBtn = mode === 'add' ? btnSave : btnUpdate;
 
-    // 🚨 3. 충돌 경고 및 삭제 처리
     if (!isAllOff && hasTotalOffCollision) {
         if (confirm(`🚨 지정하신 날짜에 이미 '전체 휴무'가 등록되어 있습니다.\n전체 휴무를 취소하고 현재 작성한 작업 일정을 등록하시겠습니까?`)) {
             if (activeBtn) { activeBtn.innerText = "기존 휴무 취소 중..."; activeBtn.disabled = true; }
@@ -1482,7 +1384,6 @@ async function saveSchedule(mode) {
         }
     }
 
-    // --- 데이터 세팅 ---
     let clientVal = document.getElementById('sched-client').value;
     let siteVal = document.getElementById('sched-site').value;
     let workersVal = Array.from(selectedWorkerSet).join(', ');
@@ -1492,20 +1393,20 @@ async function saveSchedule(mode) {
     if (isAllOff) {
         clientVal = '휴무';
         siteVal = '휴무';
-        workersVal = ''; 
+        workersVal = '';
         if (!offWorkersVal) {
             const activeWorkers = globalWorkerData.filter(w => w.status === '재직').map(w => w.name);
-            offWorkersVal = activeWorkers.join(', '); 
+            offWorkersVal = activeWorkers.join(', ');
         }
     } else {
         if(!clientVal || !siteVal) {
             if (offWorkersVal && !workersVal) {
                 if (confirm("현장 정보가 없습니다. 선택한 휴무 인원들을 '휴무(X)'로 등록할까요?")) {
-                    clientVal = "-"; 
-                    siteVal = "X";   
+                    clientVal = "-";
+                    siteVal = "X";
                 } else {
                     if (activeBtn) { activeBtn.innerText = mode === 'add' ? "저장" : "수정"; activeBtn.disabled = false; }
-                    return; 
+                    return;
                 }
             } else {
                 if (activeBtn) { activeBtn.innerText = mode === 'add' ? "저장" : "수정"; activeBtn.disabled = false; }
@@ -1521,30 +1422,29 @@ async function saveSchedule(mode) {
         date: startDateStr,
         client: clientVal,
         site: siteVal,
-        shift: finalShift, 
+        shift: finalShift,
         workers: workersVal,
-        offWorkers: offWorkersVal, 
+        offWorkers: offWorkersVal,
         car: isAllOff ? "" : document.getElementById('sched-car').value,
         content: isAllOff ? "" : document.getElementById('sched-content').value,
         note: document.getElementById('sched-note').value,
-        rowId: currentRowId 
+        rowId: currentRowId
     };
 
     closeModal();
-    
+
     let action = mode === 'add' ? (endDateStr ? 'addScheduleBatch' : 'addSchedule') : 'updateSchedule';
     let dataToSend = payload;
 
-    // 🚨 4. Batch 저장 시 동일한 안전 날짜 분할 로직 적용
     if (action === 'addScheduleBatch') {
         const list = [];
         const [sY, sM, sD] = payload.date.split('-');
         const [eY, eM, eD] = endDateStr.split('-');
-        
+
         let cur = new Date(sY, sM - 1, sD);
         const end = new Date(eY, eM - 1, eD);
-        
-        while(cur < end) { 
+
+        while(cur < end) {
             const y = cur.getFullYear();
             const m = String(cur.getMonth() + 1).padStart(2, '0');
             const d = String(cur.getDate()).padStart(2, '0');
@@ -1554,54 +1454,23 @@ async function saveSchedule(mode) {
         dataToSend = list;
     }
 
-    try { 
-        await sendToGas(action, dataToSend); 
-    } catch (e) { 
-        alert("⚠️ 저장에 실패했습니다."); 
+    try {
+        await sendToGas(action, dataToSend);
+    } catch (e) {
+        alert("⚠️ 저장에 실패했습니다.");
     } finally {
         if (activeBtn) { activeBtn.innerText = mode === 'add' ? "저장" : "수정"; activeBtn.disabled = false; }
     }
 }
-      
 
-      async function downloadPayroll() {
-    const month = document.getElementById('payrollMonth').value;
-    const resultBox = document.getElementById('payrollResult');
 
-    if (!month) return alert("정산할 월을 선택해주세요.");
-
-    resultBox.innerHTML = "⏳ 정산 중입니다... (10~20초 소요될 수 있어요)";
-
-    try {
-        const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: "generatePayroll", month: month }),
-            redirect: 'follow'
-        });
-        const result = await res.json();
-
-        if (result.status === "SUCCESS") {
-            resultBox.innerHTML = `<a href="${result.downloadUrl}" target="_blank" style="display:block; text-align:center; background:#2563eb; color:white; padding:14px; border-radius:10px; font-weight:bold; text-decoration:none;">✅ 정산 완료! 여기를 눌러 다운로드</a>`;
-        } else {
-            resultBox.innerHTML = `<span style="color:#ef4444;">❌ ${result.message}</span>`;
-        }
-    } catch (e) {
-        resultBox.innerHTML = `<span style="color:#ef4444;">🚨 오류: ${e.message}</span>`;
-    }
-}
-
-      
    async function deleteSchedule() {
-    // 1. 사용자 확인
     if (!confirm("정말 삭제하시겠습니까?")) return;
 
-    // 🚀 [핵심] 확인하자마자 모달부터 닫아버림 (체감 속도 0초)
     closeModal();
 
-    // 2. 데이터 준비
     const rowId = document.getElementById('sched-row-id').value;
 
-    // 3. 서버 통신 (사용자 눈엔 이미 모달이 꺼진 뒤임)
     try {
         await sendToGas('deleteSchedule', { rowId: rowId });
     } catch (e) {
@@ -1610,117 +1479,104 @@ async function saveSchedule(mode) {
     }
 }
 
-    // UI Helper
- // UI Helper
     const SHIFT_TYPES = ['주', '야', '조'];
     let currentShiftIndex = 0;
-    
-    function toggleShift() { 
-        currentShiftIndex = (currentShiftIndex + 1) % SHIFT_TYPES.length; 
-        updateShiftBtn(); 
-    }
-    
-    function updateShiftBtn() {
-        const s = SHIFT_TYPES[currentShiftIndex]; // '주', '야', '조' 중 하나
-        
-        // 1. 서버로 보낼 진짜 데이터 세팅 (이걸로 구글 시트에 1글자로 들어갑니다!)
-        document.getElementById('sched-shift').value = s; 
-        
-        const btn = document.getElementById('shift-toggle-btn');
-        
-        // 2. 화면에 보이는 글자와 색상 세팅 (주간 -> 주, 야간 -> 야 로 짝맞춤!)
-        btn.innerText = (s === '주' ? '🌞 ' : s === '야' ? '🌙 ' : '🌅 ') + s;
-        btn.style.backgroundColor = s === '주' ? '#3b82f6' : (s === '야' ? '#475569' : '#f59e0b');
+
+    function toggleShift() {
+        currentShiftIndex = (currentShiftIndex + 1) % SHIFT_TYPES.length;
+        updateShiftBtn();
     }
 
-      
-  // 서버 통신 및 화면 갱신 함수
+    function updateShiftBtn() {
+        const s = SHIFT_TYPES[currentShiftIndex];
+
+        document.getElementById('sched-shift').value = s;
+
+        const btn = document.getElementById('shift-toggle-btn');
+
+        btn.innerText = (s === '주' ? '🌞 ' : s === '야' ? '🌙 ' : '🌅 ') + s;
+        btn.style.backgroundColor = s === '주' ? '#3b82f6' : (s === '야' ? '#475569' : '#d97706');
+    }
+
+
 async function sendToGas(action, data) {
     try {
-        const res = await fetch(GAS_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action, data }), 
-            redirect: 'follow' 
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action, data }),
+            redirect: 'follow'
         });
         const text = await res.text();
 
         if (text.includes("SUCCESS")) {
-            // 1. 성공 알림 (선택 사항: alert 없이 바로 넘어가도 됩니다)
             console.log("✅ 서버 저장 완료");
 
-            // 🔴 [여기에 넣으세요!] 일정 관련 액션일 경우 화면 갱신
-            if(action.includes('Schedule')) { 
-                await loadScheduleData(); // 최신 시트 데이터 다시 읽어오기
-                
-                // 모달이 닫히는 애니메이션 시간(0.3초)을 벌어줘서 렉을 방지합니다.
+            if(action.includes('Schedule')) {
+                await loadScheduleData();
+
                 setTimeout(() => {
-                    initCalendar();      // 달력 다시 그리기
-                    renderScheduleList(); // 하단 리스트 다시 그리기
+                    initCalendar();
+                    renderScheduleList();
                 }, 300);
-            } 
+            }
             else if(action.includes('Worker')) loadAdminData();
             else loadClientManagement();
-            
-            // 등록창 입력값 초기화 (필요 시)
-            if(action === 'adminAddClient') { 
-                document.getElementById('c_client').value = ""; 
-                document.getElementById('c_site').value = ""; 
-                document.getElementById('c_addr').value = ""; 
+
+            if(action === 'adminAddClient') {
+                document.getElementById('c_client').value = "";
+                document.getElementById('c_site').value = "";
+                document.getElementById('c_addr').value = "";
             }
         } else {
             alert("⚠️ 서버 응답 오류: " + text);
         }
-    } catch (e) { 
-        alert("통신 에러: " + e.message); 
+    } catch (e) {
+        alert("통신 에러: " + e.message);
     }
 }
 
 async function loadScheduleData() {
-    // 1. 일단 폰에 저장된 데이터가 있는지 확인해서 있으면 즉시 보여줌
     const cached = localStorage.getItem('titan_schedules');
     if (cached) {
         globalScheduleData = JSON.parse(cached);
-        renderAfterLoad(); // 일단 화면부터 띄움 (0.1초!)
+        renderAfterLoad();
     }
 
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getScheduleList' }) });
         const newData = await res.json();
-        
-        // 2. 서버에서 가져온 데이터가 폰에 저장된 것과 다를 때만 슥 교체
+
         if (cached !== JSON.stringify(newData)) {
             globalScheduleData = newData;
-            localStorage.setItem('titan_schedules', JSON.stringify(newData)); // 새 데이터 저장
-            renderAfterLoad(); // 바뀐 내용 반영
+            localStorage.setItem('titan_schedules', JSON.stringify(newData));
+            renderAfterLoad();
         }
-    } catch (e) { 
-        console.error("일정 동기화 실패", e); 
+    } catch (e) {
+        console.error("일정 동기화 실패", e);
     }
 }
 
-// 렌더링 호출을 한곳으로 모으는 함수 (기존에 쓰던 거 그대로 활용)
 function renderAfterLoad() {
-    if(typeof initCalendar === 'function') initCalendar();       
-    if(typeof renderScheduleList === 'function') renderScheduleList(); 
+    if(typeof initCalendar === 'function') initCalendar();
+    if(typeof renderScheduleList === 'function') renderScheduleList();
     if(typeof renderDashboard === 'function') renderDashboard();
 }
 
-      
-      // [직원 관리] 상세 정보 표시 기능 복구
-          async function loadAdminData() { 
-        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) }); 
-        globalWorkerData = await res.json(); 
-        
+
+          async function loadAdminData() {
+        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) });
+        globalWorkerData = await res.json();
+
         const box = document.getElementById('worker-list-admin');
         if (box) {
             box.innerHTML = globalWorkerData.map(w => `
-                <div class="worker-card" style="border-top: 4px solid ${w.status === '재직' ? '#2563eb' : '#ef4444'}; background:#fff; border-radius:12px; padding:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05); margin-bottom:15px;">
-                    
+                <div class="worker-card" style="border-top: 4px solid ${w.status === '재직' ? 'var(--hr-color)' : 'var(--danger-color)'}; background:#fff; border-radius:12px; padding:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05); margin-bottom:15px;">
+
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <div class="name" style="font-size:1.1rem; font-weight:bold;">
                             ${w.name} <span style="font-size:0.8rem; font-weight:normal; color:#666;">(${w.role})</span>
                         </div>
-                        <span class="status-badge" style="background:${w.status === '재직' ? '#2563eb' : '#ef4444'}; color:#fff; padding:3px 8px; border-radius:20px; font-size:0.75rem; font-weight:bold;">
+                        <span class="status-badge ${w.status === '재직' ? 'status-on' : 'status-off'}">
                             ${w.status}
                         </span>
                     </div>
@@ -1732,9 +1588,9 @@ function renderAfterLoad() {
                         <div onclick="copyText('${w.address}')" style="cursor:pointer; margin-top:4px; display:flex; align-items:center;">
                             🏠 ${w.address || '<span style="color:#aaa">주소 없음</span>'}
                         </div>
-                        
+
                         <div style="margin-top:8px; display:flex; justify-content:space-between; border-top:1px solid #f1f5f9; padding-top:8px;">
-                            <span style="font-weight:bold; color:#333;">💰 ${Number(w.rate).toLocaleString()}원</span>
+                            <span style="font-weight:bold; color:var(--hr-color);">💰 ${Number(w.rate).toLocaleString()}원</span>
                             <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.85rem;">🔑 ${w.pw}</span>
                         </div>
                     </div>
@@ -1743,7 +1599,7 @@ function renderAfterLoad() {
                         <button onclick="changePassword('${w.name}')" style="flex:1; padding:8px; font-size:0.85rem; background:#fff; border:1px solid #ddd; color:#333; margin-top:0; border-radius:6px; cursor:pointer;">
                             비번변경
                         </button>
-                        <button onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')" style="flex:1; padding:8px; font-size:0.85rem; background:${w.status === '재직' ? '#fee2e2' : '#e0f2fe'}; color:${w.status === '재직' ? '#ef4444' : '#0284c7'}; border:none; margin-top:0; border-radius:6px; cursor:pointer; font-weight:bold;">
+                        <button onclick="updateStatus('${w.name}', '${w.status === '재직' ? '퇴사' : '재직'}')" style="flex:1; padding:8px; font-size:0.85rem; background:${w.status === '재직' ? '#fee2e2' : '#e0f2fe'}; color:${w.status === '재직' ? 'var(--danger-color)' : '#0284c7'}; border:none; margin-top:0; border-radius:6px; cursor:pointer; font-weight:bold;">
                             ${w.status === '재직' ? '퇴직처리' : '복구하기'}
                         </button>
                     </div>
@@ -1751,87 +1607,75 @@ function renderAfterLoad() {
             `).join('');
         }
 
-      
-    }  
-      
-// [2] 거래처 및 현장 정보 로딩 (0초 로딩 캐시 적용 완료!)
+
+    }
+
 async function loadClientManagement() {
     const container = document.getElementById('client-management-list');
 
-    // 1. 폰에 저장된 거래처 데이터(캐시)가 있는지 먼저 확인!
     const cached = localStorage.getItem('titan_clients');
     if (cached) {
         globalTitanData = JSON.parse(cached);
         renderClientList();
         renderRegistrationClientChips();
-        // 저장된 게 있으면 로딩 글씨를 안 보여주고 즉시 띄웁니다.
     } else {
         if(container) container.innerHTML = '<div style="text-align:center; padding:40px; color:#64748b;">⏳ 현장 정보를 불러오는 중입니다...</div>';
     }
 
-    // 2. 뒷단에서 조용히 서버 최신 데이터 가져오기
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'getTitanData' }) 
+            body: JSON.stringify({ action: 'getTitanData' })
         });
         const rawData = await res.json();
-        
-        // 데이터 알맹이 추출
+
         let newData = rawData.titanData ? rawData.titanData : (rawData.result ? rawData.result : rawData);
 
-        // 3. 서버에서 가져온 게 폰에 있는 거랑 다를 때만 화면 새로고침!
         if (cached !== JSON.stringify(newData)) {
             globalTitanData = newData;
-            localStorage.setItem('titan_clients', JSON.stringify(newData)); // 🔴 폰에 새 데이터 저장!
-            
+            localStorage.setItem('titan_clients', JSON.stringify(newData));
+
             renderClientList();
             renderRegistrationClientChips();
-            
-            // 💡 [중요] 현장 안내사항/주소가 바뀌었으니 달력 밑 일정 리스트도 한 번 다시 그려줍니다!
+
             if(typeof renderScheduleList === 'function') renderScheduleList();
             console.log("🔄 현장/거래처 캐시 업데이트 완료");
         }
     } catch (e) {
         console.error("거래처 로딩 실패:", e);
-        if(container && !cached) container.innerHTML = '<div style="color:#ef4444; text-align:center; padding:20px;">데이터 연결 실패</div>';
+        if(container && !cached) container.innerHTML = '<div style="color:#dc2626; text-align:center; padding:20px;">데이터 연결 실패</div>';
     }
 }
 
-// 🔴 1. 양쪽 칩을 동시에 관리하고 서로 숨겨주는 핵심 통합 함수!
 function updateAllWorkerChipsUI() {
-    // 텍스트 및 인원수 세팅
     document.getElementById('worker-count-display').innerText = `(${selectedWorkerSet.size}명)`;
     document.getElementById('sched-workers-text').value = Array.from(selectedWorkerSet).join(', ');
 
     document.getElementById('off-worker-count-display').innerText = `(${selectedOffWorkerSet.size}명)`;
     document.getElementById('sched-off-workers-text').value = Array.from(selectedOffWorkerSet).join(', ');
 
-    // 🟢 출근자 칩 그리기 (휴무자로 선택된 사람은 아예 안 보이게 숨김!)
     const wContainer = document.getElementById('worker-chips-area');
     if (wContainer) {
         wContainer.innerHTML = globalWorkerData.filter(w => w.status === '재직')
-            .filter(w => !selectedOffWorkerSet.has(w.name)) // 👈 휴무자 명단에 없어야만 보임
+            .filter(w => !selectedOffWorkerSet.has(w.name))
             .map(w => {
                 const active = selectedWorkerSet.has(w.name);
-                // 🟢 X 표시 없이 이름만 출력, 클래스로 색상 제어
                 return `<div class="chip ${active ? 'active' : ''}" onclick="toggleWorkerSelection('${w.name}')">${w.name}</div>`;
             }).join('');
     }
 
-    // 🔴 휴무자 칩 그리기 (출근자로 선택된 사람은 아예 안 보이게 숨김!)
     const offContainer = document.getElementById('off-worker-chips-area');
     if (offContainer) {
         offContainer.innerHTML = globalWorkerData.filter(w => w.status === '재직')
-            .filter(w => !selectedWorkerSet.has(w.name)) // 👈 출근자 명단에 없어야만 보임
+            .filter(w => !selectedWorkerSet.has(w.name))
             .map(w => {
                 const active = selectedOffWorkerSet.has(w.name);
-                const activeStyle = active ? 'background:#fef2f2; color:#ef4444; border-color:#fca5a5; font-weight:bold;' : '';
+                const activeStyle = active ? 'background:#fef2f2; color:var(--danger-color); border-color:#fca5a5; font-weight:bold;' : '';
                 return `<div class="chip" style="${activeStyle}" onclick="toggleOffWorkerSelection('${w.name}')">${w.name}</div>`;
             }).join('');
     }
 }
-      
+
 
 function renderClientList() {
     const container = document.getElementById('client-management-list');
@@ -1842,7 +1686,7 @@ function renderClientList() {
         return;
     }
 
-    const clientNames = Object.keys(globalTitanData).filter(key => 
+    const clientNames = Object.keys(globalTitanData).filter(key =>
         !['message', 'status', 'result', 'undefined'].includes(key)
     );
 
@@ -1855,7 +1699,7 @@ function renderClientList() {
         html += `
         <div class="swiper-slide">
             <div class="client-card">
-                <div class="client-header" style="background:#1e293b; padding:15px 20px; color:white; font-weight:bold; display:flex; justify-content:space-between;">
+                <div class="client-header">
                     <span>🏢 ${client}</span>
                     <span style="font-size:0.8rem; opacity:0.8;">총 ${sites.length}개</span>
                 </div>
@@ -1863,13 +1707,12 @@ function renderClientList() {
 
         sites.forEach(s => {
             const isFinished = s.status === '완료';
-            
-            // 🔴 [핵심] 줄바꿈과 따옴표 에러 방지 처리
+
             const cleanNote = (s.note || "").replace(/\n/g, " ").replace(/'/g, "\\'");
             const cleanAddr = (s.addr || "").replace(/\n/g, " ").replace(/'/g, "\\'");
 
             html += `
-            <div class="site-row" style="padding:15px 20px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; ${isFinished ? 'background:#f8fafc;' : 'background:white;'}">
+            <div class="site-row" style="${isFinished ? 'background:#f8fafc;' : 'background:white;'}">
                 <div style="flex:1; padding-right:10px;">
                     <div style="font-weight:bold; font-size:1rem; ${isFinished ? 'color:#94a3b8; text-decoration:line-through;' : 'color:#1e293b;'}">
                         ${s.name}
@@ -1877,15 +1720,15 @@ function renderClientList() {
                     ${s.addr ? `<div class="site-addr-box" onclick="copyText('${cleanAddr}')" style="margin-top:5px; display: block; width: fit-content;">📍 ${s.addr}</div>` : ''}
                     ${s.note ? `<div style="margin-top:6px; font-size:0.85rem; color:#92400e; background:#fff7ed; padding:4px 8px; border-radius:4px; border:1px solid #ffedd5; display: block; width: fit-content; line-height:1.4;">📢 <b>현장안내:</b> ${s.note}</div>` : ''}
                 </div>
-                
+
                 <div style="text-align:right; display:flex; flex-direction:column; gap:6px; min-width:80px;">
-                    <span onclick="toggleSiteStatus('${client}', '${s.name}', '${s.status}')" 
+                    <span onclick="toggleSiteStatus('${client}', '${s.name}', '${s.status}')"
                           style="display:inline-block; padding:6px 10px; border-radius:6px; text-align:center; font-size:0.8rem; cursor:pointer; font-weight:bold;
-                          ${isFinished ? 'background:#cbd5e1; color:white;' : 'background:#dbeafe; color:#2563eb;'}">
+                          ${isFinished ? 'background:#cbd5e1; color:white;' : 'background:var(--client-bg); color:var(--client-color);'}">
                         ${isFinished ? '완료됨' : '진행중'}
                     </span>
-                    
-                    <span onclick="openClientEditModal('${client}', '${s.name}', '${cleanAddr}', '${cleanNote}', '${s.status}')" 
+
+                    <span onclick="openClientEditModal('${client}', '${s.name}', '${cleanAddr}', '${cleanNote}', '${s.status}')"
                           style="display:inline-block; padding:6px 10px; border-radius:6px; text-align:center; font-size:0.8rem; cursor:pointer; font-weight:bold; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">
                         ✏️ 수정
                     </span>
@@ -1896,149 +1739,123 @@ function renderClientList() {
     });
     html += `</div><div class="swiper-pagination" style="bottom:10px;"></div></div>`;
     container.innerHTML = html;
-    
-    // (스와이퍼 초기화 로직은 그대로 유지)
+
     if(window.clientSwiper) window.clientSwiper.destroy();
     window.clientSwiper = new Swiper('.client-management-swiper', { slidesPerView: 1, nested: true, spaceBetween: 0, centeredSlides: true, observer: true, observeParents: true, pagination: { el: '.swiper-pagination', clickable: true } });
 }
 
 
 
-   // 1. [변수 선언] 저장된 목록이 있으면 가져오고, 없으면 기본값을 씁니다.
 let vehicleList = JSON.parse(localStorage.getItem('titan_vehicle_list')) || ["봉고", "스타리아", "스타렉스"];
 let workList = JSON.parse(localStorage.getItem('titan_work_list')) || ["배관", "입선", "단말", "트레이", "철거", "청소", "자재정리"];
 
 
-      // 2. [항목 추가] 추가 버튼 누를 때 실행 (LocalStorage 저장 포함)
 function addPreset(type) {
     const isCar = (type === 'car');
     const inputId = isCar ? 'new-car-input' : 'new-work-input';
     const input = document.getElementById(inputId);
     const val = input.value.trim();
     const list = isCar ? vehicleList : workList;
-    
+
     if (val && !list.includes(val)) {
         list.push(val);
         input.value = "";
-        
-        // 💾 브라우저에 영구 저장
+
         localStorage.setItem(isCar ? 'titan_vehicle_list' : 'titan_work_list', JSON.stringify(list));
-        
-        // 화면 갱신
+
         if(isCar) renderVehicleChips(document.getElementById('sched-car').value);
-        else renderWorkPresets(); 
+        else renderWorkPresets();
     }
 }
 
-   
-      
-    // 2. 삭제 모드 상태 관리
+
     let deleteMode = { car: false, work: false };
 
-    // ------------------------------------------
-    // [차량 & 공정 공통 로직]
-    // ------------------------------------------
-
-    // 칩 렌더링 (차량)
     function renderVehicleChips(currentVal) {
         const box = document.getElementById('car-chips-area');
         const input = document.getElementById('sched-car');
-        
-        // 현재 선택된 값들
+
         const selected = currentVal ? currentVal.split(',').map(s=>s.trim()) : [];
-        
+
         box.innerHTML = vehicleList.map(item => {
             const isActive = selected.includes(item);
-            // 삭제 모드면 'delete-mode' 클래스, 아니면 선택 여부에 따라 'active'
             const modeClass = deleteMode.car ? 'delete-mode' : (isActive ? 'active' : '');
             const clickAction = deleteMode.car ? `removePreset('car', '${item}')` : `toggleSelection('car', '${item}')`;
-            
+
             return `<div class="chip ${modeClass}" onclick="${clickAction}">
                         ${item} ${deleteMode.car ? '❌' : ''}
                     </div>`;
         }).join('');
-        
+
         input.value = selected.join(', ');
     }
 
-      
+
 function renderWorkPresets() {
     const box = document.getElementById('work-preset-list');
     const input = document.getElementById('sched-content');
     if (!box || !input) return;
 
-    // 1. 현재 입력창에 써 있는 글자들을 읽어옵니다.
     const currentText = input.value;
     const selectedArray = currentText ? currentText.split(',').map(s => s.trim()).filter(x => x) : [];
 
-    // 2. 칩 목록을 그립니다.
     box.innerHTML = workList.map(item => {
-        // 입력창에 이 칩의 이름이 포함되어 있으면 active 클래스 추가
         const isActive = selectedArray.includes(item);
         const modeClass = deleteMode.work ? 'delete-mode' : (isActive ? 'active' : '');
         const clickAction = deleteMode.work ? `removePreset('work', '${item}')` : `toggleSelection('work', '${item}')`;
-        
+
         return `<div class="chip ${modeClass}" onclick="${clickAction}">${item}${deleteMode.work ? ' ❌' : ''}</div>`;
     }).join('');
 }
-      
-      
+
+
 
 function removePreset(type, item) {
         if (!confirm(`'${item}' 항목을 영구 삭제할까요?`)) return;
 
         if (type === 'car') {
-            // 1. 메모리에서 삭제
             vehicleList = vehicleList.filter(i => i !== item);
-            // 2. 브라우저 저장소(창고)에 저장 🔴 (이게 추가되어야 기억합니다!)
             localStorage.setItem('titan_vehicle_list', JSON.stringify(vehicleList));
-            // 3. 화면 갱신
             renderVehicleChips(document.getElementById('sched-car').value.split(',').filter(i => i !== item).join(', '));
         } else {
-            // 1. 메모리에서 삭제
             workList = workList.filter(i => i !== item);
-            // 2. 브라우저 저장소(창고)에 저장 🔴 (이게 추가되어야 기억합니다!)
             localStorage.setItem('titan_work_list', JSON.stringify(workList));
-            // 3. 화면 갱신
-            renderWorkPresets(); // 기존에 작업내용 갱신 함수 호출
+            renderWorkPresets();
         }
     }
 
-      
+
     function toggleDeleteMode(type) {
         deleteMode[type] = !deleteMode[type];
         if(type === 'car') renderVehicleChips(document.getElementById('sched-car').value);
         else renderWorkPresets(document.getElementById('sched-content').value);
     }
-    
+
 function toggleSelection(type, item) {
         const inputId = type === 'car' ? 'sched-car' : 'sched-content';
         const input = document.getElementById(inputId);
         if (!input) return;
 
         let selected = input.value ? input.value.split(',').map(s => s.trim()).filter(x => x) : [];
-        
+
         if (selected.includes(item)) {
             selected = selected.filter(i => i !== item);
         } else {
             selected.push(item);
         }
-        
-        input.value = selected.join(', ');
-        
-        // 칩 색깔을 즉시 업데이트
-        if(type === 'car') renderVehicleChips(input.value);
-        else renderWorkPresets(); 
-    }
-    
 
-      // 🏢 [추가] 등록 섹션 전용: 기존 거래처 칩 생성
+        input.value = selected.join(', ');
+
+        if(type === 'car') renderVehicleChips(input.value);
+        else renderWorkPresets();
+    }
+
+
     function renderRegistrationClientChips() {
         const container = document.getElementById('client-chips');
         if (!container) return;
 
-        // 시스템 키 제외하고 순수 거래처 명단만 추출
-        const clientNames = Object.keys(globalTitanData).filter(key => 
+        const clientNames = Object.keys(globalTitanData).filter(key =>
             !['message', 'status', 'result', 'undefined'].includes(key)
         );
 
@@ -2047,38 +1864,32 @@ function toggleSelection(type, item) {
             return;
         }
 
-        // 칩 생성 (클릭 시 입력창에 이름 쏙 들어가게)
-        container.innerHTML = clientNames.map(name => 
+        container.innerHTML = clientNames.map(name =>
             `<div class="chip" onclick="selectRegClientChip(this, '${name}')">${name}</div>`
         ).join('');
     }
 
-    // 칩 클릭 시 입력창(c_client)에 값 넣어주는 기능
     function selectRegClientChip(el, name) {
         document.getElementById('c_client').value = name;
-        
-        // 선택된 칩 파랗게 강조
+
         const allChips = document.querySelectorAll('#client-chips .chip');
         allChips.forEach(c => c.classList.remove('active'));
         el.classList.add('active');
     }
-      
 
-      
+
 
     function addWorker() { const d = { name: document.getElementById('new-name').value, role: document.getElementById('new-role').value, rate: document.getElementById('new-rate').value, pw: document.getElementById('new-pw').value, phone: document.getElementById('new-phone').value, address: document.getElementById('new-address').value }; sendToGas('adminAddWorker', d); }
-// 💡 [수정됨] 현장 등록 시 특이사항(note)도 같이 넘기도록 변경
-    function saveClient() { 
-        const d = { 
-            client: document.getElementById('c_client').value, 
-            site: document.getElementById('c_site').value, 
+    function saveClient() {
+        const d = {
+            client: document.getElementById('c_client').value,
+            site: document.getElementById('c_site').value,
             address: document.getElementById('c_addr').value,
-            note: document.getElementById('admin-new-site-note').value.trim() // 👈 특이사항 추가됨
-        }; 
-        sendToGas('adminAddClient', d); 
+            note: document.getElementById('admin-new-site-note').value.trim()
+        };
+        sendToGas('adminAddClient', d);
     }
 
-      // 💡 [신규 추가] 현장 정보 수정 모달 열기
     function openClientEditModal(client, site, address, note, status) {
         document.getElementById('edit-client-title').innerText = `[${client}] ${site} 수정`;
         document.getElementById('edit-client-name').value = client;
@@ -2086,16 +1897,14 @@ function toggleSelection(type, item) {
         document.getElementById('edit-client-address').value = (address !== 'undefined' && address) ? address : "";
         document.getElementById('edit-client-note').value = (note !== 'undefined' && note) ? note : "";
         document.getElementById('edit-client-status').value = status || "진행중";
-        
+
         document.getElementById('client-edit-modal').style.display = 'flex';
     }
 
-    // 💡 [신규 추가] 현장 정보 수정 모달 닫기
     function closeClientEditModal() {
         document.getElementById('client-edit-modal').style.display = 'none';
     }
 
-    // 💡 [신규 추가] 수정한 정보 서버로 저장하기
     async function saveClientEdit() {
         const btn = document.getElementById('btn-save-client');
         const client = document.getElementById('edit-client-name').value;
@@ -2119,7 +1928,7 @@ function toggleSelection(type, item) {
         }
     }
 
-      
+
       function selectClientChip(el, name) { document.getElementById('c_client').value = name; }
     function saveMaterial() { const d = { cat: document.getElementById('m_cat').value, name: document.getElementById('m_name').value, spec: document.getElementById('m_spec').value, unit: document.getElementById('m_unit').value, price: document.getElementById('m_price').value }; sendToGas('adminAddMaterial', d); }
     async function toggleSiteStatus(c, s, st) { if (confirm("상태변경?")) await sendToGas('updateSiteStatus', { client: c, site: s, status: st==='완료'?'진행중':'완료' }); }
@@ -2129,32 +1938,24 @@ function toggleSelection(type, item) {
     function copyText(t) { navigator.clipboard.writeText(t); alert("복사됨"); }
 
 
-      // [추가] 모달창 바깥 영역(배경) 클릭 시 창 닫기
 window.onclick = function(event) {
     const modal = document.getElementById('schedule-modal');
-    // 클릭한 대상이 모달 배경일 경우에만 닫기 실행
     if (event.target == modal) {
         closeModal();
     }
 }
-
-      // ==========================================
-// 🚀 대시보드 전용 스크립트 (접기/펴기 + 데이터 로드)
-// ==========================================
 
 function initDashboardToggle() {
   const content = document.getElementById('dashboard-content');
     const arrow = document.getElementById('dashboard-arrow');
     if (!content || !arrow) return;
 
-    // 🌟 [수정] 여기도 한국 시간으로 고정!
     const now = new Date();
     const today = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
-    
+
     const lastAccessDate = localStorage.getItem('dashLastDate');
     let isFolded = localStorage.getItem('dashIsFolded') === 'true';
 
-    // 오늘 처음 접속하면 강제로 펼치기!
     if (lastAccessDate !== today) {
         isFolded = false;
         localStorage.setItem('dashLastDate', today);
@@ -2169,14 +1970,13 @@ function initDashboardToggle() {
         arrow.style.transform = 'rotate(0deg)';
     }
 
-    // 대시보드 화면 켤 때 데이터도 같이 불러오기
     renderDashboard();
 }
 
 function toggleDashboard() {
     const content = document.getElementById('dashboard-content');
     const arrow = document.getElementById('dashboard-arrow');
-    
+
     if (content.style.display === 'none') {
         content.style.display = 'block';
         arrow.style.transform = 'rotate(0deg)';
@@ -2188,8 +1988,18 @@ function toggleDashboard() {
     }
 }
 
+// 항상 보이는 미니 요약 바 갱신 (대시보드가 접혀있어도 핵심 정보 유지)
+function updateMiniSummary(todayJobs, workingCount, offCount) {
+    const manpowerEl = document.getElementById('mini-manpower');
+    const todayEl = document.getElementById('mini-today');
+    if (manpowerEl) manpowerEl.innerText = `👥 투입 ${workingCount}명 · 휴무 ${offCount}명`;
+    if (todayEl) {
+        const siteCount = todayJobs.filter(j => j.client !== '휴무' && j.site !== '휴무').length;
+        todayEl.innerText = `📅 오늘 현장 ${siteCount}곳`;
+    }
+}
+
 function renderDashboard() {
-    // 🌟 [수정] 오늘과 내일 모두 KST(한국 시간)로 강제 고정!
     const now = new Date();
     const todayKst = new Date(now.getTime() + (9 * 60 * 60 * 1000));
     const todayStr = todayKst.toISOString().split('T')[0];
@@ -2197,32 +2007,27 @@ function renderDashboard() {
     const tomorrowKst = new Date(todayKst);
     tomorrowKst.setDate(tomorrowKst.getDate() + 1);
     const tomorrowStr = tomorrowKst.toISOString().split('T')[0];
-    
+
     const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
 
-    // --- 1. 오늘 & 내일 일정 필터링 ---
     const todayJobs = scheduleData.filter(item => item.date === todayStr);
     const tomorrowJobs = scheduleData.filter(item => item.date === tomorrowStr);
 
     document.getElementById('dash-today-list').innerHTML = formatJobList(todayJobs);
     document.getElementById('dash-tomorrow-list').innerHTML = formatJobList(tomorrowJobs);
 
-    // --- 🚀 [신규] 인력, 차량, 공정 데이터 자동 집계 ---
     let workingSet = new Set();
     let offSet = new Set();
-    let carMap = {};  // {'봉고': ['강남', '서초']}
-    let workMap = {}; // {'포설': 2팀, '단말': 1팀}
+    let carMap = {};
+    let workMap = {};
 
     todayJobs.forEach(j => {
         if (j.client === '휴무' || j.site === '휴무') {
-            // 전체 휴무일 때
             if (j.offWorkers) j.offWorkers.split(',').forEach(w => w.trim() && offSet.add(w.trim()));
         } else {
-            // 출근자 & 개별 휴무자 모으기
             if (j.workers) j.workers.split(',').forEach(w => w.trim() && workingSet.add(w.trim()));
             if (j.offWorkers) j.offWorkers.split(',').forEach(w => w.trim() && offSet.add(w.trim()));
 
-            // 배차 차량 묶기
             if (j.car) {
                 j.car.split(',').forEach(c => {
                     const carName = c.trim();
@@ -2233,7 +2038,6 @@ function renderDashboard() {
                 });
             }
 
-            // 주력 공정 세기
             if (j.content) {
                 j.content.split(',').forEach(w => {
                     const workName = w.trim();
@@ -2243,21 +2047,19 @@ function renderDashboard() {
         }
     });
 
-    // 🎯 1. 인력 현황 업데이트
     const dashManpower = document.getElementById('dash-manpower-stat');
     if (dashManpower) {
         const wCount = workingSet.size;
         const oCount = offSet.size;
         const offList = Array.from(offSet).join(', ');
-        
-        let html = `<div style="font-size:1.05rem; font-weight:900;">🟢 투입 <span style="color:#2563eb;">${wCount}명</span> / 🔴 휴무 <span style="color:#ef4444;">${oCount}명</span></div>`;
-        if (oCount > 0) {
-            html += `<div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">휴무자: ${offList}</div>`;
-        }
+
+        let html = `🟢 투입 ${wCount}명 / 🔴 휴무 ${oCount}명`;
         dashManpower.innerHTML = html;
+        if (oCount > 0) {
+            dashManpower.insertAdjacentHTML('afterend', `<div style="font-size: 0.75rem; color:#94a3b8; margin-top:4px;">휴무자: ${offList}</div>`);
+        }
     }
 
-    // 🎯 2. 차량 배차 현황 업데이트
     const dashCar = document.getElementById('dash-car-stat');
     if (dashCar) {
         const carKeys = Object.keys(carMap);
@@ -2273,10 +2075,8 @@ function renderDashboard() {
         }
     }
 
-    // 🎯 4. 주력 공정 현황 업데이트
     const dashWork = document.getElementById('dash-work-stat');
     if (dashWork) {
-        // 공정 팀 수가 많은 순서대로 정렬
         const workKeys = Object.keys(workMap).sort((a,b) => workMap[b] - workMap[a]);
         if (workKeys.length === 0) {
             dashWork.innerHTML = '<span style="color:#cbd5e1;">입력 없음</span>';
@@ -2290,33 +2090,29 @@ function renderDashboard() {
         }
     }
 
-    // --- 2. 수금 현황 로드 ---
+    updateMiniSummary(todayJobs, workingSet.size, offSet.size);
+
     loadReceivables();
 }
 
-// 📊 대시보드 리스트 포맷 (작업인원, 차량, 주/야간 뱃지 추가)
 function formatJobList(jobs) {
     if (jobs.length === 0) return '<div style="color:#cbd5e1; text-align:center; padding:10px 0; font-size:0.8rem;">일정 없음</div>';
-    
+
     return jobs.map((j, index) => {
-        if (j.client === '휴무') return '<div style="color:#ef4444; font-weight:bold; margin-bottom:5px;">🏖️ 전체 휴무</div>';
-        
+        if (j.client === '휴무') return '<div style="color:#dc2626; font-weight:bold; margin-bottom:5px;">🏖️ 전체 휴무</div>';
+
         const site = j.site || '현장미상';
-        const hasNote = j.note ? ' <span style="color:#f59e0b;" title="특이사항 있음">💡</span>' : '';
+        const hasNote = j.note ? ' <span style="color:#d97706;" title="특이사항 있음">💡</span>' : '';
         const shift = j.shift || '주';
-        
-        // 주/야/조 색상 뱃지
-        const shiftBg = shift === '야' ? '#475569' : (shift === '조' ? '#f59e0b' : '#eff6ff');
+
+        const shiftBg = shift === '야' ? '#475569' : (shift === '조' ? '#d97706' : '#eff6ff');
         const shiftColor = shift === '주' ? '#2563eb' : 'white';
 
-        // 투입 인원 (콤마 기준으로 잘라서 빈칸 없애고 다시 묶기)
         const workerArr = (j.workers || '').split(',').filter(w => w.trim() !== '');
         const workerStr = workerArr.length > 0 ? workerArr.join(', ') : '인원미상';
-        
-        // 투입 차량
+
         const carStr = j.car ? `<span style="margin-left:6px; padding-left:6px; border-left:1px solid #cbd5e1; color:#475569;">🚛 ${j.car}</span>` : '';
 
-        // 아이템 간 구분선 (마지막 아이템은 줄 긋지 않음)
         const borderStyle = index === jobs.length - 1 ? '' : 'border-bottom: 1px dashed #f1f5f9; padding-bottom: 6px; margin-bottom: 6px;';
 
         return `
@@ -2329,7 +2125,7 @@ function formatJobList(jobs) {
                     ${shift}
                 </div>
             </div>
-            
+
             <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 👥 ${workerStr} ${carStr}
             </div>
@@ -2338,7 +2134,7 @@ function formatJobList(jobs) {
     }).join('');
 }
 
-// 1. 💰 수금 데이터 로드 및 업체별 그룹화 화면 그리기
+// 💰 수금 데이터 로드 (참고용 - 우선순위 낮게 표시)
 async function loadReceivables() {
     try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: "getReceivables" }) });
@@ -2348,58 +2144,53 @@ async function loadReceivables() {
         const data = result.data;
         let totalUnpaid = 0;
         let unpaidCount = 0;
-        let clientGroups = {}; // 🏢 업체별로 묶어줄 바구니
+        let clientGroups = {};
 
-        // 데이터 분류 및 합계 계산
         data.forEach(item => {
             const unpaid = Number(item.unpaidAmount);
             if (unpaid > 0) {
                 totalUnpaid += unpaid;
                 unpaidCount++;
-                
-                // 업체 이름표가 없으면 새 바구니 만들기
+
                 if (!clientGroups[item.client]) {
                     clientGroups[item.client] = { total: 0, sites: [] };
                 }
-                // 바구니에 금액 더하고 현장 데이터 넣기
                 clientGroups[item.client].total += unpaid;
                 clientGroups[item.client].sites.push(item);
             }
         });
 
-        // 🔴 총 미수금 업데이트
         document.getElementById('dash-total-unpaid').innerText = totalUnpaid.toLocaleString() + ' 원';
         document.getElementById('dash-unpaid-count').innerText = `총 미수 현장 ${unpaidCount}곳`;
 
-       // 🎨 그룹화된 리스트 UI 그리기
         let listHtml = '';
         for (const client in clientGroups) {
             const group = clientGroups[client];
-            
+
             listHtml += `
-            <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                <div style="background: #f1f5f9; padding: 12px 15px; font-weight: 900; color: #1e293b; display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0;">
+            <div style="background: white; border-radius: 10px; border: 1px solid #e2e8f0; overflow: hidden;">
+                <div style="background: #f1f5f9; padding: 10px 15px; font-weight: 700; color: #334155; display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; font-size:0.85rem;">
                     <span>🏢 ${client}</span>
-                    <span style="color: #ef4444;">총 ${group.total.toLocaleString()}원</span>
+                    <span style="color: #94a3b8;">${group.total.toLocaleString()}원</span>
                 </div>
-                <div style="padding: 12px 15px;">
+                <div style="padding: 10px 15px;">
             `;
-            
+
         group.sites.forEach(site => {
     listHtml += `
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; gap: 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #e2e8f0; gap: 10px;">
             <div style="flex: 1; min-width: 0;">
-                <div style="color: #334155; font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <div style="color: #64748b; font-weight: 500; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     ${site.site}
                 </div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                <span style="color: #ef4444; font-weight: 800; font-size: 0.95rem; white-space: nowrap;">
+                <span style="color: #94a3b8; font-weight: 700; font-size: 0.85rem; white-space: nowrap;">
                     ${Number(site.unpaidAmount).toLocaleString()}원
                 </span>
-                <button onclick="openPaymentPrompt(${site.rowId}, '${client}', '${site.site}', ${site.unpaidAmount})" 
-                        style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem; white-space: nowrap;">
+                <button onclick="openPaymentPrompt(${site.rowId}, '${client}', '${site.site}', ${site.unpaidAmount})"
+                        style="background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem; white-space: nowrap;">
                     입금
                 </button>
                 </div>
@@ -2410,7 +2201,7 @@ async function loadReceivables() {
         }
 
         if (listHtml === '') {
-            listHtml = '<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 0.85rem;">🎉 현재 받아야 할 미수금이 없습니다!</div>';
+            listHtml = '<div style="text-align: center; padding: 15px; color: #94a3b8; font-size: 0.8rem;">🎉 현재 받아야 할 미수금이 없습니다!</div>';
         }
 
         document.getElementById('dash-receivables-brief').innerHTML = listHtml;
@@ -2420,29 +2211,25 @@ async function loadReceivables() {
     }
 }
 
-let currentPaymentData = null; // 현재 작업 중인 데이터를 담아둘 변수
+let currentPaymentData = null;
 
-// 1. 모달 열기
 function openPaymentPrompt(rowId, client, site, maxAmount) {
     currentPaymentData = { rowId, client, site, maxAmount };
-    
+
     document.getElementById('modal-site-name').innerText = `${client} - ${site}`;
     document.getElementById('modal-amount').value = '';
     document.getElementById('modal-bank').value = '';
-    
+
     const modal = document.getElementById('payment-modal');
     modal.style.display = 'flex';
-    
-    // 완료 버튼에 함수 연결
+
     document.getElementById('modal-submit-btn').onclick = submitPayment;
 }
 
-// 2. 모달 닫기
 function closePaymentModal() {
     document.getElementById('payment-modal').style.display = 'none';
 }
 
-// 3. 실제 전송 로직
 async function submitPayment() {
     const amount = parseInt(document.getElementById('modal-amount').value);
     const bank = document.getElementById('modal-bank').value;
@@ -2456,7 +2243,6 @@ async function submitPayment() {
 
     if (!confirm(`${amount.toLocaleString()}원을 입금 처리할까요?`)) return;
 
-    // 로딩 표시 (버튼 비활성화)
     const btn = document.getElementById('modal-submit-btn');
     btn.innerText = "처리 중...";
     btn.disabled = true;
@@ -2467,10 +2253,10 @@ async function submitPayment() {
             addAmount: amount,
             newHistory: newHistory
         });
-        
+
         alert('✅ 성공적으로 기록되었습니다.');
         closePaymentModal();
-        loadReceivables(); // 대시보드 새로고침
+        loadReceivables();
     } catch(e) {
         alert('서버 통신 실패');
     } finally {
@@ -2479,7 +2265,6 @@ async function submitPayment() {
     }
 }
 
-// 1. 청소부 역할 (새로 추가)
 async function silentDelete(rowId) {
     if (!rowId) return;
     try {
@@ -2492,19 +2277,46 @@ async function silentDelete(rowId) {
         console.error("자동 삭제 실패", e);
     }
 }
-      
+
+// 📊 급여정산 다운로드
+async function downloadPayroll() {
+    const month = document.getElementById('payrollMonth').value;
+    const resultBox = document.getElementById('payrollResult');
+
+    if (!month) return alert("정산할 월을 선택해주세요.");
+
+    resultBox.innerHTML = "⏳ 정산 중입니다... (10~20초 소요될 수 있어요)";
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "generatePayroll", month: month }),
+            redirect: 'follow'
+        });
+        const result = await res.json();
+
+        if (result.status === "SUCCESS") {
+            resultBox.innerHTML = `<a href="${result.downloadUrl}" target="_blank" style="display:block; text-align:center; background:var(--hr-color); color:white; padding:14px; border-radius:10px; font-weight:bold; text-decoration:none;">✅ 정산 완료! 여기를 눌러 다운로드</a>`;
+        } else {
+            resultBox.innerHTML = `<span style="color:#dc2626;">❌ ${result.message}</span>`;
+        }
+    } catch (e) {
+        resultBox.innerHTML = `<span style="color:#dc2626;">🚨 오류: ${e.message}</span>`;
+    }
+}
+
     </script>
 
 
   <div id="client-edit-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
-    
+
     <div style="background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
-        
+
         <h3 id="edit-client-title" style="margin-top:0; color:#1e293b; border-bottom:2px solid #e2e8f0; padding-bottom:10px; font-size:1.1rem;">현장 정보 수정</h3>
-        
+
         <input type="hidden" id="edit-client-name">
         <input type="hidden" id="edit-client-site">
-        
+
         <label style="font-weight:bold; font-size:0.85rem; color:#64748b; display:block; margin-bottom:5px;">상태</label>
         <select id="edit-client-status" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid #cbd5e1; font-size:0.9rem;">
             <option value="진행중">진행중</option>
@@ -2513,13 +2325,13 @@ async function silentDelete(rowId) {
 
         <label style="font-weight:bold; font-size:0.85rem; color:#64748b; display:block; margin-bottom:5px;">주소</label>
         <input type="text" id="edit-client-address" placeholder="주소를 입력하세요" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid #cbd5e1; font-size:0.9rem;">
-        
+
         <label style="font-weight:bold; font-size:0.85rem; color:#64748b; display:block; margin-bottom:5px;">현장 특이사항</label>
         <textarea id="edit-client-note" placeholder="현장 고정 특이사항을 입력하세요" style="width:100%; padding:10px; margin-bottom:20px; border-radius:5px; border:1px solid #cbd5e1; height:80px; resize:none; font-size:0.9rem;"></textarea>
-        
+
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button onclick="closeClientEditModal()" style="padding:10px 15px; background:#94a3b8; color:white; border:none; border-radius:8px; cursor:pointer; font-size:0.9rem;">닫기</button>
-            <button onclick="saveClientEdit()" id="btn-save-client" style="padding:10px 15px; background:#2563eb; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.9rem;">저장하기</button>
+            <button onclick="saveClientEdit()" id="btn-save-client" style="padding:10px 15px; background:var(--client-color); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.9rem;">저장하기</button>
         </div>
 
     </div>
@@ -2528,8 +2340,8 @@ async function silentDelete(rowId) {
   <div id="payment-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
     <div style="background:white; width:100%; max-width:400px; border-radius:20px; padding:25px; box-shadow:0 20px 40px rgba(0,0,0,0.4); animation: slideUp 0.3s ease-out;">
         <h3 id="modal-title" style="margin-top:0; color:#1e293b; font-size:1.2rem;">💰 입금 기록</h3>
-        <p id="modal-subtitle" style="color:#64748b; font-size:0.85rem; margin-bottom:20px;">현장명: <span id="modal-site-name" style="font-weight:bold; color:#2563eb;"></span></p>
-        
+        <p id="modal-subtitle" style="color:#64748b; font-size:0.85rem; margin-bottom:20px;">현장명: <span id="modal-site-name" style="font-weight:bold; color:var(--client-color);"></span></p>
+
         <div style="margin-bottom:15px;">
             <label style="display:block; font-size:0.8rem; color:#475569; margin-bottom:5px;">입금 금액 (원)</label>
             <input type="number" id="modal-amount" placeholder="숫자만 입력" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:10px; font-size:1.1rem; font-weight:bold; box-sizing:border-box; outline:none; -webkit-appearance:none;">
@@ -2542,7 +2354,7 @@ async function silentDelete(rowId) {
 
         <div style="display:flex; gap:10px;">
             <button onclick="closePaymentModal()" style="flex:1; padding:15px; border:none; background:#f1f5f9; color:#64748b; border-radius:12px; font-weight:bold; cursor:pointer;">취소</button>
-            <button id="modal-submit-btn" style="flex:2; padding:15px; border:none; background:#2563eb; color:white; border-radius:12px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(37,99,235,0.3);">입금 완료 처리</button>
+            <button id="modal-submit-btn" style="flex:2; padding:15px; border:none; background:var(--client-color); color:white; border-radius:12px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(15,118,110,0.3);">입금 완료 처리</button>
         </div>
     </div>
 </div>
@@ -2553,7 +2365,7 @@ async function silentDelete(rowId) {
     to { transform: translateY(0); opacity: 1; }
 }
 </style>
-  
-  
+
+
 </body>
 </html>
