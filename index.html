@@ -240,7 +240,10 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
             </div>
 
             <div class="card" style="padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                <h3 style="margin-top:0; font-size: 1.05rem; color: #1e293b; display: flex; align-items: center; gap: 6px;">📝 사용 자재 내역</h3>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3 style="margin:0; font-size: 1.05rem; color: #1e293b; display: flex; align-items: center; gap: 6px;">📝 사용 자재 내역</h3>
+                    <button type="button" onclick="syncMaterialsFromSchedules()" style="padding:6px 12px; font-size:0.75rem; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;">📋 일정에서 자재 동기화</button>
+                </div>
 
                 <div style="position: relative;">
                     <input type="text" id="quick-mat-search" autocomplete="off" placeholder="🔍 자재명 입력 (예: 실리콘)" oninput="handleQuickMatInput(this.value)" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 1rem; margin: 0;">
