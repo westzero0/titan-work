@@ -104,20 +104,16 @@ async function showLoginScreen() {
     screen.style.display = 'flex';
 
     try {
-// 💡 fetch 옵션에서 'mode'는 제거하고 'redirect'를 추가합니다.
-const res = await fetch(GAS_URL, {
-    method: 'POST',
-    // mode: 'cors' 혹은 'no-cors'가 있다면 지우세요! (기본값으로 두는게 안전함)
-    redirect: 'follow',  // ★ 이 줄을 꼭 추가하세요! (서버가 가라는 곳으로 따라가라는 뜻)
-    body: JSON.stringify({ action: "getWorkerList" }),
-    
-    // 🔑 구글 서버의 리다이렉션을 따라가도록 만드는 핵심 옵션
-    redirect: 'follow' 
-});
+        // 💡 fetch 옵션에서 'mode'는 제거하고 'redirect'를 추가합니다. (구글 서버의 리다이렉션을 따라가도록 만드는 핵심 옵션)
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            body: JSON.stringify({ action: "getWorkerList" })
+        });
 
-// 💡 응답을 텍스트로 먼저 받은 후 JSON으로 파싱 (CORS 에러 완화 전략)
-const text = await res.text();
-const workers = JSON.parse(text);
+        // 💡 응답을 텍스트로 먼저 받은 후 JSON으로 파싱 (CORS 에러 완화 전략)
+        const text = await res.text();
+        const workers = JSON.parse(text);
         workers.forEach(name => {
             const opt = document.createElement('option');
             opt.value = name;
@@ -231,7 +227,23 @@ function siteSearchHandler(e) {
 }
 
 
-let currentSites = []; 
+// 💡 공용 유틸: 콤마로 구분된 이름 문자열(또는 배열)을 정리된 배열로 변환
+function splitNames(val) {
+    const arr = Array.isArray(val) ? val : (val || "").toString().split(',');
+    return arr.map(n => String(n).trim()).filter(n => n !== "");
+}
+
+// 💡 공용 유틸: 전체 휴무 일정인지 판별 (거래처 또는 현장명이 '휴무')
+function isOffDay(job) {
+    return job.client === '휴무' || job.site === '휴무';
+}
+
+// 💡 공용 유틸: Date 객체를 YYYY-MM-DD 문자열로 변환
+function formatDateYMD(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+let currentSites = [];
 let allSchedules = [];
 let showPast = false;
 let currentView = 'list';
@@ -816,13 +828,9 @@ function updateWorkerSelectAndRender() {
 
         // 🌟 3. 날짜가 정상이고 2주 범위 안에 있을 때만 명단 수집
         if (jobDate && jobDate >= twoWeeksAgo && jobDate <= twoWeeksLater) {
-            // 근무자 수집
-            const wList = Array.isArray(s.workers) ? s.workers : String(s.workers || "").split(',');
-            wList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
-            
-            // 휴무자 수집
-            const offList = Array.isArray(s.offWorkers) ? s.offWorkers : String(s.offWorkers || "").split(',');
-            offList.forEach(w => { if(w.trim()) workerSet.add(w.trim()); });
+            // 근무자 + 휴무자 수집
+            splitNames(s.workers).forEach(w => workerSet.add(w));
+            splitNames(s.offWorkers).forEach(w => workerSet.add(w));
         }
     });
     
@@ -847,15 +855,12 @@ function checkTomorrowChange(oldData, newData) {
 
     const today = new Date();
     const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+    const tomorrowStr = formatDateYMD(tomorrow);
 
     const getMyTomorrowJobs = (data) => {
         return data.filter(j => {
             if (j.date !== tomorrowStr) return false;
-            const wList = (j.workers || "").toString().split(',').map(n => n.trim());
-            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
-            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
-            return wList.includes(worker) || offList.includes(worker) || isTotalOff;
+            return splitNames(j.workers).includes(worker) || splitNames(j.offWorkers).includes(worker) || isOffDay(j);
         }).map(j => ({ site: j.site, content: j.content, shift: j.shift }));
     };
 
@@ -900,45 +905,40 @@ function renderTimeline() {
     const worker = document.getElementById('worker-select').value;
     
     const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const todayStr = formatDateYMD(today);
 
     const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
 
     for (let i = 0; i < 14; i++) {
         const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
-        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        
+        const dateStr = formatDateYMD(date);
+
         let dayJobs = allSchedules.filter(j => {
             if (j.date !== dateStr) return false;
-            
-            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
+
             const isPartialOff = (j.site === 'X');
 
             if (worker === "전체") {
-                return !isPartialOff; 
+                return !isPartialOff;
             } else {
-                const wList = (j.workers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
-                const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
-                return wList.includes(worker) || offList.includes(worker) || isTotalOff;
+                return splitNames(j.workers).includes(worker) || splitNames(j.offWorkers).includes(worker) || isOffDay(j);
             }
         });
 
         const col = document.createElement('div');
         col.className = `time-col ${dateStr === todayStr ? 'today' : ''}`;
-        
+
         let barsHtml = dayJobs.map(j => {
-            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
-            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
-            const isMyOff = (worker !== "전체" && offList.includes(worker)) || isTotalOff;
+            const isMyOff = (worker !== "전체" && splitNames(j.offWorkers).includes(worker)) || isOffDay(j);
 
             let displayTitle = "";
             let bgColor = "";
 
             if (isMyOff) {
                 displayTitle = "🏖️휴무";
-                bgColor = "#ef4444"; 
+                bgColor = "#ef4444";
             } else {
-                const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
+                const wCount = splitNames(j.workers).length;
                 displayTitle = `${j.site}(${wCount})`;
                 
                 const sType = (j.shift || "").toString().trim();
@@ -1016,9 +1016,9 @@ function renderCalendar() {
     
     // 날짜 렌더링
     for (let d = 1; d <= lastDate; d++) {
-        const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const isToday = (dStr === todayStrLocal);
         const dateObj = new Date(year, month, d);
+        const dStr = formatDateYMD(dateObj);
+        const isToday = (dStr === todayStrLocal);
         const dayOfWeek = dateObj.getDay();
         
         let dateColor = '#333';
@@ -1038,22 +1038,18 @@ function renderCalendar() {
         const jobsForToday = allSchedules.filter(s => {
             if (s.date !== dStr) return false;
             if (selectedWorker === "전체") return (s.site !== 'X');
-            const wList = (s.workers || "").toString().split(',').map(n => n.trim());
-            const offList = (s.offWorkers || "").toString().split(',').map(n => n.trim());
-            return wList.includes(selectedWorker) || offList.includes(selectedWorker);
+            return splitNames(s.workers).includes(selectedWorker) || splitNames(s.offWorkers).includes(selectedWorker);
         });
 
         jobsForToday.forEach(j => {
-            const isTotalOff = (j.client === '휴무' || j.site === '휴무');
-            const offList = (j.offWorkers || "").toString().split(',').map(n => n.trim());
-            const isMyOff = (selectedWorker !== "전체" && offList.includes(selectedWorker)) || isTotalOff;
+            const isMyOff = (selectedWorker !== "전체" && splitNames(j.offWorkers).includes(selectedWorker)) || isOffDay(j);
 
             const baseBarStyle = `font-size: 11px; padding: 2px 4px; margin-bottom: 2px; border-radius: 2px; cursor: pointer; text-align: left; line-height: 1.3; white-space: normal; word-break: break-all; display: block;`;
 
             if (isMyOff) {
                 html += `<div style="${baseBarStyle} background: rgba(220,53,69,0.1); color: #dc3545; border: 1px solid rgba(220,53,69,0.2);">🏖️휴무</div>`;
             } else {
-                const wCount = (j.workers || "").split(',').filter(n => n.trim()).length;
+                const wCount = splitNames(j.workers).length;
                 const sType = (j.shift || "").toString().trim();
                 
                 // 주/야/조 색상 구분 적용
@@ -1091,20 +1087,16 @@ function renderCards() {
     const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
 
     const filtered = allSchedules.filter(s => {
-        const isTotalOff = (s.client === '휴무' || s.site === '휴무');
         const isPartialOff = (s.site === 'X');
 
         let isIncluded = false;
-        
+
         if (worker === "전체") {
-            isIncluded = !isPartialOff; 
+            isIncluded = !isPartialOff;
         } else {
-            const wList = (s.workers || "").toString().split(',').map(name => name.trim()).filter(n => n !== "");
-            const offList = (s.offWorkers || "").toString().split(',').map(name => name.trim()).filter(n => n !== "");
-            
-            // 🌟 [수정된 핵심 로직] 
+            // 🌟 [수정된 핵심 로직]
             // 1. 내가 근무자거나 2. 내가 휴무자거나 3. 아예 '전체 휴무'인 날이면 카드를 보여줌
-            isIncluded = wList.includes(worker) || offList.includes(worker) || isTotalOff;
+            isIncluded = splitNames(s.workers).includes(worker) || splitNames(s.offWorkers).includes(worker) || isOffDay(s);
         }
         
         return isIncluded && (showPast ? s.date < today : s.date >= today);
@@ -1130,8 +1122,7 @@ function renderCards() {
             
             const isTotalOff = (clientName === '휴무' || siteName === '휴무');
             const isPartialOff = (siteName === 'X');
-            const offList = (s.offWorkers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
-            const isMyOffDay = (worker !== "전체" && offList.includes(worker));
+            const isMyOffDay = (worker !== "전체" && splitNames(s.offWorkers).includes(worker));
 
             let borderColor = sType.includes('야') ? '#475569' : (sType.includes('조') ? '#f59e0b' : '#2563eb');
             let cardBg = 'white'; 
@@ -1166,7 +1157,7 @@ function renderCards() {
                 }
 
                 const safeData = btoa(encodeURIComponent(JSON.stringify({ ...s, foundAddr: siteAddr })));
-                const wList = (s.workers || "").toString().split(',').map(n => n.trim()).filter(n => n !== "");
+                const wList = splitNames(s.workers);
                 const hasMaterials = s.materials && s.materials.trim() !== "";
                 const workerChipsHtml = wList.map(w => `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w}</span>`).join('');
 
@@ -1274,7 +1265,7 @@ function copyScheduleToLog(s) {
     // 4. 🔴 [핵심 수리] 인원 및 차량 칩 자동 선택 (0.5초 대기 후 실행)
     setTimeout(() => {
         // [인원 데이터 정리] 글자로 오든 배열로 오든 무조건 명단(배열)으로 만듦
-        const workerArray = Array.isArray(s.workers) ? s.workers : (s.workers || "").split(',').map(w => w.trim()).filter(x => x);
+        const workerArray = splitNames(s.workers);
         
         // 모든 인원 칩 초기화 후 다시 선택
         const memChips = document.querySelectorAll('#member-chips .chip');
@@ -1293,7 +1284,7 @@ function copyScheduleToLog(s) {
         });
 
         // [차량 칩 선택]
-        const carArray = (s.car || "").split(',').map(c => c.trim()).filter(x => x);
+        const carArray = splitNames(s.car);
         const carChips = document.querySelectorAll('#car-chips .chip');
         carChips.forEach(c => c.classList.remove('active'));
 
@@ -1722,36 +1713,6 @@ function searchMaterial(keyword) {
 }
 
 
-function renderAdminWorkerList(workers) {
-  const container = document.getElementById('admin-worker-list');
-  if (!container) return;
-
-  container.innerHTML = workers.map(w => {
-    // 💡 [핵심] 복사할 텍스트를 "이름 + 데이터" 형태로 미리 조립합니다.
-    const phoneToCopy = `${w.name} ${w.phone || '번호없음'}`;
-    const addressToCopy = `${w.name} ${w.address || '주소없음'}`;
-
-    return `
-      <div class="admin-card" style="border-bottom:1px solid #eee; padding:10px 0;">
-        <div style="font-weight:bold;">${w.name} <small>(${w.role})</small></div>
-        
-        <div style="font-size:0.9rem; margin-top:5px; color:#555;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <span>📱 ${w.phone || '미등록'}</span>
-            <button onclick="copyToClipboard('${phoneToCopy}')" style="padding:2px 8px; font-size:0.75rem;">복사</button>
-          </div>
-          
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:0.8rem;">🏠 ${w.address || '미등록'}</span>
-            <button onclick="copyToClipboard('${addressWithName}')" style="padding:2px 8px; font-size:0.75rem;">복사</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-
 let currentEditItem = null; // 현재 선택된 일정 데이터를 담을 변수
 
 // [1. 자재 모달 열기]
@@ -1923,10 +1884,7 @@ function showTomorrowOffBanner() {
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
     
-    const yyyy = tomorrow.getFullYear();
-    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
-    const dd = String(tomorrow.getDate()).padStart(2, '0');
-    const tomorrowStr = `${yyyy}-${mm}-${dd}`; // 예: "2024-05-22"
+    const tomorrowStr = formatDateYMD(tomorrow); // 예: "2024-05-22"
 
     // 3. 내일 일정 데이터만 쏙 빼오기
     const tomorrowSchedules = schedulesToCheck.filter(p => p.date === tomorrowStr);

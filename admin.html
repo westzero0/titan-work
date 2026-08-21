@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+  <meta charset="UTF-8">
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>타이탄 관리자 패널</title>
@@ -20,6 +21,8 @@
       --material-bg: #f8fafc;
       --danger-color: #dc2626;       /* 미수금/경고 */
       --danger-bg: #fef2f2;
+      --quote-color: #7c3aed;        /* 견적 진행 */
+      --quote-bg: #f5f3ff;
       --bg-color: #f8f9fa;
 
       --text-primary: #1e293b;
@@ -90,6 +93,7 @@
     .nav-item[data-tab="1"].active { color: var(--hr-color); }
     .nav-item[data-tab="2"].active { color: var(--client-color); }
     .nav-item[data-tab="3"].active { color: var(--material-color); }
+    .nav-item[data-tab="4"].active { color: var(--quote-color); }
     .nav-item i { font-size: 20px; margin-bottom: 4px; }
 
     /* 숫자 강조 스타일 */
@@ -267,6 +271,15 @@
     }
 
     .no-border-box { border: none !important; background: transparent !important; padding: 0 !important; box-shadow: none !important; }
+
+    /* --- 견적 진행 카드 --- */
+    .section-quote h3 { color: var(--quote-color); }
+    .quote-progress-card { border: 1.5px solid #e2e8f0; border-radius: 12px; }
+    .quote-progress-card.all-done { border-color: #86efac; background: #f0fdf4; }
+    .quote-chip { padding: 7px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.15s; }
+    .quote-chip.active { background: var(--quote-bg); color: var(--quote-color); border-color: #ddd6fe; }
+    .btn-toggle-completed { width: auto; margin: 0; padding: 8px 14px; font-size: 0.8rem; border-radius: 20px; background: #f1f5f9; color: #475569; font-weight: bold; cursor: pointer; border: none; }
+    .btn-toggle-completed.active { background: var(--quote-bg); color: var(--quote-color); }
 
     @keyframes shake {
         0% { transform: translateX(0); }
@@ -503,6 +516,16 @@
       </div>
     </div>
 
+    <div class="swiper-slide">
+      <div class="card section-quote" style="padding-bottom: 5px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #eee; padding-bottom:10px;">
+          <h3 style="margin:0; border:none; padding:0;">📄 견적 진행 현황</h3>
+          <button id="btn-toggle-completed-quotes" class="btn-toggle-completed" onclick="toggleShowCompletedQuotes()">완료된 건 보기</button>
+        </div>
+      </div>
+      <div id="quote-progress-list" style="padding: 10px 5px 100px 5px;"></div>
+    </div>
+
 
 
        </div>
@@ -518,6 +541,7 @@
     <div class="nav-item" data-tab="1" onclick="jumpTo(1)">👥 <span>인원</span></div>
     <div class="nav-item" data-tab="2" onclick="jumpTo(2)">🏢 <span>거래처</span></div>
     <div class="nav-item" data-tab="3" onclick="jumpTo(3)">📦 <span>자재</span></div>
+    <div class="nav-item" data-tab="4" onclick="jumpTo(4)">📄 <span>견적</span></div>
 </div>
 
 <div id="schedule-modal" class="modal">
@@ -625,7 +649,7 @@
   <script>
 
 
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbx5gNS6laaj4rMuYs0Pec79QCsjetdb9em7EYqM6i6-HTgW3F547AWPDEt5MRoGsCki/exec"; // 👈 꼭 본인 주소로 수정하세요!
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzJKuUzru2SPgKPYdU0hcOdrTLC_eVOS_8eAm7PtH4ZxlgcmC8ZZzP12hrVHi_rSZLc/exec"; // 👈 꼭 본인 주소로 수정하세요!
 // 전역 변수 선언 (에러 방지용)
     let calendar = null;
     let swiper = null;
@@ -636,6 +660,162 @@
     let selectedWorkSet = new Set();   // 공정 선택용
 let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니다!
 
+
+// 💡 공용 유틸: globalTitanData에서 메타 키를 제외한 실제 거래처명 목록만 추출
+function getClientNames() {
+    return Object.keys(globalTitanData).filter(key => !['message', 'status', 'result', 'undefined'].includes(key));
+}
+
+// 💡 공용 유틸: Date 객체를 YYYY-MM-DD 문자열로 변환
+function formatDateYMD(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+// 💡 공용 유틸: 시작일(포함) ~ 종료일(제외) 사이의 날짜 문자열 배열 생성 (기간 일정 등록용)
+function getDateRange(startStr, endStr) {
+    const [sY, sM, sD] = startStr.split('-');
+    const [eY, eM, eD] = endStr.split('-');
+
+    let cur = new Date(sY, sM - 1, sD);
+    const end = new Date(eY, eM - 1, eD);
+
+    const dates = [];
+    while (cur < end) {
+        dates.push(formatDateYMD(cur));
+        cur.setDate(cur.getDate() + 1);
+    }
+    return dates;
+}
+
+// ==========================================
+// 📄 견적 진행 관리
+// ==========================================
+let quoteProgressData = [];
+let showCompletedQuotes = false;
+const QUOTE_FIELD_MAP = { '발송': '견적서발송', '세금계산서': '세금계산서발행', '입금': '입금완료' };
+
+async function loadQuoteProgress() {
+    const container = document.getElementById('quote-progress-list');
+    const cached = localStorage.getItem('titan_quote_progress');
+
+    if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+            quoteProgressData = parsed;
+            renderQuoteProgressList();
+        } else {
+            localStorage.removeItem('titan_quote_progress'); // 예전 에러 응답 등이 캐시됐을 경우 정리
+        }
+    } else if (container) {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#64748b;">⏳ 견적 진행 현황을 불러오는 중입니다...</div>';
+    }
+
+    try {
+        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getQuoteProgress' }) });
+        const newData = await res.json();
+        const newDataStr = JSON.stringify(newData);
+
+        if (cached !== newDataStr) {
+            quoteProgressData = newData;
+            localStorage.setItem('titan_quote_progress', newDataStr);
+            renderQuoteProgressList();
+        }
+    } catch (e) {
+        console.error('견적 진행 현황 로딩 실패:', e);
+        if (!cached && container) container.innerHTML = '<div style="color:#dc2626; text-align:center; padding:20px;">데이터 연결 실패</div>';
+    }
+}
+
+function toggleShowCompletedQuotes() {
+    showCompletedQuotes = !showCompletedQuotes;
+    const btn = document.getElementById('btn-toggle-completed-quotes');
+    if (btn) {
+        btn.innerText = showCompletedQuotes ? '진행중만 보기' : '완료된 건 보기';
+        btn.classList.toggle('active', showCompletedQuotes);
+    }
+    renderQuoteProgressList();
+}
+
+function renderQuoteProgressList() {
+    const container = document.getElementById('quote-progress-list');
+    if (!container) return;
+
+    const isPaid = q => (q['입금완료'] || '').toString().trim() === 'O';
+
+    let list = (quoteProgressData || []).filter(q => q['거래처']);
+    if (!showCompletedQuotes) list = list.filter(q => !isPaid(q));
+
+    // 진행중인 것들끼리는 견적일자가 오래된 순으로 정렬
+    list.sort((a, b) => new Date(a['견적일자'] || 0) - new Date(b['견적일자'] || 0));
+
+    if (list.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8;">${showCompletedQuotes ? '견적 진행 내역이 없습니다.' : '진행중인 견적이 없습니다.'}</div>`;
+        return;
+    }
+
+    container.innerHTML = list.map(q => {
+        const client = (q['거래처'] || '').toString();
+        const site = (q['현장'] || '').toString();
+        const date = q['견적일자'] || '-';
+        const amount = q['견적금액'] ? Number(q['견적금액']).toLocaleString() + '원' : '-';
+
+        const sent = (q['견적서발송'] || '').toString().trim() === 'O';
+        const tax = (q['세금계산서발행'] || '').toString().trim() === 'O';
+        const paid = isPaid(q);
+        const allDone = sent && tax && paid;
+
+        const safeClient = client.replace(/'/g, "\\'");
+        const safeSite = site.replace(/'/g, "\\'");
+
+        const chip = (label, active, field) => `
+            <span class="quote-chip ${active ? 'active' : ''}" onclick="updateQuoteProgressField('${safeClient}', '${safeSite}', '${field}', '${active ? 'X' : 'O'}', this)">
+                ${active ? '✅' : '⬜'} ${label}
+            </span>`;
+
+        return `
+        <div class="card quote-progress-card ${allDone ? 'all-done' : ''}">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                    <div style="font-weight:900; font-size:1.05rem; color:#1e293b;">${site}</div>
+                    <div style="font-size:0.85rem; color:#64748b; margin-top:2px;">🏢 ${client}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:0.8rem; color:#94a3b8;">${date}</div>
+                    <div style="font-weight:bold; color:var(--quote-color); margin-top:2px;">${amount}</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+                ${chip('견적서발송', sent, '발송')}
+                ${chip('세금계산서', tax, '세금계산서')}
+                ${chip('입금완료', paid, '입금')}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function updateQuoteProgressField(client, site, field, value, chipEl) {
+    if (chipEl) chipEl.style.opacity = '0.5';
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'updateQuoteProgress', data: { client, site, field, value } })
+        });
+        const result = await res.json();
+
+        if (result.status === 'SUCCESS') {
+            const item = quoteProgressData.find(q => q['거래처'] === client && q['현장'] === site);
+            if (item) item[QUOTE_FIELD_MAP[field]] = value;
+            localStorage.setItem('titan_quote_progress', JSON.stringify(quoteProgressData));
+            renderQuoteProgressList();
+        } else {
+            alert('❌ 갱신 실패: ' + (result.message || ''));
+        }
+    } catch (e) {
+        alert('🚨 통신 에러: ' + e.message);
+    } finally {
+        if (chipEl) chipEl.style.opacity = '1';
+    }
+}
 
 // 🎨 직원별 고유 색상을 기억하는 메모장 (이 두 줄은 반드시 함수 바로 위에 있어야 합니다!)
 const assignedWorkerColors = {};
@@ -705,6 +885,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     loadScheduleData();
     loadClientManagement();
+    loadQuoteProgress();
 
     setTimeout(() => { loadAdminData(); }, 1000);
 });
@@ -1159,9 +1340,7 @@ function renderChips(sClient, sSite) {
         return;
     }
 
-    const clientNames = Object.keys(globalTitanData).filter(key =>
-        !['message', 'status', 'result', 'undefined'].includes(key)
-    );
+    const clientNames = getClientNames();
 
     const searchInput = document.getElementById('adminSiteSearch');
     const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : "";
@@ -1321,19 +1500,7 @@ async function saveSchedule(mode) {
 
     let targetDates = [];
     if (mode === 'add' && endDateStr) {
-        const [sY, sM, sD] = startDateStr.split('-');
-        const [eY, eM, eD] = endDateStr.split('-');
-
-        let cur = new Date(sY, sM - 1, sD);
-        const end = new Date(eY, eM - 1, eD);
-
-        while (cur < end) {
-            const y = cur.getFullYear();
-            const m = String(cur.getMonth() + 1).padStart(2, '0');
-            const d = String(cur.getDate()).padStart(2, '0');
-            targetDates.push(`${y}-${m}-${d}`);
-            cur.setDate(cur.getDate() + 1);
-        }
+        targetDates = getDateRange(startDateStr, endDateStr);
     } else {
         targetDates.push(startDateStr);
     }
@@ -1437,21 +1604,7 @@ async function saveSchedule(mode) {
     let dataToSend = payload;
 
     if (action === 'addScheduleBatch') {
-        const list = [];
-        const [sY, sM, sD] = payload.date.split('-');
-        const [eY, eM, eD] = endDateStr.split('-');
-
-        let cur = new Date(sY, sM - 1, sD);
-        const end = new Date(eY, eM - 1, eD);
-
-        while(cur < end) {
-            const y = cur.getFullYear();
-            const m = String(cur.getMonth() + 1).padStart(2, '0');
-            const d = String(cur.getDate()).padStart(2, '0');
-            list.push({...payload, date: `${y}-${m}-${d}`});
-            cur.setDate(cur.getDate() + 1);
-        }
-        dataToSend = list;
+        dataToSend = getDateRange(payload.date, endDateStr).map(date => ({ ...payload, date }));
     }
 
     try {
@@ -1686,9 +1839,7 @@ function renderClientList() {
         return;
     }
 
-    const clientNames = Object.keys(globalTitanData).filter(key =>
-        !['message', 'status', 'result', 'undefined'].includes(key)
-    );
+    const clientNames = getClientNames();
 
     let html = `<div class="swiper client-management-swiper" style="width:100%;"><div class="swiper-wrapper">`;
 
@@ -1855,9 +2006,7 @@ function toggleSelection(type, item) {
         const container = document.getElementById('client-chips');
         if (!container) return;
 
-        const clientNames = Object.keys(globalTitanData).filter(key =>
-            !['message', 'status', 'result', 'undefined'].includes(key)
-        );
+        const clientNames = getClientNames();
 
         if (clientNames.length === 0) {
             container.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">데이터가 없습니다.</span>';
@@ -1929,10 +2078,8 @@ function toggleSelection(type, item) {
     }
 
 
-      function selectClientChip(el, name) { document.getElementById('c_client').value = name; }
-    function saveMaterial() { const d = { cat: document.getElementById('m_cat').value, name: document.getElementById('m_name').value, spec: document.getElementById('m_spec').value, unit: document.getElementById('m_unit').value, price: document.getElementById('m_price').value }; sendToGas('adminAddMaterial', d); }
+      function saveMaterial() { const d = { cat: document.getElementById('m_cat').value, name: document.getElementById('m_name').value, spec: document.getElementById('m_spec').value, unit: document.getElementById('m_unit').value, price: document.getElementById('m_price').value }; sendToGas('adminAddMaterial', d); }
     async function toggleSiteStatus(c, s, st) { if (confirm("상태변경?")) await sendToGas('updateSiteStatus', { client: c, site: s, status: st==='완료'?'진행중':'완료' }); }
-    async function editAddress(c, s, a) { const n = prompt("주소:", a); if (n) await sendToGas('updateSiteAddress', { client: c, site: s, address: n }); }
     async function changePassword(n) { const p = prompt("새 비번:"); if (p) await sendToGas('adminUpdatePassword', { userName: n, newPw: p }); }
     async function updateStatus(n, s) { if (confirm("상태변경?")) await sendToGas('adminUpdateStatus', { userName: n, status: s }); }
     function copyText(t) { navigator.clipboard.writeText(t); alert("복사됨"); }
