@@ -516,10 +516,7 @@
       </div>
 
       <div class="card section-material" style="background:#fffbeb; border:1px solid #fde68a;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 style="display:flex; align-items:center; gap:6px; margin:0;">⚠️ 단가 미입력 자재 (<span id="zero-price-count">0</span>건)</h3>
-            <button type="button" onclick="syncMaterialsFromSchedules()" style="padding:6px 12px; font-size:0.75rem; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;">📋 일정에서 자재 동기화</button>
-        </div>
+        <h3 style="display:flex; align-items:center; gap:6px; margin:0 0 10px;">⚠️ 단가 미입력 자재 (<span id="zero-price-count">0</span>건)</h3>
         <input type="text" id="zero-price-search" placeholder="🔍 품목명으로 검색" oninput="renderZeroPriceList()" style="width:100%; margin-bottom:10px; padding:10px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box; font-size:0.95rem;">
         <div id="zero-price-list" style="max-height:400px; overflow-y:auto;"></div>
       </div>
