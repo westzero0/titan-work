@@ -1601,7 +1601,7 @@ function closeCustomModal() {
     document.getElementById('custom-material-modal').style.display = 'none';
 }
 
-// 3. 등록하고 추가하기 버튼 눌렀을 때 실행 (서버 자재관리 시트에 즉시 등록 + 로컬 캐시 반영)
+// 3. 등록하고 추가하기 버튼 눌렀을 때 실행
 async function confirmCustomMaterial() {
     const cat = document.getElementById('modal-category').value.trim() || '기타';
     const name = document.getElementById('modal-name').value.trim();
@@ -1610,6 +1610,7 @@ async function confirmCustomMaterial() {
     const price = priceStr ? (parseInt(priceStr) || 0) : 0;
     const qtyStr = document.getElementById('modal-qty').value;
     const numQty = parseInt(qtyStr);
+    const isOneShot = document.getElementById('modal-oneshot')?.checked || false; // 🔖 일회성 체크
 
     if (!name) return alert("품명을 입력해주세요.");
     if (isNaN(numQty) || numQty <= 0) return alert("수량을 확인해주세요.");
@@ -1619,37 +1620,53 @@ async function confirmCustomMaterial() {
     if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.innerText = "⏳ 등록 중..."; }
 
     try {
-        const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'adminAddMaterial', data: { cat: cat, name: name, spec: '-', unit: unit, price: price } })
-        });
-        const text = await res.text();
-        if (!text.includes('SUCCESS')) throw new Error('서버 등록 실패');
+        let customUid;
+        let newItem;
 
-        // 로컬 캐시(allMaterials, localStorage)에도 즉시 반영 → 같은 세션에서 바로 재검색 가능
-        const customUid = "CUSTOM_" + Date.now();
-        const newItem = { uid: customUid, category: cat, subCat: "기타", name: name, spec: "-", unit: unit, price: price };
+        if (isOneShot) {
+            // 🔖 일회성: 마스터 등록 안 함, 로컬만 저장 (UID에 ONESHOT_ 프리픽스)
+            customUid = "ONESHOT_" + Date.now();
+            newItem = { uid: customUid, category: cat, subCat: "기타", name: name, spec: "-", unit: unit, price: price, isOneShot: true };
+            // 선택 목록에만 추가
+            selectedMaterials[customUid] = { ...newItem, qty: numQty };
+            renderSelectedMatChips();
+            closeCustomModal();
+            showSyncToast('✅ 일회성 자재로 추가되었습니다', false);
+            setTimeout(hideSyncToast, 2000);
+        } else {
+            // 기존 방식: 서버 마스터 등록 + 로컬 캐시 반영
+            const res = await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'adminAddMaterial', data: { cat: cat, name: name, spec: '-', unit: unit, price: price } })
+            });
+            const text = await res.text();
+            if (!text.includes('SUCCESS')) throw new Error('서버 등록 실패');
 
-        if (!allMaterials[cat]) allMaterials[cat] = [];
-        allMaterials[cat].unshift(newItem);
-        localStorage.setItem('titan_materials_cache', JSON.stringify(allMaterials));
+            customUid = "CUSTOM_" + Date.now();
+            newItem = { uid: customUid, category: cat, subCat: "기타", name: name, spec: "-", unit: unit, price: price };
 
-        // 오늘 사용 수량으로 선택 목록에도 추가
-        selectedMaterials[customUid] = { ...newItem, qty: numQty };
-        renderSelectedMatChips();
+            if (!allMaterials[cat]) allMaterials[cat] = [];
+            allMaterials[cat].unshift(newItem);
+            localStorage.setItem('titan_materials_cache', JSON.stringify(allMaterials));
 
-        closeCustomModal();
-        showSyncToast('✅ 새 자재로 등록되었습니다', false);
-        setTimeout(hideSyncToast, 2000);
+            selectedMaterials[customUid] = { ...newItem, qty: numQty };
+            renderSelectedMatChips();
 
-        const quickInput = document.getElementById('quick-mat-search');
-        if (quickInput) quickInput.value = "";
-        renderFrequentMatChips();
+            closeCustomModal();
+            showSyncToast('✅ 새 자재로 등록되었습니다', false);
+            setTimeout(hideSyncToast, 2000);
+
+            const quickInput = document.getElementById('quick-mat-search');
+            if (quickInput) quickInput.value = "";
+            renderFrequentMatChips();
+        }
 
     } catch (e) {
         alert('🚨 등록 실패: ' + e.message);
     } finally {
         if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.innerText = originalBtnText || "등록하고 추가하기"; }
+        // 체크박스 초기화
+        document.getElementById('modal-oneshot').checked = false;
     }
 }
 

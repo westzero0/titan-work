@@ -318,6 +318,11 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
         </div>
         <input type="number" id="modal-qty" class="modal-input" placeholder="오늘 사용 수량" value="1">
 
+        <label style="font-size:0.85rem; display:flex; align-items:center; gap:6px; margin-top:8px; color:#475569;">
+            <input type="checkbox" id="modal-oneshot" style="width:18px; height:18px; accent-color:#f59e0b;">
+            <span>🔖 일회성 자재 (마스터 미등록, 이번 현장만)</span>
+        </label>
+
         <div class="modal-btn-group">
             <button onclick="closeCustomModal()" class="modal-btn-cancel">취소</button>
             <button onclick="confirmCustomMaterial()" class="modal-btn-confirm">등록하고 추가하기</button>
