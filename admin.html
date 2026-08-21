@@ -459,7 +459,10 @@
         <option value="조공">조공</option>
     </select>
     <input type="number" id="new-rate" placeholder="일당 (숫자만)">
-    <input type="text" id="new-phone" placeholder="휴대폰 번호 (예: 010-1234-5678)">
+    <div class="input-with-btn">
+        <input type="text" id="new-phone" placeholder="휴대폰 번호 (예: 010-1234-5678)">
+        <button type="button" id="pick-contact-btn" onclick="pickContact()" style="width:auto; margin-top:0; padding:0 14px; background: var(--hr-color); color:white; border:none; border-radius:8px; font-weight:bold; font-size:0.85rem; white-space:nowrap; cursor:pointer;">📱 연락처에서 가져오기</button>
+    </div>
     <input type="text" id="new-address" placeholder="집주소">
     <input type="password" id="new-pw" placeholder="초기 비밀번호 (4자리)" maxlength="4">
     <button style="background: var(--hr-color);" onclick="addWorker()">등록하기</button>
@@ -952,6 +955,12 @@ window.addEventListener('DOMContentLoaded', () => {
     initSwiper();
     initDashboardToggle();
     initCalendar();
+
+    // 📱 연락처 선택(Contact Picker API)은 Android Chrome/삼성인터넷에서만 지원됨
+    const pickContactBtn = document.getElementById('pick-contact-btn');
+    if (pickContactBtn && !('contacts' in navigator && 'ContactsManager' in window)) {
+        pickContactBtn.style.display = 'none';
+    }
 
     const cachedSchedules = localStorage.getItem('titan_schedules');
     const cachedClients = localStorage.getItem('titan_clients');
@@ -2115,6 +2124,35 @@ function toggleSelection(type, item) {
 
 
     function addWorker() { const d = { name: document.getElementById('new-name').value, role: document.getElementById('new-role').value, rate: document.getElementById('new-rate').value, pw: document.getElementById('new-pw').value, phone: document.getElementById('new-phone').value, address: document.getElementById('new-address').value }; sendToGas('adminAddWorker', d); }
+
+    // 📱 휴대폰 번호를 010-1234-5678 형식으로 정리
+    function formatPhoneNumber(raw) {
+        let digits = (raw || '').replace(/\D/g, '');
+        if (digits.startsWith('82') && digits.length === 12) digits = '0' + digits.slice(2);
+        if (digits.length === 11) return digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+        if (digits.length === 10) return digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        return raw;
+    }
+
+    async function pickContact() {
+        try {
+            const contacts = await navigator.contacts.select(['name', 'tel'], { multiple: false });
+            if (!contacts || contacts.length === 0) return;
+
+            const picked = contacts[0];
+            const nameEl = document.getElementById('new-name');
+            const phoneEl = document.getElementById('new-phone');
+
+            if (nameEl && !nameEl.value && picked.name && picked.name[0]) {
+                nameEl.value = picked.name[0];
+            }
+            if (phoneEl && picked.tel && picked.tel[0]) {
+                phoneEl.value = formatPhoneNumber(picked.tel[0]);
+            }
+        } catch (e) {
+            // 사용자 취소 또는 미지원 환경: 조용히 무시
+        }
+    }
     function saveClient() {
         const d = {
             client: document.getElementById('c_client').value,
