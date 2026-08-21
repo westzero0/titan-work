@@ -714,8 +714,6 @@ function resetFormOnlyInputs() {
     });
     // 💡 추가: 신규 자재 데이터 초기화
     selectedMaterials = {};
-    const matListContainer = document.getElementById('material-list');
-    if (matListContainer) matListContainer.innerHTML = "<p style='text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 20px;'>대분류를 선택하면 자재 목록이 나옵니다.</p>";
 
     // 💡 추가: 빠른 검색 입력창 & 선택 칩 초기화
     const quickInput = document.getElementById('quick-mat-search');
@@ -1325,60 +1323,14 @@ function copyScheduleToLog(s) {
 
 let allMaterials = {}; // 서버에서 받아올 객체
 let selectedMaterials = {}; // 사용자 선택 저장 (Key: UID)
-let currentCategory = "";
-let currentSubCategory = "ALL"; // 현재 중분류
-let isMatLoaded = false;
 
-// 자재창 열기/닫기
-async function toggleMaterialUI() {
-    const section = document.getElementById('material-section');
-    const btn = document.getElementById('btn-toggle-mat');
-
-    if (section.style.display === 'none') {
-        section.style.display = 'block';
-        btn.innerText = '닫기';
-
-        // 💡 [추가] 검색창 초기화
-        const searchInput = document.getElementById('mat-search-input');
-        if(searchInput) searchInput.value = "";
-        
-        // 💡 [추가] 칩 다시 보이기 (혹시 숨겨져 있었다면)
-        const subChipContainer = document.getElementById('sub-category-chips');
-        if(subChipContainer) subChipContainer.style.display = 'flex';
-
-        
-        // 데이터가 없으면 서버에서 로드
-        if (!isMatLoaded) {
-            await loadMaterialData();
-        } else {
-            renderCategoryTabs();
-        }
-    } else {
-        section.style.display = 'none';
-        btn.innerText = '전체 목록에서 찾기';
-    }
-}
-
-// 💡 4. 자재 데이터 로드 (캐시 + 토스트 동기화)
+// 자재 카탈로그 로드 (캐시 우선 표시 후 서버 동기화) - 빠른 검색용 데이터 소스
 async function loadMaterialData() {
-    const listContainer = document.getElementById('material-list');
-    const tabContainer = document.getElementById('category-tabs');
-
-    // 1. 캐시 확인
     const cached = localStorage.getItem('titan_materials_cache');
     if (cached) {
         allMaterials = JSON.parse(cached);
-        isMatLoaded = true;
-        renderCategoryTabs();
-        document.getElementById('sub-category-chips').innerHTML = "<span style='font-size:0.8rem; color:#94a3b8; padding:5px;'>상단 대분류를 선택하세요.</span>";
-        listContainer.innerHTML = "<p style='text-align:center; padding:20px; color:#94a3b8;'>분류를 선택해주세요.</p>";
         refreshQuickMatSearch();
-    } else {
-        tabContainer.innerHTML = "<span style='font-size:0.8rem; padding:10px;'>⏳ 분류 로딩 중...</span>";
-        listContainer.innerHTML = "<p style='text-align:center; padding:20px;'>⏳ 서버에서 자재 목록을 불러오고 있습니다...</p>";
     }
-
-    showSyncToast('자재 목록 동기화 중...', true);
 
     try {
         const res = await fetch(GAS_URL, {
@@ -1386,209 +1338,16 @@ async function loadMaterialData() {
             body: JSON.stringify({ action: "getMaterialData" })
         });
         const text = await res.text();
-        const newData = JSON.parse(text); 
-        
+        const newData = JSON.parse(text);
+
         if (cached !== JSON.stringify(newData)) {
             allMaterials = newData;
             localStorage.setItem('titan_materials_cache', JSON.stringify(newData));
-            isMatLoaded = true;
-            renderCategoryTabs();
-            document.getElementById('sub-category-chips').innerHTML = "<span style='font-size:0.8rem; color:#94a3b8; padding:5px;'>상단 대분류를 선택하세요.</span>";
-            listContainer.innerHTML = "<p style='text-align:center; padding:20px; color:#94a3b8;'>분류를 선택해주세요.</p>";
             refreshQuickMatSearch();
-
-            showSyncToast('✨ 자재 목록 갱신 완료!', false);
-            setTimeout(hideSyncToast, 2000);
-        } else {
-            hideSyncToast();
         }
     } catch (e) {
-        console.error(e);
-        if (!cached) {
-            listContainer.innerHTML = "<p style='text-align:center; color:red;'>⚠️ 데이터 로드 실패. 새로고침 해주세요.</p>";
-            tabContainer.innerHTML = "";
-        }
-        showSyncToast('⚠️ 통신 실패', false);
-        setTimeout(hideSyncToast, 2000);
+        console.error('자재 목록 로딩 실패:', e);
     }
-}
-
-// 대분류 탭 생성
-function renderCategoryTabs() {
-    const cats = Object.keys(allMaterials);
-    const container = document.getElementById('category-tabs');
-    
-    if(!container) return;
-
-    container.innerHTML = cats.map(cat => `
-        <div class="cat-tab" onclick="filterMaterial('${cat}', this)" 
-             style="padding:8px 15px; margin-right:5px; background:#e2e8f0; border-radius:20px; font-weight:bold; white-space:nowrap; cursor:pointer;">
-            ${cat}
-        </div>
-    `).join('');
-
-    // 첫 번째 탭 자동 선택
-    if(cats.length > 0 && !currentCategory) {
-        const firstTab = container.querySelector('.cat-tab');
-        if (firstTab) filterMaterial(cats[0], firstTab);
-    }
-}
-
-// 대분류 선택 -> 중분류 칩 생성
-function filterMaterial(cat, el) {
-    currentCategory = cat;
-    
-    document.querySelectorAll('.cat-tab').forEach(t => { 
-        if(t && t.style) { t.style.background = '#e2e8f0'; t.style.color = '#475569'; }
-    });
-
-    if(el && el.style) { 
-        el.style.background = '#2563eb'; el.style.color = 'white'; 
-    }
-
-    if (!allMaterials[cat]) return;
-
-    const items = allMaterials[cat];
-    
-    // [중요] 중분류 추출 (빈값/undefined는 '기타'로 처리됨)
-    // 서버에서 이미 처리가 되어 오지만, 한 번 더 안전장치
-    const subCats = [...new Set(items.map(i => i.subCat || "기타"))].sort();
-    
-    const subContainer = document.getElementById('sub-category-chips');
-    
-    let html = `<div class="sub-chip active" onclick="filterSubCat('ALL', this)">전체</div>`;
-    html += subCats.map(sub => 
-        `<div class="sub-chip" onclick="filterSubCat('${sub}', this)">${sub}</div>`
-    ).join('');
-    
-    subContainer.innerHTML = html;
-    
-    // 전체 리스트 표시
-    renderMaterialTable(items);
-}
-
-// 📍 [Updated] Filter Sub-Category (Remember state securely!)
-function filterSubCat(subCat, el) {
-    // 1. Save the currently selected sub-category to variable (Important!)
-    currentSubCategory = subCat;
-
-    // 2. If el is missing (called from code), find the chip with matching text
-    if (!el) {
-        const chips = document.querySelectorAll('.sub-chip');
-        chips.forEach(c => {
-            if (c.innerText === subCat || (subCat === "ALL" && c.innerText === "All")) el = c;
-        });
-    }
-
-    // 3. Change chip color
-    document.querySelectorAll('.sub-chip').forEach(c => {
-        c.classList.remove('active');
-        c.style.background = 'white'; c.style.color = '#64748b';
-    });
-    
-    if (el) {
-        el.classList.add('active');
-        el.style.background = '#2563eb'; el.style.color = 'white'; 
-    }
-
-    // 4. Filter list
-    const items = allMaterials[currentCategory];
-    if (subCat === 'ALL') renderMaterialTable(items);
-    else renderMaterialTable(items.filter(i => i.subCat === subCat));
-}
-
-// Draw Table (UID based)
-function renderMaterialTable(list) {
-    const container = document.getElementById('material-list');
-    
-    let html = `
-        <table class="mat-table">
-            <colgroup>
-                <col style="width: 35%"> 
-                <col style="width: 35%"> 
-                <col style="width: 30%">
-            </colgroup>
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Spec</th>
-                    <th>Qty</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    if (list.length === 0) {
-        html += `<tr><td colspan="3" style="text-align:center; padding:20px; color:#94a3b8;">No items found.</td></tr>`;
-    }
-
-    list.forEach(m => {
-        const currentData = selectedMaterials[m.uid];
-        const qty = currentData ? currentData.qty : 0;
-        const rowBg = qty > 0 ? 'style="background-color:#eff6ff;"' : ''; 
-        const clickEvt = `focusQtyInput('${m.uid}')`;
-
-        html += `
-            <tr ${rowBg}>
-                <td onclick="${clickEvt}"><span style="font-weight:bold;">${m.name}</span></td>
-                <td class="spec-cell" onclick="${clickEvt}">${m.spec}<span class="unit-text">(${m.unit})</span></td>
-                <td>
-                    <div class="qty-control-box">
-                        <input type="number" id="qty-${m.uid}" class="qty-input-box" value="${qty}" 
-                               inputmode="numeric" onmousedown="event.stopPropagation();" 
-                               ontouchstart="event.stopPropagation();" onclick="event.stopPropagation();" 
-                               onfocus="this.select()" oninput="updateQtyDirectly('${m.uid}', this.value)">
-                        <div class="qty-btn-col">
-                            <button type="button" class="qty-btn-up" onclick="testChangeQty('${m.uid}', 1); event.stopPropagation();">▲</button>
-                            <button type="button" class="qty-btn-down" onclick="testChangeQty('${m.uid}', -1); event.stopPropagation();">▼</button>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
-    html += `</tbody></table>`;
-    container.innerHTML = html;
-}
-
-// Change Quantity (Direct Input)
-function updateQtyDirectly(uid, val) {
-    const numVal = parseInt(val);
-    if (!selectedMaterials[uid]) {
-        const item = allMaterials[currentCategory].find(i => i.uid === uid);
-        if(item) selectedMaterials[uid] = { ...item, qty: 0, category: currentCategory };
-    }
-    if (isNaN(numVal) || numVal < 0) selectedMaterials[uid].qty = 0;
-    else selectedMaterials[uid].qty = numVal;
-    renderSelectedMatChips();
-}
-
-// Change Quantity (Button)
-function testChangeQty(uid, val) {
-    if (!selectedMaterials[uid]) {
-        const item = allMaterials[currentCategory].find(i => i.uid === uid);
-        if(item) {
-            selectedMaterials[uid] = { ...item, qty: 0, category: currentCategory };
-        }
-    }
-    
-    let newQty = selectedMaterials[uid].qty + val;
-    if (newQty < 0) newQty = 0;
-    selectedMaterials[uid].qty = newQty;
-    
-    const input = document.getElementById(`qty-${uid}`);
-    if(input) {
-        input.value = newQty;
-        const row = input.closest('tr');
-        if(newQty > 0) row.style.backgroundColor = "#eff6ff";
-        else row.style.backgroundColor = "";
-    }
-    renderSelectedMatChips();
-}
-
-function focusQtyInput(uid) {
-    const input = document.getElementById(`qty-${uid}`);
-    if(input) input.focus();
 }
 
 // ==========================================
@@ -1708,12 +1467,8 @@ function addToSelectedMaterials(item) {
     }
     renderSelectedMatChips();
 
-    // 정밀 선택 테이블이 열려있고 같은 카테고리를 보고 있다면 해당 화면도 최신 수량 반영
-    const section = document.getElementById('material-section');
-    if (section && section.style.display !== 'none' && currentCategory === item.category) {
-        const qtyInput = document.getElementById(`qty-${item.uid}`);
-        if (qtyInput) qtyInput.value = selectedMaterials[item.uid].qty;
-    }
+    // 정밀 선택 테이블 UI가 제거되었으므로 이 코드는 더 이상 필요 없음
+// (빠른 검색 UI로 통합됨)
 }
 
 function resetQuickSearchAfterPick() {
@@ -1801,7 +1556,7 @@ function addCustomMaterialRow(prefillName) {
     const catSet = new Set(Object.keys(allMaterials || {}));
     catSet.add('기타');
     catSelect.innerHTML = [...catSet].map(c => `<option value="${c}">${c}</option>`).join('');
-    catSelect.value = (currentCategory && catSet.has(currentCategory)) ? currentCategory : '기타';
+    catSelect.value = '기타';
 
     // 입력창 초기화
     document.getElementById('modal-name').value = prefillName;
@@ -1877,60 +1632,6 @@ async function confirmCustomMaterial() {
 }
 
 
-// ==========================================
-// 🔍 [신규] 자재 전체 검색 기능
-// ==========================================
-function searchMaterial(keyword) {
-    if (!allMaterials) return; // 데이터 로드 전이면 중단
-
-    const val = keyword.trim().toLowerCase();
-    const subChipContainer = document.getElementById('sub-category-chips');
-    const listContainer = document.getElementById('material-list');
-    
-    // 1. 검색어가 비어있을 때 -> 원래 카테고리 화면으로 복구
-    if (val === "") {
-        subChipContainer.style.display = 'flex'; 
-        if (currentCategory) {
-            filterSubCat(currentSubCategory, null);
-        } else {
-            listContainer.innerHTML = "<p style='text-align: center; color: #94a3b8; padding: 20px;'>분류를 선택하세요.</p>";
-        }
-        return;
-    }
-
-    // 2. 검색 중에는 중분류 칩 숨기기
-    subChipContainer.style.display = 'none';
-
-    let searchResults = [];
-
-    // 3. 모든 대분류를 순회하며 검색 (중요: 여기서 누락되는 데이터가 없도록 함)
-    Object.keys(allMaterials).forEach(catName => {
-        const items = allMaterials[catName];
-        if (Array.isArray(items)) {
-            items.forEach(item => {
-                const nameMatch = item.name && item.name.toLowerCase().includes(val);
-                const specMatch = item.spec && item.spec.toLowerCase().includes(val);
-                const subMatch = item.subCat && item.subCat.toLowerCase().includes(val);
-
-                if (nameMatch || specMatch || subMatch) {
-                    // 검색 결과임을 알 수 있도록 대분류 정보를 살짝 추가해서 넘김
-                    searchResults.push({ ...item, category: catName });
-                }
-            });
-        }
-    });
-
-    // 4. 결과 테이블 그리기
-    if (searchResults.length > 0) {
-        renderMaterialTable(searchResults);
-    } else {
-        listContainer.innerHTML = `
-            <div style="text-align:center; padding:30px; color:#64748b;">
-                <p>'${keyword}'에 대한 검색 결과가 없습니다.</p>
-                    </div>
-        `;
-    }
-}
 
 
 let currentEditItem = null; // 현재 선택된 일정 데이터를 담을 변수
