@@ -649,7 +649,6 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-<script src="script.js"></script>
 
 
   <script>
@@ -732,6 +731,44 @@ async function loadQuoteProgress() {
     }
 }
 
+/**
+ * 📦 특정 현장(거래처+현장)의 일보에서 사용된 자재(selectedMaterials) 조회
+ * - globalScheduleData에서 해당 현장의 일정들을 찾아 자재 정보 수집
+ * - ONESHOT_ 자재(일회성)도 포함됨
+ */
+function getSiteMaterialsFromLogs(client, site) {
+    const scheduleData = Array.isArray(globalScheduleData) ? globalScheduleData : [];
+
+    // 해당 현장의 모든 일정 찾기
+    const siteSchedules = scheduleData.filter(s =>
+        (s.client || '').trim() === client.trim() &&
+        (s.site || '').trim() === site.trim() &&
+        s.selectedMaterials && typeof s.selectedMaterials === 'object'
+    );
+
+    if (siteSchedules.length === 0) return [];
+
+    // 모든 일정의 selectedMaterials 병합 (동일 자재는 수량 합산)
+    const materialMap = new Map();
+
+    siteSchedules.forEach(schedule => {
+        const materials = schedule.selectedMaterials;
+        if (materials && typeof materials === 'object') {
+            Object.values(materials).forEach(mat => {
+                if (!mat || mat.qty <= 0) return;
+                const key = `${mat.name}|${mat.spec || ''}|${mat.unit || ''}`;
+                if (materialMap.has(key)) {
+                    materialMap.get(key).qty += mat.qty;
+                } else {
+                    materialMap.set(key, { ...mat });
+                }
+            });
+        }
+    });
+
+    return Array.from(materialMap.values());
+}
+
 function toggleShowCompletedQuotes() {
     showCompletedQuotes = !showCompletedQuotes;
     const btn = document.getElementById('btn-toggle-completed-quotes');
@@ -778,8 +815,12 @@ function renderQuoteProgressList() {
                 ${active ? '✅' : '⬜'} ${label}
             </span>`;
 
+        // 📦 해당 현장의 일보 자재 조회 (ONESHOT_ 포함)
+        const siteMaterials = getSiteMaterialsFromLogs(client, site);
+        const hasMaterials = siteMaterials.length > 0;
+
         return `
-        <div class="card quote-progress-card ${allDone ? 'all-done' : ''}">
+        <div class="card quote-progress-card ${allDone ? 'all-done' : ''}" data-client="${safeClient}" data-site="${safeSite}">
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                 <div>
                     <div style="font-weight:900; font-size:1.05rem; color:#1e293b;">${site}</div>
@@ -795,8 +836,46 @@ function renderQuoteProgressList() {
                 ${chip('세금계산서', tax, '세금계산서')}
                 ${chip('입금완료', paid, '입금')}
             </div>
+
+            <!-- 📦 일보 자재 조회 섹션 -->
+            ${hasMaterials ? `
+            <div style="margin-top:12px; padding-top:12px; border-top:1px solid #f1f5f9;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:0.8rem; font-weight:bold; color:#475569;">📦 일보 입력 자재 (${siteMaterials.length}종)</span>
+                    <button onclick="toggleMaterialsDetail(this, '${safeClient}', '${safeSite}')"
+                            style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:4px 10px; border-radius:6px; font-size:0.75rem; cursor:pointer;">
+                        ▼ 상세보기
+                    </button>
+                </div>
+                <div class="materials-detail" style="display:none; max-height:200px; overflow-y:auto; font-size:0.8rem; color:#334155; background:#fafafa; padding:8px; border-radius:6px; border:1px solid #f1f5f9;">
+                    ${siteMaterials.map(m => `
+                        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f1f5f9;">
+                            <span>${m.name}${m.spec && m.spec !== '-' ? ' (' + m.spec + ')' : ''}${m.isOneShot ? ' <span style="color:#f59e0b;">🔖일회성</span>' : ''}</span>
+                            <span style="font-weight:bold; color:#2563eb;">${m.qty}${m.unit || ''}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : `
+            <div style="margin-top:12px; padding:8px; background:#f8fafc; border-radius:6px; border:1px dashed #e2e8f0; text-align:center; font-size:0.8rem; color:#94a3b8;">
+                📦 해당 현장의 일보 자재 내역이 없습니다.
+            </div>
+            `}
         </div>`;
     }).join('');
+}
+
+// 자재 상세 토글
+function toggleMaterialsDetail(btn, client, site) {
+    const card = btn.closest('.quote-progress-card');
+    const detail = card.querySelector('.materials-detail');
+    if (detail.style.display === 'none') {
+        detail.style.display = 'block';
+        btn.innerText = '▲ 접기';
+    } else {
+        detail.style.display = 'none';
+        btn.innerText = '▼ 상세보기';
+    }
 }
 
 async function updateQuoteProgressField(client, site, field, value, chipEl) {
