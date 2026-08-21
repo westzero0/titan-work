@@ -1477,7 +1477,7 @@ function resetQuickSearchAfterPick() {
     renderFrequentMatChips();
 }
 
-// 선택된 자재 칩 리스트 렌더링 (qty +/- , 삭제)
+// 선택된 자재 칩 리스트 렌더링 (수량 직접 입력 + +/- + 삭제, 규격 표시)
 function renderSelectedMatChips() {
     const container = document.getElementById('selected-mat-chips');
     if (!container) return;
@@ -1488,15 +1488,37 @@ function renderSelectedMatChips() {
         return;
     }
 
-    container.innerHTML = items.map(m => `
-        <div style="display:flex; align-items:center; gap:4px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:20px; padding:4px 6px 4px 14px;">
-            <span style="font-size:0.9rem; font-weight:600; color:#1e293b; white-space:nowrap;">${m.name}</span>
-            <button type="button" onclick="bumpSelectedQty('${m.uid}', -1)" style="width:24px; height:24px; padding:0; margin:0; border-radius:50%; background:white; color:#475569; border:1px solid #cbd5e1; font-weight:bold; font-size:0.9rem; line-height:1;">−</button>
-            <span style="min-width:18px; text-align:center; font-weight:bold; color:#2563eb; font-size:0.9rem;">${m.qty}</span>
-            <button type="button" onclick="bumpSelectedQty('${m.uid}', 1)" style="width:24px; height:24px; padding:0; margin:0; border-radius:50%; background:white; color:#475569; border:1px solid #cbd5e1; font-weight:bold; font-size:0.9rem; line-height:1;">+</button>
+    container.innerHTML = items.map(m => {
+        const specText = m.spec && m.spec !== '-' ? ` <span style="color:#94a3b8; font-size:0.75rem; font-weight:400;">(${m.spec})</span>` : '';
+        const unitText = m.unit ? ` <span style="color:#94a3b8; font-size:0.7rem;">${m.unit}</span>` : '';
+        return `
+        <div style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:20px; padding:6px 8px 6px 12px; flex-wrap:wrap;">
+            <span style="font-size:0.85rem; font-weight:600; color:#1e293b; white-space:nowrap;">${m.name}${specText}${unitText}</span>
+            <button type="button" onclick="bumpSelectedQty('${m.uid}', -1)" style="width:26px; height:26px; padding:0; margin:0; border-radius:50%; background:white; color:#475569; border:1px solid #cbd5e1; font-weight:bold; font-size:1rem; line-height:1;">−</button>
+            <input type="number" value="${m.qty}" min="1" max="999"
+                   onchange="setSelectedQtyDirect('${m.uid}', this.value)"
+                   onblur="setSelectedQtyDirect('${m.uid}', this.value)"
+                   style="width:50px; height:26px; padding:0 6px; text-align:center; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; font-weight:bold; color:#2563eb; background:white;"
+                   inputmode="numeric">
+            <button type="button" onclick="bumpSelectedQty('${m.uid}', 1)" style="width:26px; height:26px; padding:0; margin:0; border-radius:50%; background:white; color:#475569; border:1px solid #cbd5e1; font-weight:bold; font-size:1rem; line-height:1;">+</button>
             <span onclick="removeSelectedMaterial('${m.uid}')" style="cursor:pointer; color:#94a3b8; font-weight:bold; padding:0 6px; font-size:1.1rem;">×</span>
         </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+// 수량 직접 입력 처리
+function setSelectedQtyDirect(uid, val) {
+    const numVal = parseInt(val);
+    if (!selectedMaterials[uid]) return;
+    if (isNaN(numVal) || numVal < 1) {
+        selectedMaterials[uid].qty = 1;
+    } else if (numVal > 999) {
+        selectedMaterials[uid].qty = 999;
+    } else {
+        selectedMaterials[uid].qty = numVal;
+    }
+    renderSelectedMatChips();
 }
 
 function bumpSelectedQty(uid, delta) {
