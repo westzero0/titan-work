@@ -204,8 +204,10 @@ async function initApp(name) {
     // 3. 필수 함수 실행
     generateTimeOptions(); // 시간 옵션 생성
     renderAllChips();      // 로컬 리스트 칩 렌더링
+    loadMaterialData();     // 💡 빠른 자재 검색용 카탈로그 미리 로드 (백그라운드)
+    loadFrequentMaterials(); // 💡 자주 쓰는 자재 칩 로드 (백그라운드)
   // 🌟 2. await를 붙여서 서버 데이터가 완전히 도착할 때까지 기다리게 합니다!
-    await loadTitanDataWithBackgroundSync(); 
+    await loadTitanDataWithBackgroundSync();
     
 
     // 4. 검색 이벤트 리스너 등록
@@ -711,9 +713,15 @@ function resetFormOnlyInputs() {
         chip.classList.remove('active');
     });
     // 💡 추가: 신규 자재 데이터 초기화
-    selectedMaterials = {}; 
+    selectedMaterials = {};
     const matListContainer = document.getElementById('material-list');
     if (matListContainer) matListContainer.innerHTML = "<p style='text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 20px;'>대분류를 선택하면 자재 목록이 나옵니다.</p>";
+
+    // 💡 추가: 빠른 검색 입력창 & 선택 칩 초기화
+    const quickInput = document.getElementById('quick-mat-search');
+    if (quickInput) quickInput.value = "";
+    renderSelectedMatChips();
+    renderFrequentMatChips();
 }
 
 const dinnerCheck = document.getElementById('dinner-yn');
@@ -1328,7 +1336,7 @@ async function toggleMaterialUI() {
 
     if (section.style.display === 'none') {
         section.style.display = 'block';
-        btn.innerText = '창 닫기';
+        btn.innerText = '닫기';
 
         // 💡 [추가] 검색창 초기화
         const searchInput = document.getElementById('mat-search-input');
@@ -1347,7 +1355,7 @@ async function toggleMaterialUI() {
         }
     } else {
         section.style.display = 'none';
-        btn.innerText = '자재창 열기';
+        btn.innerText = '전체 목록에서 찾기';
     }
 }
 
@@ -1361,9 +1369,10 @@ async function loadMaterialData() {
     if (cached) {
         allMaterials = JSON.parse(cached);
         isMatLoaded = true;
-        renderCategoryTabs(); 
+        renderCategoryTabs();
         document.getElementById('sub-category-chips').innerHTML = "<span style='font-size:0.8rem; color:#94a3b8; padding:5px;'>상단 대분류를 선택하세요.</span>";
         listContainer.innerHTML = "<p style='text-align:center; padding:20px; color:#94a3b8;'>분류를 선택해주세요.</p>";
+        refreshQuickMatSearch();
     } else {
         tabContainer.innerHTML = "<span style='font-size:0.8rem; padding:10px;'>⏳ 분류 로딩 중...</span>";
         listContainer.innerHTML = "<p style='text-align:center; padding:20px;'>⏳ 서버에서 자재 목록을 불러오고 있습니다...</p>";
@@ -1383,10 +1392,11 @@ async function loadMaterialData() {
             allMaterials = newData;
             localStorage.setItem('titan_materials_cache', JSON.stringify(newData));
             isMatLoaded = true;
-            renderCategoryTabs(); 
+            renderCategoryTabs();
             document.getElementById('sub-category-chips').innerHTML = "<span style='font-size:0.8rem; color:#94a3b8; padding:5px;'>상단 대분류를 선택하세요.</span>";
             listContainer.innerHTML = "<p style='text-align:center; padding:20px; color:#94a3b8;'>분류를 선택해주세요.</p>";
-            
+            refreshQuickMatSearch();
+
             showSyncToast('✨ 자재 목록 갱신 완료!', false);
             setTimeout(hideSyncToast, 2000);
         } else {
@@ -1550,6 +1560,7 @@ function updateQtyDirectly(uid, val) {
     }
     if (isNaN(numVal) || numVal < 0) selectedMaterials[uid].qty = 0;
     else selectedMaterials[uid].qty = numVal;
+    renderSelectedMatChips();
 }
 
 // Change Quantity (Button)
@@ -1572,6 +1583,7 @@ function testChangeQty(uid, val) {
         if(newQty > 0) row.style.backgroundColor = "#eff6ff";
         else row.style.backgroundColor = "";
     }
+    renderSelectedMatChips();
 }
 
 function focusQtyInput(uid) {
@@ -1579,33 +1591,232 @@ function focusQtyInput(uid) {
     if(input) input.focus();
 }
 
+// ==========================================
+// 🚀 [신규] 빠른 자재 검색 & 선택 (사용 자재 내역 상단)
+// ==========================================
+
+let quickMatFrequent = []; // getFrequentMaterials 캐시
+
+// 검색어 입력 시 실행: 비어있으면 자주 쓰는 자재, 있으면 검색 결과
+function handleQuickMatInput(value) {
+    const term = (value || "").trim();
+    if (!term) {
+        renderFrequentMatChips();
+        return;
+    }
+
+    const lower = term.toLowerCase();
+    const matches = [];
+    Object.keys(allMaterials || {}).forEach(cat => {
+        (allMaterials[cat] || []).forEach(item => {
+            const name = String(item.name || "").toLowerCase();
+            const spec = String(item.spec || "").toLowerCase();
+            if (name.includes(lower) || spec.includes(lower)) matches.push(item);
+        });
+    });
+
+    const container = document.getElementById('quick-mat-suggestions');
+    if (!container) return;
+
+    if (matches.length === 0) {
+        const safeTerm = term.replace(/'/g, "\\'");
+        container.innerHTML = `
+            <div style="padding:10px; text-align:center; color:#94a3b8; font-size:0.85rem;">검색 결과가 없습니다.</div>
+            <button type="button" onclick="addCustomMaterialRow('${safeTerm}')" style="width:100%; padding:12px; background:white; color:#2563eb; border:1px dashed #2563eb; border-radius:8px; font-weight:bold;">+ '${term}' 새 자재로 등록</button>
+        `;
+        return;
+    }
+
+    const shown = matches.slice(0, 8);
+    container.innerHTML = `
+        <div style="max-height:260px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px; background:white;">
+            ${shown.map(item => `
+                <div onclick="pickQuickMaterial('${item.uid}')" style="padding:10px 12px; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+                    <span style="font-weight:bold;">${item.name}</span>
+                    <span style="color:#94a3b8; font-size:0.85rem;"> (${item.spec || '-'}, ${item.unit || '-'})</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// 이미 로드된 자재 카탈로그로 검색 결과/자주쓰는 칩 새로고침 (데이터 로드 완료 후 호출)
+function refreshQuickMatSearch() {
+    const input = document.getElementById('quick-mat-search');
+    handleQuickMatInput(input ? input.value : "");
+}
+
+// 자주 쓰는 자재 칩 렌더링
+function renderFrequentMatChips() {
+    const container = document.getElementById('quick-mat-suggestions');
+    if (!container) return;
+
+    if (!quickMatFrequent || quickMatFrequent.length === 0) {
+        container.innerHTML = "";
+        return;
+    }
+
+    container.innerHTML = `
+        <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:6px;">⚡ 자주 쓰는 자재</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            ${quickMatFrequent.map(item => {
+                const safeName = String(item.name || "").replace(/'/g, "\\'");
+                const safeSpec = String(item.spec || "").replace(/'/g, "\\'");
+                return `<div onclick="pickFrequentMaterial('${safeName}', '${safeSpec}')" style="padding:8px 14px; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:20px; font-size:0.85rem; font-weight:600; cursor:pointer; white-space:nowrap;">${item.name}${item.spec ? ' (' + item.spec + ')' : ''}</div>`;
+            }).join('')}
+        </div>
+    `;
+}
+
+// uid로 allMaterials 전체에서 항목 찾기
+function findMaterialByUid(uid) {
+    for (const cat in allMaterials) {
+        const found = (allMaterials[cat] || []).find(m => m.uid === uid);
+        if (found) return { ...found, category: cat };
+    }
+    return null;
+}
+
+// 검색 결과 탭 → 선택 목록에 추가
+function pickQuickMaterial(uid) {
+    const item = findMaterialByUid(uid);
+    if (!item) return;
+    addToSelectedMaterials(item);
+    resetQuickSearchAfterPick();
+}
+
+// 자주 쓰는 자재 칩 탭 → 선택 목록에 추가 (이름+규격으로 마스터에서 재조회)
+function pickFrequentMaterial(name, spec) {
+    let found = null;
+    for (const cat in allMaterials) {
+        const hit = (allMaterials[cat] || []).find(m => m.name === name && String(m.spec || "") === String(spec || ""));
+        if (hit) { found = { ...hit, category: cat }; break; }
+    }
+    if (!found) {
+        found = { uid: 'FREQ_' + name + '_' + Date.now(), name: name, spec: spec, unit: '', price: 0, category: '기타' };
+    }
+    addToSelectedMaterials(found);
+    resetQuickSearchAfterPick();
+}
+
+// 선택 목록에 추가 (이미 있으면 수량 +1)
+function addToSelectedMaterials(item) {
+    if (selectedMaterials[item.uid]) {
+        selectedMaterials[item.uid].qty = (selectedMaterials[item.uid].qty || 0) + 1;
+    } else {
+        selectedMaterials[item.uid] = { ...item, qty: 1 };
+    }
+    renderSelectedMatChips();
+
+    // 정밀 선택 테이블이 열려있고 같은 카테고리를 보고 있다면 해당 화면도 최신 수량 반영
+    const section = document.getElementById('material-section');
+    if (section && section.style.display !== 'none' && currentCategory === item.category) {
+        const qtyInput = document.getElementById(`qty-${item.uid}`);
+        if (qtyInput) qtyInput.value = selectedMaterials[item.uid].qty;
+    }
+}
+
+function resetQuickSearchAfterPick() {
+    const input = document.getElementById('quick-mat-search');
+    if (input) { input.value = ""; input.focus(); }
+    renderFrequentMatChips();
+}
+
+// 선택된 자재 칩 리스트 렌더링 (qty +/- , 삭제)
+function renderSelectedMatChips() {
+    const container = document.getElementById('selected-mat-chips');
+    if (!container) return;
+
+    const items = Object.values(selectedMaterials).filter(m => m.qty > 0);
+    if (items.length === 0) {
+        container.innerHTML = "";
+        return;
+    }
+
+    container.innerHTML = items.map(m => `
+        <div style="display:flex; align-items:center; gap:4px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:20px; padding:4px 6px 4px 14px;">
+            <span style="font-size:0.9rem; font-weight:600; color:#1e293b; white-space:nowrap;">${m.name}</span>
+            <button type="button" onclick="bumpSelectedQty('${m.uid}', -1)" style="width:24px; height:24px; padding:0; margin:0; border-radius:50%; background:white; color:#475569; border:1px solid #cbd5e1; font-weight:bold; font-size:0.9rem; line-height:1;">−</button>
+            <span style="min-width:18px; text-align:center; font-weight:bold; color:#2563eb; font-size:0.9rem;">${m.qty}</span>
+            <button type="button" onclick="bumpSelectedQty('${m.uid}', 1)" style="width:24px; height:24px; padding:0; margin:0; border-radius:50%; background:white; color:#475569; border:1px solid #cbd5e1; font-weight:bold; font-size:0.9rem; line-height:1;">+</button>
+            <span onclick="removeSelectedMaterial('${m.uid}')" style="cursor:pointer; color:#94a3b8; font-weight:bold; padding:0 6px; font-size:1.1rem;">×</span>
+        </div>
+    `).join('');
+}
+
+function bumpSelectedQty(uid, delta) {
+    if (!selectedMaterials[uid]) return;
+    selectedMaterials[uid].qty = Math.max(0, (selectedMaterials[uid].qty || 0) + delta);
+    if (selectedMaterials[uid].qty === 0) delete selectedMaterials[uid];
+    renderSelectedMatChips();
+
+    const qtyInput = document.getElementById(`qty-${uid}`);
+    if (qtyInput) qtyInput.value = selectedMaterials[uid] ? selectedMaterials[uid].qty : 0;
+}
+
+function removeSelectedMaterial(uid) {
+    delete selectedMaterials[uid];
+    renderSelectedMatChips();
+
+    const qtyInput = document.getElementById(`qty-${uid}`);
+    if (qtyInput) qtyInput.value = 0;
+}
+
+// 자주 쓰는 자재 목록 로드 (캐시 우선 표시 후 서버 동기화)
+async function loadFrequentMaterials() {
+    const cached = localStorage.getItem('titan_frequent_materials');
+    if (cached) {
+        try {
+            quickMatFrequent = JSON.parse(cached);
+            renderFrequentMatChips();
+        } catch (e) { /* 캐시 파싱 실패 시 무시하고 서버 응답 대기 */ }
+    }
+
+    try {
+        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getFrequentMaterials' }) });
+        const data = await res.json();
+        if (Array.isArray(data)) {
+            quickMatFrequent = data;
+            localStorage.setItem('titan_frequent_materials', JSON.stringify(data));
+            const input = document.getElementById('quick-mat-search');
+            if (!input || !input.value.trim()) renderFrequentMatChips();
+        }
+    } catch (e) {
+        console.error('자주 쓰는 자재 로딩 실패:', e);
+    }
+}
 
 // ==========================================
 // 📍 [업그레이드] 자재 직접 입력 (팝업창 방식)
 // ==========================================
 
-// 1. 팝업창 열기 (기존 addCustomMaterialRow 대체)
-function addCustomMaterialRow() {
-    if (!currentCategory) return alert("대분류를 먼저 선택해주세요.");
+// 1. 팝업창 열기 (빠른 검색 "신규 등록" / 정밀 선택 "직접 입력" 공용 진입점)
+function addCustomMaterialRow(prefillName) {
+    prefillName = prefillName || "";
 
     const modal = document.getElementById('custom-material-modal');
-    const catDisplay = document.getElementById('modal-category-display');
-    const targetSubCat = (currentSubCategory && currentSubCategory !== "ALL") ? currentSubCategory : "기타";
+    const catSelect = document.getElementById('modal-category');
 
-    // 현재 보고 있는 카테고리 표시
-    catDisplay.innerText = `분류: ${currentCategory} > ${targetSubCat}`;
-    
+    // 대분류 옵션 채우기 (이미 로드된 카테고리 + "기타")
+    const catSet = new Set(Object.keys(allMaterials || {}));
+    catSet.add('기타');
+    catSelect.innerHTML = [...catSet].map(c => `<option value="${c}">${c}</option>`).join('');
+    catSelect.value = (currentCategory && catSet.has(currentCategory)) ? currentCategory : '기타';
+
     // 입력창 초기화
-    document.getElementById('modal-name').value = "";
-    document.getElementById('modal-spec').value = "-";
+    document.getElementById('modal-name').value = prefillName;
     document.getElementById('modal-unit').value = "개";
+    document.getElementById('modal-price').value = "";
     document.getElementById('modal-qty').value = "1";
 
     // 팝업 보여주기
     modal.style.display = 'flex';
-    
-    // 품명 입력창에 바로 커서 두기
-    setTimeout(() => document.getElementById('modal-name').focus(), 100);
+
+    setTimeout(() => {
+        const nameInput = document.getElementById('modal-name');
+        if (prefillName) { nameInput.focus(); nameInput.select(); }
+        else nameInput.focus();
+    }, 100);
 }
 
 // 2. 팝업창 닫기
@@ -1613,47 +1824,56 @@ function closeCustomModal() {
     document.getElementById('custom-material-modal').style.display = 'none';
 }
 
-// 3. 추가하기 버튼 눌렀을 때 실행
-function confirmCustomMaterial() {
+// 3. 등록하고 추가하기 버튼 눌렀을 때 실행 (서버 자재관리 시트에 즉시 등록 + 로컬 캐시 반영)
+async function confirmCustomMaterial() {
+    const cat = document.getElementById('modal-category').value.trim() || '기타';
     const name = document.getElementById('modal-name').value.trim();
-    const spec = document.getElementById('modal-spec').value.trim();
-    const unit = document.getElementById('modal-unit').value.trim();
+    const unit = document.getElementById('modal-unit').value.trim() || '개';
+    const priceStr = document.getElementById('modal-price').value;
+    const price = priceStr ? (parseInt(priceStr) || 0) : 0;
     const qtyStr = document.getElementById('modal-qty').value;
     const numQty = parseInt(qtyStr);
 
     if (!name) return alert("품명을 입력해주세요.");
     if (isNaN(numQty) || numQty <= 0) return alert("수량을 확인해주세요.");
 
-    // 보고 있던 중분류 가져오기
-    const targetSubCat = (currentSubCategory && currentSubCategory !== "ALL") ? currentSubCategory : "기타";
-    const customUid = "CUSTOM_" + Date.now();
+    const confirmBtn = document.querySelector('#custom-material-modal .modal-btn-confirm');
+    const originalBtnText = confirmBtn ? confirmBtn.innerText : "";
+    if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.innerText = "⏳ 등록 중..."; }
 
-    const newItem = {
-        uid: customUid,
-        category: currentCategory,
-        subCat: targetSubCat,
-        name: name,
-        spec: spec,
-        unit: unit,
-        price: 0,
-        qty: numQty
-    };
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'adminAddMaterial', data: { cat: cat, name: name, spec: '-', unit: unit, price: price } })
+        });
+        const text = await res.text();
+        if (!text.includes('SUCCESS')) throw new Error('서버 등록 실패');
 
-    // 데이터 저장 (전체 목록 & 선택 목록)
-    if (!allMaterials[currentCategory]) allMaterials[currentCategory] = [];
-    allMaterials[currentCategory].unshift(newItem); // 맨 앞에 추가
-    selectedMaterials[customUid] = newItem;
+        // 로컬 캐시(allMaterials, localStorage)에도 즉시 반영 → 같은 세션에서 바로 재검색 가능
+        const customUid = "CUSTOM_" + Date.now();
+        const newItem = { uid: customUid, category: cat, subCat: "기타", name: name, spec: "-", unit: unit, price: price };
 
-    // 화면 갱신
-    const listContainer = document.getElementById('material-list');
-    const scrollPos = listContainer ? listContainer.scrollTop : 0;
-    
-    filterSubCat(currentSubCategory, null);
-    
-    if (listContainer) listContainer.scrollTop = scrollPos;
+        if (!allMaterials[cat]) allMaterials[cat] = [];
+        allMaterials[cat].unshift(newItem);
+        localStorage.setItem('titan_materials_cache', JSON.stringify(allMaterials));
 
-    // 팝업 닫기
-    closeCustomModal();
+        // 오늘 사용 수량으로 선택 목록에도 추가
+        selectedMaterials[customUid] = { ...newItem, qty: numQty };
+        renderSelectedMatChips();
+
+        closeCustomModal();
+        showSyncToast('✅ 새 자재로 등록되었습니다', false);
+        setTimeout(hideSyncToast, 2000);
+
+        const quickInput = document.getElementById('quick-mat-search');
+        if (quickInput) quickInput.value = "";
+        renderFrequentMatChips();
+
+    } catch (e) {
+        alert('🚨 등록 실패: ' + e.message);
+    } finally {
+        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.innerText = originalBtnText || "등록하고 추가하기"; }
+    }
 }
 
 

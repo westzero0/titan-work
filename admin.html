@@ -514,6 +514,12 @@
         <label>단가</label><input type="number" id="m_price">
         <button style="background: var(--material-color);" onclick="saveMaterial()">자재 품목 등록</button>
       </div>
+
+      <div class="card section-material" style="background:#fffbeb; border:1px solid #fde68a;">
+        <h3 style="display:flex; align-items:center; gap:6px;">⚠️ 단가 미입력 자재 (<span id="zero-price-count">0</span>건)</h3>
+        <input type="text" id="zero-price-search" placeholder="🔍 품목명으로 검색" oninput="renderZeroPriceList()" style="width:100%; margin-bottom:10px; padding:10px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box; font-size:0.95rem;">
+        <div id="zero-price-list" style="max-height:400px; overflow-y:auto;"></div>
+      </div>
     </div>
 
     <div class="swiper-slide">
@@ -888,6 +894,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loadQuoteProgress();
 
     setTimeout(() => { loadAdminData(); }, 1000);
+    setTimeout(() => { loadZeroPriceMaterials(); }, 1800);
 });
 
 
@@ -2079,6 +2086,80 @@ function toggleSelection(type, item) {
 
 
       function saveMaterial() { const d = { cat: document.getElementById('m_cat').value, name: document.getElementById('m_name').value, spec: document.getElementById('m_spec').value, unit: document.getElementById('m_unit').value, price: document.getElementById('m_price').value }; sendToGas('adminAddMaterial', d); }
+
+    let zeroPriceMaterials = [];
+
+    async function loadZeroPriceMaterials() {
+        const container = document.getElementById('zero-price-list');
+        try {
+            const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getZeroPriceMaterials' }) });
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                zeroPriceMaterials = data;
+                renderZeroPriceList();
+            }
+        } catch (e) {
+            console.error('단가 미입력 자재 로딩 실패:', e);
+            if (container) container.innerHTML = '<div style="color:#dc2626; text-align:center; padding:20px;">데이터 연결 실패</div>';
+        }
+    }
+
+    function renderZeroPriceList() {
+        const container = document.getElementById('zero-price-list');
+        const countEl = document.getElementById('zero-price-count');
+        if (!container) return;
+
+        if (countEl) countEl.innerText = zeroPriceMaterials.length;
+
+        if (zeroPriceMaterials.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:30px; color:#16a34a; font-weight:bold;">✅ 모든 자재에 단가가 입력되어 있습니다</div>';
+            return;
+        }
+
+        const term = (document.getElementById('zero-price-search')?.value || '').trim().toLowerCase();
+        let list = zeroPriceMaterials;
+        if (term) {
+            list = list.filter(m => String(m.name || '').toLowerCase().includes(term) || String(m.spec || '').toLowerCase().includes(term));
+        }
+
+        if (list.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">검색 결과가 없습니다.</div>';
+            return;
+        }
+
+        container.innerHTML = list.map(m => `
+            <div style="display:flex; align-items:center; gap:10px; padding:10px; margin-bottom:8px; background:white; border:1px solid #f1f5f9; border-radius:8px;">
+                <div style="flex:1; min-width:0;">
+                    <div style="font-weight:bold; color:#1e293b;">${m.name}</div>
+                    <div style="font-size:0.8rem; color:#94a3b8;">${m.spec || '-'} · ${m.unit || '-'}</div>
+                </div>
+                <input type="number" id="zp-price-${m.rowIndex}" placeholder="단가" style="width:90px; padding:8px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;">
+                <button type="button" onclick="saveZeroPrice(${m.rowIndex}, this)" style="background:var(--material-color); color:white; border:none; border-radius:6px; padding:8px 12px; font-weight:bold; white-space:nowrap;">저장</button>
+            </div>
+        `).join('');
+    }
+
+    async function saveZeroPrice(rowIndex, btnEl) {
+        const input = document.getElementById(`zp-price-${rowIndex}`);
+        const price = parseInt(input.value);
+        if (isNaN(price) || price <= 0) return alert('단가를 입력해주세요.');
+
+        btnEl.disabled = true;
+        btnEl.innerText = '저장 중...';
+
+        try {
+            const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'updateMaterialPrice', data: { rowIndex: rowIndex, newPrice: price } }) });
+            const text = await res.text();
+            if (!text.includes('SUCCESS')) throw new Error('서버 저장 실패');
+
+            zeroPriceMaterials = zeroPriceMaterials.filter(m => m.rowIndex !== rowIndex);
+            renderZeroPriceList();
+        } catch (e) {
+            alert('🚨 저장 실패: ' + e.message);
+            btnEl.disabled = false;
+            btnEl.innerText = '저장';
+        }
+    }
     async function toggleSiteStatus(c, s, st) { if (confirm("상태변경?")) await sendToGas('updateSiteStatus', { client: c, site: s, status: st==='완료'?'진행중':'완료' }); }
     async function changePassword(n) { const p = prompt("새 비번:"); if (p) await sendToGas('adminUpdatePassword', { userName: n, newPw: p }); }
     async function updateStatus(n, s) { if (confirm("상태변경?")) await sendToGas('adminUpdateStatus', { userName: n, status: s }); }

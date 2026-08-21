@@ -250,15 +250,24 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
             </div>
 
             <div class="card" style="padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                <h3 style="margin-top:0; font-size: 1.05rem; color: #1e293b; display: flex; align-items: center; gap: 6px;">📝 사용 자재 내역 (메모)</h3>
-                <textarea id="materialExtra" placeholder="예: 실리콘(백) 10개&#10;우레탄폼 5캔&#10;피스 1박스&#10;..." style="width: 100%; height: 180px; margin-top: 10px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 1rem; line-height: 1.6; background-color: #fafafa; resize: vertical; overflow-y: auto; box-shadow: inset 0 1px 3px rgba(0,0,0,0.03); outline: none;"></textarea>
-                <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">* 품목별로 줄을 바꿔서 입력하면 나중에 확인하기 훨씬 편합니다.</div>
+                <h3 style="margin-top:0; font-size: 1.05rem; color: #1e293b; display: flex; align-items: center; gap: 6px;">📝 사용 자재 내역</h3>
+
+                <div style="position: relative;">
+                    <input type="text" id="quick-mat-search" autocomplete="off" placeholder="🔍 자재명 입력 (예: 실리콘)" oninput="handleQuickMatInput(this.value)" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 1rem; margin: 0;">
+                    <div id="quick-mat-suggestions" style="margin-top: 8px;"></div>
+                </div>
+
+                <div id="selected-mat-chips" style="display:flex; flex-wrap:wrap; gap:8px; margin-top: 12px;"></div>
+
+                <label style="margin-top: 15px; display:block;">추가 메모 (목록에 없는 내용, 자유 입력)</label>
+                <textarea id="materialExtra" placeholder="예: 실리콘(백) 10개&#10;우레탄폼 5캔&#10;피스 1박스&#10;..." style="width: 100%; height: 100px; margin-top: 10px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 1rem; line-height: 1.6; background-color: #fafafa; resize: vertical; overflow-y: auto; box-shadow: inset 0 1px 3px rgba(0,0,0,0.03); outline: none;"></textarea>
+                <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">* 자주 쓰는 항목은 위 검색창으로 빠르게, 특이한 내용은 메모에 자유롭게 적어주세요.</div>
             </div>
-            
-            <div class="card" style="border: 1.5px solid #2563eb; background: #f8fafc;">
+
+            <div class="card" style="border: 1.5px solid #94a3b8; background: #f8fafc;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0; color: #2563eb;">📦 정밀 자재 선택 (신규)</h3>
-                    <button type="button" id="btn-toggle-mat" onclick="toggleMaterialUI()" style="width: auto; padding: 6px 15px; font-size: 0.85rem; background: #2563eb; color: white; border-radius: 6px;">자재창 열기</button>
+                    <h3 style="margin: 0; color: #475569; font-size: 0.95rem;">📦 정밀 자재 선택</h3>
+                    <button type="button" id="btn-toggle-mat" onclick="toggleMaterialUI()" style="width: auto; padding: 6px 15px; font-size: 0.85rem; background: #64748b; color: white; border-radius: 6px;">전체 목록에서 찾기</button>
                 </div>
                 <div id="material-section" style="display: none; margin-top: 15px; border-top: 1px solid #dee2e6;">
                     <div style="padding: 0 15px 10px 15px;">
@@ -323,19 +332,21 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
     
     <div id="custom-material-modal" class="modal-overlay">
     <div class="modal-box">
-        <div class="modal-title">📦 자재 직접 입력</div>
-        <div id="modal-category-display" class="modal-subtitle">분류: -</div>
-        
+        <div class="modal-title">📦 새 자재 등록</div>
+
+        <label style="font-size:0.85rem; color:#64748b; margin-bottom:4px; display:block;">대분류</label>
+        <select id="modal-category" class="modal-input"></select>
+
         <input type="text" id="modal-name" class="modal-input" placeholder="품명 (예: 전산볼트)">
         <div style="display:flex; gap:10px;">
-            <input type="text" id="modal-spec" class="modal-input" placeholder="규격 (예: 3/8)" value="-">
-            <input type="text" id="modal-unit" class="modal-input" placeholder="단위" value="개" style="width:80px;">
+            <input type="text" id="modal-unit" class="modal-input" placeholder="단위" value="개" style="width:50%;">
+            <input type="number" id="modal-price" class="modal-input" placeholder="단가 (선택)" style="width:50%;">
         </div>
-        <input type="number" id="modal-qty" class="modal-input" placeholder="수량" value="1">
-        
+        <input type="number" id="modal-qty" class="modal-input" placeholder="오늘 사용 수량" value="1">
+
         <div class="modal-btn-group">
             <button onclick="closeCustomModal()" class="modal-btn-cancel">취소</button>
-            <button onclick="confirmCustomMaterial()" class="modal-btn-confirm">추가하기</button>
+            <button onclick="confirmCustomMaterial()" class="modal-btn-confirm">등록하고 추가하기</button>
         </div>
     </div>
 </div>
