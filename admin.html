@@ -499,6 +499,10 @@
     </div>
     <input type="text" id="admin-new-site-note" placeholder="현장 특이사항 (예: 비밀번호 1234*, 주차불가 등)" style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #cbd5e1; border-radius:5px; font-size:0.9rem;">
 
+    <div class="input-group">
+        <label>마감예정일</label>
+        <input type="date" id="c_deadline">
+    </div>
 
     <button style="background: var(--client-color);" onclick="saveClient()" style="width:100%">현장 등록하기</button>
 </div>
@@ -1989,6 +1993,29 @@ function updateAllWorkerChipsUI() {
 }
 
 
+// 🗓️ 마감예정일 D-day 뱃지
+function getDeadlineBadge(deadline, status) {
+    if (!deadline) return '';
+    const today = new Date();
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const dDate = new Date(deadline);
+    if (isNaN(dDate.getTime())) return '';
+    const dOnly = new Date(dDate.getFullYear(), dDate.getMonth(), dDate.getDate());
+    const diff = Math.round((dOnly - todayOnly) / 86400000);
+
+    let label;
+    if (diff > 0) label = `D-${diff}`;
+    else if (diff === 0) label = 'D-DAY';
+    else label = `D+${-diff} 지연`;
+
+    const isOverdue = status !== '완료' && diff < 0;
+    const style = isOverdue
+        ? 'background:var(--danger-bg); color:var(--danger-color); border:1px solid #fca5a5;'
+        : 'background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;';
+
+    return `<span style="display:inline-block; margin-top:6px; padding:3px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold; ${style}">🗓️ ${label}</span>`;
+}
+
 function renderClientList() {
     const container = document.getElementById('client-management-list');
     if (!container) return;
@@ -2020,13 +2047,16 @@ function renderClientList() {
 
             const cleanNote = (s.note || "").replace(/\n/g, " ").replace(/'/g, "\\'");
             const cleanAddr = (s.addr || "").replace(/\n/g, " ").replace(/'/g, "\\'");
+            const cleanDeadline = (s.deadline || "").toString().trim();
 
             html += `
+            <div class="site-block">
             <div class="site-row" style="${isFinished ? 'background:#f8fafc;' : 'background:white;'}">
                 <div style="flex:1; padding-right:10px;">
                     <div style="font-weight:bold; font-size:1rem; ${isFinished ? 'color:#94a3b8; text-decoration:line-through;' : 'color:#1e293b;'}">
                         ${s.name}
                     </div>
+                    ${getDeadlineBadge(cleanDeadline, s.status)}
                     ${s.addr ? `<div class="site-addr-box" onclick="copyText('${cleanAddr}')" style="margin-top:5px; display: block; width: fit-content;">📍 ${s.addr}</div>` : ''}
                     ${s.note ? `<div style="margin-top:6px; font-size:0.85rem; color:#92400e; background:#fff7ed; padding:4px 8px; border-radius:4px; border:1px solid #ffedd5; display: block; width: fit-content; line-height:1.4;">📢 <b>현장안내:</b> ${s.note}</div>` : ''}
                 </div>
@@ -2038,11 +2068,18 @@ function renderClientList() {
                         ${isFinished ? '완료됨' : '진행중'}
                     </span>
 
-                    <span onclick="openClientEditModal('${client}', '${s.name}', '${cleanAddr}', '${cleanNote}', '${s.status}')"
+                    <span onclick="openClientEditModal('${client}', '${s.name}', '${cleanAddr}', '${cleanNote}', '${s.status}', '${cleanDeadline}')"
                           style="display:inline-block; padding:6px 10px; border-radius:6px; text-align:center; font-size:0.8rem; cursor:pointer; font-weight:bold; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">
                         ✏️ 수정
                     </span>
+
+                    <span onclick="toggleProcessStatus(this, '${client}', '${s.name}')"
+                          style="display:inline-block; padding:6px 10px; border-radius:6px; text-align:center; font-size:0.8rem; cursor:pointer; font-weight:bold; background:var(--client-bg); color:var(--client-color); border:1px solid #99f6e4;">
+                        📋 공정현황
+                    </span>
                 </div>
+            </div>
+            <div class="process-status-detail" style="display:none; padding:14px 20px; background:#fafffe; border-bottom:1px solid #f1f5f9;"></div>
             </div>`;
         });
         html += `</div></div></div>`;
@@ -2052,6 +2089,58 @@ function renderClientList() {
 
     if(window.clientSwiper) window.clientSwiper.destroy();
     window.clientSwiper = new Swiper('.client-management-swiper', { slidesPerView: 1, nested: true, spaceBetween: 0, centeredSlides: true, observer: true, observeParents: true, pagination: { el: '.swiper-pagination', clickable: true } });
+}
+
+// 📋 현장별 공정현황 (기록 기반) 토글
+async function toggleProcessStatus(btn, client, site) {
+    const block = btn.closest('.site-block');
+    const detail = block.querySelector('.process-status-detail');
+
+    if (detail.style.display === 'block') {
+        detail.style.display = 'none';
+        btn.textContent = '📋 공정현황';
+        return;
+    }
+
+    detail.style.display = 'block';
+    btn.textContent = '📋 공정현황 접기';
+
+    if (detail.dataset.loaded === '1') return;
+
+    detail.innerHTML = '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.85rem;">⏳ 불러오는 중...</div>';
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getSiteProcessStatus', data: { client, site } })
+        });
+        const data = await res.json();
+
+        let deadlineLine = '';
+        if (data.deadline) {
+            const overdue = data.daysRemaining !== null && data.daysRemaining < 0;
+            deadlineLine = overdue
+                ? `<div style="margin-bottom:10px; font-weight:bold; font-size:0.85rem; color:var(--danger-color);">⚠️ 마감 ${-data.daysRemaining}일 초과 (마감예정: ${data.deadline})</div>`
+                : `<div style="margin-bottom:10px; font-weight:bold; font-size:0.85rem; color:#475569;">🗓️ 마감예정: ${data.deadline} (${data.daysRemaining === 0 ? 'D-DAY' : 'D-' + data.daysRemaining})</div>`;
+        }
+
+        const logRows = (data.logs || []).map(l => `
+            <div style="display:flex; gap:10px; padding:6px 0; border-bottom:1px solid #f1f5f9; font-size:0.85rem;">
+                <span style="color:#94a3b8; white-space:nowrap; min-width:70px;">${l.date}</span>
+                <span style="color:#1e293b; font-weight:bold;">${l.work || '-'}</span>
+                <span style="color:#64748b; margin-left:auto; white-space:nowrap;">${l.workers || ''}</span>
+            </div>`).join('');
+
+        const logsSection = (data.totalLogCount || 0) === 0
+            ? '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.85rem;">아직 작업 기록이 없습니다</div>'
+            : `<div style="max-height:220px; overflow-y:auto; background:#fff; border-radius:6px; padding:8px; border:1px solid #f1f5f9;">${logRows}</div>`;
+
+        detail.innerHTML = deadlineLine + logsSection;
+
+        detail.dataset.loaded = '1';
+    } catch (e) {
+        detail.innerHTML = '<div style="text-align:center; padding:10px; color:#dc2626; font-size:0.85rem;">🚨 불러오기 실패</div>';
+    }
 }
 
 
@@ -2222,18 +2311,20 @@ function toggleSelection(type, item) {
             client: document.getElementById('c_client').value,
             site: document.getElementById('c_site').value,
             address: document.getElementById('c_addr').value,
-            note: document.getElementById('admin-new-site-note').value.trim()
+            note: document.getElementById('admin-new-site-note').value.trim(),
+            deadline: document.getElementById('c_deadline').value
         };
         sendToGas('adminAddClient', d);
     }
 
-    function openClientEditModal(client, site, address, note, status) {
+    function openClientEditModal(client, site, address, note, status, deadline) {
         document.getElementById('edit-client-title').innerText = `[${client}] ${site} 수정`;
         document.getElementById('edit-client-name').value = client;
         document.getElementById('edit-client-site').value = site;
         document.getElementById('edit-client-address').value = (address !== 'undefined' && address) ? address : "";
         document.getElementById('edit-client-note').value = (note !== 'undefined' && note) ? note : "";
         document.getElementById('edit-client-status').value = status || "진행중";
+        document.getElementById('edit-client-deadline').value = (deadline !== 'undefined' && deadline) ? deadline : "";
 
         document.getElementById('client-edit-modal').style.display = 'flex';
     }
@@ -2249,12 +2340,13 @@ function toggleSelection(type, item) {
         const address = document.getElementById('edit-client-address').value.trim();
         const note = document.getElementById('edit-client-note').value.trim();
         const status = document.getElementById('edit-client-status').value;
+        const deadline = document.getElementById('edit-client-deadline').value;
 
         btn.innerText = "⏳ 저장 중...";
         btn.disabled = true;
 
         try {
-            await sendToGas("updateClientInfoFull", { client, site, address, note, status });
+            await sendToGas("updateClientInfoFull", { client, site, address, note, status, deadline });
             alert("✅ 정보가 성공적으로 수정되었습니다.");
             closeClientEditModal();
         } catch (e) {
@@ -2736,7 +2828,10 @@ async function downloadPayroll() {
         <input type="text" id="edit-client-address" placeholder="주소를 입력하세요" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid #cbd5e1; font-size:0.9rem;">
 
         <label style="font-weight:bold; font-size:0.85rem; color:#64748b; display:block; margin-bottom:5px;">현장 특이사항</label>
-        <textarea id="edit-client-note" placeholder="현장 고정 특이사항을 입력하세요" style="width:100%; padding:10px; margin-bottom:20px; border-radius:5px; border:1px solid #cbd5e1; height:80px; resize:none; font-size:0.9rem;"></textarea>
+        <textarea id="edit-client-note" placeholder="현장 고정 특이사항을 입력하세요" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid #cbd5e1; height:80px; resize:none; font-size:0.9rem;"></textarea>
+
+        <label style="font-weight:bold; font-size:0.85rem; color:#64748b; display:block; margin-bottom:5px;">마감예정일</label>
+        <input type="date" id="edit-client-deadline" style="width:100%; padding:10px; margin-bottom:20px; border-radius:5px; border:1px solid #cbd5e1; font-size:0.9rem; box-sizing:border-box;">
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button onclick="closeClientEditModal()" style="padding:10px 15px; background:#94a3b8; color:white; border:none; border-radius:8px; cursor:pointer; font-size:0.9rem;">닫기</button>
