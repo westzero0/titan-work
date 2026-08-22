@@ -864,8 +864,72 @@ function renderQuoteProgressList() {
                 📦 해당 현장의 일보 자재 내역이 없습니다.
             </div>
             `}
+
+            <!-- 📊 현장 손익 조회 섹션 -->
+            <div style="margin-top:12px; padding-top:12px; border-top:1px solid #f1f5f9;">
+                <button onclick="toggleSiteProfit(this, '${safeClient}', '${safeSite}')"
+                        style="width:100%; margin-top:0; padding:10px; background:var(--quote-bg); color:var(--quote-color); border:1px solid #ddd6fe; border-radius:8px; font-weight:bold; font-size:0.85rem; cursor:pointer;">
+                    📊 손익보기
+                </button>
+                <div class="profit-detail" style="display:none; margin-top:10px;"></div>
+            </div>
         </div>`;
     }).join('');
+}
+
+// 📊 현장 손익 조회 토글
+async function toggleSiteProfit(btn, client, site) {
+    const card = btn.closest('.quote-progress-card');
+    const detail = card.querySelector('.profit-detail');
+
+    if (detail.style.display === 'block') {
+        detail.style.display = 'none';
+        btn.textContent = '📊 손익보기';
+        return;
+    }
+
+    detail.style.display = 'block';
+    btn.textContent = '📊 손익 접기';
+
+    if (detail.dataset.loaded === '1') return;
+
+    detail.innerHTML = '<div style="text-align:center; padding:12px; color:#94a3b8; font-size:0.85rem;">⏳ 계산 중...</div>';
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getSiteProfit', data: { client, site } })
+        });
+        const p = await res.json();
+
+        const marginColor = p.margin >= 0 ? '#16a34a' : '#dc2626';
+        const row = (label, value) => `
+            <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:0.85rem; color:#475569;">
+                <span>${label}</span>
+                <span style="font-weight:bold;">${Number(value || 0).toLocaleString()}원</span>
+            </div>`;
+
+        detail.innerHTML = `
+            <div style="background:var(--quote-bg); border-radius:8px; padding:12px;">
+                ${row('💰 매출', p.revenue)}
+                ${row('📦 자재비', p.materialCost)}
+                ${row('👷 인건비', p.laborCost)}
+                ${row('🧾 경비', p.expenseCost)}
+                <div style="border-top:1px solid #ddd6fe; margin:6px 0;"></div>
+                ${row('원가합계', p.totalCost)}
+                <div style="margin-top:10px; text-align:center;">
+                    <div class="metric-value" style="color:${marginColor};">
+                        ${p.margin >= 0 ? '+' : ''}${Number(p.margin || 0).toLocaleString()}원
+                    </div>
+                    <div style="font-weight:bold; color:${marginColor}; font-size:0.95rem; margin-top:2px;">
+                        마진율 ${p.marginRate || 0}%
+                    </div>
+                </div>
+            </div>`;
+        detail.dataset.loaded = '1';
+    } catch (e) {
+        detail.innerHTML = '<div style="text-align:center; padding:12px; color:#dc2626; font-size:0.85rem;">🚨 손익 조회 실패</div>';
+    }
 }
 
 // 자재 상세 토글
