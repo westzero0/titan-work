@@ -446,8 +446,8 @@
             </div>
         </div>
 
-        <!-- 거래처별 현장 카드 - 가로 스크롤 -->
-        <div style="overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch;">
+        <!-- 거래처별 현장 카드 - 스와이프 -->
+        <div style="overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory;">
             <div id="overview-clients-container" style="display: flex; gap: 12px; min-width: max-content;">
                 <div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; padding: 20px 10px; white-space: nowrap;">로딩 중...</div>
             </div>
@@ -2828,20 +2828,20 @@ function renderActiveSitesOverview(data) {
         const quoteCount = client.totalQuotes || 0;
         const totalAmount = (client.totalAmount || 0).toLocaleString();
 
-        // 진행률 계산 (견적서발송, 세금계산서발행, 입금완료 중 완료된 비율)
+        // 진행률 계산 (현장 수 × 3(발송/계산서/입금) 중 체크된 비율)
         let completedCount = 0;
-        let totalProgressItems = 0;
+        const totalProgressItems = siteCount * 3;
         if (client.sites) {
             client.sites.forEach(site => {
-                if (site.quoteSent) { totalProgressItems++; if (site.quoteSentDate) completedCount++; }
-                if (site.taxInvoiceIssued) { totalProgressItems++; if (site.taxInvoiceDate) completedCount++; }
-                if (site.paymentCompleted) { totalProgressItems++; if (site.paymentDate) completedCount++; }
+                if (site.quoteSent) completedCount++;
+                if (site.taxInvoiceIssued) completedCount++;
+                if (site.paymentCompleted) completedCount++;
             });
         }
         const progressPercent = totalProgressItems > 0 ? Math.round((completedCount / totalProgressItems) * 100) : 0;
 
         html += `
-        <div style="flex: 0 0 280px; background: rgba(255,255,255,0.95); border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 2px solid transparent;"
+        <div style="flex: 0 0 280px; scroll-snap-align: start; background: rgba(255,255,255,0.95); border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 2px solid transparent;"
              onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.15)';"
              onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';"
              onclick="navigateToClientTab('${client.name.replace(/'/g, "\\'")}')">
