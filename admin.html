@@ -418,6 +418,43 @@
     </div>
 </div>
 
+<!-- 활성 현장 개요 대시보드 -->
+<div id="active-sites-overview" style="margin: 15px 15px 10px 15px; z-index: 100;">
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 16px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 1.1rem;">🏗️ 작업현황</h3>
+            <button onclick="refreshActiveSitesOverview()" style="width: auto; margin-top: 0; background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 14px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; font-weight: bold; white-space: nowrap;">↻ 새로고침</button>
+        </div>
+
+        <!-- 요약 배지 4개 -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;">
+            <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 8px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
+                <div id="overview-total-clients" style="font-size: 1.5rem; font-weight: 800;">0</div>
+                <div style="font-size: 0.7rem; opacity: 0.9;">거래처</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 8px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
+                <div id="overview-total-sites" style="font-size: 1.5rem; font-weight: 800;">0</div>
+                <div style="font-size: 0.7rem; opacity: 0.9;">현장</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 8px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
+                <div id="overview-total-quotes" style="font-size: 1.5rem; font-weight: 800;">0</div>
+                <div style="font-size: 0.7rem; opacity: 0.9;">견적건</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 8px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
+                <div id="overview-total-amount" style="font-size: 1.2rem; font-weight: 800;">0</div>
+                <div style="font-size: 0.7rem; opacity: 0.9;">총 견적금액</div>
+            </div>
+        </div>
+
+        <!-- 거래처별 현장 카드 - 가로 스크롤 -->
+        <div style="overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch;">
+            <div id="overview-clients-container" style="display: flex; gap: 12px; min-width: max-content;">
+                <div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; padding: 20px 10px; white-space: nowrap;">로딩 중...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
       <div style="padding: 10px 10px 10px 10px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
               <h3 id="cal-main-title" style="margin:0; color:#1e293b;">📅 작업 일정</h3>
@@ -705,6 +742,7 @@ function getDateRange(startStr, endStr) {
 let quoteProgressData = [];
 let showCompletedQuotes = false;
 const QUOTE_FIELD_MAP = { '발송': '견적서발송', '세금계산서': '세금계산서발행', '입금': '입금완료' };
+const QUOTE_DATE_FIELD_MAP = { '발송': '발송일자', '세금계산서': '세금계산서발행일자', '입금': '입금일자' };
 
 async function loadQuoteProgress() {
     const container = document.getElementById('quote-progress-list');
@@ -814,12 +852,17 @@ function renderQuoteProgressList() {
         const paid = isPaid(q);
         const allDone = sent && tax && paid;
 
+        // 날짜 필드 읽기
+        const sentDate = q['발송일자'] || '';
+        const taxDate = q['세금계산서발행일자'] || '';
+        const paidDate = q['입금일자'] || '';
+
         const safeClient = client.replace(/'/g, "\\'");
         const safeSite = site.replace(/'/g, "\\'");
 
-        const chip = (label, active, field) => `
+        const chip = (label, active, field, dateVal) => `
             <span class="quote-chip ${active ? 'active' : ''}" onclick="updateQuoteProgressField('${safeClient}', '${safeSite}', '${field}', '${active ? 'X' : 'O'}', this)">
-                ${active ? '✅' : '⬜'} ${label}
+                ${active ? '✅' : '⬜'} ${label}${active && dateVal ? ` (${dateVal.slice(5)})` : ''}
             </span>`;
 
         // 📦 해당 현장의 일보 자재 조회 (ONESHOT_ 포함)
@@ -839,9 +882,9 @@ function renderQuoteProgressList() {
                 </div>
             </div>
             <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
-                ${chip('견적서발송', sent, '발송')}
-                ${chip('세금계산서', tax, '세금계산서')}
-                ${chip('입금완료', paid, '입금')}
+                ${chip('견적서발송', sent, '발송', sentDate)}
+                ${chip('세금계산서', tax, '세금계산서', taxDate)}
+                ${chip('입금완료', paid, '입금', paidDate)}
             </div>
 
             <!-- 📦 일보 자재 조회 섹션 -->
@@ -952,15 +995,37 @@ function toggleMaterialsDetail(btn, client, site) {
 async function updateQuoteProgressField(client, site, field, value, chipEl) {
     if (chipEl) chipEl.style.opacity = '0.5';
     try {
+        // 체크 시 현재 날짜 추가
+        const today = new Date();
+        const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'updateQuoteProgress', data: { client, site, field, value } })
+            body: JSON.stringify({
+                action: 'updateQuoteProgress',
+                data: {
+                    client,
+                    site,
+                    field,
+                    value,
+                    date: value === 'O' ? dateStr : ''  // 체크 시에만 날짜 전송
+                }
+            })
         });
         const result = await res.json();
 
         if (result.status === 'SUCCESS') {
             const item = quoteProgressData.find(q => q['거래처'] === client && q['현장'] === site);
-            if (item) item[QUOTE_FIELD_MAP[field]] = value;
+            if (item) {
+                item[QUOTE_FIELD_MAP[field]] = value;
+                // 날짜 필드도 업데이트
+                if (value === 'O') {
+                    item[QUOTE_DATE_FIELD_MAP[field]] = dateStr;
+                } else {
+                    // 해제 시 날짜 초기화
+                    item[QUOTE_DATE_FIELD_MAP[field]] = '';
+                }
+            }
             localStorage.setItem('titan_quote_progress', JSON.stringify(quoteProgressData));
             renderQuoteProgressList();
         } else {
@@ -1048,6 +1113,9 @@ window.addEventListener('DOMContentLoaded', () => {
     loadScheduleData();
     loadClientManagement();
     loadQuoteProgress();
+
+    // 활성 현장 개요 로드
+    loadActiveSitesOverview();
 
     setTimeout(() => { loadAdminData(); }, 1000);
     setTimeout(() => { loadZeroPriceMaterials(); }, 1800);
@@ -2710,6 +2778,166 @@ async function loadReceivables() {
     } catch (e) {
         console.error("수금 데이터 로드 실패", e);
     }
+}
+
+// 🏗️ 활성 현장 개요 대시보드 로드
+async function loadActiveSitesOverview() {
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "getActiveSitesOverview" })
+        });
+        const result = await res.json();
+        if (result.res !== "SUCCESS") {
+            console.error("활성 현장 개요 로드 실패:", result.msg);
+            return;
+        }
+        renderActiveSitesOverview(result.data);
+    } catch (e) {
+        console.error("활성 현장 개요 통신 실패", e);
+        document.getElementById('overview-clients-container').innerHTML =
+            '<div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; padding: 20px 10px; white-space: nowrap;">❌ 로드 실패</div>';
+    }
+}
+
+function renderActiveSitesOverview(data) {
+    if (!data || !data.clients || data.clients.length === 0) {
+        document.getElementById('overview-clients-container').innerHTML =
+            '<div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; padding: 20px 10px; white-space: nowrap;">활성 현장 없음</div>';
+        // 요약 배지 초기화
+        document.getElementById('overview-total-clients').innerText = '0';
+        document.getElementById('overview-total-sites').innerText = '0';
+        document.getElementById('overview-total-quotes').innerText = '0';
+        document.getElementById('overview-total-amount').innerText = '0';
+        return;
+    }
+
+    // 요약 배지 업데이트
+    document.getElementById('overview-total-clients').innerText = data.summary.totalClients || '0';
+    document.getElementById('overview-total-sites').innerText = data.summary.totalSites || '0';
+    document.getElementById('overview-total-quotes').innerText = data.summary.totalQuotes || '0';
+    document.getElementById('overview-total-amount').innerText =
+        (data.summary.totalAmount || 0).toLocaleString() + '원';
+
+    // 거래처별 카드 렌더링
+    const container = document.getElementById('overview-clients-container');
+    let html = '';
+
+    data.clients.forEach(client => {
+        const siteCount = client.sites ? client.sites.length : 0;
+        const quoteCount = client.totalQuotes || 0;
+        const totalAmount = (client.totalAmount || 0).toLocaleString();
+
+        // 진행률 계산 (견적서발송, 세금계산서발행, 입금완료 중 완료된 비율)
+        let completedCount = 0;
+        let totalProgressItems = 0;
+        if (client.sites) {
+            client.sites.forEach(site => {
+                if (site.quoteSent) { totalProgressItems++; if (site.quoteSentDate) completedCount++; }
+                if (site.taxInvoiceIssued) { totalProgressItems++; if (site.taxInvoiceDate) completedCount++; }
+                if (site.paymentCompleted) { totalProgressItems++; if (site.paymentDate) completedCount++; }
+            });
+        }
+        const progressPercent = totalProgressItems > 0 ? Math.round((completedCount / totalProgressItems) * 100) : 0;
+
+        html += `
+        <div style="flex: 0 0 280px; background: rgba(255,255,255,0.95); border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 2px solid transparent;"
+             onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.15)';"
+             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';"
+             onclick="navigateToClientTab('${client.name.replace(/'/g, "\\'")}')">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        🏢 ${client.name}
+                    </div>
+                    <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${siteCount}개 현장 · ${quoteCount}건 견적
+                    </div>
+                </div>
+                <div style="background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; flex-shrink: 0;">
+                    ${progressPercent}% 진행
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b;">
+                    <span>총 견적금액</span>
+                    <span style="font-weight: 700; color: #1e293b;">${totalAmount}원</span>
+                </div>
+            </div>
+
+            <!-- 현장 리스트 (최대 3개 표시) -->
+            ${client.sites && client.sites.length > 0 ? client.sites.slice(0, 3).map(site => {
+                const deadline = site.deadline ? `<span style="color: ${new Date(site.deadline) < new Date() ? '#ef4444' : '#f59e0b'}; font-size: 0.65rem;">📅 ${site.deadline}</span>` : '';
+                const statusChip = (label, active) => `<span style="font-size:0.62rem; font-weight:700; padding:2px 6px; border-radius:8px; white-space:nowrap; background:${active ? '#dcfce7' : '#f1f5f9'}; color:${active ? '#16a34a' : '#94a3b8'};">${active ? '✅' : '⬜'} ${label}</span>`;
+                const statusIcons = [
+                    statusChip('발송', site.quoteSent),
+                    statusChip('계산서', site.taxInvoiceIssued),
+                    statusChip('입금', site.paymentCompleted)
+                ];
+
+                return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #f1f5f9; font-size: 0.75rem;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            🏗️ ${site.siteName || '현장명 없음'}
+                        </div>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">${statusIcons.join('')}</div>
+                    </div>
+                    <div style="flex-shrink: 0;">${deadline}</div>
+                </div>`;
+            }).join('') : '<div style="font-size: 0.75rem; color: #94a3b8; text-align: center; padding: 8px;">등록된 현장 없음</div>'}
+
+            ${client.sites && client.sites.length > 3 ?
+                `<div style="text-align: center; padding-top: 6px; font-size: 0.7rem; color: #94a3b8;">외 ${client.sites.length - 3}개 현장 더보기</div>` : ''}
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+// 거래처 탭으로 이동 및 해당 거래처로 스크롤
+function navigateToClientTab(clientName) {
+    // Swiper 탭 2 (인덱스 2 = 거래처 탭: 0=일정, 1=인원, 2=거래처)로 이동
+    if (typeof swiper !== 'undefined' && swiper.slideTo) {
+        swiper.slideTo(2, 300);
+    }
+
+    // 약간의 지연 후 해당 거래처 칩/카드로 스크롤
+    setTimeout(() => {
+        // 거래처 칩에서 찾기
+        const chips = document.querySelectorAll('#client-chips .client-chip');
+        let found = false;
+        chips.forEach(chip => {
+            if (chip.innerText.includes(clientName) && !found) {
+                chip.click(); // 칩 클릭으로 필터링
+                found = true;
+            }
+        });
+
+        // 거래처 관리 리스트에서 해당 거래처 카드 찾기
+        const clientCards = document.querySelectorAll('#client-management-list .client-card');
+        clientCards.forEach(card => {
+            const nameEl = card.querySelector('.client-card-name');
+            if (nameEl && nameEl.innerText.includes(clientName)) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // 하이라이트 효과
+                card.style.boxShadow = '0 0 0 3px #3b82f6';
+                setTimeout(() => { card.style.boxShadow = ''; }, 2000);
+            }
+        });
+    }, 350);
+}
+
+// 새로고침 함수
+function refreshActiveSitesOverview() {
+    const btn = event.target;
+    btn.innerText = '↻ 로딩...';
+    btn.disabled = true;
+    loadActiveSitesOverview().finally(() => {
+        btn.innerText = '↻ 새로고침';
+        btn.disabled = false;
+    });
 }
 
 let currentPaymentData = null;

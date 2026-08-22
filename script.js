@@ -2,7 +2,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
 }
 
-const APP_VERSION = "3.4"; // 👈 기능 수정할 때마다 이 숫자를 1.6, 1.7로 올리세요!
+const APP_VERSION = "3.4"; // 👈 기능 수정할 때마다 이 숫자를 올리세요!
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedVer = localStorage.getItem('titan_app_version');
@@ -1057,16 +1057,40 @@ function renderCalendar() {
             } else {
                 const wCount = splitNames(j.workers).length;
                 const sType = (j.shift || "").toString().trim();
-                
+
                 // 주/야/조 색상 구분 적용
                 let bgColor = "#0d6efd"; // 파란색 (주간)
                 if (sType.includes('야')) bgColor = "#6c757d"; // 회색 (야간)
                 else if (sType.includes('조')) bgColor = "#fd7e14"; // 주황색 (조출)
-                
+
+                // 마감예정일 뱃지 (캘린더용 간소화)
+                let deadlineHtml = "";
+                if (masterData && j.client) {
+                    const clientKey = Object.keys(masterData).find(k => k.trim() === j.client || j.client.includes(k.trim()));
+                    if (clientKey && masterData[clientKey]) {
+                        const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === j.site);
+                        if (found && found.deadline) {
+                            const dDate = new Date(found.deadline);
+                            if (!isNaN(dDate.getTime())) {
+                                const todayOnly = new Date(); todayOnly.setHours(0,0,0,0);
+                                const dOnly = new Date(dDate.getFullYear(), dDate.getMonth(), dDate.getDate());
+                                const diff = Math.round((dOnly - todayOnly) / 86400000);
+                                let label = diff > 0 ? `D-${diff}` : (diff === 0 ? 'D-DAY' : `D+${-diff}`);
+                                const overdue = (found.status || "진행중") !== '완료' && diff < 0;
+                                const badgeColor = overdue ? '#fef2f2' : '#f1f5f9';
+                                const textColor = overdue ? '#dc2626' : '#64748b';
+                                const borderColor = overdue ? '#fca5a5' : '#e2e8f0';
+                                deadlineHtml = `<div style="margin-top:2px; padding:1px 4px; background:${badgeColor}; color:${textColor}; border:1px solid ${borderColor}; border-radius:3px; font-size:0.65rem; font-weight:bold; display:inline-block;">🗓️ ${label}</div>`;
+                            }
+                        }
+                    }
+                }
+
                 html += `
-                <div onclick="jumpToCard('${j.date}','${j.site}')" 
+                <div onclick="jumpToCard('${j.date}','${j.site}')"
                      style="${baseBarStyle} background: ${bgColor}; color: #fff; border: 1px solid ${bgColor};">
                     ${j.site}(${wCount})
+                    ${deadlineHtml}
                 </div>`;
             }
         });
@@ -1167,8 +1191,20 @@ function renderCards() {
                 const hasMaterials = s.materials && s.materials.trim() !== "";
                 const workerChipsHtml = wList.map(w => `<span style="background:#fff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:15px; font-size:0.8rem; color:#334155;">${w}</span>`).join('');
 
+                // 마감예정일 뱃지 생성 (마스터 데이터에서 deadline 가져오기)
+                let siteDeadline = "";
+                let siteStatus = s.status || "진행중";
+                if (clientKey && masterData[clientKey]) {
+                    const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === siteName);
+                    if (found) {
+                        siteDeadline = found.deadline || found.마감예정일 || "";
+                        siteStatus = found.status || s.status || "진행중";
+                    }
+                }
+                const deadlineBadge = getDeadlineBadge(siteDeadline, siteStatus);
+
                 cardContentHtml = `
-                 <div onclick="openMaterialCheckModal('${safeData}')" 
+                 <div onclick="openMaterialCheckModal('${safeData}')"
                       style="position:absolute; top:12px; right:60px; font-size:1.4rem; cursor:pointer; background:${hasMaterials ? '#ecfdf5' : '#f8fafc'}; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid ${hasMaterials ? '#10b981' : '#e2e8f0'}; z-index:5;">
                     📦${hasMaterials ? '<span style="position:absolute; top:-2px; right:-2px; font-size:0.7rem;">✅</span>' : ''}
                 </div>
@@ -1181,6 +1217,7 @@ function renderCards() {
                         </div>
                         <div style="font-size:1.15rem; font-weight:800; color:#1e293b; margin:2px 0;">${s.site}</div>
                         <div style="font-size:0.85rem; color:#64748b;">🏢 ${s.client}</div>
+                        ${deadlineBadge}
                         ${siteAddr ? `<div class="site-addr-box" onclick="event.stopPropagation(); copyAddr('${siteAddr.replace(/'/g, "\\'")}')" style="margin-top:10px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; display:block; width:fit-content; line-height:1.4;">📍 ${siteAddr}</div>` : '<div style="font-size:0.75rem; color:#94a3b8; margin-top:8px;">📍 주소 정보 없음</div>'}
                      </div>
                  </div>
@@ -1189,7 +1226,13 @@ function renderCards() {
                  ${s.note ? `<div style="background:#fffbeb; padding:10px 12px; border-radius:10px; font-size:0.85rem; color:#b45309; border:1px solid #fef3c7; margin-top:8px;">💡 <b>전달 사항:</b> ${s.note}</div>` : ''}
                  <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:12px;">
                      <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">${workerChipsHtml}</div>
-                     ${s.car ? `<div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap; margin-left: 10px;">🚛 ${s.car}</div>` : ''}
+                     <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                         ${s.car ? `<div style="font-size:0.9rem; font-weight:bold; color:#1e293b; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0; white-space: nowrap;">🚛 ${s.car}</div>` : ''}
+                         <button onclick="event.stopPropagation(); openProcessStatusModal('${s.client.replace(/'/g, "\\'")}', '${s.site.replace(/'/g, "\\'")}')"
+                                 style="padding:6px 12px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;">
+                             📋 공정현황
+                         </button>
+                     </div>
                  </div>
                 `;
             }
@@ -1240,6 +1283,76 @@ function scrollToCard(d, s) {
             console.warn("해당 카드를 찾을 수 없습니다:", d, s);
         }
     }, 100);
+}
+
+// 📋 현장별 공정현황 조회 (관리자 패널과 동일한 로직)
+async function openProcessStatusModal(client, site) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+        z-index: 10000; padding: 20px; box-sizing: border-box;
+    `;
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; width: 100%; max-width: 480px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
+            <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #1e293b;">📋 ${site} 공정현황</h3>
+                <button onclick="this.closest('.modal-overlay').remove(); document.body.style.overflow = '';" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; padding: 4px 8px; line-height: 1;">✕</button>
+            </div>
+            <div class="process-modal-body" style="flex: 1; overflow-y: auto; padding: 20px;">
+                <div style="text-align: center; padding: 20px; color: #94a3b8;">⏳ 불러오는 중...</div>
+            </div>
+        </div>
+    `;
+    modal.classList.add('modal-overlay');
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    // 모달 외부 클릭 시 닫기
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+            document.body.style.overflow = '';
+        }
+    });
+    // ESC 키로 닫기
+    const escHandler = (e) => { if (e.key === 'Escape') { modal.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', escHandler); } };
+    document.addEventListener('keydown', escHandler);
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getSiteProcessStatus', data: { client, site } })
+        });
+        const data = await res.json();
+
+        const body = modal.querySelector('.process-modal-body');
+
+        let deadlineLine = '';
+        if (data.deadline) {
+            const overdue = data.daysRemaining !== null && data.daysRemaining < 0;
+            deadlineLine = overdue
+                ? `<div style="margin-bottom:12px; padding: 10px 12px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; font-weight:bold; font-size:0.85rem; color:#dc2626;">⚠️ 마감 ${-data.daysRemaining}일 초과 (마감예정: ${data.deadline})</div>`
+                : `<div style="margin-bottom:12px; padding: 10px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; font-weight:bold; font-size:0.85rem; color:#2563eb;">🗓️ 마감예정: ${data.deadline} (${data.daysRemaining === 0 ? 'D-DAY' : 'D-' + data.daysRemaining})</div>`;
+        }
+
+        const logRows = (data.logs || []).map(l => `
+            <div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:0.85rem;">
+                <span style="color:#94a3b8; white-space:nowrap; min-width:70px;">${l.date}</span>
+                <span style="color:#1e293b; font-weight:bold; flex: 1;">${l.work || '-'}</span>
+                <span style="color:#64748b; white-space:nowrap;">${l.workers || ''}</span>
+            </div>`).join('');
+
+        const logsSection = (data.totalLogCount || 0) === 0
+            ? '<div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.85rem;">아직 작업 기록이 없습니다</div>'
+            : `<div style="max-height:350px; overflow-y:auto; background:#fff; border-radius:8px; padding:8px; border:1px solid #f1f5f9;">${logRows}</div>`;
+
+        body.innerHTML = deadlineLine + logsSection;
+
+    } catch (e) {
+        const body = modal.querySelector('.process-modal-body');
+        body.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626; font-size:0.85rem;">🚨 불러오기 실패</div>';
+    }
 }
 
 function copyScheduleToLog(s) {
@@ -1315,6 +1428,29 @@ function copyScheduleToLog(s) {
 
     showPage('log-page');
     window.scrollTo(0, 0);
+}
+
+// 🗓️ 마감예정일 D-day 뱃지 (관리자 패널과 동일한 로직)
+function getDeadlineBadge(deadline, status) {
+    if (!deadline) return '';
+    const today = new Date();
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const dDate = new Date(deadline);
+    if (isNaN(dDate.getTime())) return '';
+    const dOnly = new Date(dDate.getFullYear(), dDate.getMonth(), dDate.getDate());
+    const diff = Math.round((dOnly - todayOnly) / 86400000);
+
+    let label;
+    if (diff > 0) label = `D-${diff}`;
+    else if (diff === 0) label = 'D-DAY';
+    else label = `D+${-diff} 지연`;
+
+    const isOverdue = status !== '완료' && diff < 0;
+    const style = isOverdue
+        ? 'background:#fef2f2; color:#dc2626; border:1px solid #fca5a5;'
+        : 'background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;';
+
+    return `<span style="display:inline-block; margin-top:6px; padding:3px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold; ${style}">🗓️ ${label}</span>`;
 }
 
 // ==========================================
