@@ -1614,7 +1614,7 @@ function resetQuickSearchAfterPick() {
     renderFrequentMatChips();
 }
 
-// 선택된 자재 칩 리스트 렌더링 (수량 직접 입력 + +/- + 삭제, 규격 표시)
+// 선택된 자재 칩 리스트 렌더링 (수량 직접 입력 + +/- + 삭제, 규격 표시 + 단가 입력)
 function renderSelectedMatChips() {
     const container = document.getElementById('selected-mat-chips');
     if (!container) return;
@@ -1628,9 +1628,14 @@ function renderSelectedMatChips() {
     container.innerHTML = items.map(m => {
         const specText = m.spec && m.spec !== '-' ? ` <span style="color:#94a3b8; font-size:0.75rem; font-weight:400;">(${m.spec})</span>` : '';
         const unitText = m.unit ? ` <span style="color:#94a3b8; font-size:0.7rem;">${m.unit}</span>` : '';
+        // 단가: 마스터 데이터에 있으면 표시, 없으면 빈 값 (나중에 입력 가능)
+        const hasMasterPrice = m.price && m.price > 0;
+        const priceDisplay = hasMasterPrice ? `${m.price.toLocaleString()}원` : '입력';
+        const priceValue = m.price && m.price > 0 ? m.price : '';
+        const isOneShot = m.uid?.startsWith('ONESHOT_');
         return `
         <div style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:20px; padding:6px 8px 6px 12px; flex-wrap:wrap;">
-            <span style="font-size:0.85rem; font-weight:600; color:#1e293b; white-space:nowrap;">${m.name}${specText}${unitText}</span>
+            <span style="font-size:0.85rem; font-weight:600; color:#1e293b; white-space:nowrap;">${m.name}${specText}${unitText}${isOneShot ? ' <span style="color:#ef4444; font-size:0.65rem; font-weight:700;">일회용</span>' : ''}</span>
             <button type="button" onclick="bumpSelectedQty('${m.uid}', -1)" style="width:26px; height:26px; padding:0; margin:0; border-radius:50%; background:white; color:#475569; border:1px solid #cbd5e1; font-weight:bold; font-size:1rem; line-height:1;">−</button>
             <input type="number" value="${m.qty}" min="1" max="999"
                    onchange="setSelectedQtyDirect('${m.uid}', this.value)"
@@ -1638,6 +1643,13 @@ function renderSelectedMatChips() {
                    style="width:50px; height:26px; padding:0 6px; text-align:center; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; font-weight:bold; color:#2563eb; background:white;"
                    inputmode="numeric">
             <button type="button" onclick="bumpSelectedQty('${m.uid}', 1)" style="width:26px; height:26px; padding:0; margin:0; border-radius:50%; background:white; color:#475569; border:1px solid #cbd5e1; font-weight:bold; font-size:1rem; line-height:1;">+</button>
+            <input type="number" value="${priceValue}" min="0" max="99999999"
+                   onchange="setSelectedPriceDirect('${m.uid}', this.value)"
+                   onblur="setSelectedPriceDirect('${m.uid}', this.value)"
+                   placeholder="단가"
+                   style="width:80px; height:26px; padding:0 6px; text-align:center; border:1px solid ${hasMasterPrice ? '#22c55e' : '#cbd5e1'}; border-radius:6px; font-size:0.75rem; font-weight:bold; color:${hasMasterPrice ? '#166534' : '#64748b'}; background:${hasMasterPrice ? '#f0fdf4' : 'white'};"
+                   inputmode="numeric"
+                   title="${hasMasterPrice ? '마스터 단가 (수정 가능)' : '현장 구매 단가 입력 (선택)'}">
             <span onclick="removeSelectedMaterial('${m.uid}')" style="cursor:pointer; color:#94a3b8; font-weight:bold; padding:0 6px; font-size:1.1rem;">×</span>
         </div>
         `;
@@ -1654,6 +1666,20 @@ function setSelectedQtyDirect(uid, val) {
         selectedMaterials[uid].qty = 999;
     } else {
         selectedMaterials[uid].qty = numVal;
+    }
+    renderSelectedMatChips();
+}
+
+// 단가 직접 입력 처리 (선택사항)
+function setSelectedPriceDirect(uid, val) {
+    const numVal = parseInt(val);
+    if (!selectedMaterials[uid]) return;
+    if (isNaN(numVal) || numVal < 0) {
+        selectedMaterials[uid].price = 0; // 빈 값 허용
+    } else if (numVal > 99999999) {
+        selectedMaterials[uid].price = 99999999;
+    } else {
+        selectedMaterials[uid].price = numVal;
     }
     renderSelectedMatChips();
 }
@@ -1744,7 +1770,7 @@ async function confirmCustomMaterial() {
     const name = document.getElementById('modal-name').value.trim();
     const unit = document.getElementById('modal-unit').value.trim() || '개';
     const priceStr = document.getElementById('modal-price').value;
-    const price = priceStr ? (parseInt(priceStr) || 0) : 0;
+    const price = priceStr ? (parseInt(priceStr) || 0) : 0; // 빈 값 허용 (나중에 관리자에서 수정)
     const qtyStr = document.getElementById('modal-qty').value;
     const numQty = parseInt(qtyStr);
     const isOneShot = document.getElementById('modal-oneshot')?.checked || false; // 🔖 일회성 체크
