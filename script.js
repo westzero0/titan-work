@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwSJGmARLxnpVIzXNMtSPEQnS3_NkX4vWn-Rm218ENTtDzgPRjkSHWjVRkDE862J9g/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzJKuUzru2SPgKPYdU0hcOdrTLC_eVOS_8eAm7PtH4ZxlgcmC8ZZzP12hrVHi_rSZLc/exec";
 
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 
@@ -990,7 +990,8 @@ function renderCalendar() {
     const now = new Date();
     const todayStrLocal = new Date(now.getTime() + (9 * 60 * 60 * 1000)).toISOString().split('T')[0];
     const selectedWorker = document.getElementById('worker-select').value;
-    
+    const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
+
     // 관리자 패널(FullCalendar) 기본 스타일
     let html = `
     <div style="border: 1px solid #ddd; border-radius: 4px; background: #fff; margin-top: 10px; font-family: -apple-system, sans-serif;">
