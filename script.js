@@ -1566,12 +1566,11 @@ function findMaterialByUid(uid) {
     return (allMaterials || []).find(m => m.uid === uid) || null;
 }
 
-// 검색 결과 탭 → 선택 목록에 추가
+// 검색 결과 탭 → 선택 목록에 추가 (검색어/결과 목록은 그대로 유지 - 스위치/콘센트처럼 같은 검색어로 여러 종류를 연달아 고르는 경우가 많아서 초기화하지 않음. 잘못 골랐으면 선택 목록의 × 버튼으로 제거)
 function pickQuickMaterial(uid) {
     const item = findMaterialByUid(uid);
     if (!item) return;
     addToSelectedMaterials(item);
-    resetQuickSearchAfterPick();
 }
 
 // 자주 쓰는 자재 칩 탭 → 선택 목록에 추가 (이름+규격으로 마스터에서 재조회)
