@@ -224,6 +224,9 @@
     }
     .chip:hover { background-color: #f8fafc; }
 
+    /* 거래처 등록 폼의 "기존 거래처 선택" 칩만 세로로 컴팩트하게 (다른 칩의 터치영역은 유지) */
+    #client-chips .chip { padding: 6px 14px; min-height: 28px; font-size: 0.85rem; margin-bottom: 6px; }
+
     .chip.active {
         background: var(--primary-bg);
         color: var(--primary-color);
@@ -2072,8 +2075,8 @@ function getDeadlineBadge(deadline, status) {
     return `<span style="display:inline-block; margin-top:6px; padding:3px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold; ${style}">🗓️ ${label}</span>`;
 }
 
-function toggleShowCompletedSites(checked) {
-    showCompletedClientSites = checked;
+function toggleShowCompletedSites() {
+    showCompletedClientSites = !showCompletedClientSites;
     renderClientList();
 }
 
@@ -2090,10 +2093,13 @@ function renderClientList() {
 
     let html = `
     <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
-        <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; color:#64748b; cursor:pointer; user-select:none;">
-            <input type="checkbox" id="show-completed-sites-toggle" onchange="toggleShowCompletedSites(this.checked)" ${showCompletedClientSites ? 'checked' : ''}>
-            완료현장 보기
-        </label>
+        <button type="button" onclick="toggleShowCompletedSites()" title="${showCompletedClientSites ? '완료현장 숨기기' : '완료현장 보기'}"
+            style="display:inline-flex; align-items:center; gap:5px; width:auto; margin-top:0; padding:7px 14px; border-radius:20px; white-space:nowrap; flex-shrink:0; cursor:pointer; font-size:0.8rem; font-weight:700;
+            ${showCompletedClientSites
+                ? 'background:var(--client-bg); color:var(--client-color); border:1px solid #99f6e4;'
+                : 'background:#f8fafc; color:#94a3b8; border:1px solid #e2e8f0;'}">
+            <span style="font-size:0.95rem;">${showCompletedClientSites ? '👁️' : '🙈'}</span><span>완료현장</span>
+        </button>
     </div>
     <div style="position:relative;">
         <div class="swiper client-management-swiper" style="width:100%;"><div class="swiper-wrapper">`;
