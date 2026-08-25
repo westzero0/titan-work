@@ -1458,7 +1458,7 @@ function getDeadlineBadge(deadline, status) {
 // 3. 자재 관리 시스템 (서버 데이터 & UID 사용)
 // ==========================================
 
-let allMaterials = {}; // 서버에서 받아올 객체
+let allMaterials = []; // 서버에서 받아올 배열 (품목/규격/단위/단가 평면 구조)
 let selectedMaterials = {}; // 사용자 선택 저장 (Key: UID)
 
 // 자재 카탈로그 로드 (캐시 우선 표시 후 서버 동기화) - 빠른 검색용 데이터 소스
@@ -1502,13 +1502,10 @@ function handleQuickMatInput(value) {
     }
 
     const lower = term.toLowerCase();
-    const matches = [];
-    Object.keys(allMaterials || {}).forEach(cat => {
-        (allMaterials[cat] || []).forEach(item => {
-            const name = String(item.name || "").toLowerCase();
-            const spec = String(item.spec || "").toLowerCase();
-            if (name.includes(lower) || spec.includes(lower)) matches.push(item);
-        });
+    const matches = (allMaterials || []).filter(item => {
+        const name = String(item.name || "").toLowerCase();
+        const spec = String(item.spec || "").toLowerCase();
+        return name.includes(lower) || spec.includes(lower);
     });
 
     const container = document.getElementById('quick-mat-suggestions');
@@ -1566,11 +1563,7 @@ function renderFrequentMatChips() {
 
 // uid로 allMaterials 전체에서 항목 찾기
 function findMaterialByUid(uid) {
-    for (const cat in allMaterials) {
-        const found = (allMaterials[cat] || []).find(m => m.uid === uid);
-        if (found) return { ...found, category: cat };
-    }
-    return null;
+    return (allMaterials || []).find(m => m.uid === uid) || null;
 }
 
 // 검색 결과 탭 → 선택 목록에 추가
@@ -1583,14 +1576,8 @@ function pickQuickMaterial(uid) {
 
 // 자주 쓰는 자재 칩 탭 → 선택 목록에 추가 (이름+규격으로 마스터에서 재조회)
 function pickFrequentMaterial(name, spec) {
-    let found = null;
-    for (const cat in allMaterials) {
-        const hit = (allMaterials[cat] || []).find(m => m.name === name && String(m.spec || "") === String(spec || ""));
-        if (hit) { found = { ...hit, category: cat }; break; }
-    }
-    if (!found) {
-        found = { uid: 'FREQ_' + name + '_' + Date.now(), name: name, spec: spec, unit: '', price: 0, category: '기타' };
-    }
+    const found = (allMaterials || []).find(m => m.name === name && String(m.spec || "") === String(spec || ""))
+        || { uid: 'FREQ_' + name + '_' + Date.now(), name: name, spec: spec, unit: '', price: 0 };
     addToSelectedMaterials(found);
     resetQuickSearchAfterPick();
 }
@@ -1743,13 +1730,6 @@ function addCustomMaterialRow(prefillName) {
     prefillName = prefillName || "";
 
     const modal = document.getElementById('custom-material-modal');
-    const catSelect = document.getElementById('modal-category');
-
-    // 대분류 옵션 채우기 (이미 로드된 카테고리 + "기타")
-    const catSet = new Set(Object.keys(allMaterials || {}));
-    catSet.add('기타');
-    catSelect.innerHTML = [...catSet].map(c => `<option value="${c}">${c}</option>`).join('');
-    catSelect.value = '기타';
 
     // 입력창 초기화
     document.getElementById('modal-name').value = prefillName;
@@ -1774,7 +1754,6 @@ function closeCustomModal() {
 
 // 3. 등록하고 추가하기 버튼 눌렀을 때 실행
 async function confirmCustomMaterial() {
-    const cat = document.getElementById('modal-category').value.trim() || '기타';
     const name = document.getElementById('modal-name').value.trim();
     const unit = document.getElementById('modal-unit').value.trim() || '개';
     const priceStr = document.getElementById('modal-price').value;
@@ -1797,7 +1776,7 @@ async function confirmCustomMaterial() {
         if (isOneShot) {
             // 🔖 일회성: 마스터 등록 안 함, 로컬만 저장 (UID에 ONESHOT_ 프리픽스)
             customUid = "ONESHOT_" + Date.now();
-            newItem = { uid: customUid, category: cat, subCat: "기타", name: name, spec: "-", unit: unit, price: price, isOneShot: true };
+            newItem = { uid: customUid, name: name, spec: "-", unit: unit, price: price, isOneShot: true };
             // 선택 목록에만 추가
             selectedMaterials[customUid] = { ...newItem, qty: numQty };
             renderSelectedMatChips();
@@ -1808,16 +1787,15 @@ async function confirmCustomMaterial() {
             // 기존 방식: 서버 마스터 등록 + 로컬 캐시 반영
             const res = await fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ action: 'adminAddMaterial', data: { cat: cat, name: name, spec: '-', unit: unit, price: price } })
+                body: JSON.stringify({ action: 'adminAddMaterial', data: { name: name, spec: '-', unit: unit, price: price } })
             });
             const text = await res.text();
             if (!text.includes('SUCCESS')) throw new Error('서버 등록 실패');
 
             customUid = "CUSTOM_" + Date.now();
-            newItem = { uid: customUid, category: cat, subCat: "기타", name: name, spec: "-", unit: unit, price: price };
+            newItem = { uid: customUid, name: name, spec: "-", unit: unit, price: price };
 
-            if (!allMaterials[cat]) allMaterials[cat] = [];
-            allMaterials[cat].unshift(newItem);
+            allMaterials.unshift(newItem);
             localStorage.setItem('titan_materials_cache', JSON.stringify(allMaterials));
 
             selectedMaterials[customUid] = { ...newItem, qty: numQty };

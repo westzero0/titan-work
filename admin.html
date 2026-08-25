@@ -551,7 +551,6 @@
     <div class="swiper-slide">
       <div class="card section-material">
         <h3>📦 자재 마스터 등록</h3>
-        <label>대분류</label><input type="text" id="m_cat">
         <label>품목</label><input type="text" id="m_name">
         <label>규격</label><input type="text" id="m_spec">
         <label>단위</label><input type="text" id="m_unit">
@@ -708,6 +707,7 @@
     let selectedWorkerSet = new Set(); // 인원 선택용
     let selectedWorkSet = new Set();   // 공정 선택용
 let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니다!
+let showCompletedClientSites = false; // 완료된 현장 표시 여부 (기본: 숨김)
 
 
 // 💡 공용 유틸: globalTitanData에서 메타 키를 제외한 실제 거래처명 목록만 추출
@@ -2072,6 +2072,11 @@ function getDeadlineBadge(deadline, status) {
     return `<span style="display:inline-block; margin-top:6px; padding:3px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold; ${style}">🗓️ ${label}</span>`;
 }
 
+function toggleShowCompletedSites(checked) {
+    showCompletedClientSites = checked;
+    renderClientList();
+}
+
 function renderClientList() {
     const container = document.getElementById('client-management-list');
     if (!container) return;
@@ -2083,10 +2088,20 @@ function renderClientList() {
 
     const clientNames = getClientNames();
 
-    let html = `<div class="swiper client-management-swiper" style="width:100%;"><div class="swiper-wrapper">`;
+    let html = `
+    <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; color:#64748b; cursor:pointer; user-select:none;">
+            <input type="checkbox" id="show-completed-sites-toggle" onchange="toggleShowCompletedSites(this.checked)" ${showCompletedClientSites ? 'checked' : ''}>
+            완료현장 보기
+        </label>
+    </div>
+    <div style="position:relative;">
+        <div class="swiper client-management-swiper" style="width:100%;"><div class="swiper-wrapper">`;
 
     clientNames.forEach(client => {
-        const sites = Array.isArray(globalTitanData[client]) ? globalTitanData[client] : [];
+        const allSites = Array.isArray(globalTitanData[client]) ? globalTitanData[client] : [];
+        const sites = showCompletedClientSites ? allSites : allSites.filter(s => s.status !== '완료');
+        if (sites.length === 0) return; // 완료현장 숨김 상태에서 진행중 현장이 없는 거래처는 건너뜀
         sites.sort((x, y) => (x.status === '완료') === (y.status === '완료') ? 0 : x.status === '완료' ? 1 : -1);
 
         html += `
@@ -2140,11 +2155,19 @@ function renderClientList() {
         });
         html += `</div></div></div>`;
     });
-    html += `</div><div class="swiper-pagination" style="bottom:10px;"></div></div>`;
+    html += `</div><div class="swiper-pagination" style="bottom:10px;"></div></div>
+        <div class="client-swiper-prev swiper-no-swiping" style="position:absolute; top:50%; left:-6px; transform:translateY(-50%); width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.95); box-shadow:0 2px 6px rgba(0,0,0,0.15); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:5; font-weight:bold; color:#475569;">‹</div>
+        <div class="client-swiper-next swiper-no-swiping" style="position:absolute; top:50%; right:-6px; transform:translateY(-50%); width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.95); box-shadow:0 2px 6px rgba(0,0,0,0.15); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:5; font-weight:bold; color:#475569;">›</div>
+    </div>`;
     container.innerHTML = html;
 
     if(window.clientSwiper) window.clientSwiper.destroy();
-    window.clientSwiper = new Swiper('.client-management-swiper', { slidesPerView: 1, nested: true, spaceBetween: 0, centeredSlides: true, observer: true, observeParents: true, pagination: { el: '.swiper-pagination', clickable: true } });
+    window.clientSwiper = new Swiper('.client-management-swiper', {
+        slidesPerView: 1, nested: true, spaceBetween: 0, centeredSlides: true, observer: true, observeParents: true,
+        touchAngle: 70, threshold: 10,
+        pagination: { el: '.swiper-pagination', clickable: true },
+        navigation: { nextEl: '.client-swiper-next', prevEl: '.client-swiper-prev' }
+    });
 }
 
 // 📋 현장별 공정현황 (기록 기반) 토글
@@ -2414,7 +2437,7 @@ function toggleSelection(type, item) {
     }
 
 
-      function saveMaterial() { const d = { cat: document.getElementById('m_cat').value, name: document.getElementById('m_name').value, spec: document.getElementById('m_spec').value, unit: document.getElementById('m_unit').value, price: document.getElementById('m_price').value }; sendToGas('adminAddMaterial', d); }
+      function saveMaterial() { const d = { name: document.getElementById('m_name').value, spec: document.getElementById('m_spec').value, unit: document.getElementById('m_unit').value, price: document.getElementById('m_price').value }; sendToGas('adminAddMaterial', d); }
 
     let zeroPriceMaterials = [];
 
