@@ -2101,8 +2101,8 @@ function renderClientList() {
         sites.forEach(s => {
             const isFinished = s.status === '완료';
 
-            const cleanNote = (s.note || "").replace(/\n/g, " ").replace(/'/g, "\\'");
-            const cleanAddr = (s.addr || "").replace(/\n/g, " ").replace(/'/g, "\\'");
+            const cleanNote = (s.note || "").toString().replace(/\n/g, " ").replace(/'/g, "\\'");
+            const cleanAddr = (s.addr || "").toString().replace(/\n/g, " ").replace(/'/g, "\\'");
             const cleanDeadline = (s.deadline || "").toString().trim();
 
             html += `

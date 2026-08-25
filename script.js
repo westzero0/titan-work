@@ -1610,8 +1610,16 @@ function addToSelectedMaterials(item) {
 
 function resetQuickSearchAfterPick() {
     const input = document.getElementById('quick-mat-search');
-    if (input) { input.value = ""; input.focus(); }
+    const wasSearching = document.activeElement === input; // 검색 중 연속 추가 흐름인지 구분
+    if (input) { input.value = ""; }
     renderFrequentMatChips();
+
+    // 검색창을 탭하지 않고 '자주 쓰는 자재' 칩만 바로 눌렀을 때만 선택 목록으로 스크롤해 추가 확인을 시켜줌.
+    // 검색 중 연달아 추가하는 흐름에서는 스크롤/키보드를 건드리지 않아 타이핑이 끊기지 않게 둠.
+    if (!wasSearching) {
+        const chips = document.getElementById('selected-mat-chips');
+        if (chips) chips.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 }
 
 // 선택된 자재 칩 리스트 렌더링 (수량 직접 입력 + +/- + 삭제, 규격 표시 + 단가 입력)
