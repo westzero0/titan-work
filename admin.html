@@ -2093,7 +2093,7 @@ function renderClientList() {
 
     let html = `
     <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
-        <button type="button" onclick="toggleShowCompletedSites()" title="${showCompletedClientSites ? '완료현장 숨기기' : '완료현장 보기'}"
+        <button type="button" onclick="toggleShowCompletedSites()" title="${showCompletedClientSites ? '진행중 현장 보기' : '완료현장만 보기'}"
             style="display:inline-flex; align-items:center; gap:5px; width:auto; margin-top:0; padding:7px 14px; border-radius:20px; white-space:nowrap; flex-shrink:0; cursor:pointer; font-size:0.8rem; font-weight:700;
             ${showCompletedClientSites
                 ? 'background:var(--client-bg); color:var(--client-color); border:1px solid #99f6e4;'
@@ -2106,9 +2106,10 @@ function renderClientList() {
 
     clientNames.forEach(client => {
         const allSites = Array.isArray(globalTitanData[client]) ? globalTitanData[client] : [];
-        const sites = showCompletedClientSites ? allSites : allSites.filter(s => s.status !== '완료');
-        if (sites.length === 0) return; // 완료현장 숨김 상태에서 진행중 현장이 없는 거래처는 건너뜀
-        sites.sort((x, y) => (x.status === '완료') === (y.status === '완료') ? 0 : x.status === '완료' ? 1 : -1);
+        const sites = showCompletedClientSites
+            ? allSites.filter(s => s.status === '완료')
+            : allSites.filter(s => s.status !== '완료');
+        if (sites.length === 0) return; // 현재 필터(진행중/완료)에 해당하는 현장이 없는 거래처는 건너뜀
 
         html += `
         <div class="swiper-slide">
