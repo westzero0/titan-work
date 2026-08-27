@@ -471,7 +471,7 @@
           </div>
       </div>
 
-      <div id="calendar-container" style="background:white; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; margin-bottom: 30px;"></div>
+      <div id="calendar-container" style="background:white; border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; margin-bottom: 30px; touch-action: pan-y;"></div>
 
       <div class="card" style="margin: 10px 5px 100px 5px;">
           <h4 id="upcoming-title" style="margin:0 5px 15px 5px; color:#334155;">📋 다가오는 상세 일정</h4>
@@ -1135,6 +1135,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+
+        // 기본 활성 슬라이드가 0번(일정 탭)이므로 초기 상태에서도 스와이프 잠금 적용
+        swiper.allowTouchMove = false;
     }
 
     function jumpTo(index) {
