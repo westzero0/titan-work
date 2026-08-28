@@ -671,6 +671,14 @@ function toggleDelMode(type) {
     renderChips(type);
 }
 
+function toggleExpenseSection() {
+    const body = document.getElementById('expense-section-body');
+    const arrow = document.getElementById('expense-toggle-arrow');
+    const isOpen = body.style.display === 'block';
+    body.style.display = isOpen ? 'none' : 'block';
+    if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
 function generateTimeOptions() {
     const s = document.getElementById('start'), e = document.getElementById('end');
     if(!s || !e) return;
