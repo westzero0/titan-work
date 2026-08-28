@@ -253,7 +253,8 @@ let viewDate = new Date();
 let delMode = { member: false, car: false, material: false, payer: false };
 let siteStatusLogs = [];
 let siteStatusLogExpanded = false;
-let activeSitesProgressData = [];
+let activeSitesProgressData = null; // null = 아직 한 번도 못 불러옴, [] = 진행중 현장 0개 확인됨
+let activeSiteClientFilter = null; // null = 전체
 let expandedSiteKey = null;
 let expandedSiteLogs = [];
 let expandedSiteLogsShowAll = false;
@@ -500,13 +501,7 @@ function renderSiteStatusLogs() {
     }
 
     const shown = siteStatusLogExpanded ? siteStatusLogs : siteStatusLogs.slice(0, 3);
-    listEl.innerHTML = shown.map(l => {
-        const shortDate = formatShortDateLabel(l.date);
-        return `<div style="font-size:0.85rem; line-height:1.5;">
-            <span style="color:#94a3b8; font-size:0.75rem;">${shortDate} (${l.submitter || '-'})</span>
-            <span style="display:block; color:#334155; font-weight:600;">${l.content}</span>
-        </div>`;
-    }).join('');
+    listEl.innerHTML = shown.map(renderStatusLogLine).join('');
 
     moreEl.style.display = (!siteStatusLogExpanded && siteStatusLogs.length > 3) ? 'block' : 'none';
 }
@@ -520,6 +515,85 @@ function formatShortDateLabel(dateStr) {
     const d = new Date(String(dateStr).replace(/\./g, '-'));
     if (isNaN(d.getTime())) return dateStr;
     return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function formatTimeHHMM(date) {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+// 💡 현장 현황 기록 한 줄 렌더링 (log-page 섹션 / 현장현황 탭 카드 양쪽에서 공용으로 사용)
+// 본인이 작성한, 서버 동기화가 끝나 실제 ID가 있는 기록에만 수정/삭제 아이콘을 보여준다.
+function renderStatusLogLine(log) {
+    const currentUser = document.getElementById('submitter')?.value || localStorage.getItem('titan_user_name') || '';
+    const canEdit = !!log.id && log.submitter === currentUser;
+    const timeLabel = log.time ? ` ${log.time}` : '';
+    const safeContent = String(log.content || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
+
+    return `<div style="font-size:0.85rem; line-height:1.5; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <div style="min-width:0; flex:1;">
+            <span style="color:#94a3b8; font-size:0.75rem;">${formatShortDateLabel(log.date)}${timeLabel} (${log.submitter || '-'})</span>
+            <span style="display:block; color:#334155; font-weight:600; word-break:break-all;">${log.content}</span>
+        </div>
+        ${canEdit ? `<div style="flex-shrink:0; display:flex; gap:6px; padding-top:2px;">
+            <span onclick="event.stopPropagation(); editStatusLog('${log.id}', '${safeContent}')" style="cursor:pointer; font-size:0.8rem;">✏️</span>
+            <span onclick="event.stopPropagation(); deleteStatusLog('${log.id}')" style="cursor:pointer; font-size:0.8rem;">🗑️</span>
+        </div>` : ''}
+    </div>`;
+}
+
+async function editStatusLog(id, oldContent) {
+    const submitter = document.getElementById('submitter')?.value || localStorage.getItem('titan_user_name') || '';
+    const newContent = prompt('내용 수정', oldContent);
+    if (newContent === null) return; // 취소
+    const trimmed = newContent.trim();
+    if (!trimmed) { alert('내용을 입력해주세요.'); return; }
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'updateSiteStatusLog', data: { id, submitter, content: trimmed } })
+        });
+        const result = await res.json();
+        if (result === 'FORBIDDEN') { alert('본인이 작성한 기록만 수정할 수 있습니다.'); return; }
+        if (result === 'NOT_FOUND') { alert('이미 삭제된 기록입니다.'); }
+        refreshAllStatusLogViews();
+    } catch (e) {
+        console.error('현황 기록 수정 실패', e);
+        alert('수정 중 오류가 발생했습니다.');
+    }
+}
+
+async function deleteStatusLog(id) {
+    if (!confirm('이 기록을 삭제할까요?')) return;
+    const submitter = document.getElementById('submitter')?.value || localStorage.getItem('titan_user_name') || '';
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'deleteSiteStatusLog', data: { id, submitter } })
+        });
+        const result = await res.json();
+        if (result === 'FORBIDDEN') { alert('본인이 작성한 기록만 삭제할 수 있습니다.'); return; }
+        refreshAllStatusLogViews();
+    } catch (e) {
+        console.error('현황 기록 삭제 실패', e);
+        alert('삭제 중 오류가 발생했습니다.');
+    }
+}
+
+// 💡 수정/삭제 후, 현재 화면에 떠 있는 현황 기록 뷰(로그페이지 섹션 / 현장현황 탭 펼친 카드)를 모두 재조회
+function refreshAllStatusLogViews() {
+    const client = document.querySelector('#client-chips .chip.active')?.innerText;
+    let site = document.querySelector('#site-chips .chip.active')?.innerText;
+    if (!site) site = document.getElementById('siteSearch')?.value?.trim();
+    if (client && site && document.getElementById('site-status-log-section')?.style.display === 'block') {
+        loadSiteStatusLog(client, site);
+    }
+
+    if (expandedSiteKey) {
+        const [c, s] = expandedSiteKey.split('|||');
+        loadExpandedSiteLog(c, s);
+    }
 }
 
 async function submitSiteStatusLog() {
@@ -536,8 +610,9 @@ async function submitSiteStatusLog() {
     const btn = document.getElementById('site-status-log-submit-btn');
     btn.disabled = true;
 
-    // 로컬에 즉시 반영 (서버 재조회 없이 바로 확인)
-    siteStatusLogs.unshift({ date: formatDateYMD(new Date()), submitter, content });
+    // 로컬에 즉시 반영 (서버 재조회 없이 바로 확인). id가 없으므로 동기화 전까지는 수정/삭제 아이콘이 뜨지 않음
+    const now = new Date();
+    siteStatusLogs.unshift({ date: formatDateYMD(now), time: formatTimeHHMM(now), submitter, content });
     siteStatusLogExpanded = true;
     renderSiteStatusLogs();
     input.value = "";
@@ -1610,9 +1685,16 @@ function getDeadlineBadge(deadline, status) {
 // 🏗️ 진행중인 현장 대시보드 ('일정확인' 탭 상단, 항상 노출)
 // ==========================================
 
+// 💡 처음 불러온 현장 정보는 기억해두고(메모리+로컬캐시), 탭을 다시 열어도 새로 불러오지 않고 그대로 보여준다.
+// 백그라운드에서만 최신 상태를 조용히 확인해서, 실제로 바뀐 게 있을 때만(예: 현장이 완료 처리됨) 갱신한다.
 async function loadActiveSitesProgressOverview() {
-    const cardsEl = document.getElementById('active-sites-progress-cards');
-    if (cardsEl) cardsEl.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; padding:20px 10px; white-space:nowrap;">⏳ 불러오는 중...</div>';
+    if (activeSitesProgressData === null) {
+        const cachedStr = localStorage.getItem('titan_active_sites_cache');
+        if (cachedStr) {
+            try { activeSitesProgressData = JSON.parse(cachedStr); } catch (e) { activeSitesProgressData = null; }
+        }
+    }
+    renderActiveSitesProgressOverview(); // 기억하고 있던 데이터(캐시/메모리)를 즉시 표시. 없으면 로딩 상태 표시
 
     try {
         const res = await fetch(GAS_URL, {
@@ -1620,11 +1702,42 @@ async function loadActiveSitesProgressOverview() {
             body: JSON.stringify({ action: 'getActiveSitesProgressOverview' })
         });
         const result = await res.json();
-        activeSitesProgressData = Array.isArray(result) ? result : (result.data || []);
+        const freshData = Array.isArray(result) ? result : (result.data || []);
+        applyActiveSitesDiff(freshData);
     } catch (e) {
         console.error('진행중인 현장 로드 실패', e);
-        activeSitesProgressData = [];
     }
+}
+
+// 💡 이전에 기억하던 목록과 새로 받아온 목록을 비교해서, 실제로 변경(완료 처리로 사라짐/새로 추가됨/내용 변경)이
+// 있을 때만 화면을 다시 그린다. 변경이 없으면 스크롤 위치, 펼친 카드, 필터 상태를 그대로 유지한다.
+function applyActiveSitesDiff(freshData) {
+    const oldList = activeSitesProgressData || [];
+    const keyOf = (item) => item.client + '|||' + item.site;
+
+    const oldMap = {};
+    oldList.forEach(item => { oldMap[keyOf(item)] = item; });
+    const newMap = {};
+    freshData.forEach(item => { newMap[keyOf(item)] = item; });
+
+    const removedKeys = Object.keys(oldMap).filter(k => !newMap[k]);
+    const hasAnyChange = Object.keys(newMap).length !== Object.keys(oldMap).length ||
+        Object.keys(newMap).some(k => JSON.stringify(newMap[k]) !== JSON.stringify(oldMap[k]));
+
+    if (!hasAnyChange) return; // 완전히 동일하면 다시 그리지 않음
+
+    activeSitesProgressData = freshData;
+    localStorage.setItem('titan_active_sites_cache', JSON.stringify(freshData));
+
+    // 펼쳐져 있던 카드의 현장이 완료 처리로 사라졌으면 아코디언 초기화
+    if (expandedSiteKey && removedKeys.includes(expandedSiteKey)) {
+        expandedSiteKey = null;
+    }
+    // 필터 중이던 거래처에 더 이상 진행중 현장이 없으면 전체 보기로 복귀
+    if (activeSiteClientFilter && !freshData.some(d => d.client === activeSiteClientFilter)) {
+        activeSiteClientFilter = null;
+    }
+
     renderActiveSitesProgressOverview();
 }
 
@@ -1646,23 +1759,51 @@ function getSiteMasterInfo(client, site) {
 
 function renderActiveSitesProgressOverview() {
     const titleEl = document.getElementById('active-sites-progress-title');
+    const chipsEl = document.getElementById('active-sites-client-chips');
     const badgesEl = document.getElementById('active-sites-progress-badges');
     const cardsEl = document.getElementById('active-sites-progress-cards');
     const emptyEl = document.getElementById('active-sites-progress-empty');
-    if (!titleEl || !badgesEl || !cardsEl || !emptyEl) return;
+    if (!titleEl || !chipsEl || !badgesEl || !cardsEl || !emptyEl) return;
 
-    const data = activeSitesProgressData || [];
+    initActiveSitesSwipe();
+
+    if (activeSitesProgressData === null) {
+        titleEl.innerText = '🏗️ 진행중인 현장';
+        chipsEl.style.display = 'none';
+        badgesEl.style.display = 'none';
+        emptyEl.style.display = 'none';
+        cardsEl.style.display = 'flex';
+        cardsEl.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; padding:20px 10px; text-align:center;">⏳ 불러오는 중...</div>';
+        return;
+    }
+
+    const data = activeSitesProgressData;
     titleEl.innerText = `🏗️ 진행중인 현장 (${data.length}개)`;
 
     if (data.length === 0) {
+        chipsEl.style.display = 'none';
         badgesEl.style.display = 'none';
         cardsEl.style.display = 'none';
         emptyEl.style.display = 'block';
         return;
     }
+    chipsEl.style.display = 'flex';
     badgesEl.style.display = 'flex';
     cardsEl.style.display = 'flex';
     emptyEl.style.display = 'none';
+
+    // 거래처 필터 칩 렌더링
+    const clientNames = Array.from(new Set(data.map(d => d.client))).sort();
+    if (activeSiteClientFilter && !clientNames.includes(activeSiteClientFilter)) activeSiteClientFilter = null;
+
+    chipsEl.innerHTML = ['전체', ...clientNames].map(name => {
+        const isAll = (name === '전체');
+        const active = isAll ? !activeSiteClientFilter : (activeSiteClientFilter === name);
+        const safeName = name.replace(/'/g, "\\'");
+        const arg = isAll ? 'null' : `'${safeName}'`;
+        return `<div class="chip ${active ? 'active' : ''}" style="flex-shrink:0;" onclick="selectActiveSiteClientFilter(${arg})">${name}</div>`;
+    }).join('');
+    chipsEl.querySelector('.chip.active')?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 
     const isNum = (v) => v !== null && v !== undefined && !isNaN(v);
     const urgentCount = data.filter(d => isNum(d.daysRemaining) && d.daysRemaining >= 0 && d.daysRemaining <= 3).length;
@@ -1673,62 +1814,111 @@ function renderActiveSitesProgressOverview() {
     }
     badgesEl.innerHTML = badgesHtml;
 
+    const filtered = activeSiteClientFilter ? data.filter(d => d.client === activeSiteClientFilter) : data;
+
     // 마감임박 순 정렬 (deadline 없는 현장은 맨 뒤)
-    const sorted = [...data].sort((a, b) => {
+    const sorted = [...filtered].sort((a, b) => {
         const da = isNum(a.daysRemaining) ? a.daysRemaining : Infinity;
         const db = isNum(b.daysRemaining) ? b.daysRemaining : Infinity;
         return da - db;
     });
 
-    cardsEl.innerHTML = sorted.map(item => {
-        let ddayHtml = '';
-        if (item.deadline && isNum(item.daysRemaining)) {
-            const dr = item.daysRemaining;
-            let bg = '#f1f5f9', color = '#64748b', label = `D-${dr}`;
-            if (dr < 0) { bg = '#fef2f2'; color = '#dc2626'; label = `D+${-dr} 지연`; }
-            else if (dr <= 3) { bg = '#fff7ed'; color = '#c2410c'; label = (dr === 0 ? 'D-DAY' : `D-${dr}`); }
-            ddayHtml = `<span style="background:${bg}; color:${color}; padding:4px 10px; border-radius:6px; font-size:0.78rem; font-weight:700; white-space:nowrap;">${label}</span>`;
-        }
+    cardsEl.innerHTML = sorted.map(item => buildSiteCardHtml(item)).join('');
+}
 
-        const { address, note } = getSiteMasterInfo(item.client, item.site);
-        const safeClient = String(item.client).replace(/'/g, "\\'");
-        const safeSite = String(item.site).replace(/'/g, "\\'");
-        const cardKey = item.client + '|||' + item.site;
-        const isExpanded = (expandedSiteKey === cardKey);
+function selectActiveSiteClientFilter(name) {
+    activeSiteClientFilter = name;
+    renderActiveSitesProgressOverview();
+}
 
-        return `
-        <div style="background:white; border-radius:14px; box-shadow:0 2px 8px rgba(0,0,0,0.06); border:1px solid #e2e8f0; margin: 0 5px; overflow:hidden;">
-            <div onclick="toggleSiteProgressCard('${safeClient}', '${safeSite}')" style="padding:16px; cursor:pointer;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px;">
-                    <div style="min-width:0;">
-                        <div style="font-weight:800; font-size:1.05rem; color:#1e293b;">${item.site}</div>
-                        <div style="font-size:0.8rem; color:#94a3b8; margin-top:2px;">🏢 ${item.client}</div>
-                    </div>
-                    ${ddayHtml}
-                </div>
-                ${address ? `<div onclick="event.stopPropagation(); copyAddr('${address.replace(/'/g, "\\'")}')" style="margin-top:8px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; line-height:1.4;">📍 ${address}</div>` : ''}
-                ${note ? `<div style="background:#fef3c7; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:8px; line-height:1.5;">📢 ${note}</div>` : ''}
-                <div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px dashed #e2e8f0; font-size:0.78rem; color:#94a3b8; font-weight:600;">${isExpanded ? '▲ 접기' : '📋 현황 기록 보기 / 남기기 ▼'}</div>
+// 💡 카드 목록 영역에서 좌우로 스와이프하면 거래처 필터를 앞/뒤로 전환 (한 번만 바인딩)
+function initActiveSitesSwipe() {
+    const container = document.getElementById('active-sites-progress-cards');
+    if (!container || container.dataset.swipeBound) return;
+    container.dataset.swipeBound = '1';
+
+    let startX = 0, startY = 0, tracking = false;
+    container.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        tracking = true;
+    }, { passive: true });
+
+    container.addEventListener('touchend', (e) => {
+        if (!tracking) return;
+        tracking = false;
+        const dx = e.changedTouches[0].clientX - startX;
+        const dy = e.changedTouches[0].clientY - startY;
+        if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return; // 가로 스와이프가 아니면 무시
+        swipeActiveSiteClient(dx < 0 ? 1 : -1);
+    }, { passive: true });
+}
+
+function swipeActiveSiteClient(direction) {
+    const clientNames = Array.from(new Set((activeSitesProgressData || []).map(d => d.client))).sort();
+    const order = [null, ...clientNames]; // null = 전체
+    const currentIndex = order.findIndex(c => c === activeSiteClientFilter);
+    let nextIndex = currentIndex + direction;
+    if (nextIndex < 0) nextIndex = 0;
+    if (nextIndex >= order.length) nextIndex = order.length - 1;
+    if (nextIndex === currentIndex) return;
+    activeSiteClientFilter = order[nextIndex];
+    renderActiveSitesProgressOverview();
+}
+
+function buildSiteCardHtml(item) {
+    const isNum = (v) => v !== null && v !== undefined && !isNaN(v);
+
+    let ddayHtml = '';
+    if (item.deadline && isNum(item.daysRemaining)) {
+        const dr = item.daysRemaining;
+        let bg = '#f1f5f9', color = '#64748b', label = `D-${dr}`;
+        if (dr < 0) { bg = '#fef2f2'; color = '#dc2626'; label = `D+${-dr} 지연`; }
+        else if (dr <= 3) { bg = '#fff7ed'; color = '#c2410c'; label = (dr === 0 ? 'D-DAY' : `D-${dr}`); }
+        ddayHtml = `<span style="background:${bg}; color:${color}; padding:3px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; white-space:nowrap;">${label}</span>`;
+    }
+
+    const logBadgeHtml = (item.statusLogCount > 0)
+        ? `<span style="background:#eef2ff; color:#4f46e5; padding:3px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; white-space:nowrap;">💬 ${item.statusLogCount}</span>`
+        : '';
+
+    const { address, note } = getSiteMasterInfo(item.client, item.site);
+    const safeClient = String(item.client).replace(/'/g, "\\'");
+    const safeSite = String(item.site).replace(/'/g, "\\'");
+    const cardKey = item.client + '|||' + item.site;
+    const isExpanded = (expandedSiteKey === cardKey);
+
+    return `
+    <div style="position:relative; background:white; border-radius:14px; box-shadow:0 2px 8px rgba(0,0,0,0.06); border:1px solid #e2e8f0; margin: 0 5px; overflow:hidden;">
+        <div onclick="event.stopPropagation(); handleActiveSiteCardClick('${safeClient}', '${safeSite}')" style="position:absolute; top:14px; right:14px; background:#2563eb; color:white; padding:6px 12px; border-radius:8px; font-size:0.75rem; font-weight:700; cursor:pointer; z-index:2; white-space:nowrap;">📝 일보</div>
+
+        <div onclick="toggleSiteProgressCard('${safeClient}', '${safeSite}')" style="padding:16px; padding-right:90px; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:4px;">
+                <div style="font-weight:800; font-size:1.05rem; color:#1e293b;">${item.site}</div>
+                ${ddayHtml}
+                ${logBadgeHtml}
             </div>
-            ${isExpanded ? `
-            <div style="border-top:1px solid #f1f5f9; padding:14px 16px; background:#f8fafc;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <div style="font-weight:bold; color:#334155; font-size:0.85rem;">📋 현장 현황 기록</div>
-                    <span onclick="event.stopPropagation(); handleActiveSiteCardClick('${safeClient}', '${safeSite}')" style="font-size:0.75rem; color:#2563eb; cursor:pointer; font-weight:600;">📝 일보 작성하기 →</span>
-                </div>
-                <div id="progress-log-list" style="display:flex; flex-direction:column; gap:8px;">
-                    <div style="font-size:0.8rem; color:#94a3b8; text-align:center; padding:6px;">⏳ 불러오는 중...</div>
-                </div>
-                <div id="progress-log-more" style="display:none; text-align:center; margin-top:8px;">
-                    <button type="button" onclick="event.stopPropagation(); showMoreExpandedSiteLog()" style="width:auto; margin:0; padding:6px 14px; background:white; border:1px solid #cbd5e1; border-radius:8px; color:#475569; font-size:0.8rem; cursor:pointer;">더보기</button>
-                </div>
-                <div onclick="event.stopPropagation();" style="display:flex; gap:6px; margin-top:10px;">
-                    <input type="text" id="progress-log-input" placeholder="현장 상황을 남겨주세요 (예: 자재반입구 공사중)" style="flex:1; margin:0; padding:9px; font-size:0.82rem;">
-                    <button type="button" id="progress-log-submit-btn" onclick="submitExpandedSiteLog('${safeClient}', '${safeSite}')" style="width:auto; margin:0; padding:0 14px; background:#334155; color:white; border:none; border-radius:8px; font-weight:bold; font-size:0.82rem; cursor:pointer;">등록</button>
-                </div>
-            </div>` : ''}
-        </div>`;
-    }).join('');
+            <div style="font-size:0.8rem; color:#94a3b8;">🏢 ${item.client}</div>
+            ${address ? `<div onclick="event.stopPropagation(); copyAddr('${address.replace(/'/g, "\\'")}')" style="margin-top:8px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; line-height:1.4;">📍 ${address}</div>` : ''}
+            ${note ? `<div style="background:#fef3c7; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:8px; line-height:1.5;">📢 ${note}</div>` : ''}
+            <div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px dashed #e2e8f0; font-size:0.78rem; color:#94a3b8; font-weight:600;">${isExpanded ? '▲ 접기' : '📋 현황 기록 보기 / 남기기 ▼'}</div>
+        </div>
+        ${isExpanded ? `
+        <div style="border-top:1px solid #f1f5f9; padding:14px 16px; background:#f8fafc;">
+            <div style="font-weight:bold; color:#334155; font-size:0.85rem; margin-bottom:8px;">📋 현장 현황 기록</div>
+            <div id="progress-log-list" style="display:flex; flex-direction:column; gap:8px;">
+                <div style="font-size:0.8rem; color:#94a3b8; text-align:center; padding:6px;">⏳ 불러오는 중...</div>
+            </div>
+            <div id="progress-log-more" style="display:none; text-align:center; margin-top:8px;">
+                <button type="button" onclick="event.stopPropagation(); showMoreExpandedSiteLog()" style="width:auto; margin:0; padding:6px 14px; background:white; border:1px solid #cbd5e1; border-radius:8px; color:#475569; font-size:0.8rem; cursor:pointer;">더보기</button>
+            </div>
+            <div onclick="event.stopPropagation();" style="display:flex; gap:6px; margin-top:10px;">
+                <input type="text" id="progress-log-input" placeholder="현장 상황을 남겨주세요 (예: 자재반입구 공사중)" style="flex:1; margin:0; padding:9px; font-size:0.82rem;">
+                <button type="button" id="progress-log-submit-btn" onclick="submitExpandedSiteLog('${safeClient}', '${safeSite}')" style="width:auto; margin:0; padding:0 14px; background:#334155; color:white; border:none; border-radius:8px; font-weight:bold; font-size:0.82rem; cursor:pointer;">등록</button>
+            </div>
+        </div>` : ''}
+    </div>`;
 }
 
 // 💡 '현장현황' 탭 카드를 펼쳐서 근무자가 남긴 현황 기록을 보고/남기는 기능 (아코디언 - 한 번에 하나만 펼쳐짐)
@@ -1772,11 +1962,7 @@ function renderExpandedSiteLogList() {
     }
 
     const shown = expandedSiteLogsShowAll ? expandedSiteLogs : expandedSiteLogs.slice(0, 3);
-    listEl.innerHTML = shown.map(l => `
-        <div style="font-size:0.85rem; line-height:1.5;">
-            <span style="color:#94a3b8; font-size:0.75rem;">${formatShortDateLabel(l.date)} (${l.submitter || '-'})</span>
-            <span style="display:block; color:#334155; font-weight:600;">${l.content}</span>
-        </div>`).join('');
+    listEl.innerHTML = shown.map(renderStatusLogLine).join('');
     moreEl.style.display = (!expandedSiteLogsShowAll && expandedSiteLogs.length > 3) ? 'block' : 'none';
 }
 
@@ -1794,8 +1980,9 @@ async function submitExpandedSiteLog(client, site) {
     const btn = document.getElementById('progress-log-submit-btn');
     if (btn) btn.disabled = true;
 
-    // 로컬에 즉시 반영 (서버 재조회 없이 바로 확인)
-    expandedSiteLogs.unshift({ date: formatDateYMD(new Date()), submitter, content });
+    // 로컬에 즉시 반영 (서버 재조회 없이 바로 확인). id가 없으므로 동기화 전까지는 수정/삭제 아이콘이 뜨지 않음
+    const now = new Date();
+    expandedSiteLogs.unshift({ date: formatDateYMD(now), time: formatTimeHHMM(now), submitter, content });
     expandedSiteLogsShowAll = true;
     renderExpandedSiteLogList();
     input.value = "";
