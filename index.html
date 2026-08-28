@@ -185,6 +185,11 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
         <div id="log-page" class="page">
             <h2 style="color: var(--primary); text-align: center;">⚡ 타이탄 작업일보</h2>
             <input type="hidden" id="submitter">
+            <input type="hidden" id="editingRowId">
+
+            <div style="text-align:center; margin-bottom:10px;">
+                <span onclick="openMyTodayLogsModal()" style="display:inline-block; padding:6px 14px; background:white; border:1px solid #cbd5e1; border-radius:20px; color:#475569; font-size:0.85rem; font-weight:600; cursor:pointer;">📝 오늘 제출한 일보 수정</span>
+            </div>
 
             <div class="card">
                 <label>📅 작업 일자</label>
@@ -293,6 +298,7 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
                 </div>
             </div>
 
+            <div id="pending-queue-badge" style="display:none; text-align:center; margin-bottom:10px; padding:6px 10px; background:#fef3c7; color:#92400e; border-radius:8px; font-size:0.85rem; font-weight:bold;">⏳ 전송 대기중 0건</div>
             <button id="sBtn" class="submit-btn" onclick="send()">🚀 저장 및 카톡 공유</button>
         </div> <div id="schedule-page" class="page" style="display:none; padding-top: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 5px;">
@@ -356,6 +362,16 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
     </div>
 </div>
 
+
+    <div id="my-logs-modal" class="modal">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="margin:0;">📝 오늘 제출한 일보</h3>
+            <span onclick="closeMyTodayLogsModal()" style="cursor:pointer; font-size:1.5rem;">&times;</span>
+        </div>
+        <div id="my-logs-modal-body"></div>
+    </div>
+</div>
 
     <div id="sync-toast">
         <div class="sync-spinner" id="sync-spinner-icon"></div>

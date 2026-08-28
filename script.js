@@ -208,7 +208,10 @@ async function initApp(name) {
     loadFrequentMaterials(); // 💡 자주 쓰는 자재 칩 로드 (백그라운드)
   // 🌟 2. await를 붙여서 서버 데이터가 완전히 도착할 때까지 기다리게 합니다!
     await loadTitanDataWithBackgroundSync();
-    
+
+    // 💾 작성 중 임시저장(초안) 기능: 리스너 연결 후 저장된 초안이 있으면 복원 여부 확인
+    setupDraftAutosaveListeners();
+    restoreDraftIfExists();
 
     // 4. 검색 이벤트 리스너 등록
     const searchEl = document.getElementById('siteSearch');
@@ -271,6 +274,245 @@ let lists = savedLists ? JSON.parse(savedLists) : {
 function saveListsToStorage() {
     localStorage.setItem('titan_custom_lists', JSON.stringify(lists));
 }
+
+// ==========================================
+// 💾 [1] 작성 중 임시저장(초안) 기능
+// ==========================================
+const DRAFT_KEY = 'titan_draft_log';
+let draftSaveTimer = null;
+
+// 폼에 입력값이 바뀔 때마다 호출 (1초 debounce)
+function scheduleDraftSave() {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(saveDraftNow, 1000);
+}
+
+function collectDraftData() {
+    const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText);
+    return {
+        date: document.getElementById('date')?.value || "",
+        work: document.getElementById('work')?.value || "",
+        materialExtra: document.getElementById('materialExtra')?.value || "",
+        expAmount: document.getElementById('expAmount')?.value || "",
+        expDetail: document.getElementById('expDetail')?.value || "",
+        client: document.querySelector('#client-chips .chip.active')?.innerText || "",
+        site: document.getElementById('siteSearch')?.value || "",
+        members: getSel('#member-chips'),
+        cars: getSel('#car-chips'),
+        payers: getSel('#payer-chips'),
+        selectedMaterials: selectedMaterials
+    };
+}
+
+function saveDraftNow() {
+    try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraftData()));
+    } catch (e) {
+        console.error('임시저장 실패', e);
+    }
+}
+
+function clearDraft() {
+    localStorage.removeItem(DRAFT_KEY);
+}
+
+// 저장할 만한 실질적인 내용이 있는지 확인 (오늘 날짜만 채워진 빈 폼은 제외)
+function isDraftMeaningful(draft) {
+    if (!draft) return false;
+    return !!(draft.work && draft.work.trim())
+        || !!(draft.site && draft.site.trim())
+        || !!(draft.materialExtra && draft.materialExtra.trim())
+        || !!(draft.selectedMaterials && Object.keys(draft.selectedMaterials).length > 0)
+        || !!(draft.members && draft.members.length > 0)
+        || !!(draft.expDetail && draft.expDetail.trim());
+}
+
+// 작성 중이던 입력창들에 debounce 저장을 걸어줌 (초기 1회 실행)
+function setupDraftAutosaveListeners() {
+    ['work', 'materialExtra', 'date', 'expAmount', 'expDetail'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', scheduleDraftSave);
+    });
+}
+
+// 앱 로드 시 저장된 초안이 있으면 이어서 작성할지 물어봄
+function restoreDraftIfExists() {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+
+    let draft;
+    try {
+        draft = JSON.parse(raw);
+    } catch (e) {
+        clearDraft();
+        return;
+    }
+
+    if (!isDraftMeaningful(draft)) {
+        clearDraft();
+        return;
+    }
+
+    if (!confirm("이전에 작성하던 내용이 있습니다. 이어서 작성하시겠어요?")) {
+        clearDraft();
+        return;
+    }
+
+    applyDraftToForm(draft);
+}
+
+// 초안 데이터를 실제 폼(입력창 + 칩)에 복원
+function applyDraftToForm(draft) {
+    if (draft.date) document.getElementById('date').value = draft.date;
+    if (draft.work) document.getElementById('work').value = draft.work;
+    if (draft.materialExtra) document.getElementById('materialExtra').value = draft.materialExtra;
+    if (draft.expAmount) document.getElementById('expAmount').value = draft.expAmount;
+    if (draft.expDetail) document.getElementById('expDetail').value = draft.expDetail;
+
+    if (draft.expDetail || draft.expAmount) {
+        const body = document.getElementById('expense-section-body');
+        const arrow = document.getElementById('expense-toggle-arrow');
+        if (body) body.style.display = 'block';
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+    }
+
+    // 인원/차량/결제자 칩은 이미 렌더링되어 있으므로 바로 선택 처리
+    const applyChipSelection = (type, names) => {
+        (names || []).forEach(name => {
+            let found = false;
+            document.querySelectorAll(`#${type}-chips .chip`).forEach(c => {
+                if (c.innerText.trim() === name) { c.classList.add('active'); found = true; }
+            });
+            if (!found) addItem(type, name);
+        });
+    };
+    applyChipSelection('member', draft.members);
+    applyChipSelection('car', draft.cars);
+    applyChipSelection('payer', draft.payers);
+
+    // 선택 자재 복원
+    if (draft.selectedMaterials && Object.keys(draft.selectedMaterials).length > 0) {
+        selectedMaterials = draft.selectedMaterials;
+        renderSelectedMatChips();
+    }
+
+    // 거래처 칩은 클릭해야 현장 칩이 그려지므로, 클릭 후 살짝 대기했다가 현장을 선택
+    if (draft.client) {
+        setTimeout(() => {
+            document.querySelectorAll('#client-chips .chip').forEach(c => {
+                if (c.innerText.trim() === draft.client) c.click();
+            });
+            setTimeout(() => {
+                if (draft.site) {
+                    document.getElementById('siteSearch').value = draft.site;
+                    document.querySelectorAll('#site-chips .chip').forEach(c => {
+                        if (c.innerText.replace('[완료] ', '').trim() === draft.site) c.classList.add('active');
+                    });
+                    handleSiteSelected(draft.site);
+                }
+            }, 400);
+        }, 100);
+    } else if (draft.site) {
+        document.getElementById('siteSearch').value = draft.site;
+    }
+}
+
+// ==========================================
+// 📡 [2] 통신 불안정 시 재전송 큐
+// ==========================================
+const PENDING_QUEUE_KEY = 'titan_pending_queue';
+let isRetryingQueue = false;
+
+function getPendingQueue() {
+    try {
+        return JSON.parse(localStorage.getItem(PENDING_QUEUE_KEY) || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+function savePendingQueue(queue) {
+    localStorage.setItem(PENDING_QUEUE_KEY, JSON.stringify(queue));
+}
+
+// send() 실패 시 payload를 큐에 담아둠 (인터넷 복구되면 자동 재전송)
+function queuePendingLog(payload) {
+    const queue = getPendingQueue();
+    queue.push(payload);
+    savePendingQueue(queue);
+    updatePendingQueueBadge();
+}
+
+// 제출 버튼 근처에 대기중 건수 배지 표시
+function updatePendingQueueBadge() {
+    const badge = document.getElementById('pending-queue-badge');
+    if (!badge) return;
+    const count = getPendingQueue().length;
+    if (count > 0) {
+        badge.style.display = 'block';
+        badge.innerText = `⏳ 전송 대기중 ${count}건`;
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+// 큐에 쌓인 항목을 순서대로 재전송. 성공한 것만 큐에서 제거하고 실패한 것은 남겨둠
+async function retryPendingQueue() {
+    if (isRetryingQueue) return;
+    const queue = getPendingQueue();
+    if (queue.length === 0) return;
+
+    isRetryingQueue = true;
+    showSyncToast(`⏳ 밀려있던 일보 ${queue.length}건 재전송 중...`, true);
+
+    let successCount = 0;
+    const remaining = [];
+
+    for (const payload of queue) {
+        try {
+            const res = await fetch(GAS_URL, {
+                method: 'POST',
+                redirect: 'follow',
+                body: JSON.stringify(payload)
+            });
+            const text = await res.text();
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (e) {
+                throw new Error('응답 파싱 실패');
+            }
+            if (result === "SUCCESS" || result.result === "SUCCESS" || result.res === "SUCCESS" || result.status === "SUCCESS") {
+                successCount++;
+            } else {
+                remaining.push(payload);
+            }
+        } catch (e) {
+            remaining.push(payload); // 여전히 실패 → 큐에 남겨서 다음 기회에 재시도
+        }
+    }
+
+    savePendingQueue(remaining);
+    updatePendingQueueBadge();
+    isRetryingQueue = false;
+
+    if (successCount > 0) {
+        showSyncToast(`✅ 밀려있던 일보 ${successCount}건이 전송되었습니다`, false);
+        setTimeout(hideSyncToast, 3000);
+    } else {
+        hideSyncToast();
+    }
+}
+
+window.addEventListener('online', () => {
+    console.log('🌐 인터넷 연결 복구 감지, 대기중인 일보 재전송 시도');
+    retryPendingQueue();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    updatePendingQueueBadge();
+    retryPendingQueue();
+});
 
 // 📝 아이콘 클릭 시 데이터를 안전하게 해독해서 일보 작성으로 넘겨주는 다리 함수
 function copyScheduleToLogSafe(safeData) {
@@ -372,6 +614,7 @@ function renderClientChips(clients) {
             fetchSites(name); // 해당 거래처의 현장 목록 불러오기
             document.getElementById('siteSearch').value = "";
             handleSiteSelected(""); // 거래처가 바뀌면 이전 현장의 안내/기록 박스는 초기화
+            scheduleDraftSave();
         };
         box.appendChild(div);
     });
@@ -394,6 +637,7 @@ function renderSiteChips(sites = currentSites, term = "") {
                     document.querySelectorAll('#site-chips .chip').forEach(c => c.classList.remove('active'));
                     div.classList.add('active');
                     handleSiteSelected(s.name);
+                    scheduleDraftSave();
                 };
                 box.appendChild(div);
             }
@@ -426,6 +670,7 @@ function syncSiteSelection() {
     }
 
     handleSiteSelected(matched ? searchTerm : "");
+    scheduleDraftSave();
 }
 
 /**
@@ -634,6 +879,7 @@ function renderChips(type) {
             } else {
                 if (type === 'payer') document.querySelectorAll('#payer-chips .chip').forEach(c => c.classList.remove('active'));
                 div.classList.toggle('active');
+                scheduleDraftSave();
             }
         };
         box.appendChild(div);
@@ -745,8 +991,14 @@ async function send() {
     // --- 4. 데이터 포장 (Payload) ---
     const getSel = (id) => Array.from(document.querySelectorAll(`${id} .chip.active`)).map(c => c.innerText).join(', ');
     
+    // 📝 [3] 당일 제출 건 수정: editingRowId가 있으면 saveLog 대신 updateMyLog로 전송
+    const editingRowId = document.getElementById('editingRowId')?.value || "";
+    const submitterVal = document.getElementById('submitter').value;
+
     const payload = {
-        action: "saveLog",
+        action: editingRowId ? "updateMyLog" : "saveLog",
+        rowId: editingRowId || undefined,
+        submitter: submitterVal,
         data: {
             date: document.getElementById('date').value,
             client: client,
@@ -763,7 +1015,7 @@ async function send() {
             expDetail: document.getElementById('expDetail')?.value || "",
             expPayer: getSel('#payer-chips'),
             files: filesData, // ★ 압축된 사진 데이터
-            submitter: document.getElementById('submitter').value
+            submitter: submitterVal
         }
     };
 
@@ -786,7 +1038,8 @@ async function send() {
         }
 
         // --- 6. 성공 처리 ---
-        if (jsonResult === "SUCCESS" || jsonResult.result === "SUCCESS" || jsonResult.res === "SUCCESS") {
+        if (jsonResult === "SUCCESS" || jsonResult.result === "SUCCESS" || jsonResult.res === "SUCCESS" || jsonResult.status === "SUCCESS") {
+        clearDraft(); // 정상 저장됐으니 임시저장 초안은 더 이상 필요 없음
         alert("✅ 저장되었습니다!\n아래 [카톡 공유] 버튼을 눌러주세요.");
 
             // ★★★ 핵심: 버튼 잠금 해제 (이거 없으면 클릭 안됨) ★★★
@@ -849,7 +1102,9 @@ async function send() {
         }
 
 } catch (e) {
-        alert("🚨 실패: " + e.message);
+        // 💾 [1]의 초안(titan_draft_log)은 여기서 지우지 않고 유지 (재전송 실패 대비 이중 안전장치)
+        queuePendingLog(payload); // 📡 [2] 실패한 payload를 큐에 담아 인터넷 복구 시 자동 재전송
+        alert("🚨 전송 실패 - 인터넷 연결되면 자동으로 다시 시도됩니다");
         btn.innerText = "🚀 다시 시도";
         btn.disabled = false; // 에러나면 버튼 다시 풀어줘야 함
     }
@@ -932,6 +1187,13 @@ function resetFormOnlyInputs() {
     if (quickInput) quickInput.value = "";
     renderSelectedMatChips();
     renderFrequentMatChips();
+
+    // 💡 사용자가 명시적으로 폼을 비운 것이므로 임시저장 초안도 함께 삭제
+    clearDraft();
+    clearTimeout(draftSaveTimer);
+
+    // 📝 [3] 수정 모드였다면 해제 (다음 저장은 다시 신규 저장으로 동작)
+    exitMyLogEditMode();
 }
 
 const dinnerCheck = document.getElementById('dinner-yn');
@@ -1651,6 +1913,136 @@ function copyScheduleToLog(s) {
     window.scrollTo(0, 0);
 }
 
+// ==========================================
+// 📝 [3] 당일 제출 건 수정
+// ==========================================
+
+async function openMyTodayLogsModal() {
+    const modal = document.getElementById('my-logs-modal');
+    const body = document.getElementById('my-logs-modal-body');
+    if (!modal || !body) return;
+
+    modal.style.display = 'flex';
+    body.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">⏳ 불러오는 중...</div>';
+
+    const submitter = document.getElementById('submitter')?.value || localStorage.getItem('titan_user_name') || '';
+    const todayStr = formatDateYMD(new Date());
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getMyTodayLogs', data: { submitter, date: todayStr } })
+        });
+        const result = await res.json();
+        renderMyTodayLogsList(Array.isArray(result) ? result : []);
+    } catch (e) {
+        console.error('오늘 제출 일보 조회 실패', e);
+        body.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626;">⚠️ 불러오기 실패했습니다.</div>';
+    }
+}
+
+function closeMyTodayLogsModal() {
+    const modal = document.getElementById('my-logs-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function renderMyTodayLogsList(logs) {
+    const body = document.getElementById('my-logs-modal-body');
+    if (!body) return;
+
+    if (!logs || logs.length === 0) {
+        body.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">오늘 제출한 일보가 없습니다.</div>';
+        return;
+    }
+
+    window.__myTodayLogs = logs; // 인덱스로 다시 찾아올 수 있게 임시 보관
+    body.innerHTML = logs.map((log, idx) => `
+        <div onclick="selectMyTodayLog(${idx})" style="padding:12px; border:1px solid #e2e8f0; border-radius:10px; margin-bottom:10px; cursor:pointer; background:#f8fafc;">
+            <div style="font-weight:bold; color:#1e293b;">${log.site || '-'}</div>
+            <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">${log.client || '-'} · ${log.start || ''}~${log.end || ''}</div>
+            <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">작성시각: ${log.timestamp || '-'}</div>
+        </div>
+    `).join('');
+}
+
+function selectMyTodayLog(idx) {
+    const log = (window.__myTodayLogs || [])[idx];
+    if (!log) { alert('일보 정보를 불러오지 못했습니다.'); return; }
+    loadMyLogIntoForm(log);
+    closeMyTodayLogsModal();
+}
+
+// 선택한 일보를 폼에 채워 수정 모드로 전환 (copyScheduleToLog와 유사한 패턴)
+// 참고: 자재 항목 상세(선택 자재 칩)는 별도 시트에 기록되어 행 단위로 다시 불러올 수 없어,
+// 자재 관련해서는 '추가 메모(자유 입력)' 값만 복원됩니다. 필요하면 자재를 다시 선택해 추가하면 됩니다.
+function loadMyLogIntoForm(log) {
+    document.getElementById('editingRowId').value = log.rowId;
+
+    document.getElementById('date').value = log.date;
+    document.getElementById('work').value = log.work || "";
+    document.getElementById('start').value = log.start || "08:00";
+    document.getElementById('end').value = log.end || "17:00";
+    document.getElementById('dinner-yn').checked = (log.dinner === "O");
+    document.getElementById('materialExtra').value = (log.materials && log.materials !== "없음") ? log.materials : "";
+    document.getElementById('expAmount').value = log.expAmount || "";
+    document.getElementById('expDetail').value = log.expDetail || "";
+
+    if (log.expAmount || log.expDetail) {
+        const expBody = document.getElementById('expense-section-body');
+        const arrow = document.getElementById('expense-toggle-arrow');
+        if (expBody) expBody.style.display = 'block';
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+    }
+
+    // 거래처 칩 클릭 → 현장 칩 로드
+    document.querySelectorAll('#client-chips .chip').forEach(c => {
+        if (c.innerText.trim() === (log.client || '').trim()) c.click();
+    });
+
+    document.getElementById('siteSearch').value = log.site || "";
+    handleSiteSelected(log.site || "");
+
+    setTimeout(() => {
+        document.querySelectorAll('#site-chips .chip').forEach(c => {
+            if (c.innerText.replace('[완료] ', '').trim() === (log.site || '').trim()) c.classList.add('active');
+        });
+
+        const applySelection = (type, csvOrArray) => {
+            const arr = splitNames(csvOrArray);
+            const chips = document.querySelectorAll(`#${type}-chips .chip`);
+            chips.forEach(c => c.classList.remove('active'));
+            arr.forEach(name => {
+                let found = false;
+                chips.forEach(c => { if (c.innerText.trim() === name) { c.classList.add('active'); found = true; } });
+                if (!found) addItem(type, name);
+            });
+        };
+        applySelection('member', log.members);
+        applySelection('car', log.car);
+        applySelection('payer', log.expPayer);
+    }, 500);
+
+    // 수정 모드 UI 표시
+    const btn = document.getElementById('sBtn');
+    if (btn) {
+        btn.innerText = "✏️ 수정 내용 저장";
+        btn.onclick = send;
+    }
+
+    showPage('log-page');
+    window.scrollTo(0, 0);
+}
+
+// 수정 모드 해제: 다음 저장은 다시 신규 저장(saveLog)으로 동작
+function exitMyLogEditMode() {
+    const editEl = document.getElementById('editingRowId');
+    if (editEl) editEl.value = "";
+    const btn = document.getElementById('sBtn');
+    if (btn && btn.innerText.includes('수정 내용 저장')) {
+        btn.innerText = "🚀 저장 및 카톡 공유";
+    }
+}
+
 // 🗓️ 마감예정일 D-day 뱃지 (관리자 패널과 동일한 로직)
 function getDeadlineBadge(deadline, status) {
     if (!deadline) return '';
@@ -2147,6 +2539,7 @@ function addToSelectedMaterials(item) {
         selectedMaterials[item.uid] = { ...item, qty: 1 };
     }
     renderSelectedMatChips();
+    scheduleDraftSave();
 
     // 정밀 선택 테이블 UI가 제거되었으므로 이 코드는 더 이상 필요 없음
 // (빠른 검색 UI로 통합됨)
@@ -2220,6 +2613,7 @@ function setSelectedQtyDirect(uid, val) {
         selectedMaterials[uid].qty = numVal;
     }
     renderSelectedMatChips();
+    scheduleDraftSave();
 }
 
 // 단가 직접 입력 처리 (선택사항)
@@ -2234,6 +2628,7 @@ function setSelectedPriceDirect(uid, val) {
         selectedMaterials[uid].price = numVal;
     }
     renderSelectedMatChips();
+    scheduleDraftSave();
 }
 
 function bumpSelectedQty(uid, delta) {
@@ -2241,6 +2636,7 @@ function bumpSelectedQty(uid, delta) {
     selectedMaterials[uid].qty = Math.max(0, (selectedMaterials[uid].qty || 0) + delta);
     if (selectedMaterials[uid].qty === 0) delete selectedMaterials[uid];
     renderSelectedMatChips();
+    scheduleDraftSave();
 
     const qtyInput = document.getElementById(`qty-${uid}`);
     if (qtyInput) qtyInput.value = selectedMaterials[uid] ? selectedMaterials[uid].qty : 0;
@@ -2249,6 +2645,7 @@ function bumpSelectedQty(uid, delta) {
 function removeSelectedMaterial(uid) {
     delete selectedMaterials[uid];
     renderSelectedMatChips();
+    scheduleDraftSave();
 
     const qtyInput = document.getElementById(`qty-${uid}`);
     if (qtyInput) qtyInput.value = 0;
