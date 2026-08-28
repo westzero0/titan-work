@@ -201,18 +201,6 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
             
             <input type="text" id="siteSearch" list="site-options" placeholder="현장 검색 또는 직접 입력" oninput="syncSiteSelection()" style="margin-top: 0;">
             <datalist id="site-options"></datalist>
-            <div id="site-note-box" style="display:none; background:#fef3c7; color:#92400e; border:1px solid #fde68a; border-radius:10px; padding:10px 12px; font-size:0.85rem; line-height:1.5; margin:8px 0;"></div>
-            <div id="site-status-log-section" style="display:none; margin:8px 0; background:#f1f5f9; border-radius:10px; padding:12px; border:1px solid #e2e8f0;">
-                <div style="font-weight:bold; color:#334155; font-size:0.9rem; margin-bottom:8px;">📋 현장 현황 기록</div>
-                <div id="site-status-log-list" style="display:flex; flex-direction:column; gap:8px;"></div>
-                <div id="site-status-log-more" style="display:none; text-align:center; margin-top:8px;">
-                    <button type="button" onclick="showMoreSiteStatusLogs()" style="width:auto; margin:0; padding:6px 14px; background:white; border:1px solid #cbd5e1; border-radius:8px; color:#475569; font-size:0.8rem; cursor:pointer;">더보기</button>
-                </div>
-                <div style="display:flex; gap:6px; margin-top:10px;">
-                    <input type="text" id="site-status-log-input" placeholder="현장 상황을 남겨주세요 (예: 자재반입구 공사중)" style="flex:1; margin:0; padding:10px; font-size:0.85rem;">
-                    <button type="button" id="site-status-log-submit-btn" onclick="submitSiteStatusLog()" style="width:auto; margin:0; padding:0 16px; background:#334155; color:white; border:none; border-radius:8px; font-weight:bold; font-size:0.85rem; cursor:pointer;">등록</button>
-                </div>
-            </div>
             <div id="site-chips" class="chip-container"></div>
 
             <div class="card">
@@ -285,6 +273,18 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
                 <input type="text" id="expDetail" placeholder="상세 내용">
                 <label>📸 영수증 첨부</label>
                 <input type="file" id="receipt" multiple accept="image/*">
+            </div>
+
+            <div id="site-status-log-section" style="display:none; margin-bottom:16px; background:#f1f5f9; border-radius:12px; padding:14px; border:1px solid #e2e8f0;">
+                <div style="font-weight:bold; color:#334155; font-size:0.9rem; margin-bottom:8px;">📋 현장 현황 기록</div>
+                <div id="site-status-log-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+                <div id="site-status-log-more" style="display:none; text-align:center; margin-top:8px;">
+                    <button type="button" onclick="showMoreSiteStatusLogs()" style="width:auto; margin:0; padding:6px 14px; background:white; border:1px solid #cbd5e1; border-radius:8px; color:#475569; font-size:0.8rem; cursor:pointer;">더보기</button>
+                </div>
+                <div style="display:flex; gap:6px; margin-top:10px;">
+                    <input type="text" id="site-status-log-input" placeholder="현장 상황을 남겨주세요 (예: 자재반입구 공사중)" style="flex:1; margin:0; padding:10px; font-size:0.85rem;">
+                    <button type="button" id="site-status-log-submit-btn" onclick="submitSiteStatusLog()" style="width:auto; margin:0; padding:0 16px; background:#334155; color:white; border:none; border-radius:8px; font-weight:bold; font-size:0.85rem; cursor:pointer;">등록</button>
+                </div>
             </div>
 
             <button id="sBtn" class="submit-btn" onclick="send()">🚀 저장 및 카톡 공유</button>

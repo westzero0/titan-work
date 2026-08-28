@@ -430,25 +430,10 @@ function syncSiteSelection() {
 
 /**
  * 💡 현장이 선택(칩 클릭 / 검색어 정확 일치 / 일정에서 넘어옴)됐을 때
- * 현장 안내(특이사항) 박스와 현장 현황 기록 섹션을 함께 갱신하는 공용 함수
+ * 현장 현황 기록 섹션을 갱신하는 공용 함수
  */
 function handleSiteSelected(siteName) {
-    updateSiteNoteBox(siteName);
     updateSiteStatusLogSection(siteName);
-}
-
-function updateSiteNoteBox(siteName) {
-    const box = document.getElementById('site-note-box');
-    if (!box) return;
-    const matched = (currentSites || []).find(s => s.name === siteName);
-    const note = matched ? (matched.note || matched.특이사항 || matched.비고 || "") : "";
-    if (note) {
-        box.innerHTML = `📢 <b>현장 안내:</b> ${note}`;
-        box.style.display = 'block';
-    } else {
-        box.innerHTML = "";
-        box.style.display = 'none';
-    }
 }
 
 function updateSiteStatusLogSection(siteName) {
