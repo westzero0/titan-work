@@ -1035,14 +1035,17 @@ function renderView() {
 function showPage(id) {
     document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
     document.getElementById(id).style.display = 'block';
-    
+
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    if(id === 'log-page') document.getElementById('tab-log').classList.add('active');
-    else {
+    if (id === 'log-page') {
+        document.getElementById('tab-log').classList.add('active');
+    } else if (id === 'sites-page') {
+        document.getElementById('tab-sites').classList.add('active');
+        loadActiveSitesProgressOverview();
+    } else {
         document.getElementById('tab-sched').classList.add('active');
         if(allSchedules.length === 0) loadSchedules();
         else renderView();
-        loadActiveSitesProgressOverview();
     }
 }
 
@@ -1622,25 +1625,40 @@ async function loadActiveSitesProgressOverview() {
     renderActiveSitesProgressOverview();
 }
 
+// 💡 거래처 마스터 캐시에서 현장의 주소/특이사항을 찾아옴 (renderCards의 조회 로직과 동일)
+function getSiteMasterInfo(client, site) {
+    const masterData = window.globalTitanData || JSON.parse(localStorage.getItem('titan_full_data_cache') || "{}");
+    const clientKey = Object.keys(masterData).find(k => k.trim() === client || (client || "").includes(k.trim()));
+    if (!clientKey || !masterData[clientKey]) return { address: "", note: "" };
+
+    const found = masterData[clientKey].find(item => (item.name || "").toString().trim() === site);
+    if (!found) return { address: "", note: "" };
+
+    const addrKey = Object.keys(found).find(k => k.trim().includes('주소') || k.toLowerCase().includes('addr'));
+    return {
+        address: addrKey ? (found[addrKey] || "") : "",
+        note: found.note || found.특이사항 || found.비고 || ""
+    };
+}
+
 function renderActiveSitesProgressOverview() {
     const titleEl = document.getElementById('active-sites-progress-title');
     const badgesEl = document.getElementById('active-sites-progress-badges');
-    const scrollEl = document.getElementById('active-sites-progress-scroll');
     const cardsEl = document.getElementById('active-sites-progress-cards');
     const emptyEl = document.getElementById('active-sites-progress-empty');
-    if (!titleEl || !badgesEl || !scrollEl || !cardsEl || !emptyEl) return;
+    if (!titleEl || !badgesEl || !cardsEl || !emptyEl) return;
 
     const data = activeSitesProgressData || [];
     titleEl.innerText = `🏗️ 진행중인 현장 (${data.length}개)`;
 
     if (data.length === 0) {
         badgesEl.style.display = 'none';
-        scrollEl.style.display = 'none';
+        cardsEl.style.display = 'none';
         emptyEl.style.display = 'block';
         return;
     }
     badgesEl.style.display = 'flex';
-    scrollEl.style.display = 'block';
+    cardsEl.style.display = 'flex';
     emptyEl.style.display = 'none';
 
     const isNum = (v) => v !== null && v !== undefined && !isNaN(v);
@@ -1666,22 +1684,25 @@ function renderActiveSitesProgressOverview() {
             let bg = '#f1f5f9', color = '#64748b', label = `D-${dr}`;
             if (dr < 0) { bg = '#fef2f2'; color = '#dc2626'; label = `D+${-dr} 지연`; }
             else if (dr <= 3) { bg = '#fff7ed'; color = '#c2410c'; label = (dr === 0 ? 'D-DAY' : `D-${dr}`); }
-            ddayHtml = `<span style="background:${bg}; color:${color}; padding:3px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; white-space:nowrap;">${label}</span>`;
+            ddayHtml = `<span style="background:${bg}; color:${color}; padding:4px 10px; border-radius:6px; font-size:0.78rem; font-weight:700; white-space:nowrap;">${label}</span>`;
         }
 
+        const { address, note } = getSiteMasterInfo(item.client, item.site);
         const safeClient = String(item.client).replace(/'/g, "\\'");
         const safeSite = String(item.site).replace(/'/g, "\\'");
 
         return `
         <div onclick="handleActiveSiteCardClick('${safeClient}', '${safeSite}')"
-             style="flex:0 0 220px; background:white; border-radius:12px; padding:12px; box-shadow:0 2px 6px rgba(0,0,0,0.08); border:1px solid #e2e8f0; cursor:pointer;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
+             style="background:white; border-radius:14px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); border:1px solid #e2e8f0; cursor:pointer; margin: 0 5px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px;">
                 <div style="min-width:0;">
-                    <div style="font-weight:700; font-size:0.9rem; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.site}</div>
-                    <div style="font-size:0.72rem; color:#94a3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.client}</div>
+                    <div style="font-weight:800; font-size:1.05rem; color:#1e293b;">${item.site}</div>
+                    <div style="font-size:0.8rem; color:#94a3b8; margin-top:2px;">🏢 ${item.client}</div>
                 </div>
                 ${ddayHtml}
             </div>
+            ${address ? `<div onclick="event.stopPropagation(); copyAddr('${address.replace(/'/g, "\\'")}')" style="margin-top:8px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; line-height:1.4;">📍 ${address}</div>` : ''}
+            ${note ? `<div style="background:#fef3c7; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:8px; line-height:1.5;">📢 ${note}</div>` : ''}
         </div>`;
     }).join('');
 }
