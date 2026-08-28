@@ -254,6 +254,9 @@ let delMode = { member: false, car: false, material: false, payer: false };
 let siteStatusLogs = [];
 let siteStatusLogExpanded = false;
 let activeSitesProgressData = [];
+let expandedSiteKey = null;
+let expandedSiteLogs = [];
+let expandedSiteLogsShowAll = false;
 
 // 1. [데이터 초기화]
 const savedLists = localStorage.getItem('titan_custom_lists');
@@ -1690,21 +1693,124 @@ function renderActiveSitesProgressOverview() {
         const { address, note } = getSiteMasterInfo(item.client, item.site);
         const safeClient = String(item.client).replace(/'/g, "\\'");
         const safeSite = String(item.site).replace(/'/g, "\\'");
+        const cardKey = item.client + '|||' + item.site;
+        const isExpanded = (expandedSiteKey === cardKey);
 
         return `
-        <div onclick="handleActiveSiteCardClick('${safeClient}', '${safeSite}')"
-             style="background:white; border-radius:14px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); border:1px solid #e2e8f0; cursor:pointer; margin: 0 5px;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px;">
-                <div style="min-width:0;">
-                    <div style="font-weight:800; font-size:1.05rem; color:#1e293b;">${item.site}</div>
-                    <div style="font-size:0.8rem; color:#94a3b8; margin-top:2px;">🏢 ${item.client}</div>
+        <div style="background:white; border-radius:14px; box-shadow:0 2px 8px rgba(0,0,0,0.06); border:1px solid #e2e8f0; margin: 0 5px; overflow:hidden;">
+            <div onclick="toggleSiteProgressCard('${safeClient}', '${safeSite}')" style="padding:16px; cursor:pointer;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px;">
+                    <div style="min-width:0;">
+                        <div style="font-weight:800; font-size:1.05rem; color:#1e293b;">${item.site}</div>
+                        <div style="font-size:0.8rem; color:#94a3b8; margin-top:2px;">🏢 ${item.client}</div>
+                    </div>
+                    ${ddayHtml}
                 </div>
-                ${ddayHtml}
+                ${address ? `<div onclick="event.stopPropagation(); copyAddr('${address.replace(/'/g, "\\'")}')" style="margin-top:8px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; line-height:1.4;">📍 ${address}</div>` : ''}
+                ${note ? `<div style="background:#fef3c7; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:8px; line-height:1.5;">📢 ${note}</div>` : ''}
+                <div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px dashed #e2e8f0; font-size:0.78rem; color:#94a3b8; font-weight:600;">${isExpanded ? '▲ 접기' : '📋 현황 기록 보기 / 남기기 ▼'}</div>
             </div>
-            ${address ? `<div onclick="event.stopPropagation(); copyAddr('${address.replace(/'/g, "\\'")}')" style="margin-top:8px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; line-height:1.4;">📍 ${address}</div>` : ''}
-            ${note ? `<div style="background:#fef3c7; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:8px; line-height:1.5;">📢 ${note}</div>` : ''}
+            ${isExpanded ? `
+            <div style="border-top:1px solid #f1f5f9; padding:14px 16px; background:#f8fafc;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <div style="font-weight:bold; color:#334155; font-size:0.85rem;">📋 현장 현황 기록</div>
+                    <span onclick="event.stopPropagation(); handleActiveSiteCardClick('${safeClient}', '${safeSite}')" style="font-size:0.75rem; color:#2563eb; cursor:pointer; font-weight:600;">📝 일보 작성하기 →</span>
+                </div>
+                <div id="progress-log-list" style="display:flex; flex-direction:column; gap:8px;">
+                    <div style="font-size:0.8rem; color:#94a3b8; text-align:center; padding:6px;">⏳ 불러오는 중...</div>
+                </div>
+                <div id="progress-log-more" style="display:none; text-align:center; margin-top:8px;">
+                    <button type="button" onclick="event.stopPropagation(); showMoreExpandedSiteLog()" style="width:auto; margin:0; padding:6px 14px; background:white; border:1px solid #cbd5e1; border-radius:8px; color:#475569; font-size:0.8rem; cursor:pointer;">더보기</button>
+                </div>
+                <div onclick="event.stopPropagation();" style="display:flex; gap:6px; margin-top:10px;">
+                    <input type="text" id="progress-log-input" placeholder="현장 상황을 남겨주세요 (예: 자재반입구 공사중)" style="flex:1; margin:0; padding:9px; font-size:0.82rem;">
+                    <button type="button" id="progress-log-submit-btn" onclick="submitExpandedSiteLog('${safeClient}', '${safeSite}')" style="width:auto; margin:0; padding:0 14px; background:#334155; color:white; border:none; border-radius:8px; font-weight:bold; font-size:0.82rem; cursor:pointer;">등록</button>
+                </div>
+            </div>` : ''}
         </div>`;
     }).join('');
+}
+
+// 💡 '현장현황' 탭 카드를 펼쳐서 근무자가 남긴 현황 기록을 보고/남기는 기능 (아코디언 - 한 번에 하나만 펼쳐짐)
+function toggleSiteProgressCard(client, site) {
+    const key = client + '|||' + site;
+    expandedSiteKey = (expandedSiteKey === key) ? null : key;
+    expandedSiteLogs = [];
+    expandedSiteLogsShowAll = false;
+    renderActiveSitesProgressOverview();
+
+    if (expandedSiteKey === key) loadExpandedSiteLog(client, site);
+}
+
+async function loadExpandedSiteLog(client, site) {
+    const key = client + '|||' + site;
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getSiteStatusLog', data: { client, site } })
+        });
+        const result = await res.json();
+        if (expandedSiteKey !== key) return; // 로딩 중 카드가 접히거나 다른 카드로 전환됨
+        expandedSiteLogs = Array.isArray(result) ? result : (result.data || []);
+    } catch (e) {
+        console.error('현장 현황 기록 로드 실패', e);
+        if (expandedSiteKey !== key) return;
+        expandedSiteLogs = [];
+    }
+    renderExpandedSiteLogList();
+}
+
+function renderExpandedSiteLogList() {
+    const listEl = document.getElementById('progress-log-list');
+    const moreEl = document.getElementById('progress-log-more');
+    if (!listEl || !moreEl) return; // 카드가 이미 접힘
+
+    if (!expandedSiteLogs || expandedSiteLogs.length === 0) {
+        listEl.innerHTML = '<div style="font-size:0.8rem; color:#94a3b8; text-align:center; padding:6px;">아직 등록된 현황 기록이 없습니다</div>';
+        moreEl.style.display = 'none';
+        return;
+    }
+
+    const shown = expandedSiteLogsShowAll ? expandedSiteLogs : expandedSiteLogs.slice(0, 3);
+    listEl.innerHTML = shown.map(l => `
+        <div style="font-size:0.85rem; line-height:1.5;">
+            <span style="color:#94a3b8; font-size:0.75rem;">${formatShortDateLabel(l.date)} (${l.submitter || '-'})</span>
+            <span style="display:block; color:#334155; font-weight:600;">${l.content}</span>
+        </div>`).join('');
+    moreEl.style.display = (!expandedSiteLogsShowAll && expandedSiteLogs.length > 3) ? 'block' : 'none';
+}
+
+function showMoreExpandedSiteLog() {
+    expandedSiteLogsShowAll = true;
+    renderExpandedSiteLogList();
+}
+
+async function submitExpandedSiteLog(client, site) {
+    const input = document.getElementById('progress-log-input');
+    const content = input.value.trim();
+    if (!content) { alert("⚠️ 내용을 입력해주세요."); return; }
+
+    const submitter = document.getElementById('submitter').value || localStorage.getItem('titan_user_name') || '';
+    const btn = document.getElementById('progress-log-submit-btn');
+    if (btn) btn.disabled = true;
+
+    // 로컬에 즉시 반영 (서버 재조회 없이 바로 확인)
+    expandedSiteLogs.unshift({ date: formatDateYMD(new Date()), submitter, content });
+    expandedSiteLogsShowAll = true;
+    renderExpandedSiteLogList();
+    input.value = "";
+
+    try {
+        await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'addSiteStatusLog', data: { client, site, submitter, content } })
+        });
+        loadExpandedSiteLog(client, site); // 백그라운드 재동기화
+    } catch (e) {
+        console.error('현장 현황 기록 등록 실패', e);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
 
 function handleActiveSiteCardClick(client, site) {
