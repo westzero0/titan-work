@@ -251,6 +251,9 @@ let showPast = false;
 let currentView = 'list';
 let viewDate = new Date();
 let delMode = { member: false, car: false, material: false, payer: false };
+let siteStatusLogs = [];
+let siteStatusLogExpanded = false;
+let activeSitesProgressData = [];
 
 // 1. [데이터 초기화]
 const savedLists = localStorage.getItem('titan_custom_lists');
@@ -363,6 +366,8 @@ function renderClientChips(clients) {
             document.querySelectorAll('#client-chips .chip').forEach(c => c.classList.remove('active'));
             div.classList.add('active');
             fetchSites(name); // 해당 거래처의 현장 목록 불러오기
+            document.getElementById('siteSearch').value = "";
+            handleSiteSelected(""); // 거래처가 바뀌면 이전 현장의 안내/기록 박스는 초기화
         };
         box.appendChild(div);
     });
@@ -384,6 +389,7 @@ function renderSiteChips(sites = currentSites, term = "") {
                     document.getElementById('siteSearch').value = s.name;
                     document.querySelectorAll('#site-chips .chip').forEach(c => c.classList.remove('active'));
                     div.classList.add('active');
+                    handleSiteSelected(s.name);
                 };
                 box.appendChild(div);
             }
@@ -398,19 +404,151 @@ function renderSiteChips(sites = currentSites, term = "") {
 function syncSiteSelection() {
     const searchTerm = document.getElementById('siteSearch').value.trim();
     const chips = document.querySelectorAll('#site-chips .chip');
-    
+
     // 모든 칩의 활성화 상태를 일단 해제
     chips.forEach(chip => chip.classList.remove('active'));
 
     // 입력한 글자와 정확히 일치하는 칩이 있다면 파란색(active)으로 변경
+    let matched = false;
     if (searchTerm !== "") {
         chips.forEach(chip => {
             // [완료] 표시가 붙은 경우도 고려하여 체크
             const chipName = chip.innerText.replace('[완료] ', '').trim();
             if (chipName === searchTerm) {
                 chip.classList.add('active');
+                matched = true;
             }
         });
+    }
+
+    handleSiteSelected(matched ? searchTerm : "");
+}
+
+/**
+ * 💡 현장이 선택(칩 클릭 / 검색어 정확 일치 / 일정에서 넘어옴)됐을 때
+ * 현장 안내(특이사항) 박스와 현장 현황 기록 섹션을 함께 갱신하는 공용 함수
+ */
+function handleSiteSelected(siteName) {
+    updateSiteNoteBox(siteName);
+    updateSiteStatusLogSection(siteName);
+}
+
+function updateSiteNoteBox(siteName) {
+    const box = document.getElementById('site-note-box');
+    if (!box) return;
+    const matched = (currentSites || []).find(s => s.name === siteName);
+    const note = matched ? (matched.note || matched.특이사항 || matched.비고 || "") : "";
+    if (note) {
+        box.innerHTML = `📢 <b>현장 안내:</b> ${note}`;
+        box.style.display = 'block';
+    } else {
+        box.innerHTML = "";
+        box.style.display = 'none';
+    }
+}
+
+function updateSiteStatusLogSection(siteName) {
+    const section = document.getElementById('site-status-log-section');
+    if (!section) return;
+    const client = document.querySelector('#client-chips .chip.active')?.innerText;
+
+    if (!client || !siteName) {
+        section.style.display = 'none';
+        siteStatusLogs = [];
+        siteStatusLogExpanded = false;
+        return;
+    }
+
+    section.style.display = 'block';
+    loadSiteStatusLog(client, siteName);
+}
+
+async function loadSiteStatusLog(client, site) {
+    siteStatusLogExpanded = false;
+    const listEl = document.getElementById('site-status-log-list');
+    const moreEl = document.getElementById('site-status-log-more');
+    if (listEl) listEl.innerHTML = '<div style="font-size:0.8rem; color:#94a3b8; text-align:center; padding:6px;">⏳ 불러오는 중...</div>';
+    if (moreEl) moreEl.style.display = 'none';
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getSiteStatusLog', data: { client, site } })
+        });
+        const result = await res.json();
+        siteStatusLogs = Array.isArray(result) ? result : (result.data || []);
+    } catch (e) {
+        console.error('현장 현황 기록 로드 실패', e);
+        if (listEl) listEl.innerHTML = '<div style="font-size:0.8rem; color:#dc2626; text-align:center; padding:6px;">⚠️ 불러오기 실패</div>';
+        return;
+    }
+    renderSiteStatusLogs();
+}
+
+function renderSiteStatusLogs() {
+    const listEl = document.getElementById('site-status-log-list');
+    const moreEl = document.getElementById('site-status-log-more');
+    if (!listEl || !moreEl) return;
+
+    if (!siteStatusLogs || siteStatusLogs.length === 0) {
+        listEl.innerHTML = '<div style="font-size:0.8rem; color:#94a3b8; text-align:center; padding:6px;">아직 등록된 현황 기록이 없습니다</div>';
+        moreEl.style.display = 'none';
+        return;
+    }
+
+    const shown = siteStatusLogExpanded ? siteStatusLogs : siteStatusLogs.slice(0, 3);
+    listEl.innerHTML = shown.map(l => {
+        const shortDate = formatShortDateLabel(l.date);
+        return `<div style="font-size:0.85rem; line-height:1.5;">
+            <span style="color:#94a3b8; font-size:0.75rem;">${shortDate} (${l.submitter || '-'})</span>
+            <span style="display:block; color:#334155; font-weight:600;">${l.content}</span>
+        </div>`;
+    }).join('');
+
+    moreEl.style.display = (!siteStatusLogExpanded && siteStatusLogs.length > 3) ? 'block' : 'none';
+}
+
+function showMoreSiteStatusLogs() {
+    siteStatusLogExpanded = true;
+    renderSiteStatusLogs();
+}
+
+function formatShortDateLabel(dateStr) {
+    const d = new Date(String(dateStr).replace(/\./g, '-'));
+    if (isNaN(d.getTime())) return dateStr;
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+async function submitSiteStatusLog() {
+    const input = document.getElementById('site-status-log-input');
+    const content = input.value.trim();
+    if (!content) { alert("⚠️ 내용을 입력해주세요."); return; }
+
+    const client = document.querySelector('#client-chips .chip.active')?.innerText;
+    let site = document.querySelector('#site-chips .chip.active')?.innerText;
+    if (!site) site = document.getElementById('siteSearch').value.trim();
+    if (!client || !site) { alert("⚠️ 거래처와 현장을 먼저 선택해주세요."); return; }
+
+    const submitter = document.getElementById('submitter').value || localStorage.getItem('titan_user_name') || '';
+    const btn = document.getElementById('site-status-log-submit-btn');
+    btn.disabled = true;
+
+    // 로컬에 즉시 반영 (서버 재조회 없이 바로 확인)
+    siteStatusLogs.unshift({ date: formatDateYMD(new Date()), submitter, content });
+    siteStatusLogExpanded = true;
+    renderSiteStatusLogs();
+    input.value = "";
+
+    try {
+        await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'addSiteStatusLog', data: { client, site, submitter, content } })
+        });
+        loadSiteStatusLog(client, site); // 백그라운드 재동기화
+    } catch (e) {
+        console.error('현장 현황 기록 등록 실패', e);
+    } finally {
+        btn.disabled = false;
     }
 }
 
@@ -715,6 +853,9 @@ function resetFormOnlyInputs() {
     // 💡 추가: 신규 자재 데이터 초기화
     selectedMaterials = {};
 
+    // 💡 추가: 현장 안내/현황 기록 박스 초기화
+    handleSiteSelected("");
+
     // 💡 추가: 빠른 검색 입력창 & 선택 칩 초기화
     const quickInput = document.getElementById('quick-mat-search');
     if (quickInput) quickInput.value = "";
@@ -901,6 +1042,7 @@ function showPage(id) {
         document.getElementById('tab-sched').classList.add('active');
         if(allSchedules.length === 0) loadSchedules();
         else renderView();
+        loadActiveSitesProgressOverview();
     }
 }
 
@@ -1369,9 +1511,13 @@ function copyScheduleToLog(s) {
 
     // 2. 거래처 칩 강제 클릭 (현장 칩을 불러오기 위함)
     const clientChips = document.querySelectorAll('#client-chips .chip');
-    clientChips.forEach(c => { 
-        if(c.innerText.trim() === s.client.trim()) c.click(); 
+    clientChips.forEach(c => {
+        if(c.innerText.trim() === s.client.trim()) c.click();
     });
+
+    // 💡 거래처 칩 클릭 시 검색창이 초기화되므로 현장명을 다시 채워주고, 안내(특이사항)/현황 기록 박스도 함께 채움
+    document.getElementById('siteSearch').value = s.site;
+    handleSiteSelected(s.site);
 
     // 3. 주간/야간 시간 자동 세팅
     if(s.shift === '야' || s.shift === '야간') {
@@ -1452,6 +1598,111 @@ function getDeadlineBadge(deadline, status) {
         : 'background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;';
 
     return `<span style="display:inline-block; margin-top:6px; padding:3px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold; ${style}">🗓️ ${label}</span>`;
+}
+
+// ==========================================
+// 🏗️ 진행중인 현장 대시보드 ('일정확인' 탭 상단, 항상 노출)
+// ==========================================
+
+async function loadActiveSitesProgressOverview() {
+    const cardsEl = document.getElementById('active-sites-progress-cards');
+    if (cardsEl) cardsEl.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; padding:20px 10px; white-space:nowrap;">⏳ 불러오는 중...</div>';
+
+    try {
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getActiveSitesProgressOverview' })
+        });
+        const result = await res.json();
+        activeSitesProgressData = Array.isArray(result) ? result : (result.data || []);
+    } catch (e) {
+        console.error('진행중인 현장 로드 실패', e);
+        activeSitesProgressData = [];
+    }
+    renderActiveSitesProgressOverview();
+}
+
+function renderActiveSitesProgressOverview() {
+    const titleEl = document.getElementById('active-sites-progress-title');
+    const badgesEl = document.getElementById('active-sites-progress-badges');
+    const scrollEl = document.getElementById('active-sites-progress-scroll');
+    const cardsEl = document.getElementById('active-sites-progress-cards');
+    const emptyEl = document.getElementById('active-sites-progress-empty');
+    if (!titleEl || !badgesEl || !scrollEl || !cardsEl || !emptyEl) return;
+
+    const data = activeSitesProgressData || [];
+    titleEl.innerText = `🏗️ 진행중인 현장 (${data.length}개)`;
+
+    if (data.length === 0) {
+        badgesEl.style.display = 'none';
+        scrollEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+        return;
+    }
+    badgesEl.style.display = 'flex';
+    scrollEl.style.display = 'block';
+    emptyEl.style.display = 'none';
+
+    const isNum = (v) => v !== null && v !== undefined && !isNaN(v);
+    const urgentCount = data.filter(d => isNum(d.daysRemaining) && d.daysRemaining >= 0 && d.daysRemaining <= 3).length;
+
+    let badgesHtml = `<span style="background:#eff6ff; color:#2563eb; padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600;">전체 <b style="font-size:0.95rem;">${data.length}</b>개</span>`;
+    if (urgentCount > 0) {
+        badgesHtml += `<span style="background:#fef2f2; color:#dc2626; padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600;">🚨 마감임박 <b style="font-size:0.95rem;">${urgentCount}</b>개</span>`;
+    }
+    badgesEl.innerHTML = badgesHtml;
+
+    // 마감임박 순 정렬 (deadline 없는 현장은 맨 뒤)
+    const sorted = [...data].sort((a, b) => {
+        const da = isNum(a.daysRemaining) ? a.daysRemaining : Infinity;
+        const db = isNum(b.daysRemaining) ? b.daysRemaining : Infinity;
+        return da - db;
+    });
+
+    cardsEl.innerHTML = sorted.map(item => {
+        let ddayHtml = '';
+        if (item.deadline && isNum(item.daysRemaining)) {
+            const dr = item.daysRemaining;
+            let bg = '#f1f5f9', color = '#64748b', label = `D-${dr}`;
+            if (dr < 0) { bg = '#fef2f2'; color = '#dc2626'; label = `D+${-dr} 지연`; }
+            else if (dr <= 3) { bg = '#fff7ed'; color = '#c2410c'; label = (dr === 0 ? 'D-DAY' : `D-${dr}`); }
+            ddayHtml = `<span style="background:${bg}; color:${color}; padding:3px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; white-space:nowrap;">${label}</span>`;
+        }
+
+        const safeClient = String(item.client).replace(/'/g, "\\'");
+        const safeSite = String(item.site).replace(/'/g, "\\'");
+
+        return `
+        <div onclick="handleActiveSiteCardClick('${safeClient}', '${safeSite}')"
+             style="flex:0 0 220px; background:white; border-radius:12px; padding:12px; box-shadow:0 2px 6px rgba(0,0,0,0.08); border:1px solid #e2e8f0; cursor:pointer;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
+                <div style="min-width:0;">
+                    <div style="font-weight:700; font-size:0.9rem; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.site}</div>
+                    <div style="font-size:0.72rem; color:#94a3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.client}</div>
+                </div>
+                ${ddayHtml}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function handleActiveSiteCardClick(client, site) {
+    showPage('log-page');
+    window.scrollTo(0, 0);
+
+    setTimeout(() => {
+        const clientChips = document.querySelectorAll('#client-chips .chip');
+        clientChips.forEach(c => { if (c.innerText.trim() === client) c.click(); });
+
+        setTimeout(() => {
+            document.getElementById('siteSearch').value = site;
+            const siteChips = document.querySelectorAll('#site-chips .chip');
+            siteChips.forEach(c => {
+                if (c.innerText.replace('[완료] ', '').trim() === site) c.classList.add('active');
+            });
+            handleSiteSelected(site);
+        }, 300);
+    }, 100);
 }
 
 // ==========================================
