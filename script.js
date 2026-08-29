@@ -2292,7 +2292,7 @@ function buildSiteCardHtml(item) {
                 <div style="font-size:0.72rem; color:#94a3b8; font-weight:700; margin-bottom:6px;">🛠️ 최근 작업 기록</div>
                 ${item.recentWorkLogs.map(log => `
                 <div style="font-size:0.82rem; color:#334155; line-height:1.5; margin-bottom:4px;">
-                    <span style="color:#94a3b8;">${formatShortDateLabel(log.date)}</span> ${log.work || ''}${log.submitter ? `<span style="color:#94a3b8; font-size:0.72rem;"> · ${log.submitter}</span>` : ''}
+                    <span style="color:#94a3b8;">${formatShortDateLabel(log.date)}</span> ${log.work || ''}${log.members ? `<span style="color:#94a3b8; font-size:0.72rem;"> · ${log.members}</span>` : ''}
                 </div>`).join('')}
             </div>` : ''}
             <div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px dashed #e2e8f0; font-size:0.78rem; color:#94a3b8; font-weight:600;">${isExpanded ? '▲ 접기' : '📋 현황 기록 보기 / 남기기 ▼'}</div>
