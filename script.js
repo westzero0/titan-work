@@ -2287,6 +2287,14 @@ function buildSiteCardHtml(item) {
             <div style="font-size:0.8rem; color:#94a3b8;">🏢 ${item.client}</div>
             ${address ? `<div onclick="event.stopPropagation(); copyAddr('${address.replace(/'/g, "\\'")}')" style="margin-top:8px; color:#2563eb; font-size:0.85rem; cursor:pointer; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #dbeafe; font-weight:500; line-height:1.4;">📍 ${address}</div>` : ''}
             ${note ? `<div style="background:#fef3c7; padding:8px 12px; border-radius:8px; font-size:0.85rem; color:#92400e; border:1px solid #fde68a; margin-top:8px; line-height:1.5;">📢 ${note}</div>` : ''}
+            ${(item.recentWorkLogs && item.recentWorkLogs.length > 0) ? `
+            <div style="margin-top:8px; padding:10px 12px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="font-size:0.72rem; color:#94a3b8; font-weight:700; margin-bottom:6px;">🛠️ 최근 작업 기록</div>
+                ${item.recentWorkLogs.map(log => `
+                <div style="font-size:0.82rem; color:#334155; line-height:1.5; margin-bottom:4px;">
+                    <span style="color:#94a3b8;">${formatShortDateLabel(log.date)}</span> ${log.work || ''}${log.submitter ? `<span style="color:#94a3b8; font-size:0.72rem;"> · ${log.submitter}</span>` : ''}
+                </div>`).join('')}
+            </div>` : ''}
             <div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px dashed #e2e8f0; font-size:0.78rem; color:#94a3b8; font-weight:600;">${isExpanded ? '▲ 접기' : '📋 현황 기록 보기 / 남기기 ▼'}</div>
         </div>
         ${isExpanded ? `
