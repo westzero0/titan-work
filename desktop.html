@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+  <html lang="ko">
+  <head>
+  <meta charset="UTF-8">
+  <title>공수 확인 · 급여내역</title>
+  <style>
+    :root {
+      --primary-color: #3b82f6;
+    --hr-color: #d97706;
+          --border: #d1d5db;
+          --bg: #f5f6f8;
+          --text: #1f2937;
+    --text-sub: #6b7280;
+}
+  * { box-sizing: border-box; }
+  body {
+        margin: 0;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    color: var(--text);
+    padding: 24px;
+}
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: 18px; margin: 0; }
+  .header select {
+        padding: 8px 12px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; background: white;
+  }
+
+  .summary-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+  .summary-item { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; }
+      .summary-item .label { font-size: 11px; color: var(--hr-color); font-weight: 600; }
+  .summary-item .value { font-size: 15px; font-weight: 700; margin-top: 2px; }
+
+  #tableWrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); font-size: 13px; }
+  th { background: #f3f4f6; color: var(--text-sub); font-weight: 600; font-size: 11.5px; padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+      th.center, td.center { text-align: center; }
+  td { padding: 8px; border-bottom: 1px solid #f1f1f1; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+
+  .worker-group-row td { background: #eff6ff; font-weight: 700; font-size: 12.5px; color: var(--primary-color); padding: 8px; }
+      .site-name { font-weight: 600; }
+  .site-sub { font-size: 11px; color: var(--text-sub); }
+
+  .hours-badge { display: inline-block; background: #f9fafb; color: #d1d5db; font-size: 12px; padding: 2px 6px; border-radius: 5px; font-variant-numeric: tabular-nums; }
+    .hours-badge.day { background: #eff6ff; color: var(--primary-color); }
+    .hours-badge.night { background: #1f2937; color: white; }
+
+  .gongsu-input { width: 52px; padding: 5px 4px; text-align: center; font-size: 13px; font-weight: 700; border: 1.5px solid var(--primary-color); border-radius: 6px; background: #f8fbff; color: var(--primary-color); }
+    .gongsu-input.confirmed { border-color: #10b981; color: #10b981; background: #f0fdf9; }
+
+  .save-bar { position: sticky; bottom: 16px; margin-top: 20px; text-align: center; display: flex; gap: 10px; justify-content: center; }
+  .btn { padding: 12px 28px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-primary { background: var(--primary-color); color: white; }
+  .btn-download { background: var(--hr-color); color: white; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  #status { text-align: center; font-size: 12px; color: var(--text-sub); margin-top: 8px; }
+  #loading, #empty { text-align: center; padding: 40px; color: var(--text-sub); font-size: 13px; }
+</style>
+  </head>
+<body>
+
+  <div class="header">
+    <h1>공수 확인 · 급여내역</h1>
+    <select id="monthSelect"></select>
+  </div>
+
+  <div class="summary-bar">
+      <div class="summary-item"><div class="label">입력 대기</div><div class="value" id="pendingCount">-</div></div>
+    <div class="summary-item"><div class="label">이번 달 총 근무일</div><div class="value" id="totalRows">-</div></div>
+  </div>
+
+  <div id="loading">불러오는 중...</div>
+  <div id="empty" style="display:none;">이 달엔 작업일보 데이터가 없어요.</div>
+<div id="tableWrap" style="display:none;"><table id="matrixTable"></table></div>
+
+  <div class="save-bar" id="saveBar" style="display:none;">
+    <button class="btn btn-download" id="downloadBtn">📥 급여내역 다운로드</button>
+  </div>
+<div id="status"></div>
+
+  <script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzJKuUzru2SPgKPYdU0hcOdrTLC_eVOS_8eAm7PtH4ZxlgcmC8ZZzP12hrVHi_rSZLc/exec";
+
+  async function sendToGas(action, data) {
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+              body: JSON.stringify({ action, data })
+        });
+    return res.json();
+  }
+
+  let currentMatrix = null;
+
+  function initMonthSelect() {
+        const sel = document.getElementById('monthSelect');
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const val = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0');
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = d.getFullYear() + "년 " + (d.getMonth() + 1) + "월";
+      sel.appendChild(opt);
+    }
+    sel.addEventListener('change', () => loadMatrix(sel.value));
+    loadMatrix(sel.value);
+  }
+
+  async function loadMatrix(month) {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('empty').style.display = 'none';
+    document.getElementById('tableWrap').style.display = 'none';
+    document.getElementById('saveBar').style.display = 'none';
+
+    const result = await sendToGas('getGongsuMatrix', { month });
+    document.getElementById('loading').style.display = 'none';
+
+    if (result.status === 'ERROR' || !result.rows || result.rows.length === 0) {
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
+
+    currentMatrix = result;
+    renderTable(result);
+    document.getElementById('tableWrap').style.display = 'block';
+    document.getElementById('saveBar').style.display = 'flex';
+  }
+
+  function renderTable(matrix) {
+        const table = document.getElementById('matrixTable');
+    table.innerHTML = '';
+
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    ['날짜', '현장', '출근', '퇴근'].forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      headRow.appendChild(th);
+});
+    matrix.workers.forEach(w => {
+      const th1 = document.createElement('th'); th1.className = 'center'; th1.textContent = w + '(주)';
+      const th2 = document.createElement('th'); th2.className = 'center'; th2.textContent = w + '(야)';
+      headRow.appendChild(th1); headRow.appendChild(th2);
+});
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    let pendingCount = 0;
+
+    matrix.workers.forEach(worker => {
+      const workerRows = matrix.rows.filter(r => r.workers.includes(worker));
+      if (workerRows.length === 0) return;
+
+      const groupRow = document.createElement('tr');
+      groupRow.className = 'worker-group-row';
+      const groupTd = document.createElement('td');
+      groupTd.colSpan = 4 + matrix.workers.length * 2;
+      groupTd.textContent = '[' + worker + '] 근무내역';
+      groupRow.appendChild(groupTd);
+      tbody.appendChild(groupRow);
+
+      workerRows.forEach(entry => {
+        const tr = document.createElement('tr');
+
+        const tdDate = document.createElement('td'); tdDate.textContent = entry.date.substring(5).replace('-', '.');
+        const tdSite = document.createElement('td');
+        tdSite.innerHTML = '<div class="site-name">' + entry.site + '</div><div class="site-sub">' + entry.client + ' · ' + entry.work + '</div>';
+        const tdStart = document.createElement('td'); tdStart.className = 'center'; tdStart.textContent = entry.start;
+        const tdEnd = document.createElement('td'); tdEnd.className = 'center'; tdEnd.textContent = entry.end;
+        tr.appendChild(tdDate); tr.appendChild(tdSite); tr.appendChild(tdStart); tr.appendChild(tdEnd);
+
+        matrix.workers.forEach(w => {
+          const wv = entry.workerValues[w];
+          [tdCell('day'), tdCell('night')].forEach((td, idx) => tr.appendChild(td));
+
+          function tdCell(shift) {
+            const td = document.createElement('td');
+            td.className = 'center';
+            if (!wv) return td;
+
+            const input = document.createElement('input');
+            input.className = 'gongsu-input' + ((shift === 'day' ? wv.dayConfirmed : wv.nightConfirmed) ? ' confirmed' : '');
+            input.type = 'number';
+            input.step = '0.25';
+            input.value = shift === 'day' ? wv.day : wv.night;
+            input.addEventListener('change', async (e) => {
+              const val = parseFloat(e.target.value) || 0;
+              input.disabled = true;
+              await sendToGas('saveGongsuCell', {
+                rowId: entry.rowId, worker: w, shift: (shift === 'day' ? '주' : '야'), value: val
+});
+              input.className = 'gongsu-input confirmed';
+              input.disabled = false;
+              flashStatus(worker + ' ' + entry.date + ' 저장됨');
+});
+            td.appendChild(input);
+            if (!(shift === 'day' ? wv.dayConfirmed : wv.nightConfirmed)) pendingCount++;
+            return td;
+}
+});
+
+        tbody.appendChild(tr);
+});
+});
+
+    table.appendChild(tbody);
+    document.getElementById('pendingCount').textContent = pendingCount + '건';
+    document.getElementById('totalRows').textContent = matrix.rows.length + '건';
+}
+
+  function flashStatus(msg) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 2000);
+}
+
+  document.getElementById('downloadBtn').addEventListener('click', async () => {
+    if (!currentMatrix) return;
+    const btn = document.getElementById('downloadBtn');
+    btn.disabled = true;
+    btn.textContent = '생성 중...';
+
+    const result = await sendToGas('exportPayrollFromGongsu', { month: currentMatrix.month });
+
+    btn.disabled = false;
+    btn.textContent = '📥 급여내역 다운로드';
+
+    if (result.status === 'SUCCESS') {
+      if (result.warning) flashStatus('⚠️ ' + result.warning);
+      window.open(result.downloadUrl, '_blank');
+} else {
+      flashStatus('오류: ' + result.message);
+}
+});
+
+  initMonthSelect();
+</script>
+
+</body>
+</html>
+
+</html>
