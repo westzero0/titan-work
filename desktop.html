@@ -45,7 +45,7 @@
   .wk-shade { background: #f6f7f9; } /* 근로자 열 쌍을 한 칸씩 번갈아 회색으로 구분 */
   th.wk-shade { background: #e9eaee; }
 
-  .worker-group-row td { background: #eff6ff; font-weight: 700; font-size: 12.5px; color: var(--primary-color); padding: 6px 8px; border: 1px solid var(--border); }
+  .empty-day-row td { background: #fafafa; color: #d1d5db; font-size: 12px; }
   .site-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .site-sub { font-size: 11px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -184,29 +184,44 @@
     thead.appendChild(headRow);
     table.appendChild(thead);
 
-    // 바디: 근로자별로 그룹핑
+    // 🔴 날짜별로 그룹화 (근로자별이 아니라 "그 달 1일~말일" 기준으로 한 줄씩)
+    const rowsByDate = {};
+    matrix.rows.forEach(r => {
+      if (!rowsByDate[r.date]) rowsByDate[r.date] = [];
+      rowsByDate[r.date].push(r);
+    });
+
+    const [year, mon] = matrix.month.split('-').map(Number);
+    const daysInMonth = new Date(year, mon, 0).getDate();
+    const totalCols = 4 + matrix.workers.length * 2;
+
     const tbody = document.createElement('tbody');
     let pendingCount = 0;
 
-    matrix.workers.forEach(worker => {
-      const workerRows = matrix.rows.filter(r => r.workers.includes(worker));
-      if (workerRows.length === 0) return;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(year, mon - 1, d);
+      const dateStr = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
+      const label = String(mon).padStart(2, '0') + '.' + String(d).padStart(2, '0');
+      const entries = rowsByDate[dateStr] || [];
 
-      const groupRow = document.createElement('tr');
-      groupRow.className = 'worker-group-row';
-      const groupTd = document.createElement('td');
-      groupTd.colSpan = 4 + matrix.workers.length * 2;
-      groupTd.textContent = '[' + worker + '] 근무내역';
-      groupRow.appendChild(groupTd);
-      tbody.appendChild(groupRow);
+      if (entries.length === 0) {
+        // 작업일보가 없는 날 - 빈 줄로 표시 (휴무 추정)
+        const tr = document.createElement('tr');
+        tr.className = 'empty-day-row';
+        const tdDate = document.createElement('td'); tdDate.textContent = label;
+        const tdRest = document.createElement('td'); tdRest.colSpan = totalCols - 1;
+        tr.appendChild(tdDate); tr.appendChild(tdRest);
+        tbody.appendChild(tr);
+        continue;
+      }
 
-      workerRows.forEach(entry => {
+      entries.forEach(entry => {
         const tr = document.createElement('tr');
 
-        const tdDate = document.createElement('td'); tdDate.textContent = entry.date.substring(5).replace('-', '.');
+        const tdDate = document.createElement('td'); tdDate.textContent = label;
         const tdSite = document.createElement('td');
         const siteName = entry.site || '';
-        const subParts = [entry.client, entry.work].filter(v => v); // 🔴 빈 값은 그냥 빼버려서 "undefined" 안 뜨게
+        const subParts = [entry.client, entry.work].filter(v => v); // 빈 값은 빼서 "undefined" 안 뜨게
         tdSite.innerHTML = '<div class="site-name">' + siteName + '</div><div class="site-sub">' + subParts.join(' · ') + '</div>';
         const tdStart = document.createElement('td'); tdStart.className = 'center'; tdStart.textContent = entry.start;
         const tdEnd = document.createElement('td'); tdEnd.className = 'center'; tdEnd.textContent = entry.end;
@@ -215,12 +230,12 @@
         matrix.workers.forEach((w, wIdx) => {
           const wv = entry.workerValues[w];
           const shade = wIdx % 2 === 1 ? ' wk-shade' : '';
-          [tdCell('day'), tdCell('night')].forEach((td, idx) => tr.appendChild(td));
+          [tdCell('day'), tdCell('night')].forEach(td => tr.appendChild(td));
 
           function tdCell(shift) {
             const td = document.createElement('td');
             td.className = 'center' + shade;
-            if (!wv) return td;
+            if (!wv) return td; // 그날 이 근로자는 이 작업에 없었으면 빈 칸
 
             const input = document.createElement('input');
             input.className = 'gongsu-input' + ((shift === 'day' ? wv.dayConfirmed : wv.nightConfirmed) ? ' confirmed' : '');
@@ -235,7 +250,7 @@
               });
               input.className = 'gongsu-input confirmed';
               input.disabled = false;
-              flashStatus(worker + ' ' + entry.date + ' 저장됨');
+              flashStatus(w + ' ' + label + ' 저장됨');
             });
             td.appendChild(input);
             if (!(shift === 'day' ? wv.dayConfirmed : wv.nightConfirmed)) pendingCount++;
@@ -245,7 +260,7 @@
 
         tbody.appendChild(tr);
       });
-    });
+    }
 
     table.appendChild(tbody);
     document.getElementById('pendingCount').textContent = pendingCount + '건';
