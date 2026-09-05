@@ -32,7 +32,7 @@
   .summary-item .value { font-size: 15px; font-weight: 700; margin-top: 2px; }
 
   #tableWrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); font-size: 13px; table-layout: fixed; }
+  table { width: auto; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); font-size: 13px; table-layout: fixed; }
   th { background: #f3f4f6; color: var(--text-sub); font-weight: 600; font-size: 11.5px; padding: 8px 6px; text-align: left; border: 1px solid var(--border); white-space: nowrap; }
   th.center, td.center { text-align: center; }
   td { padding: 6px; border: 1px solid var(--border); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; }
@@ -217,6 +217,7 @@
 
       entries.forEach(entry => {
         const tr = document.createElement('tr');
+        let entryHasPending = false;
 
         const tdDate = document.createElement('td'); tdDate.textContent = label;
         const tdSite = document.createElement('td');
@@ -253,11 +254,12 @@
               flashStatus(w + ' ' + label + ' 저장됨');
             });
             td.appendChild(input);
-            if (!(shift === 'day' ? wv.dayConfirmed : wv.nightConfirmed)) pendingCount++;
+            if (!(shift === 'day' ? wv.dayConfirmed : wv.nightConfirmed)) entryHasPending = true; // 🔴 칸 단위 대신 행(작업일보) 단위로 판단
             return td;
           }
         });
 
+        if (entryHasPending) pendingCount++; // 🔴 이 행에 미확정 칸이 하나라도 있으면 1건으로만 셈
         tbody.appendChild(tr);
       });
     }
