@@ -176,7 +176,7 @@
 
     // 열 너비 고정 (엑셀처럼 칸 간격 일정하게)
     const colgroup = document.createElement('colgroup');
-    ['col-date', 'col-site', 'col-time', 'col-time'].forEach(cls => {
+    ['col-date', 'col-site', 'col-site', 'col-site', 'col-site'].forEach(cls => {
       const col = document.createElement('col'); col.className = cls; colgroup.appendChild(col);
     });
     matrix.workers.forEach(() => {
@@ -184,12 +184,15 @@
         const col = document.createElement('col'); col.className = 'col-gongsu'; colgroup.appendChild(col);
       }
     });
+    ['col-time', 'col-time', 'col-time', 'col-time', 'col-site', 'col-site'].forEach(cls => {
+      const col = document.createElement('col'); col.className = cls; colgroup.appendChild(col);
+    });
     table.appendChild(colgroup);
 
-    // 헤더
+    // 헤더 - 엑셀 폼(날짜/업체담당/현장/브랜드/작업내용/근로자/출근/퇴근/석식/차량/사용자재/비고)과 동일한 순서
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
-    ['날짜', '현장', '출근', '퇴근'].forEach(h => {
+    ['날짜', '업체/담당', '현장', '브랜드', '작업내용'].forEach(h => {
       const th = document.createElement('th');
       th.textContent = h;
       headRow.appendChild(th);
@@ -199,6 +202,12 @@
       const th1 = document.createElement('th'); th1.className = 'center' + shade; th1.textContent = w + '(주)';
       const th2 = document.createElement('th'); th2.className = 'center' + shade; th2.textContent = w + '(야)';
       headRow.appendChild(th1); headRow.appendChild(th2);
+    });
+    ['출근', '퇴근', '석식', '차량', '사용자재', '비고'].forEach(h => {
+      const th = document.createElement('th');
+      th.className = 'center';
+      th.textContent = h;
+      headRow.appendChild(th);
     });
     thead.appendChild(headRow);
     table.appendChild(thead);
@@ -212,7 +221,7 @@
 
     const [year, mon] = matrix.month.split('-').map(Number);
     const daysInMonth = new Date(year, mon, 0).getDate();
-    const totalCols = 4 + matrix.workers.length * 2;
+    const totalCols = 11 + matrix.workers.length * 2; // 날짜/업체/현장/브랜드/작업내용(5) + 출근/퇴근/석식/차량/사용자재/비고(6)
 
     const tbody = document.createElement('tbody');
     let pendingCount = 0;
@@ -239,13 +248,11 @@
         let entryHasPending = false;
 
         const tdDate = document.createElement('td'); tdDate.textContent = label;
-        const tdSite = document.createElement('td');
-        const siteName = entry.site || '';
-        const subParts = [entry.client, entry.work].filter(v => v); // 빈 값은 빼서 "undefined" 안 뜨게
-        tdSite.innerHTML = '<div class="site-name">' + siteName + '</div><div class="site-sub">' + subParts.join(' · ') + '</div>';
-        const tdStart = document.createElement('td'); tdStart.className = 'center'; tdStart.textContent = entry.start;
-        const tdEnd = document.createElement('td'); tdEnd.className = 'center'; tdEnd.textContent = entry.end;
-        tr.appendChild(tdDate); tr.appendChild(tdSite); tr.appendChild(tdStart); tr.appendChild(tdEnd);
+        const tdClient = document.createElement('td'); tdClient.textContent = entry.client || '';
+        const tdSite = document.createElement('td'); tdSite.textContent = entry.site || '';       // 🔴 현장 = 현장명
+        const tdBrand = document.createElement('td'); tdBrand.textContent = '';                    // 🔴 브랜드 = 일단 빈 칸
+        const tdWork = document.createElement('td'); tdWork.textContent = entry.work || '';
+        tr.appendChild(tdDate); tr.appendChild(tdClient); tr.appendChild(tdSite); tr.appendChild(tdBrand); tr.appendChild(tdWork);
 
         matrix.workers.forEach((w, wIdx) => {
           const wv = entry.workerValues[w];
@@ -309,6 +316,15 @@
         });
 
         if (entryHasPending) pendingCount++; // 🔴 이 행에 미확정 칸이 하나라도 있으면 1건으로만 셈
+
+        const tdStart = document.createElement('td'); tdStart.className = 'center'; tdStart.textContent = entry.start;
+        const tdEnd = document.createElement('td'); tdEnd.className = 'center'; tdEnd.textContent = entry.end;
+        const tdDinner = document.createElement('td'); tdDinner.className = 'center'; tdDinner.textContent = entry.dinner || '';
+        const tdCar = document.createElement('td'); tdCar.className = 'center'; tdCar.textContent = entry.car || '';
+        const tdMaterials = document.createElement('td'); tdMaterials.textContent = entry.materials || '';
+        const tdNote = document.createElement('td'); tdNote.textContent = '';
+        tr.appendChild(tdStart); tr.appendChild(tdEnd); tr.appendChild(tdDinner); tr.appendChild(tdCar); tr.appendChild(tdMaterials); tr.appendChild(tdNote);
+
         tbody.appendChild(tr);
       });
     }
