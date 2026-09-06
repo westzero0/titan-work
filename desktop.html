@@ -352,16 +352,21 @@
     btn.disabled = true;
     btn.textContent = '생성 중...';
 
-    const result = await sendToGas('exportPayrollFromGongsu', { month: currentMatrix.month });
+    try {
+      const result = await sendToGas('exportPayrollFromGongsu', { month: currentMatrix.month });
 
-    btn.disabled = false;
-    btn.textContent = '📥 급여내역 다운로드';
-
-    if (result.status === 'SUCCESS') {
-      if (result.warning) flashStatus('⚠️ ' + result.warning);
-      window.open(result.downloadUrl, '_blank');
-    } else {
-      flashStatus('오류: ' + result.message);
+      if (result.status === 'SUCCESS') {
+        if (result.warning) flashStatus('⚠️ ' + result.warning);
+        window.open(result.downloadUrl, '_blank');
+      } else {
+        flashStatus('오류: ' + result.message);
+      }
+    } catch (err) {
+      flashStatus('⚠️ 다운로드 실패: ' + err.message);
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📥 급여내역 다운로드';
     }
   });
 
