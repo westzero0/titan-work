@@ -65,6 +65,8 @@
   .gongsu-input:disabled { opacity: 0.5; cursor: wait; }
   .gongsu-input.confirmed { border-color: #10b981; color: #10b981; background: #f0fdf9; }
   .gongsu-input.under-est { border-color: #f59e0b; color: #b45309; background: #fffbeb; }
+  .gongsu-input.pending-save { opacity: 0.75; } /* 탭 직후 ~ 서버 저장 완료 전까지 살짝 흐리게 (지연 없이 바로 반응한다는 티만 냄) */
+  .gongsu-input.save-failed { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
 
   .save-bar { position: sticky; bottom: 16px; margin-top: 20px; text-align: center; display: flex; gap: 10px; justify-content: center; }
   .btn { padding: 12px 28px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
@@ -268,23 +270,36 @@
               btn.title = '추정치(' + estVal + ')보다 작게 확정됨 - 실수 아닌지 확인해주세요';
             }
 
-            btn.addEventListener('click', async () => {
-              // 지금 값이 프리셋 중 가장 가까운 걸 찾아서, 그 다음 값으로 순환
+            btn.addEventListener('click', () => {
+              // 🔴 화면은 탭하는 즉시 바뀌고(낙관적 업데이트), 실제 서버 저장은 debounce로 뒤에서 처리
               let idx = GONGSU_PRESETS.findIndex(p => p === currentVal);
               if (idx === -1) idx = GONGSU_PRESETS.reduce((closest, p, i) =>
                 Math.abs(p - currentVal) < Math.abs(GONGSU_PRESETS[closest] - currentVal) ? i : closest, 0);
               const nextVal = GONGSU_PRESETS[(idx + 1) % GONGSU_PRESETS.length];
 
-              btn.disabled = true;
-              await sendToGas('saveGongsuCell', {
-                rowId: entry.rowId, worker: w, shift: (shift === 'day' ? '주' : '야'), value: nextVal
-              });
               currentVal = nextVal;
               btn.textContent = nextVal;
-              btn.className = 'gongsu-input' + confirmClass(true, currentVal, estVal);
+              btn.className = 'gongsu-input pending-save' + confirmClass(true, currentVal, estVal);
               btn.title = (currentVal < estVal) ? ('추정치(' + estVal + ')보다 작게 확정됨 - 실수 아닌지 확인해주세요') : '';
-              btn.disabled = false;
-              flashStatus(w + ' ' + label + ' → ' + nextVal + '로 저장됨' + (currentVal < estVal ? ' ⚠️ 추정치보다 낮음' : ''));
+              flashStatus(w + ' ' + label + ' → ' + nextVal + (currentVal < estVal ? ' ⚠️ 추정치보다 낮음' : ''));
+
+              // 같은 칸을 연달아 여러 번 탭하면, 마지막 값만 잠깐 뒤에 한 번만 저장 (매번 서버 호출 안 함)
+              clearTimeout(btn._saveTimer);
+              btn._saveTimer = setTimeout(async () => {
+                const valueToSave = currentVal;
+                try {
+                  await sendToGas('saveGongsuCell', {
+                    rowId: entry.rowId, worker: w, shift: (shift === 'day' ? '주' : '야'), value: valueToSave
+                  });
+                  if (currentVal === valueToSave) {
+                    btn.className = 'gongsu-input' + confirmClass(true, currentVal, estVal);
+                    flashStatus(w + ' ' + label + ' 저장 완료');
+                  }
+                } catch (err) {
+                  btn.classList.add('save-failed');
+                  flashStatus('⚠️ 저장 실패: ' + w + ' ' + label + ' - 다시 탭해주세요');
+                }
+              }, 500);
             });
 
             td.appendChild(btn);
