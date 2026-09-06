@@ -352,16 +352,29 @@
     btn.disabled = true;
     btn.textContent = '생성 중...';
 
+    // 🔴 팝업 차단 우회: 클릭 직후(응답 기다리기 전)에 빈 탭을 먼저 열어둠 - 이래야 브라우저가
+    // "사용자가 직접 연 탭"으로 인정해서 나중에 주소만 바꿔도 안 막힘
+    const newTab = window.open('', '_blank');
+
     try {
       const result = await sendToGas('exportPayrollFromGongsu', { month: currentMatrix.month });
 
       if (result.status === 'SUCCESS') {
         if (result.warning) flashStatus('⚠️ ' + result.warning);
-        window.open(result.downloadUrl, '_blank');
+        if (newTab) {
+          newTab.location.href = result.downloadUrl;
+        } else {
+          // 그래도 팝업이 막혔으면 링크를 화면에 보여줌
+          flashStatus('팝업이 차단됐어요. 아래 링크를 눌러주세요.');
+          const el = document.getElementById('status');
+          el.innerHTML = '<a href="' + result.downloadUrl + '" target="_blank">📥 급여내역 다운로드 링크</a>';
+        }
       } else {
+        if (newTab) newTab.close();
         flashStatus('오류: ' + result.message);
       }
     } catch (err) {
+      if (newTab) newTab.close();
       flashStatus('⚠️ 다운로드 실패: ' + err.message);
       console.error(err);
     } finally {
