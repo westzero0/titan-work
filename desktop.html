@@ -341,10 +341,12 @@
     return ' confirmed';
   }
 
-  function flashStatus(msg) {
+  function flashStatus(msg, persistent) {
     const el = document.getElementById('status');
     el.textContent = msg;
-    setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 2000);
+    if (!persistent) {
+      setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 2000);
+    }
   }
 
   async function downloadFile(btn, action, defaultLabel, fileLabel) {
@@ -369,11 +371,11 @@
         }
       } else {
         if (newTab) newTab.close();
-        flashStatus('오류: ' + result.message);
+        flashStatus('오류: ' + result.message, true);
       }
     } catch (err) {
       if (newTab) newTab.close();
-      flashStatus('⚠️ 다운로드 실패: ' + err.message);
+      flashStatus('⚠️ 다운로드 실패: ' + err.message, true);
       console.error(err);
     } finally {
       btn.disabled = false;
