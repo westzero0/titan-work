@@ -262,6 +262,50 @@ let expandedSiteKey = null;
 let expandedSiteLogs = [];
 let expandedSiteLogsShowAll = false;
 
+// 💡 탭 전환 시 재요청 방지용 TTL 캐시. 이 시간 안에는 캐시된 데이터를 그대로 쓰고
+// 네트워크(Apps Script) 호출을 생략한다. 새로고침 버튼(force=true)이나 쓰기 작업 성공 시에는 무시하고 재조회.
+// sessionStorage에도 미러링해서 F5로 새로고침해도 TTL이 초기화되지 않게 한다 (탭을 완전히 닫으면 사라짐).
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5분
+
+function saveSessionCache(key, obj) {
+    try { sessionStorage.setItem(key, JSON.stringify(obj)); } catch (e) { /* 프라이빗 모드 등에서는 조용히 무시 */ }
+}
+function loadSessionCache(key, fallback) {
+    try {
+        const raw = sessionStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
+}
+
+const lastFetchAt = loadSessionCache('titan_last_fetch_at', { schedules: 0, activeSites: 0 });
+const siteStatusLogCache = loadSessionCache('titan_site_status_log_cache', {}); // key: "거래처|||현장" -> { data, fetchedAt }
+let myTodayLogsCache = loadSessionCache('titan_my_today_logs_cache', { data: null, fetchedAt: 0 });
+
+function isCacheFresh(ts) {
+    return ts > 0 && (Date.now() - ts) < CACHE_TTL_MS;
+}
+
+function markFetched(name) {
+    lastFetchAt[name] = Date.now();
+    saveSessionCache('titan_last_fetch_at', lastFetchAt);
+}
+function invalidateFetch(name) {
+    lastFetchAt[name] = 0;
+    saveSessionCache('titan_last_fetch_at', lastFetchAt);
+}
+function setSiteStatusLogCache(key, data) {
+    siteStatusLogCache[key] = { data, fetchedAt: Date.now() };
+    saveSessionCache('titan_site_status_log_cache', siteStatusLogCache);
+}
+function setMyTodayLogsCache(data) {
+    myTodayLogsCache = { data, fetchedAt: Date.now() };
+    saveSessionCache('titan_my_today_logs_cache', myTodayLogsCache);
+}
+function invalidateMyTodayLogsCache() {
+    myTodayLogsCache.fetchedAt = 0;
+    saveSessionCache('titan_my_today_logs_cache', myTodayLogsCache);
+}
+
 // 1. [데이터 초기화]
 const savedLists = localStorage.getItem('titan_custom_lists');
 let lists = savedLists ? JSON.parse(savedLists) : {
@@ -697,8 +741,17 @@ function updateSiteStatusLogSection(siteName) {
     loadSiteStatusLog(client, siteName);
 }
 
-async function loadSiteStatusLog(client, site) {
+async function loadSiteStatusLog(client, site, force = false) {
     siteStatusLogExpanded = false;
+    const key = client + '|||' + site;
+    const cached = siteStatusLogCache[key];
+
+    if (!force && cached && isCacheFresh(cached.fetchedAt)) {
+        siteStatusLogs = cached.data;
+        renderSiteStatusLogs();
+        return;
+    }
+
     const listEl = document.getElementById('site-status-log-list');
     const moreEl = document.getElementById('site-status-log-more');
     if (listEl) listEl.innerHTML = '<div style="font-size:0.8rem; color:#94a3b8; text-align:center; padding:6px;">⏳ 불러오는 중...</div>';
@@ -711,6 +764,7 @@ async function loadSiteStatusLog(client, site) {
         });
         const result = await res.json();
         siteStatusLogs = Array.isArray(result) ? result : (result.data || []);
+        setSiteStatusLogCache(key, siteStatusLogs);
     } catch (e) {
         console.error('현장 현황 기록 로드 실패', e);
         if (listEl) listEl.innerHTML = '<div style="font-size:0.8rem; color:#dc2626; text-align:center; padding:6px;">⚠️ 불러오기 실패</div>';
@@ -817,12 +871,12 @@ function refreshAllStatusLogViews() {
     let site = document.querySelector('#site-chips .chip.active')?.innerText;
     if (!site) site = document.getElementById('siteSearch')?.value?.trim();
     if (client && site && document.getElementById('site-status-log-section')?.style.display === 'block') {
-        loadSiteStatusLog(client, site);
+        loadSiteStatusLog(client, site, true);
     }
 
     if (expandedSiteKey) {
         const [c, s] = expandedSiteKey.split('|||');
-        loadExpandedSiteLog(c, s);
+        loadExpandedSiteLog(c, s, true);
     }
 }
 
@@ -852,7 +906,7 @@ async function submitSiteStatusLog() {
             method: 'POST',
             body: JSON.stringify({ action: 'addSiteStatusLog', data: { client, site, submitter, content } })
         });
-        loadSiteStatusLog(client, site); // 백그라운드 재동기화
+        loadSiteStatusLog(client, site, true); // 백그라운드 재동기화 (방금 쓴 내용이므로 캐시 무시)
     } catch (e) {
         console.error('현장 현황 기록 등록 실패', e);
     } finally {
@@ -1040,6 +1094,8 @@ async function send() {
         // --- 6. 성공 처리 ---
         if (jsonResult === "SUCCESS" || jsonResult.result === "SUCCESS" || jsonResult.res === "SUCCESS" || jsonResult.status === "SUCCESS") {
         clearDraft(); // 정상 저장됐으니 임시저장 초안은 더 이상 필요 없음
+        invalidateMyTodayLogsCache(); // 방금 제출/수정했으니 "오늘 제출한 일보" 캐시 무효화
+        invalidateFetch('activeSites'); // 진행중인 현장의 최근 작업기록도 갱신 필요
         alert("✅ 저장되었습니다!\n아래 [카톡 공유] 버튼을 눌러주세요.");
 
             // ★★★ 핵심: 버튼 잠금 해제 (이거 없으면 클릭 안됨) ★★★
@@ -1232,7 +1288,7 @@ function copyAddr(text) {
     alert("복사되었습니다: " + text);
 }
 
-async function loadSchedules() {
+async function loadSchedules(force = false) {
     const container = document.getElementById('schedule-container');
 
     const cachedStr = localStorage.getItem('titan_schedules_cache');
@@ -1240,9 +1296,15 @@ async function loadSchedules() {
     if (cachedStr) {
         oldData = JSON.parse(cachedStr);
         allSchedules = oldData;
-        updateWorkerSelectAndRender(); 
+        updateWorkerSelectAndRender();
     } else {
         container.innerHTML = '<p style="text-align:center; padding:20px;">🔌 서버 연결 중...</p>';
+    }
+
+    // 캐시가 신선하면(TTL 이내) 네트워크 호출 없이 그대로 사용
+    if (!force && cachedStr && isCacheFresh(lastFetchAt.schedules)) {
+        showTomorrowOffBanner();
+        return;
     }
 
     showSyncToast('최신 일정 확인 중...', true);
@@ -1250,11 +1312,12 @@ async function loadSchedules() {
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'getScheduleList' }) 
+            body: JSON.stringify({ action: 'getScheduleList' })
         });
         const result = await res.json();
         const newData = Array.isArray(result) ? result : (result.schedules || []);
-        
+        markFetched('schedules');
+
         const newDataStr = JSON.stringify(newData);
 
         if (cachedStr !== newDataStr) {
@@ -1264,10 +1327,10 @@ async function loadSchedules() {
             }
 
             allSchedules = newData;
-            localStorage.setItem('titan_schedules_cache', newDataStr); 
-            
-            const currentScrollY = window.scrollY; 
-            updateWorkerSelectAndRender(); 
+            localStorage.setItem('titan_schedules_cache', newDataStr);
+
+            const currentScrollY = window.scrollY;
+            updateWorkerSelectAndRender();
             window.scrollTo(0, currentScrollY);
 
             showSyncToast('✨ 최신 일정 갱신 완료!', false);
@@ -1377,8 +1440,7 @@ function showPage(id) {
         loadActiveSitesProgressOverview();
     } else {
         document.getElementById('tab-sched').classList.add('active');
-        if(allSchedules.length === 0) loadSchedules();
-        else renderView();
+        loadSchedules(); // 캐시가 있으면 즉시 렌더링하고, TTL 이내면 네트워크 호출은 생략됨
     }
 }
 
@@ -1917,12 +1979,18 @@ function copyScheduleToLog(s) {
 // 📝 [3] 당일 제출 건 수정
 // ==========================================
 
-async function openMyTodayLogsModal() {
+async function openMyTodayLogsModal(force = false) {
     const modal = document.getElementById('my-logs-modal');
     const body = document.getElementById('my-logs-modal-body');
     if (!modal || !body) return;
 
     modal.style.display = 'flex';
+
+    if (!force && myTodayLogsCache.data && isCacheFresh(myTodayLogsCache.fetchedAt)) {
+        renderMyTodayLogsList(myTodayLogsCache.data);
+        return;
+    }
+
     body.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">⏳ 불러오는 중...</div>';
 
     const submitter = document.getElementById('submitter')?.value || localStorage.getItem('titan_user_name') || '';
@@ -1934,7 +2002,9 @@ async function openMyTodayLogsModal() {
             body: JSON.stringify({ action: 'getMyTodayLogs', data: { submitter, date: todayStr } })
         });
         const result = await res.json();
-        renderMyTodayLogsList(Array.isArray(result) ? result : []);
+        const logs = Array.isArray(result) ? result : [];
+        setMyTodayLogsCache(logs);
+        renderMyTodayLogsList(logs);
     } catch (e) {
         console.error('오늘 제출 일보 조회 실패', e);
         body.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626;">⚠️ 불러오기 실패했습니다.</div>';
@@ -2072,7 +2142,7 @@ function getDeadlineBadge(deadline, status) {
 
 // 💡 처음 불러온 현장 정보는 기억해두고(메모리+로컬캐시), 탭을 다시 열어도 새로 불러오지 않고 그대로 보여준다.
 // 백그라운드에서만 최신 상태를 조용히 확인해서, 실제로 바뀐 게 있을 때만(예: 현장이 완료 처리됨) 갱신한다.
-async function loadActiveSitesProgressOverview() {
+async function loadActiveSitesProgressOverview(force = false) {
     if (activeSitesProgressData === null) {
         const cachedStr = localStorage.getItem('titan_active_sites_cache');
         if (cachedStr) {
@@ -2081,6 +2151,13 @@ async function loadActiveSitesProgressOverview() {
     }
     renderActiveSitesProgressOverview(); // 기억하고 있던 데이터(캐시/메모리)를 즉시 표시. 없으면 로딩 상태 표시
 
+    // 캐시가 신선하면(TTL 이내) 네트워크 호출 생략
+    if (!force && activeSitesProgressData !== null && isCacheFresh(lastFetchAt.activeSites)) {
+        return;
+    }
+
+    if (force) showSyncToast('진행중인 현장 확인 중...', true);
+
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -2088,9 +2165,12 @@ async function loadActiveSitesProgressOverview() {
         });
         const result = await res.json();
         const freshData = Array.isArray(result) ? result : (result.data || []);
+        markFetched('activeSites');
         applyActiveSitesDiff(freshData);
+        if (force) { showSyncToast('✨ 갱신 완료!', false); setTimeout(hideSyncToast, 1500); }
     } catch (e) {
         console.error('진행중인 현장 로드 실패', e);
+        if (force) { showSyncToast('⚠️ 통신 실패', false); setTimeout(hideSyncToast, 1500); }
     }
 }
 
@@ -2325,8 +2405,16 @@ function toggleSiteProgressCard(client, site) {
     if (expandedSiteKey === key) loadExpandedSiteLog(client, site);
 }
 
-async function loadExpandedSiteLog(client, site) {
+async function loadExpandedSiteLog(client, site, force = false) {
     const key = client + '|||' + site;
+    const cached = siteStatusLogCache[key];
+
+    if (!force && cached && isCacheFresh(cached.fetchedAt)) {
+        expandedSiteLogs = cached.data;
+        renderExpandedSiteLogList();
+        return;
+    }
+
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -2335,6 +2423,7 @@ async function loadExpandedSiteLog(client, site) {
         const result = await res.json();
         if (expandedSiteKey !== key) return; // 로딩 중 카드가 접히거나 다른 카드로 전환됨
         expandedSiteLogs = Array.isArray(result) ? result : (result.data || []);
+        setSiteStatusLogCache(key, expandedSiteLogs);
     } catch (e) {
         console.error('현장 현황 기록 로드 실패', e);
         if (expandedSiteKey !== key) return;
@@ -2385,7 +2474,7 @@ async function submitExpandedSiteLog(client, site) {
             method: 'POST',
             body: JSON.stringify({ action: 'addSiteStatusLog', data: { client, site, submitter, content } })
         });
-        loadExpandedSiteLog(client, site); // 백그라운드 재동기화
+        loadExpandedSiteLog(client, site, true); // 백그라운드 재동기화 (방금 쓴 내용이므로 캐시 무시)
     } catch (e) {
         console.error('현장 현황 기록 등록 실패', e);
     } finally {
