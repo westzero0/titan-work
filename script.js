@@ -2,7 +2,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
 }
 
-const APP_VERSION = "3.5"; // 👈 기능 수정할 때마다 이 숫자를 올리세요!
+const APP_VERSION = "3.6"; // 👈 기능 수정할 때마다 이 숫자를 올리세요!
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedVer = localStorage.getItem('titan_app_version');
@@ -974,6 +974,14 @@ function toggleDelMode(type) {
 function toggleExpenseSection() {
     const body = document.getElementById('expense-section-body');
     const arrow = document.getElementById('expense-toggle-arrow');
+    const isOpen = body.style.display === 'block';
+    body.style.display = isOpen ? 'none' : 'block';
+    if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+function toggleMatSearchSection() {
+    const body = document.getElementById('mat-search-section-body');
+    const arrow = document.getElementById('mat-search-toggle-arrow');
     const isOpen = body.style.display === 'block';
     body.style.display = isOpen ? 'none' : 'block';
     if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
