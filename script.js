@@ -1077,7 +1077,10 @@ async function send() {
             expDetail: document.getElementById('expDetail')?.value || "",
             expPayer: getSel('#payer-chips'),
             files: filesData, // ★ 압축된 사진 데이터
-            submitter: submitterVal
+            submitter: submitterVal,
+            // 🔴 재전송 큐가 같은 payload를 여러 번 보내도 서버가 중복 저장을 막을 수 있도록 하는 고유 ID.
+            // 큐에 저장될 때 이 payload 객체가 그대로 재사용되므로, 재시도해도 값이 바뀌지 않음.
+            clientId: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('c-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10))
         }
     };
 
