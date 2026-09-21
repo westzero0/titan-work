@@ -68,6 +68,9 @@
   .gongsu-input.pending-save { opacity: 0.75; } /* 탭 직후 ~ 서버 저장 완료 전까지 살짝 흐리게 (지연 없이 바로 반응한다는 티만 냄) */
   .gongsu-input.save-failed { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
 
+  .del-dup-btn { border: 1px solid #fca5a5; background: #fef2f2; border-radius: 6px; padding: 3px 6px; cursor: pointer; font-size: 13px; }
+  .del-dup-btn:hover { background: #fee2e2; }
+
   .save-bar { position: sticky; bottom: 16px; margin-top: 20px; text-align: center; display: flex; gap: 10px; justify-content: center; }
   .btn { padding: 12px 28px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
   .btn-primary { background: var(--primary-color); color: white; }
@@ -94,7 +97,8 @@
   <b>사용법</b> — 공수 칸을 탭할 때마다 <b>0 → 0.5 → 1 → 2 → 3 → 4</b> 순서로 바뀌면서 자동 저장돼요.<br>
   <span class="guide-swatch blue"></span><b>파란 테두리</b> — 아직 확정 안 함 (시간 기준 자동 추정치가 보이는 상태) &nbsp;|&nbsp;
   <span class="guide-swatch green"></span><b>초록 테두리</b> — 확정 완료 &nbsp;|&nbsp;
-  <span class="guide-swatch orange"></span><b>주황 테두리</b> — 확정한 값이 원래 추정치보다 작음 (실수 아닌지 확인 필요)
+  <span class="guide-swatch orange"></span><b>주황 테두리</b> — 확정한 값이 원래 추정치보다 작음 (실수 아닌지 확인 필요)<br>
+  <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:#fff7ed; border:1.5px solid #fca5a5; margin-right:4px; vertical-align:middle;"></span><b>주황빛 배경 행</b> — 같은 날짜에 완전히 동일한 항목이 중복 등록됨. 맨 오른쪽 🗑️로 하나만 남기고 삭제
 </div>
 
 <div id="loading">불러오는 중...</div>
@@ -185,7 +189,7 @@
         const col = document.createElement('col'); col.className = 'col-gongsu'; colgroup.appendChild(col);
       }
     });
-    ['col-time', 'col-time', 'col-time', 'col-time', 'col-site', 'col-site'].forEach(cls => {
+    ['col-time', 'col-time', 'col-time', 'col-time', 'col-site', 'col-site', 'col-time'].forEach(cls => {
       const col = document.createElement('col'); col.className = cls; colgroup.appendChild(col);
     });
     table.appendChild(colgroup);
@@ -204,7 +208,7 @@
       const th2 = document.createElement('th'); th2.className = 'center' + shade; th2.textContent = w + '(야)';
       headRow.appendChild(th1); headRow.appendChild(th2);
     });
-    ['출근', '퇴근', '석식', '차량', '사용자재', '비고'].forEach(h => {
+    ['출근', '퇴근', '석식', '차량', '사용자재', '비고', '삭제'].forEach(h => {
       const th = document.createElement('th');
       th.className = 'center';
       th.textContent = h;
@@ -220,9 +224,16 @@
       rowsByDate[r.date].push(r);
     });
 
+    // 🔴 중복 감지: 날짜+업체+현장+작업내용+시간+석식+차량+자재가 전부 같으면 같은 그룹으로 묶음
+    const dupGroups = {};
+    matrix.rows.forEach(r => {
+      const key = dupKey(r);
+      (dupGroups[key] = dupGroups[key] || []).push(r);
+    });
+
     const [year, mon] = matrix.month.split('-').map(Number);
     const daysInMonth = new Date(year, mon, 0).getDate();
-    const totalCols = 11 + matrix.workers.length * 2; // 날짜/업체/현장/브랜드/작업내용(5) + 출근/퇴근/석식/차량/사용자재/비고(6)
+    const totalCols = 12 + matrix.workers.length * 2; // 날짜/업체/현장/브랜드/작업내용(5) + 출근/퇴근/석식/차량/사용자재/비고/삭제(7)
 
     const tbody = document.createElement('tbody');
     let pendingCount = 0;
@@ -247,6 +258,10 @@
       entries.forEach(entry => {
         const tr = document.createElement('tr');
         let entryHasPending = false;
+
+        const dupList = dupGroups[dupKey(entry)];
+        const isDup = dupList.length > 1;
+        if (isDup) tr.style.background = '#fff7ed';
 
         const tdDate = document.createElement('td'); tdDate.textContent = label;
         const tdClient = document.createElement('td'); tdClient.textContent = entry.client || '';
@@ -324,7 +339,19 @@
         const tdCar = document.createElement('td'); tdCar.className = 'center'; tdCar.textContent = entry.car || '';
         const tdMaterials = document.createElement('td'); tdMaterials.textContent = entry.materials || '';
         const tdNote = document.createElement('td'); tdNote.textContent = '';
-        tr.appendChild(tdStart); tr.appendChild(tdEnd); tr.appendChild(tdDinner); tr.appendChild(tdCar); tr.appendChild(tdMaterials); tr.appendChild(tdNote);
+
+        const tdDel = document.createElement('td'); tdDel.className = 'center';
+        if (isDup) {
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'del-dup-btn';
+          delBtn.textContent = '🗑️';
+          delBtn.title = '같은 날짜에 완전히 동일한 항목이 ' + dupList.length + '건 있어요. 이 항목만 삭제';
+          delBtn.addEventListener('click', () => deleteDuplicateEntry(entry, dupList.length));
+          tdDel.appendChild(delBtn);
+        }
+
+        tr.appendChild(tdStart); tr.appendChild(tdEnd); tr.appendChild(tdDinner); tr.appendChild(tdCar); tr.appendChild(tdMaterials); tr.appendChild(tdNote); tr.appendChild(tdDel);
 
         tbody.appendChild(tr);
       });
@@ -333,6 +360,25 @@
     table.appendChild(tbody);
     document.getElementById('pendingCount').textContent = pendingCount + '건';
     document.getElementById('totalRows').textContent = matrix.rows.length + '건';
+  }
+
+  // 🔴 날짜+업체+현장+작업내용+시간+석식+차량+자재가 전부 같으면 같은 항목으로 취급
+  function dupKey(r) {
+    return [r.date, r.client, r.site, r.work, r.start, r.end, r.dinner, r.car, r.materials].join('|||');
+  }
+
+  async function deleteDuplicateEntry(entry, dupCount) {
+    const label = `${entry.date} ${entry.client} / ${entry.site} (${entry.work})`;
+    if (!confirm(`중복 ${dupCount}건 중 이 항목을 삭제할까요?\n${label}\n\n삭제하면 시트에서 완전히 지워지며 되돌릴 수 없습니다.`)) return;
+
+    try {
+      const result = await sendToGas('deleteWorkLog', { rowId: entry.rowId });
+      if (result.status !== 'SUCCESS') { alert('삭제 실패: ' + (result.message || '')); return; }
+      flashStatus('삭제 완료: ' + label, true);
+      loadMatrix(currentMatrix.month);
+    } catch (err) {
+      alert('삭제 중 오류: ' + err.message);
+    }
   }
 
   function confirmClass(isConfirmed, val, estVal) {
