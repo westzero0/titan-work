@@ -297,6 +297,11 @@ function setSiteStatusLogCache(key, data) {
     siteStatusLogCache[key] = { data, fetchedAt: Date.now() };
     saveSessionCache('titan_site_status_log_cache', siteStatusLogCache);
 }
+const processStatusCache = loadSessionCache('titan_process_status_cache', {}); // key: "거래처|||현장" -> { data, fetchedAt }
+function setProcessStatusCache(key, data) {
+    processStatusCache[key] = { data, fetchedAt: Date.now() };
+    saveSessionCache('titan_process_status_cache', processStatusCache);
+}
 function setMyTodayLogsCache(data) {
     myTodayLogsCache = { data, fetchedAt: Date.now() };
     saveSessionCache('titan_my_today_logs_cache', myTodayLogsCache);
@@ -1837,8 +1842,34 @@ function scrollToCard(d, s) {
     }, 100);
 }
 
+function renderProcessStatusBody(body, data) {
+    let deadlineLine = '';
+    if (data.deadline) {
+        const overdue = data.daysRemaining !== null && data.daysRemaining < 0;
+        deadlineLine = overdue
+            ? `<div style="margin-bottom:12px; padding: 10px 12px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; font-weight:bold; font-size:0.85rem; color:#dc2626;">⚠️ 마감 ${-data.daysRemaining}일 초과 (마감예정: ${data.deadline})</div>`
+            : `<div style="margin-bottom:12px; padding: 10px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; font-weight:bold; font-size:0.85rem; color:#2563eb;">🗓️ 마감예정: ${data.deadline} (${data.daysRemaining === 0 ? 'D-DAY' : 'D-' + data.daysRemaining})</div>`;
+    }
+
+    const logRows = (data.logs || []).map(l => `
+        <div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:0.85rem;">
+            <span style="color:#94a3b8; white-space:nowrap; min-width:70px;">${l.date}</span>
+            <span style="color:#1e293b; font-weight:bold; flex: 1;">${l.work || '-'}</span>
+            <span style="color:#64748b; white-space:nowrap;">${l.workers || ''}</span>
+        </div>`).join('');
+
+    const logsSection = (data.totalLogCount || 0) === 0
+        ? '<div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.85rem;">아직 작업 기록이 없습니다</div>'
+        : `<div style="max-height:350px; overflow-y:auto; background:#fff; border-radius:8px; padding:8px; border:1px solid #f1f5f9;">${logRows}</div>`;
+
+    body.innerHTML = deadlineLine + logsSection;
+}
+
 // 📋 현장별 공정현황 조회 (관리자 패널과 동일한 로직)
+// 캐시(TTL 이내)가 있으면 즉시 렌더링하고 네트워크 호출은 생략, 없거나 오래됐으면 로딩 표시 후 조회
 async function openProcessStatusModal(client, site) {
+    const key = client + '|||' + site;
+    const cached = processStatusCache[key];
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -1849,27 +1880,38 @@ async function openProcessStatusModal(client, site) {
         <div style="background: white; border-radius: 16px; width: 100%; max-width: 480px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
             <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #1e293b;">📋 ${site} 공정현황</h3>
-                <button onclick="this.closest('.modal-overlay').remove(); document.body.style.overflow = '';" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; padding: 4px 8px; line-height: 1;">✕</button>
+                <button class="process-modal-close" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; padding: 4px 8px; line-height: 1;">✕</button>
             </div>
             <div class="process-modal-body" style="flex: 1; overflow-y: auto; padding: 20px;">
-                <div style="text-align: center; padding: 20px; color: #94a3b8;">⏳ 불러오는 중...</div>
+                ${cached && isCacheFresh(cached.fetchedAt) ? '' : '<div style="text-align: center; padding: 20px; color: #94a3b8;">⏳ 불러오는 중...</div>'}
             </div>
         </div>
     `;
     modal.classList.add('modal-overlay');
     document.body.appendChild(modal);
-    document.body.style.overflow = 'hidden';
 
+    // 🔒 배경 스크롤 잠금 (body overflow:hidden이 모바일에서 스크롤 위치를 최상단으로 튕기므로, 닫을 때 원래 위치로 복원)
+    const scrollY = window.scrollY;
+    document.body.style.overflow = 'hidden';
+    const closeModal = () => {
+        modal.remove();
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+    };
+
+    modal.querySelector('.process-modal-close').addEventListener('click', closeModal);
     // 모달 외부 클릭 시 닫기
     modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-            document.body.style.overflow = '';
-        }
+        if (e.target === modal) closeModal();
     });
     // ESC 키로 닫기
-    const escHandler = (e) => { if (e.key === 'Escape') { modal.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', escHandler); } };
+    const escHandler = (e) => { if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', escHandler); } };
     document.addEventListener('keydown', escHandler);
+
+    if (cached && isCacheFresh(cached.fetchedAt)) {
+        renderProcessStatusBody(modal.querySelector('.process-modal-body'), cached.data);
+        return;
+    }
 
     try {
         const res = await fetch(GAS_URL, {
@@ -1877,30 +1919,8 @@ async function openProcessStatusModal(client, site) {
             body: JSON.stringify({ action: 'getSiteProcessStatus', data: { client, site } })
         });
         const data = await res.json();
-
-        const body = modal.querySelector('.process-modal-body');
-
-        let deadlineLine = '';
-        if (data.deadline) {
-            const overdue = data.daysRemaining !== null && data.daysRemaining < 0;
-            deadlineLine = overdue
-                ? `<div style="margin-bottom:12px; padding: 10px 12px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; font-weight:bold; font-size:0.85rem; color:#dc2626;">⚠️ 마감 ${-data.daysRemaining}일 초과 (마감예정: ${data.deadline})</div>`
-                : `<div style="margin-bottom:12px; padding: 10px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; font-weight:bold; font-size:0.85rem; color:#2563eb;">🗓️ 마감예정: ${data.deadline} (${data.daysRemaining === 0 ? 'D-DAY' : 'D-' + data.daysRemaining})</div>`;
-        }
-
-        const logRows = (data.logs || []).map(l => `
-            <div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:0.85rem;">
-                <span style="color:#94a3b8; white-space:nowrap; min-width:70px;">${l.date}</span>
-                <span style="color:#1e293b; font-weight:bold; flex: 1;">${l.work || '-'}</span>
-                <span style="color:#64748b; white-space:nowrap;">${l.workers || ''}</span>
-            </div>`).join('');
-
-        const logsSection = (data.totalLogCount || 0) === 0
-            ? '<div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.85rem;">아직 작업 기록이 없습니다</div>'
-            : `<div style="max-height:350px; overflow-y:auto; background:#fff; border-radius:8px; padding:8px; border:1px solid #f1f5f9;">${logRows}</div>`;
-
-        body.innerHTML = deadlineLine + logsSection;
-
+        setProcessStatusCache(key, data);
+        renderProcessStatusBody(modal.querySelector('.process-modal-body'), data);
     } catch (e) {
         const body = modal.querySelector('.process-modal-body');
         body.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626; font-size:0.85rem;">🚨 불러오기 실패</div>';
@@ -2279,7 +2299,12 @@ function renderActiveSitesProgressOverview() {
         const arg = isAll ? 'null' : `'${safeName}'`;
         return `<div class="chip ${active ? 'active' : ''}" style="flex-shrink:0;" onclick="selectActiveSiteClientFilter(${arg})">${name}</div>`;
     }).join('');
-    chipsEl.querySelector('.chip.active')?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    // 💡 scrollIntoView는 페이지 세로 스크롤까지 건드려서 카드를 펼칠 때마다 상단으로 튕기므로,
+    // 칩 스트립 안에서 가로 스크롤만 직접 이동시킨다 (세로/페이지 스크롤에는 영향 없음)
+    const activeChip = chipsEl.querySelector('.chip.active');
+    if (activeChip) {
+        chipsEl.scrollLeft = activeChip.offsetLeft - (chipsEl.clientWidth - activeChip.clientWidth) / 2;
+    }
 
     const isNum = (v) => v !== null && v !== undefined && !isNaN(v);
     const urgentCount = data.filter(d => isNum(d.daysRemaining) && d.daysRemaining >= 0 && d.daysRemaining <= 3).length;

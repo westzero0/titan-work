@@ -1467,7 +1467,11 @@ function openModal(mode, dateStr, data, endStr = null) {
     const modal = document.getElementById('schedule-modal');
     if (!modal) return;
     modal.style.display = 'flex';
-    document.querySelectorAll('.swiper-slide').forEach(slide => { slide.style.overflowY = 'hidden'; });
+    // 🔒 슬라이드 스크롤 잠금 (overflow 토글 시 스크롤 위치가 최상단으로 튕기므로, 닫을 때 복원하기 위해 기억해둠)
+    document.querySelectorAll('.swiper-slide').forEach(slide => {
+        slide.dataset.scrollTop = slide.scrollTop;
+        slide.style.overflowY = 'hidden';
+    });
     document.body.style.overflow = 'hidden';
 
     if (mode === 'add') {
@@ -1533,6 +1537,8 @@ function closeModal() {
 
     document.querySelectorAll('.swiper-slide').forEach(slide => {
         slide.style.overflowY = 'auto';
+        slide.scrollTop = parseInt(slide.dataset.scrollTop || '0', 10);
+        delete slide.dataset.scrollTop;
     });
 
     setTimeout(() => {
