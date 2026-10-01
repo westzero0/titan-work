@@ -731,6 +731,8 @@ let globalTitanData = {}; // 👈 이 한 줄이 없어서 에러가 난 겁니�
 let showCompletedClientSites = false; // 완료된 현장 표시 여부 (기본: 숨김)
 
 
+let showAllRegClients = false; // 등록 폼 거래처 칩: false=진행중 현장 있는 거래처만, true=전체
+
 // 💡 공용 유틸: globalTitanData에서 메타 키를 제외한 실제 거래처명 목록만 추출
 function getClientNames() {
     return Object.keys(globalTitanData).filter(key => !['message', 'status', 'result', 'undefined'].includes(key));
@@ -2416,16 +2418,28 @@ function toggleSelection(type, item) {
         const container = document.getElementById('client-chips');
         if (!container) return;
 
-        const clientNames = getClientNames();
+        const all = getClientNames();
+        // 진행중 현장이 하나라도 있는 거래처만 칩으로 보여줌 (거래 끝난 곳은 '전체 보기'로 확인)
+        const hasActive = c => (Array.isArray(globalTitanData[c]) ? globalTitanData[c] : []).some(s => s.status !== '완료');
+        const names = showAllRegClients ? all : all.filter(hasActive);
+        const hiddenCount = all.length - all.filter(hasActive).length;
 
-        if (clientNames.length === 0) {
+        if (all.length === 0) {
             container.innerHTML = '<span style="color:#aaa; font-size:0.8rem;">데이터가 없습니다.</span>';
             return;
         }
 
-        container.innerHTML = clientNames.map(name =>
+        const toggle = hiddenCount > 0
+            ? `<div class="chip" style="background:#f8fafc; color:#94a3b8; border-style:dashed;" onclick="toggleShowAllRegClients()">${showAllRegClients ? '진행중만 보기' : `전체 보기 (+${hiddenCount})`}</div>`
+            : '';
+        container.innerHTML = names.map(name =>
             `<div class="chip" onclick="selectRegClientChip(this, '${name}')">${name}</div>`
-        ).join('');
+        ).join('') + toggle;
+    }
+
+    function toggleShowAllRegClients() {
+        showAllRegClients = !showAllRegClients;
+        renderRegistrationClientChips();
     }
 
     function selectRegClientChip(el, name) {
