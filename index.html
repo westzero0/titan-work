@@ -196,6 +196,10 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
                 <input type="date" id="date">
                 <label>🏢 거래처</label>
                 <div id="client-chips" class="chip-container"><span class="loading-text">데이터를 불러오는 중...</span></div>
+                <div class="chip-input-group" style="margin-top:10px;">
+                    <input type="text" id="add-client-input" placeholder="목록에 없으면 거래처 추가 (오늘 일보에만)">
+                    <button onclick="addTempClient()" class="add-btn">추가</button>
+                </div>
             </div> <div class="site-header" style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 8px;">
                 <label style="margin: 0;">🏗️ 현장명</label>
                 <label class="checkbox-group" style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: normal; color: #475569; margin: 0; cursor: pointer;">
@@ -224,10 +228,9 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
             <div class="card">
                 <div class="chip-header">
                     <label style="margin-bottom:0;">👥 작업 인원</label>
-                    <span onclick="toggleDelMode('member')" id="del-btn-member" class="del-mode-btn">🗑️ 삭제</span>
                 </div>
                 <div class="chip-input-group">
-                    <input type="text" id="add-member-input" placeholder="이름 추가">
+                    <input type="text" id="add-member-input" placeholder="목록에 없으면 이름 추가 (오늘 일보에만)">
                     <button onclick="addItem('member')" class="add-btn">추가</button>
                 </div>
                 <div id="member-chips" class="chip-container"></div>
@@ -236,10 +239,9 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
             <div class="card">
                 <div class="chip-header">
                     <label style="margin-bottom:0;">🚗 사용 차량</label>
-                    <span onclick="toggleDelMode('car')" id="del-btn-car" class="del-mode-btn">🗑️ 삭제</span>
                 </div>
                 <div class="chip-input-group">
-                    <input type="text" id="add-car-input" placeholder="차량 추가">
+                    <input type="text" id="add-car-input" placeholder="목록에 없으면 차량 추가 (오늘 일보에만)">
                     <button onclick="addItem('car')" class="add-btn">추가</button>
                 </div>
                 <div id="car-chips" class="chip-container"></div>

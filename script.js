@@ -207,7 +207,7 @@ async function initApp(name) {
     loadMaterialData();     // 💡 빠른 자재 검색용 카탈로그 미리 로드 (백그라운드)
     loadFrequentMaterials(); // 💡 자주 쓰는 자재 칩 로드 (백그라운드)
   // 🌟 2. await를 붙여서 서버 데이터가 완전히 도착할 때까지 기다리게 합니다!
-    await loadTitanDataWithBackgroundSync();
+    await Promise.all([loadAppChipListsWithBackgroundSync(), loadTitanDataWithBackgroundSync()]);
 
     // 💾 작성 중 임시저장(초안) 기능: 리스너 연결 후 저장된 초안이 있으면 복원 여부 확인
     setupDraftAutosaveListeners();
@@ -312,16 +312,81 @@ function invalidateMyTodayLogsCache() {
 }
 
 // 1. [데이터 초기화]
-const savedLists = localStorage.getItem('titan_custom_lists');
-let lists = savedLists ? JSON.parse(savedLists) : {
-    member: ["기원", "창재", "조환", "서호"],
-    car: ["봉고", "스타렉스", "스타리아"],
-    material: ["2.5sq 전선", "4sq 전선", "CD관", "난연관", "복스"],
-    payer: ["서영", "기원", "조환"]
+// 작업 인원(member)·사용 차량(car)은 관리자 앱의 '직원앱 표시' 설정에서 받아온다 (아래 loadAppChipListsWithBackgroundSync).
+// 예전 localStorage에 남아 있는 member/car 값은 무시한다.
+const savedLists = JSON.parse(localStorage.getItem('titan_custom_lists') || 'null') || {};
+let lists = {
+    member: [],
+    car: [],
+    material: savedLists.material || ["2.5sq 전선", "4sq 전선", "CD관", "난연관", "복스"],
+    payer: savedLists.payer || ["서영", "기원", "조환"]
 };
 
 function saveListsToStorage() {
-    localStorage.setItem('titan_custom_lists', JSON.stringify(lists));
+    localStorage.setItem('titan_custom_lists', JSON.stringify({ material: lists.material, payer: lists.payer }));
+}
+
+// 💡 직원앱표시 목록(거래처/직원/차량): 캐시를 먼저 그리고, 서버 결과가 다를 때만 다시 그린다
+const APP_CHIPS_KEY = 'titan_app_chip_lists';
+let appChipLists = null;        // { clients, workers, cars } — null이면 아직 못 받은 상태 (거래처는 전체 표시)
+let chipListsLoadFailed = false;
+// 이 일보에만 쓰는 임시 칩 (목록에 없는 항목을 직접 추가한 것). 저장하지 않으므로 새로고침하면 사라진다
+const tempChips = { member: new Set(), car: new Set(), client: new Set() };
+
+function applyAppChipLists() {
+    const activeOf = (type) => Array.from(document.querySelectorAll(`#${type}-chips .chip.active`)).map(c => c.innerText);
+    const prev = { member: activeOf('member'), car: activeOf('car') };
+    const merge = (server, temp) => server.concat(Array.from(temp).filter(n => !server.includes(n)));
+    lists.member = merge(appChipLists ? appChipLists.workers : [], tempChips.member);
+    lists.car = merge(appChipLists ? appChipLists.cars : [], tempChips.car);
+    ['member', 'car'].forEach(type => {
+        renderChips(type);
+        document.querySelectorAll(`#${type}-chips .chip`).forEach(c => { if (prev[type].includes(c.innerText)) c.classList.add('active'); });
+    });
+    const t = window.globalTitanData;
+    if (t) renderClientChips(Object.keys(t).filter(k => !['status', 'message', 'result'].includes(k)));
+}
+
+async function loadAppChipListsWithBackgroundSync() {
+    const cached = localStorage.getItem(APP_CHIPS_KEY);
+    if (cached) {
+        try { appChipLists = JSON.parse(cached); applyAppChipLists(); } catch (e) { appChipLists = null; }
+    }
+    try {
+        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAppChipLists' }) });
+        const fresh = await res.json();
+        if (!fresh || !Array.isArray(fresh.workers) || !Array.isArray(fresh.cars) || !Array.isArray(fresh.clients)) throw new Error('응답 형식 오류');
+        chipListsLoadFailed = false;
+        if (cached !== JSON.stringify(fresh)) {
+            appChipLists = fresh;
+            localStorage.setItem(APP_CHIPS_KEY, JSON.stringify(fresh));
+            applyAppChipLists();
+        }
+    } catch (e) {
+        console.error('직원앱 표시 목록 로딩 실패:', e);
+        if (!appChipLists) { chipListsLoadFailed = true; applyAppChipLists(); } // 캐시도 없으면 오류 안내 (직접 입력은 가능)
+    }
+}
+
+// 목록에 없는 거래처를 이 일보에서만 쓰도록 추가
+function addTempClient(name = null) {
+    const input = document.getElementById('add-client-input');
+    const finalName = (name !== null ? name : (input ? input.value : '')).trim();
+    if (!finalName) return;
+    tempChips.client.add(finalName);
+    if (input && name === null) input.value = '';
+    const t = window.globalTitanData || {};
+    renderClientChips(Object.keys(t).filter(k => !['status', 'message', 'result'].includes(k)));
+    document.querySelectorAll('#client-chips .chip').forEach(c => { if (c.innerText.trim() === finalName) c.click(); });
+}
+
+// 저장돼 있던 거래처가 현재 칩 목록에 없으면(관리자가 표시를 껐거나 삭제됨) 임시 칩으로 추가
+function ensureClientChip(name) {
+    name = (name || '').trim();
+    if (!name || Array.from(document.querySelectorAll('#client-chips .chip')).some(c => c.innerText.trim() === name)) return;
+    tempChips.client.add(name);
+    const t = window.globalTitanData || {};
+    renderClientChips(Object.keys(t).filter(k => !['status', 'message', 'result'].includes(k)));
 }
 
 // ==========================================
@@ -448,6 +513,7 @@ function applyDraftToForm(draft) {
     // 거래처 칩은 클릭해야 현장 칩이 그려지므로, 클릭 후 살짝 대기했다가 현장을 선택
     if (draft.client) {
         setTimeout(() => {
+            ensureClientChip(draft.client);
             document.querySelectorAll('#client-chips .chip').forEach(c => {
                 if (c.innerText.trim() === draft.client) c.click();
             });
@@ -642,19 +708,25 @@ function renderClientChips(clients) {
     const box = document.getElementById('client-chips');
     if (!box) return;
     
-    // 1. 기존 내용(글자, 로딩 메시지 등)을 완전히 깨끗하게 삭제
-    box.innerHTML = ""; 
+    const activeName = box.querySelector('.chip.active')?.innerText; // 다시 그려도 선택 상태 유지
 
-    if (!clients || clients.length === 0) {
-        box.innerHTML = "<span class='loading-text' style='color:#ef4444;'>등록된 거래처가 없습니다.</span>";
+    // 관리자가 '직원앱 표시'를 끈 거래처는 제외하고, 이 일보에서 직접 추가한 거래처는 포함
+    const shown = (appChipLists ? (clients || []).filter(c => appChipLists.clients.includes(c)) : (clients || []).slice());
+    tempChips.client.forEach(c => { if (!shown.includes(c)) shown.push(c); });
+
+    // 1. 기존 내용(글자, 로딩 메시지 등)을 완전히 깨끗하게 삭제
+    box.innerHTML = "";
+
+    if (shown.length === 0) {
+        box.innerHTML = "<span class='loading-text' style='color:#ef4444;'>등록된 거래처가 없습니다. 아래 입력칸으로 직접 추가할 수 있어요.</span>";
         return;
     }
 
-    // 2. 서버에서 받은 이름들을 가나다 순으로 정렬해서 칩 생성
-    clients.sort().forEach(name => {
-        if (!name) return; 
+    // 2. 이름들을 가나다 순으로 정렬해서 칩 생성
+    shown.sort().forEach(name => {
+        if (!name) return;
         const div = document.createElement('div');
-        div.className = 'chip';
+        div.className = 'chip' + (name === activeName ? ' active' : '');
         div.innerText = name;
         div.onclick = () => {
             // 다른 칩의 파란색(active)을 끄고 클릭한 것만 켬
@@ -931,6 +1003,10 @@ function renderChips(type) {
     const box = document.getElementById(`${type}-chips`);
     if (!box) return;
     box.innerHTML = "";
+    if (chipListsLoadFailed && lists[type].length === 0 && (type === 'member' || type === 'car')) {
+        box.innerHTML = "<span class='loading-text' style='color:#ef4444;'>⚠️ 목록을 불러오지 못했어요. 위 입력칸으로 직접 추가해 주세요.</span>";
+        return;
+    }
     lists[type].forEach(name => {
         const div = document.createElement('div');
         div.className = `chip ${delMode[type] ? 'delete-target' : ''}`;
@@ -958,6 +1034,7 @@ function addItem(type, val = null) {
 
     if (finalVal && !lists[type].includes(finalVal)) {
         lists[type].push(finalVal);
+        if (tempChips[type]) tempChips[type].add(finalVal); // 인원·차량은 이 일보에만 쓰는 임시 칩 (관리자 목록에 저장 안 함)
         saveListsToStorage();
         renderChips(type);
     }
@@ -1944,6 +2021,7 @@ function copyScheduleToLog(s) {
     if(workInput) workInput.value = s.content || s.workContent || "";
 
     // 2. 거래처 칩 강제 클릭 (현장 칩을 불러오기 위함)
+    ensureClientChip(s.client);
     const clientChips = document.querySelectorAll('#client-chips .chip');
     clientChips.forEach(c => {
         if(c.innerText.trim() === s.client.trim()) c.click();
@@ -2101,6 +2179,7 @@ function loadMyLogIntoForm(log) {
     }
 
     // 거래처 칩 클릭 → 현장 칩 로드
+    ensureClientChip(log.client);
     document.querySelectorAll('#client-chips .chip').forEach(c => {
         if (c.innerText.trim() === (log.client || '').trim()) c.click();
     });
@@ -2528,6 +2607,7 @@ function handleActiveSiteCardClick(client, site) {
     window.scrollTo(0, 0);
 
     setTimeout(() => {
+        ensureClientChip(client);
         const clientChips = document.querySelectorAll('#client-chips .chip');
         clientChips.forEach(c => { if (c.innerText.trim() === client) c.click(); });
 
