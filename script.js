@@ -669,6 +669,11 @@ function renderClientChips(clients) {
     });
 }
 
+// 완료 현장 칩은 화면에만 '[완료] '가 붙으므로, 저장·조회에 쓰는 이름에서는 항상 제거
+function activeSiteChipName() {
+    return document.querySelector('#site-chips .chip.active')?.innerText.replace(/^[완료]s*/, '').trim();
+}
+
 function renderSiteChips(sites = currentSites, term = "") {
     const box = document.getElementById('site-chips');
     const showAll = document.getElementById('showFinished').checked;
@@ -873,7 +878,7 @@ async function deleteStatusLog(id) {
 // 💡 수정/삭제 후, 현재 화면에 떠 있는 현황 기록 뷰(로그페이지 섹션 / 현장현황 탭 펼친 카드)를 모두 재조회
 function refreshAllStatusLogViews() {
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
-    let site = document.querySelector('#site-chips .chip.active')?.innerText;
+    let site = activeSiteChipName();
     if (!site) site = document.getElementById('siteSearch')?.value?.trim();
     if (client && site && document.getElementById('site-status-log-section')?.style.display === 'block') {
         loadSiteStatusLog(client, site, true);
@@ -891,7 +896,7 @@ async function submitSiteStatusLog() {
     if (!content) { alert("⚠️ 내용을 입력해주세요."); return; }
 
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
-    let site = document.querySelector('#site-chips .chip.active')?.innerText;
+    let site = activeSiteChipName();
     if (!site) site = document.getElementById('siteSearch').value.trim();
     if (!client || !site) { alert("⚠️ 거래처와 현장을 먼저 선택해주세요."); return; }
 
@@ -1015,7 +1020,7 @@ async function send() {
     const dinnerValue = document.getElementById('dinner-yn').checked ? "O" : "X"; 
     
     const client = document.querySelector('#client-chips .chip.active')?.innerText;
-    let site = document.querySelector('#site-chips .chip.active')?.innerText;
+    let site = activeSiteChipName();
     if (!site) site = document.getElementById('siteSearch').value.trim();
     
     // 필수값 체크
