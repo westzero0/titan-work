@@ -515,6 +515,12 @@
 
     <div class="card section-hr">
         <h3>👥 인원 관리</h3>
+        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+            <button type="button" onclick="openStaffVisibilityModal()"
+                style="display:inline-flex; align-items:center; gap:5px; width:auto; margin-top:0; padding:7px 14px; border-radius:20px; white-space:nowrap; cursor:pointer; font-size:0.8rem; font-weight:700; background:#fef3c7; color:var(--hr-color); border:1px solid #fcd34d;">
+                <span style="font-size:0.95rem;">📱</span><span>직원앱 표시 설정</span>
+            </button>
+        </div>
         <!-- 세그먼트 구조: 나중에 장비·공구 탭을 같은 방식으로 추가 가능 -->
         <div style="display:flex; gap:8px; margin-bottom:14px;">
             <button type="button" id="hr-seg-btn-worker" class="hr-seg-btn active" onclick="showHrSeg('worker')">직원</button>
@@ -1999,11 +2005,7 @@ function renderAfterLoad() {
                         </div>
                     </div>
 
-                    <label class="show-in-app" style="border-top:1px solid #f1f5f9; margin-top:8px;">
-                        <input type="checkbox" ${w.showInApp !== false ? 'checked' : ''} onchange="setShowInApp('worker', '${w.name}', this.checked, this)"> 직원앱 표시
-                    </label>
-
-                    <div class="card-btns" style="margin-top:8px; display:flex; gap:8px;">
+                    <div class="card-btns" style="margin-top:15px; display:flex; gap:8px;">
                         <button onclick="changePassword('${w.name}')" style="flex:1; padding:8px; font-size:0.85rem; background:#fff; border:1px solid #ddd; color:#333; margin-top:0; border-radius:6px; cursor:pointer;">
                             비번변경
                         </button>
@@ -2514,8 +2516,8 @@ function toggleSelection(type, item) {
         return sites.some(s => raw(s) === 'TRUE') || sites.some(s => s.status !== '완료');
     }
 
-    // 거래처 전체의 '직원앱 표시'를 한 화면에서 보고 바꾸는 모달 (슬라이드를 넘기지 않아도 됨)
-    function openClientVisibilityModal() {
+    // '직원앱 표시 설정' 모달 공용 틀 (거래처 / 직원·차량 모달이 같이 씀)
+    function showVisibilityModal(hint, rowsHtml) {
         let m = document.getElementById('client-visibility-modal');
         if (!m) {
             m = document.createElement('div');
@@ -2524,23 +2526,56 @@ function toggleSelection(type, item) {
             m.onclick = e => { if (e.target === m) m.remove(); };
             document.body.appendChild(m);
         }
-        const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-        const rows = getClientNames().map(c => {
-            const sites = Array.isArray(globalTitanData[c]) ? globalTitanData[c] : [];
-            return `<label class="show-in-app" style="padding:12px 4px; border-bottom:1px solid #f1f5f9; --hr-color:var(--client-color);">
-                <input type="checkbox" ${clientShownInApp(c) ? 'checked' : ''} data-client="${esc(c)}" onchange="setShowInApp('client', this.dataset.client, this.checked, this)">
-                <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(c)}</span>
-                <span style="font-size:0.8rem; color:#94a3b8; font-weight:normal;">진행중 ${sites.filter(s => s.status !== '완료').length} · 완료 ${sites.filter(s => s.status === '완료').length}</span>
-            </label>`;
-        }).join('');
         m.innerHTML = `<div style="background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; box-sizing:border-box; max-height:calc(100vh - 100px); max-height:calc(100dvh - 100px); display:flex; flex-direction:column; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #e2e8f0; padding-bottom:10px;">
                 <h3 style="margin:0; color:#1e293b; font-size:1.1rem;">📱 직원앱 표시 설정</h3>
                 <span onclick="this.closest('#client-visibility-modal').remove()" style="font-size:1.8rem; cursor:pointer; line-height:1;">&times;</span>
             </div>
-            <div style="font-size:0.8rem; color:#94a3b8; margin:8px 0 4px;">기본은 진행중 현장이 있는 거래처만 직원앱에 보입니다. 체크하면 현장이 없어도 보이고, 체크 해제하면 숨겨집니다.</div>
-            <div style="overflow-y:auto;">${rows}</div>
+            <div style="font-size:0.8rem; color:#94a3b8; margin:8px 0 4px;">${hint}</div>
+            <div style="overflow-y:auto;">${rowsHtml}</div>
         </div>`;
+    }
+
+    // 거래처 전체의 '직원앱 표시'를 한 화면에서 보고 바꾸는 모달 (슬라이드를 넘기지 않아도 됨)
+    function openClientVisibilityModal() {
+        const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        const rows = getClientNames().map(c => {
+            const sites = Array.isArray(globalTitanData[c]) ? globalTitanData[c] : [];
+            const active = sites.filter(s => s.status !== '완료').length;
+            const done = sites.filter(s => s.status === '완료').length;
+            // 진행중 현장이 있는 거래처는 파란색으로 강조
+            const nameStyle = active > 0 ? 'color:#2563eb;' : '';
+            const countHtml = active > 0
+                ? `<b style="color:#2563eb;">진행중 ${active}</b> · 완료 ${done}`
+                : `진행중 ${active} · 완료 ${done}`;
+            return `<label class="show-in-app" style="padding:12px 4px; border-bottom:1px solid #f1f5f9; --hr-color:var(--client-color);">
+                <input type="checkbox" ${clientShownInApp(c) ? 'checked' : ''} data-client="${esc(c)}" onchange="setShowInApp('client', this.dataset.client, this.checked, this)">
+                <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${nameStyle}">${esc(c)}</span>
+                <span style="font-size:0.8rem; color:#94a3b8; font-weight:normal;">${countHtml}</span>
+            </label>`;
+        }).join('');
+        showVisibilityModal('기본은 진행중 현장이 있는 거래처만 직원앱에 보입니다. 체크하면 현장이 없어도 보이고, 체크 해제하면 숨겨집니다.', rows);
+    }
+
+    // 직원·차량의 '직원앱 표시'를 한 화면에서 보고 바꾸는 모달 (인원 탭)
+    async function openStaffVisibilityModal() {
+        if (!vehicleRows.length) await loadVehicles();
+        const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        const section = t => `<div style="font-size:0.85rem; font-weight:bold; color:var(--hr-color); margin:14px 0 2px;">${t}</div>`;
+        const workerRows = globalWorkerData.filter(w => w.status === '재직').map(w => `
+            <label class="show-in-app" style="padding:12px 4px; border-bottom:1px solid #f1f5f9;">
+                <input type="checkbox" ${w.showInApp !== false ? 'checked' : ''} data-name="${esc(w.name)}" onchange="setShowInApp('worker', this.dataset.name, this.checked, this)">
+                <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(w.name)}</span>
+                <span style="font-size:0.8rem; color:#94a3b8; font-weight:normal;">${esc(w.role || '')}</span>
+            </label>`).join('');
+        const vehicleRowsHtml = vehicleRows.map(v => `
+            <label class="show-in-app" style="padding:12px 4px; border-bottom:1px solid #f1f5f9;">
+                <input type="checkbox" ${v.showInApp !== false ? 'checked' : ''} data-name="${esc(v.name)}" onchange="setShowInApp('vehicle', this.dataset.name, this.checked, this)">
+                <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🚗 ${esc(v.name)}</span>
+            </label>`).join('');
+        showVisibilityModal('체크한 직원·차량만 직원앱의 작업 인원·사용 차량 칩에 보입니다. 퇴사자는 삭제하지 말고 체크만 해제해도 됩니다 (과거 일보·급여 기록은 그대로).',
+            section('👥 직원 (재직자)') + (workerRows || '<div style="color:#999; padding:10px 4px;">재직 중인 직원이 없습니다.</div>') +
+            section('🚗 차량') + (vehicleRowsHtml || '<div style="color:#999; padding:10px 4px;">등록된 차량이 없습니다.</div>'));
     }
 
     function closeClientEditModal() {
@@ -2708,9 +2743,6 @@ function toggleSelection(type, item) {
                         <button type="button" data-name="${v.name.replace(/"/g, '&quot;')}" onclick="deleteVehicle(this.dataset.name)" style="width:auto; margin-top:0; padding:8px 12px; background:#fee2e2; border:none; color:var(--danger-color); border-radius:6px; font-size:0.85rem; font-weight:bold; cursor:pointer;">삭제</button>
                     </div>
                 </div>
-                <label class="show-in-app" style="border-top:1px solid #f1f5f9; margin-top:10px;">
-                    <input type="checkbox" ${v.showInApp !== false ? 'checked' : ''} data-name="${v.name.replace(/"/g, '&quot;')}" onchange="setShowInApp('vehicle', this.dataset.name, this.checked, this)"> 직원앱 표시
-                </label>
             </div>`).join('');
     }
 
