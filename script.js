@@ -429,6 +429,7 @@ function collectDraftData() {
         expDetail: document.getElementById('expDetail')?.value || "",
         client: document.querySelector('#client-chips .chip.active')?.innerText || "",
         site: document.getElementById('siteSearch')?.value || "",
+        as: isAsMode(), // AS 모드로 쓰던 초안이면 복원할 때도 AS 모드로 (완료현장·거래처 칩이 AS 모드에서만 보이므로)
         members: getSel('#member-chips'),
         cars: getSel('#car-chips'),
         payers: getSel('#payer-chips'),
@@ -528,15 +529,22 @@ function applyDraftToForm(draft) {
         renderSelectedMatChips();
     }
 
+    // AS 모드로 쓰던 초안이면 AS를 먼저 켜서 거래처·완료현장 칩이 그 모드 기준으로 그려지게 함
+    if (draft.as) {
+        const asT = document.getElementById('asToggle');
+        if (asT) { asT.checked = true; onAsToggleChange(); }
+    }
+
     // 거래처 칩은 클릭해야 현장 칩이 그려지므로, 클릭 후 살짝 대기했다가 현장을 선택
+    // (현재 목록에 없는 거래처는 되살리지 않음: 관리자 설정이 바뀐 뒤 옛 선택이 엉뚱하게 보이는 것을 방지)
     if (draft.client) {
         setTimeout(() => {
-            ensureClientChip(draft.client);
+            let clientFound = false;
             document.querySelectorAll('#client-chips .chip').forEach(c => {
-                if (c.innerText.trim() === draft.client) c.click();
+                if (c.innerText.trim() === draft.client) { c.click(); clientFound = true; }
             });
             setTimeout(() => {
-                if (draft.site) {
+                if (draft.site && clientFound) {
                     document.getElementById('siteSearch').value = draft.site;
                     document.querySelectorAll('#site-chips .chip').forEach(c => {
                         if (c.innerText.replace('[완료] ', '').trim() === draft.site) c.classList.add('active');
