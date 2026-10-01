@@ -253,7 +253,7 @@ let allSchedules = [];
 let showPast = false;
 let currentView = 'list';
 let viewDate = new Date();
-let delMode = { member: false, car: false, material: false, payer: false };
+let delMode = { member: false, car: false, client: false, material: false, payer: false };
 let siteStatusLogs = [];
 let siteStatusLogExpanded = false;
 let activeSitesProgressData = null; // null = 아직 한 번도 못 불러옴, [] = 진행중 현장 0개 확인됨
@@ -330,21 +330,40 @@ function saveListsToStorage() {
 const APP_CHIPS_KEY = 'titan_app_chip_lists';
 let appChipLists = null;        // { clients, workers, cars } — null이면 아직 못 받은 상태 (거래처는 전체 표시)
 let chipListsLoadFailed = false;
-// 이 일보에만 쓰는 임시 칩 (목록에 없는 항목을 직접 추가한 것). 저장하지 않으므로 새로고침하면 사라진다
-const tempChips = { member: new Set(), car: new Set(), client: new Set() };
+// 직원이 직접 추가한 칩(관리자 목록에 없는 항목). 본인 폰에 저장되어 본인이 삭제할 때까지 유지된다. 관리자 설정 칩은 기본값이라 삭제할 수 없다.
+const MY_CHIPS_KEY = 'titan_my_added_chips';
+const myAdded = (() => { try { return JSON.parse(localStorage.getItem(MY_CHIPS_KEY) || '{}') || {}; } catch (e) { return {}; } })();
+const tempChips = { member: new Set(myAdded.member || []), car: new Set(myAdded.car || []), client: new Set(myAdded.client || []) };
+// 초안·수정 화면 복원 때문에 임시로 보여주는 칩 (저장·삭제 대상 아님)
+const sessionChips = { member: new Set(), car: new Set(), client: new Set() };
+
+function saveMyChips() {
+    localStorage.setItem(MY_CHIPS_KEY, JSON.stringify({ member: [...tempChips.member], car: [...tempChips.car], client: [...tempChips.client] }));
+}
+
+// 내가 직접 추가했고 관리자 목록에는 없는 칩인가 (= 삭제 가능)
+function isMyChip(type, name) {
+    if (!tempChips[type].has(name)) return false;
+    const server = !appChipLists ? [] : (type === 'member' ? appChipLists.workers : type === 'car' ? appChipLists.cars : appChipLists.clients);
+    return !server.includes(name);
+}
+
+function refreshClientChips() {
+    const t = window.globalTitanData;
+    if (t) renderClientChips(Object.keys(t).filter(k => !['status', 'message', 'result'].includes(k)));
+}
 
 function applyAppChipLists() {
     const activeOf = (type) => Array.from(document.querySelectorAll(`#${type}-chips .chip.active`)).map(c => c.innerText);
     const prev = { member: activeOf('member'), car: activeOf('car') };
-    const merge = (server, temp) => server.concat(Array.from(temp).filter(n => !server.includes(n)));
-    lists.member = merge(appChipLists ? appChipLists.workers : [], tempChips.member);
-    lists.car = merge(appChipLists ? appChipLists.cars : [], tempChips.car);
+    const merge = (server, ...extra) => { const out = server.slice(); extra.forEach(set => set.forEach(n => { if (!out.includes(n)) out.push(n); })); return out; };
+    lists.member = merge(appChipLists ? appChipLists.workers : [], tempChips.member, sessionChips.member);
+    lists.car = merge(appChipLists ? appChipLists.cars : [], tempChips.car, sessionChips.car);
     ['member', 'car'].forEach(type => {
         renderChips(type);
         document.querySelectorAll(`#${type}-chips .chip`).forEach(c => { if (prev[type].includes(c.innerText)) c.classList.add('active'); });
     });
-    const t = window.globalTitanData;
-    if (t) renderClientChips(Object.keys(t).filter(k => !['status', 'message', 'result'].includes(k)));
+    refreshClientChips();
 }
 
 async function loadAppChipListsWithBackgroundSync() {
@@ -368,15 +387,15 @@ async function loadAppChipListsWithBackgroundSync() {
     }
 }
 
-// 목록에 없는 거래처를 이 일보에서만 쓰도록 추가
+// 목록에 없는 거래처를 직접 추가 (내 폰에 저장, 일보 제출 후 관리자 확인 대상)
 function addTempClient(name = null) {
     const input = document.getElementById('add-client-input');
     const finalName = (name !== null ? name : (input ? input.value : '')).trim();
     if (!finalName) return;
     tempChips.client.add(finalName);
+    saveMyChips();
     if (input && name === null) input.value = '';
-    const t = window.globalTitanData || {};
-    renderClientChips(Object.keys(t).filter(k => !['status', 'message', 'result'].includes(k)));
+    refreshClientChips();
     document.querySelectorAll('#client-chips .chip').forEach(c => { if (c.innerText.trim() === finalName) c.click(); });
 }
 
@@ -384,9 +403,8 @@ function addTempClient(name = null) {
 function ensureClientChip(name) {
     name = (name || '').trim();
     if (!name || Array.from(document.querySelectorAll('#client-chips .chip')).some(c => c.innerText.trim() === name)) return;
-    tempChips.client.add(name);
-    const t = window.globalTitanData || {};
-    renderClientChips(Object.keys(t).filter(k => !['status', 'message', 'result'].includes(k)));
+    sessionChips.client.add(name);
+    refreshClientChips();
 }
 
 // ==========================================
@@ -722,6 +740,7 @@ function renderClientChips(clients) {
     }
     // 이 일보에서 직접 추가한 거래처와, 지금 선택돼 있는 거래처(AS를 껐다 켜도 선택이 사라지지 않게)는 항상 포함
     tempChips.client.forEach(c => { if (!shown.includes(c)) shown.push(c); });
+    sessionChips.client.forEach(c => { if (!shown.includes(c)) shown.push(c); });
     if (activeName && !shown.includes(activeName)) shown.push(activeName);
 
     // 1. 기존 내용(글자, 로딩 메시지 등)을 완전히 깨끗하게 삭제
@@ -736,9 +755,15 @@ function renderClientChips(clients) {
     shown.sort().forEach(name => {
         if (!name) return;
         const div = document.createElement('div');
-        div.className = 'chip' + (name === activeName ? ' active' : '');
+        const mine = isMyChip('client', name);
+        div.className = 'chip' + (name === activeName ? ' active' : '') + (delMode.client && mine ? ' delete-target' : '');
+        if (delMode.client && !mine) div.style.opacity = '0.4'; // 관리자 설정 칩은 삭제 불가
         div.innerText = name;
         div.onclick = () => {
+            if (delMode.client) { // 삭제 모드: 내가 추가한 칩만 지움
+                if (mine) { tempChips.client.delete(name); saveMyChips(); refreshClientChips(); }
+                return;
+            }
             // 다른 칩의 파란색(active)을 끄고 클릭한 것만 켬
             document.querySelectorAll('#client-chips .chip').forEach(c => c.classList.remove('active'));
             div.classList.add('active');
@@ -1056,12 +1081,17 @@ function renderChips(type) {
         box.innerHTML = "<span class='loading-text' style='color:#ef4444;'>⚠️ 목록을 불러오지 못했어요. 위 입력칸으로 직접 추가해 주세요.</span>";
         return;
     }
+    const own = (type === 'member' || type === 'car'); // 인원·차량: 관리자 설정은 기본값, 내가 추가한 것만 삭제 가능
     lists[type].forEach(name => {
         const div = document.createElement('div');
-        div.className = `chip ${delMode[type] ? 'delete-target' : ''}`;
+        const deletable = !own || isMyChip(type, name);
+        div.className = `chip ${delMode[type] && deletable ? 'delete-target' : ''}`;
+        if (delMode[type] && !deletable) div.style.opacity = '0.4';
         div.innerText = name;
         div.onclick = () => {
             if (delMode[type]) { 
+                if (!deletable) return;
+                if (own) { tempChips[type].delete(name); sessionChips[type].delete(name); saveMyChips(); }
                 lists[type] = lists[type].filter(i => i !== name); 
                 saveListsToStorage(); 
                 renderChips(type); 
@@ -1083,7 +1113,10 @@ function addItem(type, val = null) {
 
     if (finalVal && !lists[type].includes(finalVal)) {
         lists[type].push(finalVal);
-        if (tempChips[type]) tempChips[type].add(finalVal); // 인원·차량은 이 일보에만 쓰는 임시 칩 (관리자 목록에 저장 안 함)
+        if (tempChips[type]) { // 인원·차량: 직접 입력은 내 폰에 저장(삭제할 때까지 유지), 복원용 자동 추가는 저장하지 않음
+            if (val === null) { tempChips[type].add(finalVal); saveMyChips(); }
+            else sessionChips[type].add(finalVal);
+        }
         saveListsToStorage();
         renderChips(type);
     }
@@ -1104,7 +1137,7 @@ function toggleDelMode(type) {
     delMode[type] = !delMode[type];
     const btn = document.getElementById(`del-btn-${type}`);
     if (btn) btn.innerText = delMode[type] ? "✅ 완료" : "🗑️ 삭제";
-    renderChips(type);
+    if (type === 'client') refreshClientChips(); else renderChips(type);
 }
 
 function toggleExpenseSection() {
