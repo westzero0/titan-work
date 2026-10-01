@@ -710,9 +710,19 @@ function renderClientChips(clients) {
     
     const activeName = box.querySelector('.chip.active')?.innerText; // 다시 그려도 선택 상태 유지
 
-    // 관리자가 '직원앱 표시'를 끈 거래처는 제외하고, 이 일보에서 직접 추가한 거래처는 포함
-    const shown = (appChipLists ? (clients || []).filter(c => appChipLists.clients.includes(c)) : (clients || []).slice());
+    // 관리자가 숨김(직원앱 표시 해제)한 거래처: 현장 데이터에 들어 있는 직원앱표시 설정값(showRaw)으로 판단
+    const isHidden = c => ((window.globalTitanData || {})[c] || []).some(s => s.showRaw === 'FALSE' || (s.showRaw === undefined && s.showInApp === false));
+    let shown;
+    if (isAsMode()) {
+        // AS 모드: 숨기지 않은 거래처는 진행중 현장이 없어도 전부 보여준다 (완료현장으로 AS 일보를 쓸 수 있게)
+        shown = (clients || []).filter(c => !isHidden(c));
+    } else {
+        // 평소: 진행중 현장이 있는 거래처 + 관리자가 직접 체크한 거래처 (서버가 계산한 appChipLists.clients)
+        shown = appChipLists ? (clients || []).filter(c => appChipLists.clients.includes(c)) : (clients || []).slice();
+    }
+    // 이 일보에서 직접 추가한 거래처와, 지금 선택돼 있는 거래처(AS를 껐다 켜도 선택이 사라지지 않게)는 항상 포함
     tempChips.client.forEach(c => { if (!shown.includes(c)) shown.push(c); });
+    if (activeName && !shown.includes(activeName)) shown.push(activeName);
 
     // 1. 기존 내용(글자, 로딩 메시지 등)을 완전히 깨끗하게 삭제
     box.innerHTML = "";
@@ -755,6 +765,9 @@ function isAsMode() {
 function onAsToggleChange() {
     asShowAll = false;
     updateAsBadge();
+    // AS 모드에서는 거래처 칩 목록도 달라지므로 다시 그림
+    const t = window.globalTitanData;
+    if (t) renderClientChips(Object.keys(t).filter(k => !['status', 'message', 'result'].includes(k)));
     renderSiteChips();
     scheduleDraftSave();
 }
