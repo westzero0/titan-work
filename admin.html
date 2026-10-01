@@ -563,6 +563,8 @@
     <button style="background: var(--client-color);" onclick="saveClient()" style="width:100%">현장 등록하기</button>
 </div>
 
+        <div id="unregistered-sites"></div>
+
         <div id="client-management-list"></div>
 
     </div>
@@ -2048,6 +2050,43 @@ async function loadClientManagement() {
     } catch (e) {
         console.error("거래처 로딩 실패:", e);
         if(container && !cached) container.innerHTML = '<div style="color:#dc2626; text-align:center; padding:20px;">데이터 연결 실패</div>';
+    }
+    loadUnregisteredSites();
+}
+
+// 🆕 직원이 일보에 임시로 쓴(거래처관리에 없는) 현장을 모아서 관리자가 확인 후 등록
+async function loadUnregisteredSites() {
+    const box = document.getElementById('unregistered-sites');
+    if (!box) return;
+    let list = [];
+    try { list = await gasCall('getUnregisteredSites'); } catch (e) { console.error("미등록 현장 조회 실패", e); return; }
+    if (!Array.isArray(list) || list.length === 0) { box.innerHTML = ''; return; }
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    box.innerHTML = `
+    <div class="card section-client" style="border-left:4px solid #f59e0b;">
+        <h3>🆕 미등록 현장 확인 (${list.length})</h3>
+        <div class="copy-hint" style="margin-bottom:10px;">직원이 일보에 목록에 없는 현장을 직접 입력한 것입니다 (최근 60일). 맞으면 [등록]을 눌러 확정해 주세요. 오타면 등록하지 말고 일보를 확인해 주세요.</div>
+        ${list.map(u => `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 0; border-top:1px solid #f1f5f9;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:bold; color:#1e293b; word-break:break-all;">${esc(u.site)}</div>
+                <div style="font-size:0.82rem; color:#64748b; margin-top:2px;">🏢 ${esc(u.client)} · 최근 ${esc(u.last)} · ${u.count}회</div>
+            </div>
+            <button type="button" data-client="${esc(u.client)}" data-site="${esc(u.site)}" onclick="registerUnregisteredSite(this)" style="width:auto; margin-top:0; padding:10px 18px; background:var(--client-color); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; white-space:nowrap;">등록</button>
+        </div>`).join('')}
+    </div>`;
+}
+
+async function registerUnregisteredSite(btn) {
+    const client = btn.dataset.client, site = btn.dataset.site;
+    btn.disabled = true; btn.innerText = "⏳";
+    try {
+        const r = await gasCall('adminAddClient', { client, site, address: '', note: '', deadline: '' });
+        if (typeof r === 'string' && r.includes('SUCCESS')) { await loadClientManagement(); return; }
+        throw new Error(typeof r === 'string' ? r : '응답 오류');
+    } catch (e) {
+        alert("⚠️ 등록 실패: " + e.message);
+        btn.disabled = false; btn.innerText = "등록";
     }
 }
 
