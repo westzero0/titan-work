@@ -2517,7 +2517,7 @@ function toggleSelection(type, item) {
     }
 
     // '직원앱 표시 설정' 모달 공용 틀 (거래처 / 직원·차량 모달이 같이 씀)
-    function showVisibilityModal(hint, rowsHtml) {
+    function showVisibilityModal(hint, rowsHtml, toolbarHtml = '') {
         let m = document.getElementById('client-visibility-modal');
         if (!m) {
             m = document.createElement('div');
@@ -2532,7 +2532,8 @@ function toggleSelection(type, item) {
                 <span onclick="this.closest('#client-visibility-modal').remove()" style="font-size:1.8rem; cursor:pointer; line-height:1;">&times;</span>
             </div>
             <div style="font-size:0.8rem; color:#94a3b8; margin:8px 0 4px;">${hint}</div>
-            <div style="overflow-y:auto;">${rowsHtml}</div>
+            ${toolbarHtml}
+            <div id="visibility-modal-list" style="overflow-y:auto;">${rowsHtml}</div>
         </div>`;
     }
 
@@ -2561,7 +2562,6 @@ function toggleSelection(type, item) {
     async function openStaffVisibilityModal() {
         if (!vehicleRows.length) await loadVehicles();
         const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-        const section = t => `<div style="font-size:0.85rem; font-weight:bold; color:var(--hr-color); margin:14px 0 2px;">${t}</div>`;
         const workerRows = globalWorkerData.filter(w => w.status === '재직').map(w => `
             <label class="show-in-app" style="padding:12px 4px; border-bottom:1px solid #f1f5f9;">
                 <input type="checkbox" ${w.showInApp !== false ? 'checked' : ''} data-name="${esc(w.name)}" onchange="setShowInApp('worker', this.dataset.name, this.checked, this)">
@@ -2573,9 +2573,22 @@ function toggleSelection(type, item) {
                 <input type="checkbox" ${v.showInApp !== false ? 'checked' : ''} data-name="${esc(v.name)}" onchange="setShowInApp('vehicle', this.dataset.name, this.checked, this)">
                 <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🚗 ${esc(v.name)}</span>
             </label>`).join('');
-        showVisibilityModal('체크한 직원·차량만 직원앱의 작업 인원·사용 차량 칩에 보입니다. 퇴사자는 삭제하지 말고 체크만 해제해도 됩니다 (과거 일보·급여 기록은 그대로).',
-            section('👥 직원 (재직자)') + (workerRows || '<div style="color:#999; padding:10px 4px;">재직 중인 직원이 없습니다.</div>') +
-            section('🚗 차량') + (vehicleRowsHtml || '<div style="color:#999; padding:10px 4px;">등록된 차량이 없습니다.</div>'));
+        // 직원 | 차량 전환 (한 번에 한 목록만 보여줌)
+        window._staffVisRows = {
+            worker: workerRows || '<div style="color:#999; padding:10px 4px;">재직 중인 직원이 없습니다.</div>',
+            vehicle: vehicleRowsHtml || '<div style="color:#999; padding:10px 4px;">등록된 차량이 없습니다.</div>',
+        };
+        const toolbar = `<div style="display:flex; gap:8px; margin:10px 0 6px;">
+            <button type="button" id="staff-vis-btn-worker" class="hr-seg-btn active" onclick="switchStaffVisTab('worker')">직원</button>
+            <button type="button" id="staff-vis-btn-vehicle" class="hr-seg-btn" onclick="switchStaffVisTab('vehicle')">차량</button>
+        </div>`;
+        showVisibilityModal('체크한 직원·차량만 직원앱의 작업 인원·사용 차량 칩에 보입니다. 퇴사자는 삭제하지 말고 체크만 해제해도 됩니다 (과거 일보·급여 기록은 그대로).', window._staffVisRows.worker, toolbar);
+    }
+
+    function switchStaffVisTab(tab) {
+        ['worker', 'vehicle'].forEach(t => document.getElementById('staff-vis-btn-' + t)?.classList.toggle('active', t === tab));
+        const list = document.getElementById('visibility-modal-list');
+        if (list && window._staffVisRows) { list.innerHTML = window._staffVisRows[tab]; list.scrollTop = 0; }
     }
 
     function closeClientEditModal() {
