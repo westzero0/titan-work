@@ -671,7 +671,7 @@ function renderClientChips(clients) {
 
 // 완료 현장 칩은 화면에만 '[완료] '가 붙으므로, 저장·조회에 쓰는 이름에서는 항상 제거
 function activeSiteChipName() {
-    return document.querySelector('#site-chips .chip.active')?.innerText.replace(/^[완료]s*/, '').trim();
+    return document.querySelector('#site-chips .chip.active')?.innerText.replace(/^\[완료\]\s*/, '').trim();
 }
 
 function renderSiteChips(sites = currentSites, term = "") {
