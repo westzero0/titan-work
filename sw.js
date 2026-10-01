@@ -1,5 +1,5 @@
 // sw.js - filename must be sw.js
-const CACHE_NAME = 'titan-v2';
+const CACHE_NAME = 'titan-v3';
 
 self.addEventListener('install', (e) => {
  self.skipWaiting(); // 새 서비스워커를 바로 활성화 (탭을 다 닫을 때까지 기다리지 않음)

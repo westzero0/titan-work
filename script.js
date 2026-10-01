@@ -746,29 +746,65 @@ function activeSiteChipName() {
     return document.querySelector('#site-chips .chip.active')?.innerText.replace(/^\[완료\]\s*/, '').trim();
 }
 
+let asShowAll = false;
+
+function isAsMode() {
+    return !!document.getElementById('asToggle')?.checked;
+}
+
+function onAsToggleChange() {
+    asShowAll = false;
+    updateAsBadge();
+    renderSiteChips();
+    scheduleDraftSave();
+}
+
+function updateAsBadge() {
+    const badge = document.getElementById('as-badge');
+    if (badge) badge.style.display = isAsMode() ? 'block' : 'none';
+}
+
 function renderSiteChips(sites = currentSites, term = "") {
     const box = document.getElementById('site-chips');
-    const showAll = document.getElementById('showFinished').checked;
+    const as = isAsMode();
     if (!sites || !Array.isArray(sites)) return;
     box.innerHTML = "";
-    sites.forEach(s => {
+
+    if (as && !document.querySelector('#client-chips .chip.active')) {
+        box.innerHTML = '<span class="loading-text">거래처를 먼저 선택하세요</span>';
+        return;
+    }
+
+    // AS 토글: 선택한 거래처의 완료현장만(최근 완료일순), 꺼짐: 진행중 현장만
+    let list = sites.filter(s => (s.status === "완료") === as && (term === "" || s.name.includes(term)));
+    if (as) {
+        const doneKey = s => String(s.doneDate || s.completedDate || s.endDate || '');
+        list = list.slice().sort((x, y) => doneKey(y).localeCompare(doneKey(x)));
+    }
+    const limit = (as && !asShowAll && term === "") ? 5 : list.length;
+
+    list.slice(0, limit).forEach(s => {
         const isFin = s.status === "완료";
-        if (!isFin || showAll) {
-            if(term === "" || s.name.includes(term)) {
-                const div = document.createElement('div');
-                div.className = `chip ${isFin ? 'finished' : ''}`;
-                div.innerText = isFin ? `[완료] ${s.name}` : s.name;
-                div.onclick = () => {
-                    document.getElementById('siteSearch').value = s.name;
-                    document.querySelectorAll('#site-chips .chip').forEach(c => c.classList.remove('active'));
-                    div.classList.add('active');
-                    handleSiteSelected(s.name);
-                    scheduleDraftSave();
-                };
-                box.appendChild(div);
-            }
-        }
+        const div = document.createElement('div');
+        div.className = `chip ${isFin ? 'finished' : ''}`;
+        div.innerText = isFin ? `[완료] ${s.name}` : s.name;
+        div.onclick = () => {
+            document.getElementById('siteSearch').value = s.name;
+            document.querySelectorAll('#site-chips .chip').forEach(c => c.classList.remove('active'));
+            div.classList.add('active');
+            handleSiteSelected(s.name);
+            scheduleDraftSave();
+        };
+        box.appendChild(div);
     });
+
+    if (list.length > limit) {
+        const more = document.createElement('div');
+        more.className = 'chip';
+        more.innerText = `더보기 (${list.length - limit})`;
+        more.onclick = () => { asShowAll = true; renderSiteChips(sites, term); };
+        box.appendChild(more);
+    }
 }
 
 
@@ -1158,6 +1194,7 @@ async function send() {
             members: getSel('#member-chips'),
             car: getSel('#car-chips'),
             dinner: dinnerValue,
+            as: isAsMode(),
             materials: matText || "없음", // 기존 텍스트 방식
             selectedMaterials: matList, // 신규 방식 (객체 배열)
             expAmount: document.getElementById('expAmount')?.value || 0,
@@ -1314,6 +1351,8 @@ async function compressImage(file) {
 
 // 💡 입력창만 비우는 함수 (send 함수에서 호출함)
 function resetFormOnlyInputs() {
+    const asT = document.getElementById('asToggle');
+    if (asT) { asT.checked = false; asShowAll = false; updateAsBadge(); }
     // 지울 항목들 리스트
     const targetIds = ['work', 'siteSearch', 'materialExtra', 'expAmount', 'expDetail'];
     
@@ -2167,6 +2206,8 @@ function loadMyLogIntoForm(log) {
     document.getElementById('start').value = log.start || "08:00";
     document.getElementById('end').value = log.end || "17:00";
     document.getElementById('dinner-yn').checked = (log.dinner === "O");
+    const asT = document.getElementById('asToggle');
+    if (asT) { asT.checked = (log.as === true || log.as === 'TRUE' || log.as === 'true'); updateAsBadge(); }
     document.getElementById('materialExtra').value = (log.materials && log.materials !== "없음") ? log.materials : "";
     document.getElementById('expAmount').value = log.expAmount || "";
     document.getElementById('expDetail').value = log.expDetail || "";

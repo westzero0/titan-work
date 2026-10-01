@@ -203,11 +203,12 @@ input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; borde
             </div> <div class="site-header" style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 8px;">
                 <label style="margin: 0;">🏗️ 현장명</label>
                 <label class="checkbox-group" style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: normal; color: #475569; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="showFinished" onchange="renderSiteChips()" style="width: 16px; height: 16px; margin: 0;">
-                    완료현장 포함
+                    <input type="checkbox" id="asToggle" onchange="onAsToggleChange()" style="width: 16px; height: 16px; margin: 0;">
+                    AS
                 </label>
             </div>
             
+            <div id="as-badge" style="display:none; margin-bottom:8px; padding:6px 10px; background:#fef3c7; color:#92400e; border-radius:8px; font-size:0.85rem; font-weight:bold;">🛠️ AS 일보 (완료현장)</div>
             <input type="text" id="siteSearch" list="site-options" placeholder="현장 검색 또는 직접 입력" oninput="syncSiteSelection()" style="margin-top: 0;">
             <datalist id="site-options"></datalist>
             <div id="site-chips" class="chip-container"></div>
