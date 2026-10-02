@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>타이탄 통합 관리</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; height: 100vh; display: flex; font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; background: #f1f5f9; color: #1e293b; }
+  #side { width: 200px; background: #0f172a; color: #cbd5e1; display: flex; flex-direction: column; flex-shrink: 0; }
+  #side h1 { margin: 0; padding: 18px 16px; font-size: 16px; color: #fff; }
+  #side a { display: block; padding: 11px 16px; color: inherit; text-decoration: none; font-size: 14px; cursor: pointer; }
+  #side a:hover { background: #1e293b; }
+  #side a.on { background: #2563eb; color: #fff; font-weight: 700; }
+  #side a.soon { opacity: .5; }
+  #main { flex: 1; min-width: 0; position: relative; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+  #dash, #soon { position: absolute; inset: 0; overflow: auto; padding: 24px 28px; }
+  h2 { margin: 0 0 16px; font-size: 20px; }
+  .cards { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+  .card { background: #fff; border-radius: 10px; padding: 16px 20px; min-width: 220px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .card .lb { font-size: 12px; color: #64748b; }
+  .card .v { font-size: 26px; font-weight: 700; margin-top: 6px; }
+  .card .v.red { color: #dc2626; }
+  .card .sub { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+  table { background: #fff; border-collapse: collapse; width: 100%; max-width: 860px; font-size: 13px; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+  th { background: #f8fafc; color: #64748b; }
+  td.n { text-align: right; }
+  .err { color: #dc2626; font-size: 12px; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #e2e8f0; }
+  .badge.발행 { background: #dbeafe; color: #1d4ed8; }
+  .badge.취소 { background: #fee2e2; color: #b91c1c; }
+</style>
+</head>
+<body>
+<nav id="side"><h1>타이탄 통합 관리</h1></nav>
+<div id="main">
+  <div id="dash">
+    <h2>대시보드</h2>
+    <div class="cards">
+      <div class="card"><div class="lb" id="gLb">이번 달 공수 합계</div><div class="v" id="gV">…</div><div class="sub" id="gS"></div></div>
+      <div class="card"><div class="lb">미수금 합계</div><div class="v red" id="rV">…</div><div class="sub" id="rS"></div></div>
+    </div>
+    <h2 style="font-size:16px">최근 견적서 5건</h2>
+    <table><thead><tr><th>견적번호</th><th>거래처</th><th>현장</th><th>일자</th><th>합계</th><th>상태</th></tr></thead><tbody id="qBody"><tr><td colspan="6">…</td></tr></tbody></table>
+  </div>
+  <div id="soon" style="display:none"><h2 id="soonT"></h2><p>준비 중인 메뉴입니다.</p></div>
+  <iframe id="frame" style="display:none"></iframe>
+</div>
+<script src="common.js"></script>
+<script>
+// 메뉴 추가/삭제는 이 배열만 고치면 된다. 종류: dash(첫 화면) | page(iframe으로 여는 파일) | soon(준비 중)
+const MENUS = [
+  { id: 'dash',   label: '🏠 대시보드',   type: 'dash' },
+  { id: 'gongsu', label: '📋 공수확인',   type: 'page', src: 'desktop.html' },
+  { id: 'quote',  label: '📄 견적서',     type: 'page', src: 'quote.html' },
+  { id: 'report', label: '📑 보고서',     type: 'soon' },
+  { id: 'stats',  label: '📊 통계',       type: 'soon' }
+];
+
+const side = document.getElementById('side');
+MENUS.forEach(m => {
+  const a = document.createElement('a');
+  a.textContent = m.label; a.dataset.id = m.id;
+  if (m.type === 'soon') a.className = 'soon';
+  a.onclick = () => { location.hash = m.id; };
+  side.appendChild(a);
+});
+
+function show() {
+  const m = MENUS.find(x => x.id === location.hash.slice(1)) || MENUS[0];
+  side.querySelectorAll('a').forEach(a => a.classList.toggle('on', a.dataset.id === m.id));
+  const f = document.getElementById('frame');
+  document.getElementById('dash').style.display = m.type === 'dash' ? '' : 'none';
+  document.getElementById('soon').style.display = m.type === 'soon' ? '' : 'none';
+  f.style.display = m.type === 'page' ? '' : 'none';
+  if (m.type === 'soon') document.getElementById('soonT').textContent = m.label;
+  if (m.type === 'page' && f.dataset.src !== m.src) { f.dataset.src = m.src; f.src = m.src; }
+  if (m.type === 'dash') loadDash();
+}
+window.addEventListener('hashchange', show);
+
+const won = n => Number(n || 0).toLocaleString() + '원';
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function loadDash() {
+  // 동시에 3개를 보내면 구글이 가끔 오류 페이지를 돌려줘서 하나씩 순서대로 요청한다
+  const seq = [];
+  const now = new Date();
+  const month = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('gLb').textContent = (now.getMonth() + 1) + '월 공수 합계';
+
+  // 서버 동작은 모두 기존/신규 읽기 전용만 사용 (개인정보 항목은 읽지 않음)
+  seq.push(() => sendToGas('getGongsuMatrix', { month }).then(r => {
+    if (r.status === 'ERROR') throw new Error(r.message);
+    let sum = 0;
+    (r.rows || []).forEach(row => Object.values(row.workerValues || {}).forEach(v => { sum += (Number(v.day) || 0) + (Number(v.night) || 0); }));
+    document.getElementById('gV').textContent = sum.toLocaleString() + ' 공수';
+    document.getElementById('gS').textContent = '작업일보 ' + (r.rows || []).length + '건 기준';
+  }).catch(e => { document.getElementById('gV').innerHTML = '<span class="err">불러오기 실패</span>'; }));
+
+  seq.push(() => sendToGas('getReceivables', {}).then(r => {
+    if (r.res !== 'SUCCESS') throw new Error('x');
+    const open = (r.data || []).filter(i => Number(i.unpaidAmount) > 0);
+    document.getElementById('rV').textContent = won(open.reduce((s, i) => s + Number(i.unpaidAmount), 0));
+    document.getElementById('rS').textContent = '미수 현장 ' + open.length + '곳';
+  }).catch(e => { document.getElementById('rV').innerHTML = '<span class="err">불러오기 실패</span>'; }));
+
+  seq.push(() => sendToGas('getQuoteList', {}).then(r => {
+    if (r.status === 'ERROR') throw new Error(r.message);
+    const q = (r.quotes || []).slice().sort((a, b) => String(b.quoteDate).localeCompare(String(a.quoteDate))).slice(0, 5);
+    document.getElementById('qBody').innerHTML = q.length
+      ? q.map(x => `<tr><td>${esc(x.quoteNo || '(작성중)')}</td><td>${esc(x.client)}</td><td>${esc(x.site)}</td><td>${esc(x.quoteDate)}</td><td class="n">${won(x.total)}</td><td><span class="badge ${esc(x.status)}">${esc(x.status)}</span></td></tr>`).join('')
+      : '<tr><td colspan="6">아직 견적서가 없습니다.</td></tr>';
+  }).catch(e => { document.getElementById('qBody').innerHTML = '<tr><td colspan="6" class="err">불러오기 실패</td></tr>'; }));
+  for (const f of seq) await f();
+}
+
+show();
+</script>
+</body>
+</html>
