@@ -646,7 +646,8 @@
     groupItems(q.items).forEach(g => {
       const n = Math.max(1, g.mats.length);
       const h = g.head;
-      const procCells = `<td rowspan="${n}" style="${tdL}vertical-align:top;">${h ? esc(h.name) + (h.spec ? '<br><span style="font-size:10px;color:#555;">' + esc(h.spec) + '</span>' : '') : ''}</td>`
+      const procCells = `<td rowspan="${n}" style="${tdC}vertical-align:top;white-space:nowrap;">${h ? esc(h.spec) : ''}</td>`
+        + `<td rowspan="${n}" style="${tdL}vertical-align:top;">${h ? esc(h.name) : ''}</td>`
         + `<td rowspan="${n}" style="${tdR}vertical-align:top;">${h && h.unit === '공수' ? fmtQty(h.qty) : ''}</td>`
         + `<td rowspan="${n}" style="${tdR}vertical-align:top;">${h ? won(lineAmount(h)) : ''}</td>`
         + `<td rowspan="${n}" style="${tdR}vertical-align:top;">${g.exp ? won(g.exp) : ''}</td>`;
@@ -658,7 +659,7 @@
         rows += `<tr>${i === 0 ? procCells : ''}${matCells}</tr>`; rowCount++;
       }
     });
-    for (; rowCount < MIN_ROWS; rowCount++) rows += `<tr><td style="${tdL}">&nbsp;</td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdL}"></td><td style="${tdL}"></td><td style="${tdC}"></td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdR}"></td></tr>`;
+    for (; rowCount < MIN_ROWS; rowCount++) rows += `<tr><td style="${tdC}">&nbsp;</td><td style="${tdL}"></td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdL}"></td><td style="${tdL}"></td><td style="${tdC}"></td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdR}"></td></tr>`;
     const lab = `${B}background:#f1f1f1;padding:4px 6px;font-size:11.5px;text-align:center;width:62px;`;
     const val = `${B}padding:4px 6px;font-size:11.5px;text-align:left;`;
     const bizTypeItem = [s.bizType, s.bizItem].filter(Boolean).join(' / ');
@@ -685,11 +686,11 @@
           </table>
         </td></tr></table>
       <table style="width:100%;border-collapse:collapse;">
-        <tr><th style="${th};width:92px;">공 정</th><th style="${th};width:34px;">공수</th><th style="${th};width:64px;">금액</th><th style="${th};width:50px;">경비</th><th style="${th}">자재품목</th><th style="${th};width:70px;">규격</th><th style="${th};width:34px;">단위</th><th style="${th};width:38px;">수량</th><th style="${th};width:52px;">단가</th><th style="${th};width:64px;">합계</th></tr>
+        <tr><th style="${th};width:68px;">날짜</th><th style="${th};width:70px;">공 정</th><th style="${th};width:34px;">공수</th><th style="${th};width:64px;">금액</th><th style="${th};width:50px;">경비</th><th style="${th}">자재품목</th><th style="${th};width:70px;">규격</th><th style="${th};width:34px;">단위</th><th style="${th};width:38px;">수량</th><th style="${th};width:52px;">단가</th><th style="${th};width:64px;">합계</th></tr>
         ${rows}
-        <tr><td colspan="9" style="${tdR}"><b>공급가액</b></td><td style="${tdR}">${won(t.supply)}</td></tr>
-        <tr><td colspan="9" style="${tdR}"><b>부가세 (${esc(q.vatRate)}%)</b></td><td style="${tdR}">${won(t.vat)}</td></tr>
-        <tr><td colspan="9" style="${tdR};background:#f1f1f1;"><b>합 계</b></td><td style="${tdR};background:#f1f1f1;"><b>${won(t.total)}</b></td></tr>
+        <tr><td colspan="10" style="${tdR}"><b>공급가액</b></td><td style="${tdR}">${won(t.supply)}</td></tr>
+        <tr><td colspan="10" style="${tdR}"><b>부가세 (${esc(q.vatRate)}%)</b></td><td style="${tdR}">${won(t.vat)}</td></tr>
+        <tr><td colspan="10" style="${tdR};background:#f1f1f1;"><b>합 계</b></td><td style="${tdR};background:#f1f1f1;"><b>${won(t.total)}</b></td></tr>
       </table>
       ${q.memo ? `<div style="margin-top:10px;font-size:12px;white-space:pre-wrap;"><b>비고</b> ${esc(q.memo)}</div>` : ''}
       ${s.account ? `<div style="margin-top:10px;font-size:12px;">${esc(s.account)}</div>` : ''}
