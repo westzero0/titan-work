@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>견적서</title>
+<style>
+  :root {
+    --primary-color: #3b82f6;
+    --hr-color: #d97706;
+    --border: #d1d5db;
+    --bg: #f5f6f8;
+    --text: #1f2937;
+    --text-sub: #6b7280;
+    --green: #059669;
+    --red: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", "Malgun Gothic", sans-serif; color: var(--text); padding: 24px; font-size: 14px; }
+  button { font-family: inherit; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: 18px; margin: 0; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input, select, textarea { padding: 7px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: white; font-family: inherit; color: var(--text); }
+  input:focus, select:focus, textarea:focus { outline: 2px solid #bfdbfe; border-color: var(--primary-color); }
+  .btn { padding: 9px 18px; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; background: #e5e7eb; color: var(--text); }
+  .btn:hover { filter: brightness(0.96); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--primary-color); color: white; }
+  .btn-hr { background: var(--hr-color); color: white; }
+  .btn-danger { background: #fee2e2; color: var(--red); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+
+  #status { margin: 0 0 12px; padding: 0; font-size: 13px; min-height: 0; }
+  #status.show { padding: 10px 14px; border-radius: 8px; background: #fef2f2; color: var(--red); border: 1px solid #fecaca; }
+  #status.ok { background: #f0fdf4; color: var(--green); border-color: #bbf7d0; }
+
+  table.grid { width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); font-size: 13px; }
+  .grid th { background: #f3f4f6; color: var(--text-sub); font-weight: 600; font-size: 12px; padding: 8px 6px; text-align: left; border: 1px solid var(--border); white-space: nowrap; }
+  .grid td { padding: 6px; border: 1px solid var(--border); vertical-align: middle; }
+  .grid .center { text-align: center; }
+  .grid .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { text-align: center; padding: 40px; color: var(--text-sub); background: white; border-radius: 6px; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 700; }
+  .badge.draft { background: #e0e7ff; color: #4338ca; }
+  .badge.issued { background: #dcfce7; color: #166534; }
+  .badge.canceled { background: #e5e7eb; color: #6b7280; }
+  tr.canceled td { color: #9ca3af; text-decoration: line-through; }
+  tr.canceled td.center, tr.canceled td.act { text-decoration: none; }
+
+  .card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+  .form-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+  .form-row label { display: block; font-size: 11.5px; font-weight: 600; color: var(--text-sub); margin-bottom: 4px; }
+  .form-row select, .form-row input[type=date], .form-row input[type=number] { min-width: 170px; }
+  .doc-no { font-size: 13px; color: var(--text-sub); margin-left: 8px; }
+
+  .add-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+  .search-wrap { position: relative; }
+  #matSearch { width: 280px; }
+  #matResults { position: absolute; top: 100%; left: 0; width: 460px; background: white; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 16px rgba(0,0,0,0.12); z-index: 20; max-height: 260px; overflow-y: auto; display: none; }
+  #matResults div { padding: 7px 10px; cursor: pointer; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+  #matResults div:hover, #matResults div.active { background: #eff6ff; }
+  #matResults small { color: var(--text-sub); }
+  #matResults .zero { color: var(--hr-color); font-weight: 600; }
+
+  .items input { width: 100%; padding: 5px 6px; border-radius: 4px; }
+  .items input[type=number] { text-align: right; }
+  .items input.zero-price { border-color: #f59e0b; background: #fffbeb; }
+  .items td.kindcell { text-align: center; }
+  .kind { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #f3f4f6; color: var(--text-sub); font-weight: 600; }
+  .kind.k-자재 { background: #ecfdf5; color: #047857; }
+  .kind.k-인건비 { background: #eff6ff; color: #1d4ed8; }
+  .kind.k-직접 { background: #fff7ed; color: #c2410c; }
+  .del-row { border: 1px solid #fca5a5; background: #fef2f2; border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+
+  .totals { margin-left: auto; width: 340px; margin-top: 12px; }
+  .totals div { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+  .totals .grand { border-top: 2px solid var(--text); margin-top: 4px; padding-top: 10px; font-size: 17px; font-weight: 700; }
+  .vat-input { width: 56px; text-align: right; padding: 3px 6px; }
+  .hint { font-size: 12px; color: var(--text-sub); }
+  .save-bar { position: sticky; bottom: 16px; margin-top: 18px; display: flex; gap: 10px; justify-content: center; }
+  .readonly-note { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
+  .readonly-note.canceled { background: #f3f4f6; border-color: var(--border); color: var(--text-sub); }
+
+  /* 문서(미리보기·인쇄) */
+  .doc-wrap { background: #e5e7eb; padding: 20px; border-radius: 8px; display: flex; justify-content: center; }
+  .doc-page { background: white; width: 210mm; min-height: 297mm; padding: 15mm 14mm; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100; display: none; overflow: auto; padding: 24px; }
+  #overlay .overlay-bar { position: sticky; top: 0; display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+  #printArea { display: none; }
+
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: white; padding: 0; }
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { display: block; }
+    #printArea .doc-page { box-shadow: none; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!--
+  quote.html — 견적서 프로그램 (PC 전용)
+
+  ■ 서버 동작 약속 (새로 추가할 Code.gs 동작. 모두 common.js의 sendToGas만 거침)
+    getQuoteMaster                        → {status, clients:[{name, sites:[{name, status}]}],
+                                               materials:[{name, spec, unit, price}],
+                                               workers:[{name, role, dayRate}],            ← 개인정보 제외(이름·구분·일당만)
+                                               supplier:{company, bizNo, representative, address, bizType, bizItem,
+                                                         phone, mobile, fax, email, account}}
+    getQuoteList                          → {status, quotes:[{quoteId, quoteNo, client, site, quoteDate, supply, vat, total, status, fileUrl}]}
+    getQuote       {quoteId}              → {status, quote:{quoteId, quoteNo, client, site, quoteDate, vatRate, memo, status, fileUrl, items:[{seq, kind, name, spec, unit, qty, price, amount}]}}
+    saveQuoteDraft {quote}                → {status, quoteId}   (작성중 견적만 저장·수정 가능. quoteId 없으면 새로 만듦)
+    deleteQuote    {quoteId}              → {status}            (작성중만 삭제 가능)
+    cloneQuote     {quoteId}              → {status, quoteId}   (새 작성중 견적으로 복제)
+    issueQuote     {quoteId, html}        → {status, quoteNo, fileUrl, warning?}  (번호 부여 + 상태 '발행' + PDF 저장. html 안의 {{QUOTE_NO}}를 서버가 번호로 바꿈)
+    saveQuotePdf   {quoteId, html}        → {status, fileUrl}   (PDF 저장이 실패했을 때 다시 만들기)
+    cancelQuote    {quoteId}              → {status}            (발행된 견적을 '취소' 처리. 번호는 그대로 보존)
+  ■ 실패 응답은 {status:"ERROR", message:"..."} 형태.
+-->
+
+<div class="header">
+  <h1>견적서 <span class="doc-no" id="headerSub"></span></h1>
+  <div class="bar" id="listBar">
+    <select id="fStatus">
+      <option value="">전체 상태</option>
+      <option value="작성중">작성중</option>
+      <option value="발행">발행</option>
+      <option value="취소">취소</option>
+    </select>
+    <input id="fText" type="search" placeholder="거래처·현장·번호 검색" style="width:200px;">
+    <button class="btn btn-primary" id="newBtn">＋ 새 견적</button>
+  </div>
+</div>
+
+<div id="status"></div>
+
+<!-- 목록 -->
+<div id="listView">
+  <div id="listLoading" class="empty">불러오는 중...</div>
+  <div id="listEmpty" class="empty" style="display:none;">견적서가 없어요. 오른쪽 위 '새 견적'으로 시작하세요.</div>
+  <table class="grid" id="listTable" style="display:none;">
+    <thead><tr>
+      <th>견적번호</th><th>거래처</th><th>현장</th><th>견적일자</th>
+      <th class="num">공급가액</th><th class="num">부가세</th><th class="num">합계</th><th class="center">상태</th><th class="center">작업</th>
+    </tr></thead>
+    <tbody id="listBody"></tbody>
+  </table>
+</div>
+
+<!-- 작성/수정/보기 -->
+<div id="editView" style="display:none;">
+  <div id="roNote" class="readonly-note" style="display:none;"></div>
+
+  <div class="card" id="formCard">
+    <div class="form-row">
+      <div><label>거래처</label><select id="fClient"></select></div>
+      <div><label>현장</label><select id="fSite"></select></div>
+      <div><label>견적일자</label><input type="date" id="fDate"></div>
+      <div><label>부가세율(%)</label><input type="number" id="fVat" min="0" max="100" step="1" style="min-width:90px; width:90px;"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="add-bar" id="addBar">
+      <div class="search-wrap">
+        <input id="matSearch" type="search" placeholder="🔍 자재 검색 (이름·규격) 후 선택해서 추가" autocomplete="off">
+        <div id="matResults"></div>
+      </div>
+      <select id="workerSelect"></select>
+      <button class="btn btn-sm" id="addWorkerBtn">＋ 인건비 추가</button>
+      <button class="btn btn-sm" id="addBlankBtn">＋ 직접 입력 품목</button>
+      <span class="hint">수량·단가를 고치면 금액이 자동 계산돼요. 단가가 0원인 자재는 주황색으로 표시돼요.</span>
+    </div>
+
+    <table class="grid items">
+      <colgroup><col style="width:44px"><col style="width:64px"><col><col style="width:150px"><col style="width:70px"><col style="width:90px"><col style="width:110px"><col style="width:120px"><col style="width:50px"></colgroup>
+      <thead><tr><th class="center">순번</th><th class="center">구분</th><th>품목</th><th>규격</th><th>단위</th><th class="num">수량</th><th class="num">단가</th><th class="num">금액</th><th class="center">삭제</th></tr></thead>
+      <tbody id="itemsBody"></tbody>
+    </table>
+    <div id="itemsEmpty" class="empty" style="margin-top:8px;">품목이 없어요. 위에서 자재·인건비를 추가하거나 직접 입력하세요.</div>
+
+    <div class="totals">
+      <div><span>공급가액</span><b id="tSupply">0</b></div>
+      <div><span>부가세 (<span id="tVatRate">10</span>%)</span><b id="tVat">0</b></div>
+      <div class="grand"><span>합계</span><span id="tTotal">0원</span></div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <label class="hint" style="display:block; margin-bottom:4px;">비고</label>
+      <textarea id="fMemo" rows="2" style="width:100%;" placeholder="견적서 하단에 표시할 메모 (선택)"></textarea>
+    </div>
+  </div>
+
+  <div class="save-bar" id="editBar">
+    <button class="btn" id="backBtn">← 목록으로</button>
+    <button class="btn" id="previewBtn">👁 미리보기</button>
+    <button class="btn btn-primary" id="saveBtn">💾 임시저장</button>
+    <button class="btn btn-hr" id="issueBtn">📨 발행</button>
+  </div>
+  <div class="save-bar" id="viewBar" style="display:none;">
+    <button class="btn" id="backBtn2">← 목록으로</button>
+    <button class="btn btn-primary" id="printBtn">🖨 인쇄 / PDF로 저장</button>
+    <a class="btn btn-hr" id="pdfLink" target="_blank" rel="noopener" style="text-decoration:none; display:none;">📄 저장된 PDF 열기</a>
+    <button class="btn" id="pdfRetryBtn" style="display:none;">📄 PDF 다시 만들기</button>
+    <button class="btn" id="cloneBtn2">⧉ 복제해서 새 견적</button>
+    <button class="btn btn-danger" id="cancelBtn" style="display:none;">발행 취소</button>
+  </div>
+  <div id="docView" class="doc-wrap" style="display:none; margin-top:16px;"></div>
+</div>
+
+<!-- 미리보기 -->
+<div id="overlay">
+  <div class="overlay-bar">
+    <button class="btn btn-primary" id="ovPrint">🖨 인쇄 / PDF로 저장</button>
+    <button class="btn" id="ovClose">닫기</button>
+  </div>
+  <div class="doc-wrap" id="ovBody"></div>
+</div>
+<div id="printArea"></div>
+
+<script src="common.js"></script>
+<script>
+  /* ================= 기본 도우미 ================= */
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const won = n => Math.round(Number(n) || 0).toLocaleString('ko-KR');
+  const fmtQty = n => String(Math.round((Number(n) || 0) * 100) / 100);
+  const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+  let master = { clients: [], materials: [], workers: [], supplier: {} };
+  let quotes = [];
+  let cur = null;      // 지금 열어 둔 견적 (작성/보기)
+  let dirty = false;   // 저장 안 된 변경이 있는지
+
+  /* 서버 호출 공통: 실패 응답은 오류로 바꿔서 한 곳에서 처리 */
+  async function callApi(action, data) {
+    const res = await sendToGas(action, data || {});
+    if (!res || res.status === 'ERROR') throw new Error((res && res.message) || '서버 오류');
+    return res;
+  }
+  function showStatus(msg, ok) {
+    const el = $('status');
+    el.textContent = msg || '';
+    el.className = msg ? ('show' + (ok ? ' ok' : '')) : '';
+    if (ok && msg) setTimeout(() => { if (el.textContent === msg) showStatus(''); }, 3000);
+  }
+
+  /* ================= 계산 ================= */
+  const lineAmount = it => Math.round((Number(it.qty) || 0) * (Number(it.price) || 0));
+  function calcTotals(items, vatRate) {
+    const supply = items.reduce((s, it) => s + lineAmount(it), 0);
+    const vat = Math.round(supply * (Number(vatRate) || 0) / 100);
+    return { supply, vat, total: supply + vat };
+  }
+
+  /* ================= 시작 ================= */
+  async function init() {
+    showStatus('');
+    $('listLoading').style.display = 'block';
+    try {
+      const [m, l] = await Promise.all([callApi('getQuoteMaster'), callApi('getQuoteList')]);
+      master = { clients: m.clients || [], materials: m.materials || [], workers: m.workers || [], supplier: m.supplier || {} };
+      quotes = l.quotes || [];
+      fillWorkerSelect();
+      renderList();
+    } catch (err) {
+      $('listLoading').style.display = 'none';
+      showStatus('연결 실패: ' + err.message);
+      console.error(err);
+    }
+  }
+
+  /* ================= 목록 ================= */
+  function renderList() {
+    $('listLoading').style.display = 'none';
+    const st = $('fStatus').value, tx = $('fText').value.trim().toLowerCase();
+    const rows = quotes
+      .filter(q => (!st || q.status === st) && (!tx || [q.quoteNo, q.client, q.site].join(' ').toLowerCase().includes(tx)))
+      .sort((a, b) => String(b.quoteDate).localeCompare(String(a.quoteDate)) || String(b.quoteId).localeCompare(String(a.quoteId)));
+    $('listEmpty').style.display = rows.length ? 'none' : 'block';
+    $('listTable').style.display = rows.length ? 'table' : 'none';
+    $('headerSub').textContent = quotes.length ? '· 총 ' + quotes.length + '건' : '';
+    $('listBody').innerHTML = rows.map(q => {
+      const cls = q.status === '작성중' ? 'draft' : q.status === '발행' ? 'issued' : 'canceled';
+      const acts = [`<button class="btn btn-sm" data-act="open" data-id="${esc(q.quoteId)}">${q.status === '작성중' ? '수정' : '보기'}</button>`,
+        `<button class="btn btn-sm" data-act="clone" data-id="${esc(q.quoteId)}">복제</button>`];
+      if (q.status === '작성중') acts.push(`<button class="btn btn-sm btn-danger" data-act="delete" data-id="${esc(q.quoteId)}">삭제</button>`);
+      return `<tr class="${q.status === '취소' ? 'canceled' : ''}">
+        <td>${q.quoteNo ? esc(q.quoteNo) : '<span class="hint">(발행 시 부여)</span>'}</td>
+        <td>${esc(q.client)}</td><td>${esc(q.site)}</td><td>${esc(q.quoteDate)}</td>
+        <td class="num">${won(q.supply)}</td><td class="num">${won(q.vat)}</td><td class="num"><b>${won(q.total)}</b></td>
+        <td class="center"><span class="badge ${cls}">${esc(q.status)}</span></td>
+        <td class="center act">${acts.join(' ')}</td></tr>`;
+    }).join('');
+  }
+
+  $('fStatus').addEventListener('change', renderList);
+  $('fText').addEventListener('input', renderList);
+  $('listBody').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    const id = b.dataset.id;
+    if (b.dataset.act === 'open') openQuote(id);
+    if (b.dataset.act === 'clone') cloneQuote(id);
+    if (b.dataset.act === 'delete') deleteQuote(id);
+  });
+
+  async function reloadList() {
+    const l = await callApi('getQuoteList');
+    quotes = l.quotes || [];
+    renderList();
+  }
+
+  /* ================= 목록 → 작성/보기 화면 전환 ================= */
+  function showList() {
+    if (dirty && !confirm('저장하지 않은 변경이 있어요. 목록으로 나갈까요?')) return;
+    dirty = false; cur = null;
+    $('editView').style.display = 'none';
+    $('listView').style.display = 'block';
+    $('listBar').style.display = 'flex';
+    showStatus('');
+    reloadList().catch(err => showStatus('목록 새로고침 실패: ' + err.message));
+  }
+  function showEditor() {
+    $('listView').style.display = 'none';
+    $('listBar').style.display = 'none';
+    $('editView').style.display = 'block';
+  }
+
+  $('newBtn').addEventListener('click', () => {
+    cur = { quoteId: '', quoteNo: '', status: '작성중', client: '', site: '', quoteDate: todayStr(), vatRate: 10, memo: '', items: [], fileUrl: '' };
+    dirty = false;
+    renderEditor();
+    showEditor();
+  });
+
+  async function openQuote(id) {
+    try {
+      showStatus('');
+      const r = await callApi('getQuote', { quoteId: id });
+      cur = normalizeQuote(r.quote);
+      dirty = false;
+      renderEditor();
+      showEditor();
+    } catch (err) { showStatus('불러오기 실패: ' + err.message); }
+  }
+
+  function normalizeQuote(q) {
+    return {
+      quoteId: q.quoteId, quoteNo: q.quoteNo || '', status: q.status || '작성중', client: q.client || '', site: q.site || '',
+      quoteDate: q.quoteDate || todayStr(), vatRate: q.vatRate === undefined || q.vatRate === '' ? 10 : Number(q.vatRate),
+      memo: q.memo || '', fileUrl: q.fileUrl || '',
+      items: (q.items || []).map(it => ({ kind: it.kind || '직접', name: it.name || '', spec: it.spec || '', unit: it.unit || '', qty: Number(it.qty) || 0, price: Number(it.price) || 0 })),
+    };
+  }
+
+  async function cloneQuote(id) {
+    try {
+      const r = await callApi('cloneQuote', { quoteId: id });
+      showStatus('복제했어요. 작성중 견적으로 열립니다.', true);
+      await openQuote(r.quoteId);
+    } catch (err) { showStatus('복제 실패: ' + err.message); }
+  }
+  async function deleteQuote(id) {
+    const q = quotes.find(x => x.quoteId === id);
+    if (!confirm(`작성중 견적을 삭제할까요?\n${q ? q.client + ' / ' + q.site : ''}\n\n삭제하면 되돌릴 수 없어요.`)) return;
+    try {
+      await callApi('deleteQuote', { quoteId: id });
+      showStatus('삭제했어요.', true);
+      await reloadList();
+    } catch (err) { showStatus('삭제 실패: ' + err.message); }
+  }
+
+  /* ================= 작성 화면 ================= */
+  const isEditable = () => cur && cur.status === '작성중';
+
+  function renderEditor() {
+    const ro = !isEditable();
+    // 안내 + 버튼 영역
+    const note = $('roNote');
+    if (ro) {
+      note.style.display = 'block';
+      note.className = 'readonly-note' + (cur.status === '취소' ? ' canceled' : '');
+      note.textContent = cur.status === '취소'
+        ? `취소된 견적입니다 (견적번호 ${cur.quoteNo}). 번호는 보존되며 수정할 수 없어요.`
+        : `발행된 견적입니다 (견적번호 ${cur.quoteNo}). 발행 후에는 수정할 수 없어요. 고치려면 '복제해서 새 견적'을 쓰세요.`;
+    } else note.style.display = 'none';
+
+    $('formCard').style.display = ro ? 'none' : 'block';
+    $('addBar').style.display = ro ? 'none' : 'flex';
+    $('editBar').style.display = ro ? 'none' : 'flex';
+    $('viewBar').style.display = ro ? 'flex' : 'none';
+    $('docView').style.display = ro ? 'flex' : 'none';
+    document.querySelector('.items').closest('.card').style.display = ro ? 'none' : 'block';
+
+    if (ro) { renderReadonly(); return; }
+
+    fillClientSelect();
+    $('fDate').value = cur.quoteDate;
+    $('fVat').value = cur.vatRate;
+    $('fMemo').value = cur.memo;
+    renderItems();
+  }
+
+  function renderReadonly() {
+    $('docView').innerHTML = '<div class="doc-page">' + renderQuoteDoc(cur, master.supplier, cur.quoteNo) + '</div>';
+    const pdf = $('pdfLink');
+    if (cur.fileUrl) { pdf.href = cur.fileUrl; pdf.style.display = 'inline-block'; } else pdf.style.display = 'none';
+    $('pdfRetryBtn').style.display = (cur.status === '발행' && !cur.fileUrl) ? 'inline-block' : 'none';
+    $('cancelBtn').style.display = cur.status === '발행' ? 'inline-block' : 'none';
+  }
+
+  function fillClientSelect() {
+    const names = master.clients.map(c => c.name);
+    if (cur.client && !names.includes(cur.client)) names.unshift(cur.client); // 목록에 없어진 거래처도 보이게
+    $('fClient').innerHTML = '<option value="">거래처 선택</option>' + names.map(n =>
+      `<option value="${esc(n)}"${n === cur.client ? ' selected' : ''}>${esc(n)}${master.clients.some(c => c.name === n) ? '' : ' (목록에 없음)'}</option>`).join('');
+    fillSiteSelect();
+  }
+  function fillSiteSelect() {
+    const c = master.clients.find(x => x.name === $('fClient').value);
+    let sites = c ? c.sites.slice() : [];
+    sites.sort((a, b) => (a.status === '완료') - (b.status === '완료')); // 진행중 현장을 위로
+    const exists = sites.some(s => s.name === cur.site);
+    const opts = sites.map(s => `<option value="${esc(s.name)}"${s.name === cur.site ? ' selected' : ''}>${esc(s.name)}${s.status === '완료' ? ' (완료)' : ''}</option>`);
+    if (cur.site && !exists) opts.unshift(`<option value="${esc(cur.site)}" selected>${esc(cur.site)} (목록에 없음)</option>`);
+    $('fSite').innerHTML = '<option value="">현장 선택</option>' + opts.join('');
+    $('fSite').disabled = !$('fClient').value;
+  }
+  $('fClient').addEventListener('change', () => { cur.client = $('fClient').value; cur.site = ''; dirty = true; fillSiteSelect(); });
+  $('fSite').addEventListener('change', () => { cur.site = $('fSite').value; dirty = true; });
+  $('fDate').addEventListener('change', () => { cur.quoteDate = $('fDate').value; dirty = true; });
+  $('fVat').addEventListener('input', () => { cur.vatRate = Number($('fVat').value) || 0; dirty = true; updateTotals(); });
+  $('fMemo').addEventListener('input', () => { cur.memo = $('fMemo').value; dirty = true; });
+
+  /* ---- 품목 표 ---- */
+  function renderItems() {
+    $('itemsEmpty').style.display = cur.items.length ? 'none' : 'block';
+    $('itemsBody').innerHTML = cur.items.map((it, i) => `
+      <tr data-i="${i}">
+        <td class="center">${i + 1}</td>
+        <td class="kindcell"><span class="kind k-${esc(it.kind)}">${esc(it.kind)}</span></td>
+        <td><input data-f="name" value="${esc(it.name)}" placeholder="품목명"></td>
+        <td><input data-f="spec" value="${esc(it.spec)}"></td>
+        <td><input data-f="unit" value="${esc(it.unit)}"></td>
+        <td><input data-f="qty" type="number" step="0.5" min="0" value="${esc(it.qty)}"></td>
+        <td><input data-f="price" type="number" step="1" min="0" value="${esc(it.price)}" class="${Number(it.price) > 0 ? '' : 'zero-price'}" ${Number(it.price) > 0 ? '' : 'title="단가가 0원이에요. 직접 입력해 주세요"'}></td>
+        <td class="num" id="amt-${i}">${won(lineAmount(it))}</td>
+        <td class="center"><button class="del-row" data-del="${i}" title="이 품목 삭제">🗑</button></td>
+      </tr>`).join('');
+    updateTotals();
+  }
+  $('itemsBody').addEventListener('input', e => {
+    const inp = e.target.closest('input[data-f]'); if (!inp) return;
+    const i = Number(inp.closest('tr').dataset.i), f = inp.dataset.f;
+    cur.items[i][f] = (f === 'qty' || f === 'price') ? (Number(inp.value) || 0) : inp.value;
+    if (f === 'price') inp.classList.toggle('zero-price', !(Number(inp.value) > 0));
+    $('amt-' + i).textContent = won(lineAmount(cur.items[i]));
+    dirty = true; updateTotals();
+  });
+  $('itemsBody').addEventListener('click', e => {
+    const b = e.target.closest('button[data-del]'); if (!b) return;
+    cur.items.splice(Number(b.dataset.del), 1);
+    dirty = true; renderItems();
+  });
+  function updateTotals() {
+    const t = calcTotals(cur.items, cur.vatRate);
+    $('tSupply').textContent = won(t.supply);
+    $('tVat').textContent = won(t.vat);
+    $('tVatRate').textContent = cur.vatRate;
+    $('tTotal').textContent = won(t.total) + '원';
+  }
+  function addItem(it) { cur.items.push(it); dirty = true; renderItems(); }
+
+  /* ---- 자재 검색해서 추가 ---- */
+  let matActive = -1, matShown = [];
+  function renderMatResults() {
+    const q = $('matSearch').value.trim().toLowerCase();
+    const box = $('matResults');
+    if (!q) { box.style.display = 'none'; return; }
+    matShown = master.materials.filter(m => (m.name + ' ' + (m.spec || '')).toLowerCase().includes(q)).slice(0, 12);
+    matActive = matShown.length ? 0 : -1;
+    box.innerHTML = matShown.length ? matShown.map((m, i) => `
+      <div data-m="${i}" class="${i === matActive ? 'active' : ''}"><span>${esc(m.name)} <small>${esc(m.spec || '')} · ${esc(m.unit || '')}</small></span>
+      <span class="${Number(m.price) > 0 ? '' : 'zero'}">${Number(m.price) > 0 ? won(m.price) + '원' : '단가 0원'}</span></div>`).join('')
+      : '<div style="color:#6b7280; cursor:default;">검색 결과가 없어요. \'직접 입력 품목\'을 쓰세요.</div>';
+    box.style.display = 'block';
+  }
+  function pickMaterial(i) {
+    const m = matShown[i]; if (!m) return;
+    addItem({ kind: '자재', name: m.name, spec: m.spec || '', unit: m.unit || '', qty: 1, price: Number(m.price) || 0 });
+    $('matSearch').value = ''; $('matResults').style.display = 'none'; matShown = [];
+  }
+  $('matSearch').addEventListener('input', renderMatResults);
+  $('matSearch').addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' && matShown.length) { matActive = Math.min(matActive + 1, matShown.length - 1); renderMatResults.hl(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp' && matShown.length) { matActive = Math.max(matActive - 1, 0); renderMatResults.hl(); e.preventDefault(); }
+    else if (e.key === 'Enter' && matActive >= 0) { pickMaterial(matActive); e.preventDefault(); }
+    else if (e.key === 'Escape') { $('matResults').style.display = 'none'; }
+  });
+  renderMatResults.hl = () => [...$('matResults').children].forEach((d, i) => d.classList.toggle('active', i === matActive));
+  $('matResults').addEventListener('mousedown', e => { const d = e.target.closest('div[data-m]'); if (d) { e.preventDefault(); pickMaterial(Number(d.dataset.m)); } });
+  $('matSearch').addEventListener('blur', () => setTimeout(() => { $('matResults').style.display = 'none'; }, 120));
+
+  /* ---- 인건비 / 직접 입력 ---- */
+  function fillWorkerSelect() {
+    $('workerSelect').innerHTML = '<option value="">인건비 대상 선택</option>' + master.workers.map((w, i) =>
+      `<option value="${i}">${esc(w.name)} (${esc(w.role || '')}) · 일당 ${won(w.dayRate)}원</option>`).join('');
+  }
+  $('addWorkerBtn').addEventListener('click', () => {
+    const w = master.workers[Number($('workerSelect').value)];
+    if (!w || $('workerSelect').value === '') { showStatus('인건비 대상을 먼저 선택해 주세요.'); return; }
+    showStatus('');
+    addItem({ kind: '인건비', name: '인건비 · ' + w.name, spec: w.role || '', unit: '공수', qty: 1, price: Number(w.dayRate) || 0 });
+    $('workerSelect').value = '';
+  });
+  $('addBlankBtn').addEventListener('click', () => addItem({ kind: '직접', name: '', spec: '', unit: '', qty: 1, price: 0 }));
+
+  /* ================= 저장 / 발행 ================= */
+  function validate(forIssue) {
+    if (!cur.client || !cur.site) return '거래처와 현장을 선택해 주세요.';
+    if (!cur.quoteDate) return '견적일자를 입력해 주세요.';
+    if (forIssue) {
+      if (!cur.items.length) return '품목을 1개 이상 추가해 주세요.';
+      const bad = cur.items.findIndex(it => !String(it.name).trim());
+      if (bad >= 0) return (bad + 1) + '번 품목의 이름을 입력해 주세요.';
+      const noQty = cur.items.findIndex(it => !(Number(it.qty) > 0));
+      if (noQty >= 0) return (noQty + 1) + '번 품목의 수량을 입력해 주세요.';
+    }
+    return '';
+  }
+  function payload() {
+    const t = calcTotals(cur.items, cur.vatRate);
+    return {
+      quoteId: cur.quoteId, client: cur.client, site: cur.site, quoteDate: cur.quoteDate, vatRate: cur.vatRate, memo: cur.memo,
+      supply: t.supply, vat: t.vat, total: t.total,
+      items: cur.items.map((it, i) => ({ seq: i + 1, kind: it.kind, name: String(it.name).trim(), spec: it.spec, unit: it.unit, qty: Number(it.qty) || 0, price: Number(it.price) || 0, amount: lineAmount(it) })),
+    };
+  }
+  async function saveDraft(silent) {
+    const r = await callApi('saveQuoteDraft', { quote: payload() });
+    cur.quoteId = r.quoteId; dirty = false;
+    if (!silent) showStatus('임시저장했어요.', true);
+    return r;
+  }
+  $('saveBtn').addEventListener('click', async () => {
+    const msg = validate(false); if (msg) { showStatus(msg); return; }
+    $('saveBtn').disabled = true;
+    try { await saveDraft(false); } catch (err) { showStatus('저장 실패: ' + err.message); } finally { $('saveBtn').disabled = false; }
+  });
+
+  $('issueBtn').addEventListener('click', async () => {
+    const msg = validate(true); if (msg) { showStatus(msg); return; }
+    const t = calcTotals(cur.items, cur.vatRate);
+    if (!confirm(`견적서를 발행할까요?\n\n${cur.client} / ${cur.site}\n합계 ${won(t.total)}원 (부가세 포함)\n\n발행하면 견적번호가 부여되고 PDF로 저장되며,\n그 뒤에는 수정할 수 없어요.`)) return;
+    const btns = ['issueBtn', 'saveBtn', 'previewBtn', 'backBtn'].map($);
+    btns.forEach(b => b.disabled = true);
+    $('issueBtn').textContent = '발행 중...';
+    try {
+      await saveDraft(true);                                                       // 1) 먼저 최신 내용 저장
+      const html = renderQuoteDoc(cur, master.supplier, '{{QUOTE_NO}}');             // 2) 서버가 번호를 채울 자리
+      const r = await callApi('issueQuote', { quoteId: cur.quoteId, html });          // 3) 번호 부여 + 발행 + PDF 저장
+      dirty = false;
+      showStatus('발행했어요. 견적번호 ' + r.quoteNo + (r.warning ? ' · ⚠️ ' + r.warning : ''), !r.warning);
+      await openQuote(cur.quoteId);                                                  // 4) 발행본(읽기 전용)으로 다시 열기
+    } catch (err) {
+      showStatus('발행 실패: ' + err.message + ' (임시저장된 내용은 그대로예요)');
+    } finally {
+      btns.forEach(b => b.disabled = false);
+      $('issueBtn').textContent = '📨 발행';
+    }
+  });
+
+  /* 읽기 전용 화면의 버튼들 */
+  $('cancelBtn').addEventListener('click', async () => {
+    if (!confirm(`발행된 견적서를 취소 처리할까요?\n견적번호 ${cur.quoteNo}\n\n번호는 그대로 남고 다시 쓰이지 않아요.`)) return;
+    try { await callApi('cancelQuote', { quoteId: cur.quoteId }); showStatus('취소 처리했어요.', true); await openQuote(cur.quoteId); }
+    catch (err) { showStatus('취소 실패: ' + err.message); }
+  });
+  $('cloneBtn2').addEventListener('click', () => cloneQuote(cur.quoteId));
+  $('pdfRetryBtn').addEventListener('click', async () => {
+    try {
+      const html = renderQuoteDoc(cur, master.supplier, cur.quoteNo);
+      const r = await callApi('saveQuotePdf', { quoteId: cur.quoteId, html });
+      cur.fileUrl = r.fileUrl; showStatus('PDF를 저장했어요.', true); renderReadonly();
+    } catch (err) { showStatus('PDF 저장 실패: ' + err.message); }
+  });
+  $('backBtn').addEventListener('click', showList);
+  $('backBtn2').addEventListener('click', showList);
+
+  /* ================= 문서(미리보기 · 인쇄 · PDF 원본) ================= */
+  // 표 + 인라인 스타일만 사용: 서버가 이 HTML을 그대로 PDF로 바꾸기 때문 (flex·grid 같은 최신 CSS는 PDF 변환에서 깨질 수 있음)
+  function renderQuoteDoc(q, s, quoteNoText) {
+    s = s || {};
+    const t = calcTotals(q.items, q.vatRate);
+    const B = 'border:1px solid #333;';
+    const th = `${B}background:#f1f1f1;padding:5px 4px;font-size:12px;text-align:center;`;
+    const tdC = `${B}padding:5px 4px;font-size:12px;text-align:center;`;
+    const tdL = `${B}padding:5px 6px;font-size:12px;text-align:left;`;
+    const tdR = `${B}padding:5px 6px;font-size:12px;text-align:right;`;
+    const MIN_ROWS = 12;
+    let rows = q.items.map((it, i) => `<tr><td style="${tdC}">${i + 1}</td><td style="${tdL}">${esc(it.name)}</td><td style="${tdL}">${esc(it.spec)}</td><td style="${tdC}">${esc(it.unit)}</td><td style="${tdR}">${fmtQty(it.qty)}</td><td style="${tdR}">${won(it.price)}</td><td style="${tdR}">${won(lineAmount(it))}</td></tr>`).join('');
+    for (let i = q.items.length; i < MIN_ROWS; i++) rows += `<tr><td style="${tdC}">&nbsp;</td><td style="${tdL}"></td><td style="${tdL}"></td><td style="${tdC}"></td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdR}"></td></tr>`;
+    const lab = `${B}background:#f1f1f1;padding:4px 6px;font-size:11.5px;text-align:center;width:62px;`;
+    const val = `${B}padding:4px 6px;font-size:11.5px;text-align:left;`;
+    const bizTypeItem = [s.bizType, s.bizItem].filter(Boolean).join(' / ');
+    const phones = [s.phone && ('T ' + s.phone), s.mobile && ('H ' + s.mobile), s.fax && ('F ' + s.fax)].filter(Boolean).join('  ');
+    const noText = quoteNoText || '(발행 시 부여)';
+    return `<div style="font-family:'Malgun Gothic','Noto Sans KR',sans-serif;color:#111;">
+      <div style="text-align:center;font-size:26px;font-weight:700;letter-spacing:12px;margin-bottom:10px;">견 적 서</div>
+      <div style="text-align:right;font-size:12px;margin-bottom:8px;">견적번호: <b>${esc(noText)}</b> &nbsp;&nbsp; 견적일자: ${esc(q.quoteDate)}</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:10px;"><tr>
+        <td style="width:50%;vertical-align:top;padding-right:10px;">
+          <div style="font-size:18px;font-weight:700;border-bottom:2px solid #111;padding-bottom:4px;margin-bottom:8px;">${esc(q.client)} 귀하</div>
+          <div style="font-size:12px;line-height:1.8;">현장: <b>${esc(q.site)}</b><br>아래와 같이 견적합니다.</div>
+          <div style="margin-top:12px;font-size:12px;">합계금액 (부가세 포함)</div>
+          <div style="font-size:20px;font-weight:700;">일금 ${won(t.total)} 원정</div>
+        </td>
+        <td style="width:50%;vertical-align:top;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="${lab}">등록번호</td><td style="${val}" colspan="3">${esc(s.bizNo)}</td></tr>
+            <tr><td style="${lab}">상 호</td><td style="${val}">${esc(s.company)}</td><td style="${lab}">대표자</td><td style="${val}">${esc(s.representative)}</td></tr>
+            <tr><td style="${lab}">주 소</td><td style="${val}" colspan="3">${esc(s.address)}</td></tr>
+            <tr><td style="${lab}">업태/종목</td><td style="${val}" colspan="3">${esc(bizTypeItem)}</td></tr>
+            <tr><td style="${lab}">연락처</td><td style="${val}" colspan="3">${esc(phones)}</td></tr>
+            <tr><td style="${lab}">메 일</td><td style="${val}" colspan="3">${esc(s.email)}</td></tr>
+          </table>
+        </td></tr></table>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><th style="${th};width:36px;">순번</th><th style="${th}">품 목</th><th style="${th};width:110px;">규 격</th><th style="${th};width:44px;">단위</th><th style="${th};width:54px;">수량</th><th style="${th};width:80px;">단가</th><th style="${th};width:92px;">금액</th></tr>
+        ${rows}
+        <tr><td colspan="6" style="${tdR}"><b>공급가액</b></td><td style="${tdR}">${won(t.supply)}</td></tr>
+        <tr><td colspan="6" style="${tdR}"><b>부가세 (${esc(q.vatRate)}%)</b></td><td style="${tdR}">${won(t.vat)}</td></tr>
+        <tr><td colspan="6" style="${tdR};background:#f1f1f1;"><b>합 계</b></td><td style="${tdR};background:#f1f1f1;"><b>${won(t.total)}</b></td></tr>
+      </table>
+      ${q.memo ? `<div style="margin-top:10px;font-size:12px;white-space:pre-wrap;"><b>비고</b> ${esc(q.memo)}</div>` : ''}
+      ${s.account ? `<div style="margin-top:10px;font-size:12px;">${esc(s.account)}</div>` : ''}
+    </div>`;
+  }
+
+  function printDoc(html) {
+    $('printArea').innerHTML = '<div class="doc-page">' + html + '</div>';
+    window.print();
+  }
+  $('previewBtn').addEventListener('click', () => {
+    $('ovBody').innerHTML = '<div class="doc-page">' + renderQuoteDoc(cur, master.supplier, cur.quoteNo || '(발행 시 부여)') + '</div>';
+    $('overlay').style.display = 'block';
+  });
+  $('ovClose').addEventListener('click', () => { $('overlay').style.display = 'none'; });
+  $('ovPrint').addEventListener('click', () => printDoc(renderQuoteDoc(cur, master.supplier, cur.quoteNo || '(발행 시 부여)')));
+  $('printBtn').addEventListener('click', () => printDoc(renderQuoteDoc(cur, master.supplier, cur.quoteNo)));
+
+  window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  init();
+</script>
+
+</body>
+</html>
