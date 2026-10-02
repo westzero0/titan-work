@@ -70,6 +70,9 @@
   .kind { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #f3f4f6; color: var(--text-sub); font-weight: 600; }
   .kind.k-자재 { background: #ecfdf5; color: #047857; }
   .kind.k-인건비 { background: #eff6ff; color: #1d4ed8; }
+  .kind.k-공정 { background: #fef3c7; color: #b45309; }
+  .kind.k-경비 { background: #fce7f3; color: #be185d; }
+  .items tr.proc td { background: #f8fafc; }
   .kind.k-직접 { background: #fff7ed; color: #c2410c; }
   .del-row { border: 1px solid #fca5a5; background: #fef2f2; border-radius: 6px; padding: 3px 8px; cursor: pointer; }
 
@@ -170,8 +173,9 @@
       </div>
       <select id="workerSelect"></select>
       <button class="btn btn-sm" id="addWorkerBtn">＋ 인건비 추가</button>
+      <button class="btn btn-sm" id="addProcBtn">＋ 공정 추가</button>
       <button class="btn btn-sm" id="addBlankBtn">＋ 직접 입력 품목</button>
-      <span class="hint">수량·단가를 고치면 금액이 자동 계산돼요. 단가가 0원인 자재는 주황색으로 표시돼요.</span>
+      <span class="hint">거래처·현장을 고르면 공정(날짜별)·공수·경비·자재가 자동으로 채워져요. 공정 줄 아래에 이어지는 자재·경비가 그 공정에 묶여요. 단가가 0원인 품목은 주황색이에요.</span>
     </div>
 
     <table class="grid items">
@@ -431,24 +435,32 @@
   $('fClient').addEventListener('change', () => { cur.client = $('fClient').value; cur.site = ''; dirty = true; fillSiteSelect(); });
   $('fSite').addEventListener('change', () => { cur.site = $('fSite').value; dirty = true; autoFillFromSite(); });
 
-  /* ---- 현장 선택 시 자재 사용내역으로 품목 자동 채우기 ---- */
-  let siteMatUsage = null; // 현장별 사용자재 {"거래처|||현장": [{name,spec,unit,qty}]} — 한 번만 불러와 재사용
+  /* ---- 현장 선택 시 공정(작업일보 1건=1줄, 날짜별) 단위로 품목 자동 채우기 ----
+     서버 getSiteQuoteData → [{date, work, gongsu, amount, expense, materials[]}]
+     품목 표 안에서는 공정 줄(구분 '공정': 품목=공정명, 규격=날짜, 단위=공수, 수량=공수, 단가=평균 일당) 뒤에
+     그 공정의 경비(구분 '경비')와 자재 줄이 이어지는 순서로 저장한다. (서버 저장 형식은 그대로) */
   async function autoFillFromSite() {
     if (!cur.client || !cur.site) return;
     const client = cur.client, site = cur.site;
-    try {
-      if (!siteMatUsage) siteMatUsage = await callApi('getSiteMaterialsUsage');
-    } catch (err) { showStatus('자재 사용내역 불러오기 실패: ' + err.message); return; }
+    let r;
+    try { showStatus('불러오는 중...'); r = await callApi('getSiteQuoteData', { client, site }); }
+    catch (err) { showStatus('작업 내역 불러오기 실패: ' + err.message); return; }
     if (cur.client !== client || cur.site !== site) return; // 기다리는 사이 다른 현장으로 바뀜
-    const used = siteMatUsage[client + '|||' + site] || [];
-    if (!used.length) { showStatus('이 현장의 자재 사용내역이 없어요.', true); return; }
-    if (cur.items.length && !confirm('현재 품목을 지우고 이 현장의 자재 사용내역으로 채울까요?')) return;
-    const key = (n, s) => (String(n) + '|' + String(s || '')).trim().toLowerCase();
-    const prices = new Map(master.materials.map(m => [key(m.name, m.spec), Number(m.price) || 0]));
-    cur.items = used.map(u => ({ kind: '자재', name: u.name, spec: u.spec || '', unit: u.unit || '', qty: Number(u.qty) || 0, price: prices.get(key(u.name, u.spec)) || 0 }));
+    const rows = r.rows || [];
+    if (!rows.length) { showStatus('이 현장의 작업 기록이 없어요.', true); return; }
+    if (cur.items.length && !confirm('현재 품목을 지우고 이 현장의 작업 내역으로 채울까요?')) { showStatus(''); return; }
+    const items = [];
+    rows.forEach(w => {
+      items.push({ kind: '공정', name: w.work, spec: w.date, unit: '공수', qty: w.gongsu, price: w.gongsu > 0 ? Math.round(w.amount / w.gongsu * 100) / 100 : 0 });
+      if (w.expense > 0) items.push({ kind: '경비', name: w.work + ' 경비', spec: '', unit: '식', qty: 1, price: w.expense });
+      (w.materials || []).forEach(m => items.push({ kind: '자재', name: m.name, spec: m.spec || '', unit: m.unit || '', qty: Number(m.qty) || 0, price: Number(m.price) || 0 }));
+    });
+    cur.items = items;
     dirty = true; renderItems();
-    showStatus(`자재 ${used.length}건을 채웠어요. 단가가 0원(주황색)인 품목은 직접 입력해 주세요.`, true);
+    const zero = items.filter(it => it.kind === '자재' && !(it.price > 0)).length;
+    showStatus(`공정 ${rows.length}건을 채웠어요.` + (zero ? ` 단가 0원 자재 ${zero}건은 직접 입력해 주세요.` : ''), true);
   }
+
   $('fDate').addEventListener('change', () => { cur.quoteDate = $('fDate').value; dirty = true; });
   $('fVat').addEventListener('input', () => { cur.vatRate = Number($('fVat').value) || 0; dirty = true; updateTotals(); });
   $('fMemo').addEventListener('input', () => { cur.memo = $('fMemo').value; dirty = true; });
@@ -457,13 +469,13 @@
   function renderItems() {
     $('itemsEmpty').style.display = cur.items.length ? 'none' : 'block';
     $('itemsBody').innerHTML = cur.items.map((it, i) => `
-      <tr data-i="${i}">
+      <tr data-i="${i}" class="${it.kind === '공정' || it.kind === '인건비' ? 'proc' : ''}">
         <td class="center">${i + 1}</td>
         <td class="kindcell"><span class="kind k-${esc(it.kind)}">${esc(it.kind)}</span></td>
         <td><input data-f="name" value="${esc(it.name)}" placeholder="품목명"></td>
         <td><input data-f="spec" value="${esc(it.spec)}"></td>
         <td><input data-f="unit" value="${esc(it.unit)}"></td>
-        <td><input data-f="qty" type="number" step="0.5" min="0" value="${esc(it.qty)}"></td>
+        <td><input data-f="qty" type="number" step="0.25" min="0" value="${esc(it.qty)}"></td>
         <td><input data-f="price" type="number" step="1" min="0" value="${esc(it.price)}" class="${Number(it.price) > 0 ? '' : 'zero-price'}" ${Number(it.price) > 0 ? '' : 'title="단가가 0원이에요. 직접 입력해 주세요"'}></td>
         <td class="num" id="amt-${i}">${won(lineAmount(it))}</td>
         <td class="center"><button class="del-row" data-del="${i}" title="이 품목 삭제">🗑</button></td>
@@ -534,6 +546,7 @@
     addItem({ kind: '인건비', name: '인건비 · ' + w.name, spec: w.role || '', unit: '공수', qty: 1, price: Number(w.dayRate) || 0 });
     $('workerSelect').value = '';
   });
+  $('addProcBtn').addEventListener('click', () => addItem({ kind: '공정', name: '', spec: todayStr(), unit: '공수', qty: 1, price: 0 }));
   $('addBlankBtn').addEventListener('click', () => addItem({ kind: '직접', name: '', spec: '', unit: '', qty: 1, price: 0 }));
 
   /* ================= 저장 / 발행 ================= */
@@ -544,7 +557,7 @@
       if (!cur.items.length) return '품목을 1개 이상 추가해 주세요.';
       const bad = cur.items.findIndex(it => !String(it.name).trim());
       if (bad >= 0) return (bad + 1) + '번 품목의 이름을 입력해 주세요.';
-      const noQty = cur.items.findIndex(it => !(Number(it.qty) > 0));
+      const noQty = cur.items.findIndex(it => it.kind !== '공정' && !(Number(it.qty) > 0));
       if (noQty >= 0) return (noQty + 1) + '번 품목의 수량을 입력해 주세요.';
     }
     return '';
@@ -610,17 +623,42 @@
 
   /* ================= 문서(미리보기 · 인쇄 · PDF 원본) ================= */
   // 표 + 인라인 스타일만 사용: 서버가 이 HTML을 그대로 PDF로 바꾸기 때문 (flex·grid 같은 최신 CSS는 PDF 변환에서 깨질 수 있음)
+  // 품목을 공정 단위로 묶는다: 공정/인건비 줄이 새 묶음을 시작하고, 뒤따르는 경비는 그 묶음의 경비, 자재·직접 줄은 그 묶음의 자재가 된다
+  function groupItems(items) {
+    const groups = []; let g = null;
+    items.forEach(it => {
+      if (it.kind === '공정' || it.kind === '인건비') { g = { head: it, exp: 0, mats: [] }; groups.push(g); return; }
+      if (!g) { g = { head: null, exp: 0, mats: [] }; groups.push(g); }
+      if (it.kind === '경비') g.exp += lineAmount(it); else g.mats.push(it);
+    });
+    return groups;
+  }
   function renderQuoteDoc(q, s, quoteNoText) {
     s = s || {};
     const t = calcTotals(q.items, q.vatRate);
     const B = 'border:1px solid #333;';
-    const th = `${B}background:#f1f1f1;padding:5px 4px;font-size:12px;text-align:center;`;
-    const tdC = `${B}padding:5px 4px;font-size:12px;text-align:center;`;
-    const tdL = `${B}padding:5px 6px;font-size:12px;text-align:left;`;
-    const tdR = `${B}padding:5px 6px;font-size:12px;text-align:right;`;
+    const th = `${B}background:#f1f1f1;padding:5px 3px;font-size:11px;text-align:center;`;
+    const tdC = `${B}padding:4px 3px;font-size:11px;text-align:center;`;
+    const tdL = `${B}padding:4px 5px;font-size:11px;text-align:left;`;
+    const tdR = `${B}padding:4px 5px;font-size:11px;text-align:right;`;
     const MIN_ROWS = 12;
-    let rows = q.items.map((it, i) => `<tr><td style="${tdC}">${i + 1}</td><td style="${tdL}">${esc(it.name)}</td><td style="${tdL}">${esc(it.spec)}</td><td style="${tdC}">${esc(it.unit)}</td><td style="${tdR}">${fmtQty(it.qty)}</td><td style="${tdR}">${won(it.price)}</td><td style="${tdR}">${won(lineAmount(it))}</td></tr>`).join('');
-    for (let i = q.items.length; i < MIN_ROWS; i++) rows += `<tr><td style="${tdC}">&nbsp;</td><td style="${tdL}"></td><td style="${tdL}"></td><td style="${tdC}"></td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdR}"></td></tr>`;
+    let rows = '', rowCount = 0;
+    groupItems(q.items).forEach(g => {
+      const n = Math.max(1, g.mats.length);
+      const h = g.head;
+      const procCells = `<td rowspan="${n}" style="${tdL}vertical-align:top;">${h ? esc(h.name) + (h.spec ? '<br><span style="font-size:10px;color:#555;">' + esc(h.spec) + '</span>' : '') : ''}</td>`
+        + `<td rowspan="${n}" style="${tdR}vertical-align:top;">${h && h.unit === '공수' ? fmtQty(h.qty) : ''}</td>`
+        + `<td rowspan="${n}" style="${tdR}vertical-align:top;">${h ? won(lineAmount(h)) : ''}</td>`
+        + `<td rowspan="${n}" style="${tdR}vertical-align:top;">${g.exp ? won(g.exp) : ''}</td>`;
+      for (let i = 0; i < n; i++) {
+        const m = g.mats[i];
+        const matCells = m
+          ? `<td style="${tdL}">${esc(m.name)}</td><td style="${tdL}">${esc(m.spec)}</td><td style="${tdC}">${esc(m.unit)}</td><td style="${tdR}">${fmtQty(m.qty)}</td><td style="${tdR}">${won(m.price)}</td><td style="${tdR}">${won(lineAmount(m))}</td>`
+          : `<td style="${tdL}"></td><td style="${tdL}"></td><td style="${tdC}"></td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdR}"></td>`;
+        rows += `<tr>${i === 0 ? procCells : ''}${matCells}</tr>`; rowCount++;
+      }
+    });
+    for (; rowCount < MIN_ROWS; rowCount++) rows += `<tr><td style="${tdL}">&nbsp;</td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdL}"></td><td style="${tdL}"></td><td style="${tdC}"></td><td style="${tdR}"></td><td style="${tdR}"></td><td style="${tdR}"></td></tr>`;
     const lab = `${B}background:#f1f1f1;padding:4px 6px;font-size:11.5px;text-align:center;width:62px;`;
     const val = `${B}padding:4px 6px;font-size:11.5px;text-align:left;`;
     const bizTypeItem = [s.bizType, s.bizItem].filter(Boolean).join(' / ');
@@ -647,11 +685,11 @@
           </table>
         </td></tr></table>
       <table style="width:100%;border-collapse:collapse;">
-        <tr><th style="${th};width:36px;">순번</th><th style="${th}">품 목</th><th style="${th};width:110px;">규 격</th><th style="${th};width:44px;">단위</th><th style="${th};width:54px;">수량</th><th style="${th};width:80px;">단가</th><th style="${th};width:92px;">금액</th></tr>
+        <tr><th style="${th};width:92px;">공 정</th><th style="${th};width:34px;">공수</th><th style="${th};width:64px;">금액</th><th style="${th};width:50px;">경비</th><th style="${th}">자재품목</th><th style="${th};width:70px;">규격</th><th style="${th};width:34px;">단위</th><th style="${th};width:38px;">수량</th><th style="${th};width:52px;">단가</th><th style="${th};width:64px;">합계</th></tr>
         ${rows}
-        <tr><td colspan="6" style="${tdR}"><b>공급가액</b></td><td style="${tdR}">${won(t.supply)}</td></tr>
-        <tr><td colspan="6" style="${tdR}"><b>부가세 (${esc(q.vatRate)}%)</b></td><td style="${tdR}">${won(t.vat)}</td></tr>
-        <tr><td colspan="6" style="${tdR};background:#f1f1f1;"><b>합 계</b></td><td style="${tdR};background:#f1f1f1;"><b>${won(t.total)}</b></td></tr>
+        <tr><td colspan="9" style="${tdR}"><b>공급가액</b></td><td style="${tdR}">${won(t.supply)}</td></tr>
+        <tr><td colspan="9" style="${tdR}"><b>부가세 (${esc(q.vatRate)}%)</b></td><td style="${tdR}">${won(t.vat)}</td></tr>
+        <tr><td colspan="9" style="${tdR};background:#f1f1f1;"><b>합 계</b></td><td style="${tdR};background:#f1f1f1;"><b>${won(t.total)}</b></td></tr>
       </table>
       ${q.memo ? `<div style="margin-top:10px;font-size:12px;white-space:pre-wrap;"><b>비고</b> ${esc(q.memo)}</div>` : ''}
       ${s.account ? `<div style="margin-top:10px;font-size:12px;">${esc(s.account)}</div>` : ''}
