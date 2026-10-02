@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>자재 단가 입력</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 28px; font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; background: #f1f5f9; color: #1e293b; font-size: 14px; }
+  h2 { margin: 0 0 16px; font-size: 20px; }
+  #q { width: 320px; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 14px; }
+  table { background: #fff; border-collapse: collapse; width: 100%; max-width: 860px; }
+  th, td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+  th { background: #f8fafc; color: #64748b; }
+  input.p { width: 110px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; text-align: right; }
+  button { padding: 6px 14px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; }
+  button:disabled { opacity: .5; }
+  .msg { color: #64748b; padding: 20px 0; }
+  .err { color: #dc2626; }
+</style>
+</head>
+<body>
+<h2>⚠️ 단가 미입력 자재 (<span id="cnt">0</span>건)</h2>
+<input id="q" type="search" placeholder="🔍 품목명·규격 검색">
+<div id="box" class="msg">불러오는 중...</div>
+<script src="common.js"></script>
+<script>
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let list = [];
+
+  async function load() {
+    try {
+      const r = await sendToGas('getZeroPriceMaterials', {});
+      if (!Array.isArray(r)) throw new Error('응답 형식 오류');
+      list = r; render();
+    } catch (e) { document.getElementById('box').innerHTML = '<span class="err">불러오기 실패: ' + esc(e.message) + '</span>'; }
+  }
+
+  function render() {
+    document.getElementById('cnt').textContent = list.length;
+    const t = document.getElementById('q').value.trim().toLowerCase();
+    const rows = list.filter(m => !t || (m.name + ' ' + (m.spec || '')).toLowerCase().includes(t));
+    document.getElementById('box').className = '';
+    if (!rows.length) { document.getElementById('box').innerHTML = '<div class="msg">' + (list.length ? '검색 결과가 없어요.' : '✅ 모든 자재에 단가가 입력되어 있어요.') + '</div>'; return; }
+    document.getElementById('box').innerHTML = '<table><thead><tr><th>품목</th><th>규격</th><th>단위</th><th>단가</th><th></th></tr></thead><tbody>' +
+      rows.map(m => `<tr><td>${esc(m.name)}</td><td>${esc(m.spec || '-')}</td><td>${esc(m.unit || '-')}</td>
+        <td><input class="p" type="number" min="1" id="p${m.rowIndex}" placeholder="단가"></td>
+        <td><button data-row="${m.rowIndex}">저장</button></td></tr>`).join('') + '</tbody></table>';
+  }
+
+  document.getElementById('q').addEventListener('input', render);
+  document.getElementById('box').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-row]'); if (!b) return;
+    const row = Number(b.dataset.row), price = parseInt(document.getElementById('p' + row).value, 10);
+    if (!(price > 0)) { alert('단가를 입력해 주세요.'); return; }
+    b.disabled = true; b.textContent = '저장 중...';
+    try {
+      const r = await sendToGas('updateMaterialPrice', { rowIndex: row, newPrice: price });
+      if (!JSON.stringify(r).includes('SUCCESS')) throw new Error('서버 저장 실패');
+      list = list.filter(m => m.rowIndex !== row); render();
+    } catch (err) { alert('저장 실패: ' + err.message); b.disabled = false; b.textContent = '저장'; }
+  });
+  load();
+</script>
+</body>
+</html>

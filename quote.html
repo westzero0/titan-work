@@ -429,7 +429,26 @@
     $('fSite').disabled = !$('fClient').value;
   }
   $('fClient').addEventListener('change', () => { cur.client = $('fClient').value; cur.site = ''; dirty = true; fillSiteSelect(); });
-  $('fSite').addEventListener('change', () => { cur.site = $('fSite').value; dirty = true; });
+  $('fSite').addEventListener('change', () => { cur.site = $('fSite').value; dirty = true; autoFillFromSite(); });
+
+  /* ---- 현장 선택 시 자재 사용내역으로 품목 자동 채우기 ---- */
+  let siteMatUsage = null; // 현장별 사용자재 {"거래처|||현장": [{name,spec,unit,qty}]} — 한 번만 불러와 재사용
+  async function autoFillFromSite() {
+    if (!cur.client || !cur.site) return;
+    const client = cur.client, site = cur.site;
+    try {
+      if (!siteMatUsage) siteMatUsage = await callApi('getSiteMaterialsUsage');
+    } catch (err) { showStatus('자재 사용내역 불러오기 실패: ' + err.message); return; }
+    if (cur.client !== client || cur.site !== site) return; // 기다리는 사이 다른 현장으로 바뀜
+    const used = siteMatUsage[client + '|||' + site] || [];
+    if (!used.length) { showStatus('이 현장의 자재 사용내역이 없어요.', true); return; }
+    if (cur.items.length && !confirm('현재 품목을 지우고 이 현장의 자재 사용내역으로 채울까요?')) return;
+    const key = (n, s) => (String(n) + '|' + String(s || '')).trim().toLowerCase();
+    const prices = new Map(master.materials.map(m => [key(m.name, m.spec), Number(m.price) || 0]));
+    cur.items = used.map(u => ({ kind: '자재', name: u.name, spec: u.spec || '', unit: u.unit || '', qty: Number(u.qty) || 0, price: prices.get(key(u.name, u.spec)) || 0 }));
+    dirty = true; renderItems();
+    showStatus(`자재 ${used.length}건을 채웠어요. 단가가 0원(주황색)인 품목은 직접 입력해 주세요.`, true);
+  }
   $('fDate').addEventListener('change', () => { cur.quoteDate = $('fDate').value; dirty = true; });
   $('fVat').addEventListener('input', () => { cur.vatRate = Number($('fVat').value) || 0; dirty = true; updateTotals(); });
   $('fMemo').addEventListener('input', () => { cur.memo = $('fMemo').value; dirty = true; });

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>인건비 계산</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 28px; font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; background: #f1f5f9; color: #1e293b; font-size: 14px; }
+  h2 { margin: 0 0 16px; font-size: 20px; }
+  table { background: #fff; border-collapse: collapse; width: 100%; max-width: 760px; margin-top: 16px; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { background: #f8fafc; color: #64748b; }
+  tfoot td { font-weight: 700; background: #f8fafc; }
+  .warn { color: #d97706; font-size: 12px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; max-width: 760px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  input { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+  button { padding: 9px 18px; border: 0; border-radius: 8px; background: #d97706; color: #fff; font-weight: 700; cursor: pointer; margin-left: 8px; }
+  button:disabled { opacity: .5; }
+  #res { margin-top: 16px; }
+  #res a { display: block; text-align: center; background: #059669; color: #fff; padding: 14px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+  .err { color: #dc2626; }
+  .hint { color: #64748b; font-size: 12px; margin: 0 0 14px; }
+</style>
+</head>
+<body>
+<h2>💰 인건비 계산</h2>
+<div class="card">
+  <p class="hint">월을 고르면 직원별 근무일수·공수·금액을 먼저 보여줘요. 금액은 공수 × 일당이고, 확인 후 엑셀로 만들 수 있어요.</p>
+  <input type="month" id="month">
+  <button id="show" style="background:#2563eb">조회</button>
+  <button id="go">엑셀로 만들기</button>
+  <div id="sum"></div>
+  <div id="res"></div>
+</div>
+<script src="common.js"></script>
+<script>
+  const d = new Date();
+  document.getElementById('month').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const won = n => Math.round(n).toLocaleString('ko-KR');
+  const sum = document.getElementById('sum');
+  document.getElementById('show').addEventListener('click', async () => {
+    const month = document.getElementById('month').value;
+    if (!month) { alert('월을 선택해 주세요.'); return; }
+    sum.textContent = '⏳ 불러오는 중...';
+    try {
+      const g = await sendToGas('getGongsuMatrix', { month });
+      if (g.status === 'ERROR') throw new Error(g.message);
+      const m = await sendToGas('getQuoteMaster', {});
+      if (m.status === 'ERROR') throw new Error(m.message);
+      const rate = Object.fromEntries((m.workers || []).map(w => [w.name, w]));
+      const st = {}; // 직원 → {days:Set, gongsu}
+      (g.rows || []).forEach(r => Object.entries(r.workerValues || {}).forEach(([n, v]) => {
+        const x = (Number(v.day) || 0) + (Number(v.night) || 0); if (!x) return;
+        const o = st[n] || (st[n] = { days: new Set(), gongsu: 0 }); o.days.add(r.date); o.gongsu += x;
+      }));
+      const names = Object.keys(st).sort();
+      if (!names.length) { sum.innerHTML = '<p class="hint">이 달엔 공수 기록이 없어요.</p>'; return; }
+      let tg = 0, tm = 0, tdays = 0;
+      const rows = names.map(n => {
+        const w = rate[n], r = w ? Number(w.dayRate) || 0 : 0, o = st[n], amt = o.gongsu * r;
+        tg += o.gongsu; tm += amt; tdays += o.days.size;
+        return `<tr><td>${esc(n)} <small>${esc(w ? w.role : '')}</small>${r ? '' : ' <span class="warn">일당 없음</span>'}</td><td>${o.days.size}일</td><td>${Math.round(o.gongsu * 100) / 100}</td><td>${won(r)}</td><td>${won(amt)}원</td></tr>`;
+      }).join('');
+      sum.innerHTML = `<table><thead><tr><th>직원</th><th>근무일수</th><th>공수</th><th>일당</th><th>금액</th></tr></thead><tbody>${rows}</tbody>
+        <tfoot><tr><td>합계</td><td>${tdays}일</td><td>${Math.round(tg * 100) / 100}</td><td></td><td>${won(tm)}원</td></tr></tfoot></table>`;
+    } catch (e) { sum.innerHTML = '<span class="err"></span>'; sum.firstChild.textContent = '❌ ' + e.message; }
+  });
+  const res = document.getElementById('res'), go = document.getElementById('go');
+  go.addEventListener('click', async () => {
+    const month = document.getElementById('month').value;
+    if (!month) { alert('정산할 월을 선택해 주세요.'); return; }
+    go.disabled = true; res.textContent = '⏳ 정산 중이에요... (10~20초 걸릴 수 있어요)';
+    try {
+      // 서버(generatePayroll)는 month를 data 안이 아니라 최상위에서 읽어서 sendToGas를 쓰지 않고 직접 보냄
+      const r = await (await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'generatePayroll', month }), redirect: 'follow' })).json();
+      if (r.status !== 'SUCCESS') throw new Error(r.message || '정산 실패');
+      res.innerHTML = '';
+      const a = document.createElement('a'); a.href = r.downloadUrl; a.target = '_blank'; a.rel = 'noopener'; a.textContent = '✅ 정산 완료! 여기를 눌러 다운로드';
+      res.appendChild(a);
+    } catch (e) { res.innerHTML = '<span class="err"></span>'; res.firstChild.textContent = '❌ ' + e.message; }
+    go.disabled = false;
+  });
+</script>
+</body>
+</html>
