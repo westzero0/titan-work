@@ -358,11 +358,23 @@
         font-weight: bold !important;
         box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3) !important;
     }
+
+    /* 통합 관리(hub.html)에서 iframe으로 열 때: admin.html?view=sched|staff|trade — 데스크탑용 화면 */
+    body.embed { overflow: auto; }
+    .embed .header, .embed .bottom-nav, .embed #mini-summary-bar { display: none !important; }
+    .embed .swiper { margin: 0; height: auto; overflow: visible; }
+    .embed .swiper-wrapper { display: block !important; transform: none !important; height: auto !important; max-width: 1200px; margin: 0 auto; padding: 16px 24px; }
+    .embed .swiper-slide { display: none; width: auto !important; height: auto !important; min-height: 0 !important; padding-bottom: 20px !important; background: none; }
+    .view-sched .swiper-slide:nth-child(1), .view-staff .swiper-slide:nth-child(2) { display: block; }
+    .view-trade .swiper-slide:nth-child(3) { display: block; }
+    .embed #dashboard-wrapper, .embed #active-sites-overview { display: none !important; }
+    .view-staff .swiper-slide:nth-child(2) > .card:first-child { display: none; } /* 급여정산 다운로드는 인건비 계산 메뉴에 있음 */
   </style>
 </head>
 
 
 <body>
+<script>{ const v = new URLSearchParams(location.search).get('view'); if (v) document.body.className = 'embed view-' + v; }</script>
   <div class="header">⚡ 타이탄 통합 관리자</div>
 
     <div class="swiper">
@@ -1128,7 +1140,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // 활성 현장 개요 로드
     loadActiveSitesOverview();
 
-    setTimeout(() => { loadAdminData(); loadVehicles(); }, 1000);
+    loadAdminData(); setTimeout(loadVehicles, 1000);
 });
 
 
@@ -1969,6 +1981,7 @@ function renderAfterLoad() {
           async function loadAdminData() {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getAllWorkerInfo' }) });
         globalWorkerData = await res.json();
+        updateAllWorkerChipsUI(); // 일정 모달이 이미 열려 있어도 투입 인원 칩이 바로 나오게
 
         const box = document.getElementById('worker-list-admin');
         if (box) {
