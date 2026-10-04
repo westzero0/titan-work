@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "vibe-wise": {
+      "source": {
+        "source": "github",
+        "repo": "nykooi1/vibe-wise"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "vibe-wise@vibe-wise": true
+  }
+}
