@@ -4,122 +4,229 @@
 <meta charset="UTF-8">
 <title>타이탄 통합 관리</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="pc.css">
 <style>
-  * { box-sizing: border-box; }
-  body { margin: 0; height: 100vh; display: flex; font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; background: #f1f5f9; color: #1e293b; }
-  #side { width: 200px; background: #0f172a; color: #cbd5e1; display: flex; flex-direction: column; flex-shrink: 0; }
-  #side h1 { margin: 0; padding: 18px 16px; font-size: 16px; color: #fff; }
-  #side a { display: block; padding: 11px 16px; color: inherit; text-decoration: none; font-size: 14px; cursor: pointer; }
-  #side a:hover { background: #1e293b; }
-  #side a.on { background: #2563eb; color: #fff; font-weight: 700; }
-  #side a.soon { opacity: .5; }
-  #main { flex: 1; min-width: 0; position: relative; }
-  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
-  #dash, #soon { position: absolute; inset: 0; overflow: auto; padding: 24px 28px; }
-  h2 { margin: 0 0 16px; font-size: 20px; }
-  .cards { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
-  .card { background: #fff; border-radius: 10px; padding: 16px 20px; min-width: 220px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  .card .lb { font-size: 12px; color: #64748b; }
-  .card .v { font-size: 26px; font-weight: 700; margin-top: 6px; }
-  .card .v.red { color: #dc2626; }
-  .card .sub { font-size: 12px; color: #94a3b8; margin-top: 4px; }
-  table { background: #fff; border-collapse: collapse; width: 100%; max-width: 860px; font-size: 13px; }
-  th, td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-  th { background: #f8fafc; color: #64748b; }
-  td.n { text-align: right; }
-  .err { color: #dc2626; font-size: 12px; }
-  .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #e2e8f0; }
-  .badge.발행 { background: #dbeafe; color: #1d4ed8; }
-  .badge.취소 { background: #fee2e2; color: #b91c1c; }
+  body { margin: 0; height: 100vh; display: flex; }
+
+  /* 왼쪽 메뉴 */
+  #side { width: 224px; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; padding-bottom: 16px; transition: width .15s; }
+  #side .top { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 20px; height: 60px; }
+  #side h1 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+  #fold { background: none; border: 0; border-radius: var(--r); color: var(--text-sub); font-size: 16px; cursor: pointer; width: 36px; height: 36px; }
+  #fold:hover { background: var(--bg); color: var(--text); }
+  #side .grp { padding: 20px 20px 6px; font-size: 11.5px; font-weight: 600; color: #6b7280; white-space: nowrap; }
+  #side a { display: flex; align-items: center; height: 36px; margin: 1px 10px; padding: 0 10px; border-radius: var(--r); color: var(--text); text-decoration: none; font-size: 13.5px; cursor: pointer; white-space: nowrap; }
+  #side a:hover { background: var(--bg); }
+  #side a.on { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  #side a.soon { color: #6b7280; }
+  #side a.soon::after { content: "준비 중"; margin-left: auto; font-size: 11px; color: #6b7280; }
+  #side a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  #side a .ic { display: none; width: 20px; text-align: center; font-weight: 700; }
+  body.fold #side { width: 64px; }
+  body.fold #side h1, body.fold #side .grp, body.fold #side a .tx, body.fold #side a.soon::after { display: none; }
+  body.fold #side .top { padding: 0; justify-content: center; }
+  body.fold #side a { justify-content: center; padding: 0; }
+  body.fold #side a .ic { display: block; }
+
+  /* 오른쪽: 상단 막대 + 본문 */
+  #right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  #bar { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; background: var(--surface); border-bottom: 1px solid var(--line); flex-shrink: 0; font-size: 13px; }
+  #crumb, #today { color: var(--text-sub); }
+  #crumb b { color: var(--text); }
+  #main { flex: 1; min-height: 0; position: relative; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
+  #dash, #soon { position: absolute; inset: 0; overflow: auto; padding: 32px 40px 48px; }
+  .wrap { max-width: 1080px; }
+
+  /* 오늘 처리할 일 */
+  .todo { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 28px; }
+  .chip { display: flex; align-items: baseline; gap: 10px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); font-size: 13px; cursor: pointer; color: var(--text); white-space: nowrap; transition: border-color .12s, background .12s; }
+  .chip:hover { border-color: var(--text-sub); }
+  .chip b { font-size: 15px; font-variant-numeric: tabular-nums; }
+  .chip.warn { border-color: #f0b9bb; background: var(--danger-soft); }
+  .chip.warn b { color: var(--danger); }
+  .chip.ok b { color: var(--ok); }
+
+  /* 숫자 요약: 한 판 안에서 세로선으로만 나눈다 */
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+  .kpi { padding: 20px 24px; border-left: 1px solid var(--line); min-width: 0; }
+  .kpi:first-child { border-left: 0; }
+  .kpi .lb { font-size: 12.5px; color: var(--text-sub); font-weight: 600; }
+  .kpi .v { font-size: 26px; font-weight: 700; margin-top: 8px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .kpi .v small { font-size: 13px; font-weight: 500; color: var(--text-sub); margin-left: 3px; }
+  .kpi .v.red { color: var(--danger); }
+  .kpi .sub { font-size: 12px; color: var(--text-sub); margin-top: 4px; min-height: 18px; }
+
+  .sec { display: flex; align-items: baseline; justify-content: space-between; margin: 36px 0 12px; }
+  .sec h3 { margin: 0; font-size: 15px; font-weight: 700; }
+  .sec a { font-size: 12.5px; color: var(--accent); cursor: pointer; text-decoration: none; }
+  .sec a:hover { text-decoration: underline; }
+  .sentence { margin: 6px 0 20px; color: var(--text-sub); font-size: 13.5px; }
+  #dash h2, #soon h2 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
 </style>
 </head>
 <body>
-<nav id="side"><h1>타이탄 통합 관리</h1></nav>
-<div id="main">
-  <div id="dash">
-    <h2>대시보드</h2>
-    <div class="cards">
-      <div class="card"><div class="lb" id="gLb">이번 달 공수 합계</div><div class="v" id="gV">…</div><div class="sub" id="gS"></div></div>
-      <div class="card"><div class="lb">미수금 합계</div><div class="v red" id="rV">…</div><div class="sub" id="rS"></div></div>
-    </div>
-    <h2 style="font-size:16px">최근 견적서 5건</h2>
-    <table><thead><tr><th>견적번호</th><th>거래처</th><th>현장</th><th>일자</th><th>합계</th><th>상태</th></tr></thead><tbody id="qBody"><tr><td colspan="6">…</td></tr></tbody></table>
+<nav id="side"></nav>
+<div id="right">
+  <div id="bar"><div id="crumb"></div><div id="today"></div></div>
+  <div id="main">
+    <div id="dash"><div class="wrap">
+      <h2 id="hello">오늘</h2>
+      <p class="sentence" id="sentence">불러오는 중…</p>
+      <div class="todo">
+        <button class="chip" id="chipG" data-go="gongsu"><span>미확인 공수</span><b>…</b></button>
+        <button class="chip" id="chipR" data-go="trade"><span>미입금 현장</span><b>…</b></button>
+        <button class="chip" id="chipD" data-go="trade"><span>임박 납기</span><b>…</b></button>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="lb">활성 현장</div><div class="v" id="k1">…</div><div class="sub" id="k1s"></div></div>
+        <div class="kpi"><div class="lb" id="k2l">이번 달 공수</div><div class="v" id="k2">…</div><div class="sub" id="k2s"></div></div>
+        <div class="kpi"><div class="lb">견적 누계</div><div class="v" id="k3">…</div><div class="sub" id="k3s"></div></div>
+        <div class="kpi"><div class="lb">미수금</div><div class="v red" id="k4">…</div><div class="sub" id="k4s"></div></div>
+      </div>
+      <div class="sec"><h3>최근 견적서</h3><a data-go="quote">견적서 열기</a></div>
+      <table class="tbl"><thead><tr><th>견적번호</th><th>거래처</th><th>현장</th><th>일자</th><th class="n">합계</th><th>상태</th></tr></thead><tbody id="qBody"><tr><td colspan="6" class="empty">…</td></tr></tbody></table>
+    </div></div>
+    <div id="soon" style="display:none"><h2 id="soonT"></h2><p class="sentence">아직 만들지 않은 메뉴입니다.</p></div>
+    <iframe id="frame" style="display:none"></iframe>
   </div>
-  <div id="soon" style="display:none"><h2 id="soonT"></h2><p>준비 중인 메뉴입니다.</p></div>
-  <iframe id="frame" style="display:none"></iframe>
 </div>
 <script src="common.js"></script>
 <script>
-// 메뉴 추가/삭제는 이 배열만 고치면 된다. 종류: dash(첫 화면) | page(iframe으로 여는 파일) | soon(준비 중)
+// 메뉴 추가/삭제는 이 배열만 고치면 된다. 종류: dash(첫 화면) | page(iframe으로 여는 파일) | soon(준비 중). g = 그룹 이름
 const MENUS = [
-  { id: 'dash',   label: '🏠 대시보드',   type: 'dash' },
-  { id: 'gongsu', label: '📋 공수확인',   type: 'page', src: 'desktop.html' },
-  { id: 'quote',  label: '📄 견적서',     type: 'page', src: 'quote.html' },
-  { id: 'payroll', label: '💰 인건비 계산', type: 'page', src: 'payroll.html' },
-  { id: 'price',   label: '📦 자재 단가',   type: 'page', src: 'price.html' },
-  { id: 'sched',   label: '📅 일정',       type: 'page', src: 'admin.html?view=sched' },
-  { id: 'staff',   label: '👥 인원',       type: 'page', src: 'admin.html?view=staff' },
-  { id: 'trade',   label: '🏢 거래처·현장', type: 'page', src: 'admin.html?view=trade' },
-  { id: 'report', label: '📑 보고서',     type: 'soon' },
-  { id: 'stats',  label: '📊 통계',       type: 'soon' }
+  { id: 'dash',    label: '대시보드',     type: 'dash', g: '핵심 업무' },
+  { id: 'gongsu',  label: '공수확인',     type: 'page', src: 'desktop.html', g: '핵심 업무' },
+  { id: 'payroll', label: '인건비 계산',  type: 'page', src: 'payroll.html', g: '핵심 업무' },
+  { id: 'sched',   label: '일정',         type: 'page', src: 'admin.html?view=sched', g: '현장·인력' },
+  { id: 'staff',   label: '인원',         type: 'page', src: 'admin.html?view=staff', g: '현장·인력' },
+  { id: 'trade',   label: '거래처·현장',  type: 'page', src: 'admin.html?view=trade', g: '영업·정산' },
+  { id: 'quote',   label: '견적서',       type: 'page', src: 'quote.html', g: '영업·정산' },
+  { id: 'price',   label: '자재 단가',    type: 'page', src: 'price.html', g: '자산·관리' },
+  { id: 'report',  label: '보고서',       type: 'soon', g: '자산·관리' },
+  { id: 'stats',   label: '통계',         type: 'soon', g: '자산·관리' }
 ];
 
-const side = document.getElementById('side');
+const $ = id => document.getElementById(id);
+const won = n => Number(n || 0).toLocaleString() + '원';
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+// ---- 왼쪽 메뉴 (그룹 라벨 + 접기) ----
+const side = $('side');
+side.innerHTML = '<div class="top"><h1>타이탄 통합 관리</h1><button id="fold" title="메뉴 접기/펴기">☰</button></div>';
+let lastG = '';
 MENUS.forEach(m => {
+  if (m.g !== lastG) { lastG = m.g; const g = document.createElement('div'); g.className = 'grp'; g.textContent = m.g; side.appendChild(g); }
   const a = document.createElement('a');
-  a.textContent = m.label; a.dataset.id = m.id;
+  a.innerHTML = '<span class="ic">' + m.label[0] + '</span><span class="tx">' + m.label + '</span>';
+  a.title = m.label; a.dataset.id = m.id; a.tabIndex = 0;
+  a.onkeydown = e => { if (e.key === 'Enter') a.click(); };
   if (m.type === 'soon') a.className = 'soon';
   a.onclick = () => { location.hash = m.id; };
   side.appendChild(a);
 });
+if (store.get('hub_fold') === '1') document.body.classList.add('fold');
+$('fold').onclick = () => { store.set('hub_fold', document.body.classList.toggle('fold') ? '1' : '0'); };
 
 function show() {
   const m = MENUS.find(x => x.id === location.hash.slice(1)) || MENUS[0];
   side.querySelectorAll('a').forEach(a => a.classList.toggle('on', a.dataset.id === m.id));
-  const f = document.getElementById('frame');
-  document.getElementById('dash').style.display = m.type === 'dash' ? '' : 'none';
-  document.getElementById('soon').style.display = m.type === 'soon' ? '' : 'none';
+  $('crumb').innerHTML = '타이탄 / ' + (m.g !== '핵심 업무' || m.id !== 'dash' ? m.g + ' / ' : '') + '<b>' + m.label + '</b>';
+  const f = $('frame');
+  $('dash').style.display = m.type === 'dash' ? '' : 'none';
+  $('soon').style.display = m.type === 'soon' ? '' : 'none';
   f.style.display = m.type === 'page' ? '' : 'none';
-  if (m.type === 'soon') document.getElementById('soonT').textContent = m.label;
+  if (m.type === 'soon') $('soonT').textContent = m.label;
   if (m.type === 'page' && f.dataset.src !== m.src) { f.dataset.src = m.src; f.src = m.src; }
   if (m.type === 'dash') loadDash();
 }
 window.addEventListener('hashchange', show);
+document.querySelectorAll('[data-go]').forEach(c => c.onclick = () => { location.hash = c.dataset.go; });
 
-const won = n => Number(n || 0).toLocaleString() + '원';
-const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// ---- 대시보드: 저장된 값을 먼저 그리고, 뒤에서 서버 값으로 갱신 ----
+const D = {}; // 화면에 쓰는 숫자 모음
+const CACHE_KEY = 'hub_dash_v1';
+const now = new Date();
+const days = ['일', '월', '화', '수', '목', '금', '토'];
+$('today').textContent = now.getFullYear() + '. ' + (now.getMonth() + 1) + '. ' + now.getDate() + '. (' + days[now.getDay()] + ')';
+
+function chip(el, n, bad) {
+  el.querySelector('b').textContent = n == null ? '…' : n + '건';
+  el.classList.toggle('warn', n > 0 && bad);
+  el.classList.toggle('ok', n === 0);
+}
+
+function paint() {
+  chip($('chipG'), D.unconfirmed, true);
+  chip($('chipR'), D.receivableCnt, true);
+  chip($('chipD'), D.dueSoon, true);
+  const has = v => v != null;
+  $('k1').innerHTML = has(D.sites) ? D.sites + '<small>곳</small>' : '…';
+  $('k1s').textContent = has(D.clients) ? '거래처 ' + D.clients + '곳' : '';
+  $('k2').innerHTML = has(D.gongsu) ? D.gongsu.toLocaleString() + '<small>공수</small>' : '…';
+  $('k2s').textContent = has(D.logCnt) ? '작업일보 ' + D.logCnt + '건 기준' : '';
+  $('k3').textContent = has(D.quoteSum) ? won(D.quoteSum) : '…';
+  $('k3s').textContent = has(D.quoteCnt) ? '견적 ' + D.quoteCnt + '건' : '';
+  $('k4').textContent = has(D.receivable) ? won(D.receivable) : '…';
+  $('k4s').textContent = has(D.receivableCnt) ? '미수 현장 ' + D.receivableCnt + '곳' : '';
+  const todo = (D.unconfirmed || 0) + (D.receivableCnt || 0) + (D.dueSoon || 0);
+  $('sentence').textContent = D.unconfirmed == null && D.receivableCnt == null ? '불러오는 중…'
+    : todo === 0 ? '오늘 처리할 일이 없습니다.'
+    : '오늘 확인할 일이 ' + todo + '건 있습니다. 버튼을 누르면 해당 화면으로 이동합니다.';
+  $('hello').textContent = (now.getMonth() + 1) + '월 ' + now.getDate() + '일 현황';
+  const q = D.quotes;
+  $('qBody').innerHTML = !q ? '<tr><td colspan="6" class="empty">…</td></tr>'
+    : q.length ? q.map(x => `<tr><td>${esc(x.quoteNo || '(작성중)')}</td><td>${esc(x.client)}</td><td>${esc(x.site)}</td><td>${esc(x.quoteDate)}</td><td class="n">${won(x.total)}</td><td><span class="badge ${esc(x.status)}">${esc(x.status)}</span></td></tr>`).join('')
+    : '<tr><td colspan="6" class="empty">아직 견적서가 없습니다. 견적서 메뉴에서 새로 만들 수 있습니다.</td></tr>';
+}
 
 async function loadDash() {
-  // 동시에 3개를 보내면 구글이 가끔 오류 페이지를 돌려줘서 하나씩 순서대로 요청한다
-  const seq = [];
-  const now = new Date();
+  try { Object.assign(D, JSON.parse(store.get(CACHE_KEY) || '{}')); } catch (e) {}
+  paint();
+  const save = () => { store.set(CACHE_KEY, JSON.stringify(D)); paint(); };
   const month = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-  document.getElementById('gLb').textContent = (now.getMonth() + 1) + '월 공수 합계';
-
-  // 서버 동작은 모두 기존/신규 읽기 전용만 사용 (개인정보 항목은 읽지 않음)
-  seq.push(() => sendToGas('getGongsuMatrix', { month }).then(r => {
-    if (r.status === 'ERROR') throw new Error(r.message);
-    let sum = 0;
-    (r.rows || []).forEach(row => Object.values(row.workerValues || {}).forEach(v => { sum += (Number(v.day) || 0) + (Number(v.night) || 0); }));
-    document.getElementById('gV').textContent = sum.toLocaleString() + ' 공수';
-    document.getElementById('gS').textContent = '작업일보 ' + (r.rows || []).length + '건 기준';
-  }).catch(e => { document.getElementById('gV').innerHTML = '<span class="err">불러오기 실패</span>'; }));
-
-  seq.push(() => sendToGas('getReceivables', {}).then(r => {
-    if (r.res !== 'SUCCESS') throw new Error('x');
-    const open = (r.data || []).filter(i => Number(i.unpaidAmount) > 0);
-    document.getElementById('rV').textContent = won(open.reduce((s, i) => s + Number(i.unpaidAmount), 0));
-    document.getElementById('rS').textContent = '미수 현장 ' + open.length + '곳';
-  }).catch(e => { document.getElementById('rV').innerHTML = '<span class="err">불러오기 실패</span>'; }));
-
-  seq.push(() => sendToGas('getQuoteList', {}).then(r => {
-    if (r.status === 'ERROR') throw new Error(r.message);
-    const q = (r.quotes || []).slice().sort((a, b) => String(b.quoteDate).localeCompare(String(a.quoteDate))).slice(0, 5);
-    document.getElementById('qBody').innerHTML = q.length
-      ? q.map(x => `<tr><td>${esc(x.quoteNo || '(작성중)')}</td><td>${esc(x.client)}</td><td>${esc(x.site)}</td><td>${esc(x.quoteDate)}</td><td class="n">${won(x.total)}</td><td><span class="badge ${esc(x.status)}">${esc(x.status)}</span></td></tr>`).join('')
-      : '<tr><td colspan="6">아직 견적서가 없습니다.</td></tr>';
-  }).catch(e => { document.getElementById('qBody').innerHTML = '<tr><td colspan="6" class="err">불러오기 실패</td></tr>'; }));
-  for (const f of seq) await f();
+  $('k2l').textContent = (now.getMonth() + 1) + '월 공수';
+  // 동시에 여러 개를 보내면 구글이 가끔 오류 페이지를 돌려줘서 하나씩 순서대로 요청한다 (읽기 전용 동작만 사용)
+  const steps = [
+    () => sendToGas('getGongsuMatrix', { month }).then(r => {
+      if (r.status === 'ERROR') throw new Error(r.message);
+      let sum = 0, un = 0;
+      (r.rows || []).forEach(row => Object.values(row.workerValues || {}).forEach(v => {
+        sum += (Number(v.day) || 0) + (Number(v.night) || 0);
+        if ((v.dayEst > 0 && !v.dayConfirmed) || (v.nightEst > 0 && !v.nightConfirmed)) un++;
+      }));
+      D.gongsu = Math.round(sum * 100) / 100; D.logCnt = (r.rows || []).length; D.unconfirmed = un;
+    }),
+    () => sendToGas('getReceivables', {}).then(r => {
+      if (r.res !== 'SUCCESS') throw new Error('x');
+      const open = (r.data || []).filter(i => Number(i.unpaidAmount) > 0);
+      D.receivable = open.reduce((s, i) => s + Number(i.unpaidAmount), 0); D.receivableCnt = open.length;
+    }),
+    () => sendToGas('getActiveSitesOverview', {}).then(r => {
+      if (r.res !== 'SUCCESS') throw new Error('x');
+      const s = (r.data && r.data.summary) || {};
+      D.sites = s.totalSites || 0; D.clients = s.totalClients || 0;
+    }),
+    () => sendToGas('getTitanData', {}).then(r => {
+      const all = r.titanData || r.result || r;
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      let n = 0;
+      Object.values(all || {}).forEach(list => Array.isArray(list) && list.forEach(s => {
+        if (!s || s.status === '완료' || !s.deadline) return;
+        const d = new Date(s.deadline); if (isNaN(d)) return;
+        if (Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - today) / 86400000) <= 7) n++; // 7일 이내 + 지난 것
+      }));
+      D.dueSoon = n;
+    }),
+    () => sendToGas('getQuoteList', {}).then(r => {
+      if (r.status === 'ERROR') throw new Error(r.message);
+      const live = (r.quotes || []).filter(x => x.status !== '취소'); // 취소된 견적은 누계에서 뺀다
+      D.quoteSum = live.reduce((s, x) => s + (Number(x.total) || 0), 0); D.quoteCnt = live.length;
+      D.quotes = (r.quotes || []).slice().sort((a, b) => String(b.quoteDate).localeCompare(String(a.quoteDate))).slice(0, 5);
+    })
+  ];
+  for (const f of steps) { try { await f(); save(); } catch (e) { /* 실패하면 저장된 이전 값을 그대로 둔다 */ } }
 }
 
 show();

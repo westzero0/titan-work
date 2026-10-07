@@ -3,25 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <title>자재 단가 입력</title>
+<link rel="stylesheet" href="pc.css">
 <style>
-  * { box-sizing: border-box; }
-  body { margin: 0; padding: 24px 28px; font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; background: #f1f5f9; color: #1e293b; font-size: 14px; }
-  h2 { margin: 0 0 16px; font-size: 20px; }
-  #q { width: 320px; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 14px; }
-  table { background: #fff; border-collapse: collapse; width: 100%; max-width: 860px; }
-  th, td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-  th { background: #f8fafc; color: #64748b; }
-  input.p { width: 110px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; text-align: right; }
-  button { padding: 6px 14px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; }
-  button:disabled { opacity: .5; }
-  .msg { color: #64748b; padding: 20px 0; }
-  .err { color: #dc2626; }
+  body { margin: 0; padding: 32px 40px 48px; }
+  .wrap { max-width: 920px; }
+  #q { width: 320px; margin-bottom: 16px; }
+  input.p { width: 120px; text-align: right; font-variant-numeric: tabular-nums; }
+  .count { color: var(--danger); }
 </style>
 </head>
 <body>
-<h2>⚠️ 단가 미입력 자재 (<span id="cnt">0</span>건)</h2>
-<input id="q" type="search" placeholder="🔍 품목명·규격 검색">
-<div id="box" class="msg">불러오는 중...</div>
+<div class="wrap">
+<div class="page-head"><div><h2>자재 단가 입력</h2><p>단가가 0원인 자재 <b class="count" id="cnt">0</b>건. 단가를 넣고 저장하면 목록에서 빠집니다.</p></div></div>
+<input id="q" type="search" placeholder="품목명·규격 검색" aria-label="품목명·규격 검색">
+<div id="box" class="msg">불러오는 중…</div>
+</div>
 <script src="common.js"></script>
 <script>
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -40,11 +36,11 @@
     const t = document.getElementById('q').value.trim().toLowerCase();
     const rows = list.filter(m => !t || (m.name + ' ' + (m.spec || '')).toLowerCase().includes(t));
     document.getElementById('box').className = '';
-    if (!rows.length) { document.getElementById('box').innerHTML = '<div class="msg">' + (list.length ? '검색 결과가 없어요.' : '✅ 모든 자재에 단가가 입력되어 있어요.') + '</div>'; return; }
-    document.getElementById('box').innerHTML = '<table><thead><tr><th>품목</th><th>규격</th><th>단위</th><th>단가</th><th></th></tr></thead><tbody>' +
+    if (!rows.length) { document.getElementById('box').innerHTML = '<div class="msg">' + (list.length ? '검색 결과가 없습니다.' : '모든 자재에 단가가 입력되어 있습니다.') + '</div>'; return; }
+    document.getElementById('box').innerHTML = '<table class="tbl"><thead><tr><th>품목</th><th>규격</th><th>단위</th><th>단가</th><th></th></tr></thead><tbody>' +
       rows.map(m => `<tr><td>${esc(m.name)}</td><td>${esc(m.spec || '-')}</td><td>${esc(m.unit || '-')}</td>
         <td><input class="p" type="number" min="1" id="p${m.rowIndex}" placeholder="단가"></td>
-        <td><button data-row="${m.rowIndex}">저장</button></td></tr>`).join('') + '</tbody></table>';
+        <td><button class="btn btn-sm btn-primary" data-row="${m.rowIndex}">저장</button></td></tr>`).join('') + '</tbody></table>';
   }
 
   document.getElementById('q').addEventListener('input', render);
@@ -52,7 +48,7 @@
     const b = e.target.closest('button[data-row]'); if (!b) return;
     const row = Number(b.dataset.row), price = parseInt(document.getElementById('p' + row).value, 10);
     if (!(price > 0)) { alert('단가를 입력해 주세요.'); return; }
-    b.disabled = true; b.textContent = '저장 중...';
+    b.disabled = true; b.textContent = '저장 중';
     try {
       const r = await sendToGas('updateMaterialPrice', { rowIndex: row, newPrice: price });
       if (!JSON.stringify(r).includes('SUCCESS')) throw new Error('서버 저장 실패');

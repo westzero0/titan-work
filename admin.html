@@ -363,18 +363,28 @@
     body.embed { overflow: auto; }
     .embed .header, .embed .bottom-nav, .embed #mini-summary-bar { display: none !important; }
     .embed .swiper { margin: 0; height: auto; overflow: visible; }
-    .embed .swiper-wrapper { display: block !important; transform: none !important; height: auto !important; max-width: 1200px; margin: 0 auto; padding: 16px 24px; }
+    .embed .swiper-wrapper { display: block !important; transform: none !important; height: auto !important; }
     .embed .swiper-slide { display: none; width: auto !important; height: auto !important; min-height: 0 !important; padding-bottom: 20px !important; background: none; }
     .view-sched .swiper-slide:nth-child(1), .view-staff .swiper-slide:nth-child(2) { display: block; }
     .view-trade .swiper-slide:nth-child(3) { display: block; }
     .embed #dashboard-wrapper, .embed #active-sites-overview { display: none !important; }
+    /* PC 전용 화면 손질 (pc.css 의 색·글꼴을 입힌다) */
+    .embed { background: var(--bg); font-family: var(--font); }
+    .embed .swiper-wrapper { max-width: 1120px; padding: 32px 40px 48px; margin: 0; }
+    .view-staff .swiper-wrapper, .view-trade .swiper-wrapper { max-width: 920px; }
+    .embed .card { border: 1px solid var(--line); border-radius: var(--r); box-shadow: none; padding: 20px 24px; margin-bottom: 16px; }
+    .embed h3 { color: var(--text); font-size: 16px; font-weight: 700; border-bottom: 1px solid var(--line); letter-spacing: -.01em; }
+    .embed label { font-size: 12.5px; color: var(--text-sub); font-weight: 600; margin-top: 12px; }
+    .embed input, .embed select, .embed textarea { font-size: 13px; padding: 8px 10px; border-radius: var(--r); border-color: var(--line-strong); }
+    .embed button { font-size: 13px; padding: 10px 16px; margin-top: 14px; border-radius: var(--r); }
+    .embed .modal-content { border-radius: var(--r); }
     .view-staff .swiper-slide:nth-child(2) > .card:first-child { display: none; } /* 급여정산 다운로드는 인건비 계산 메뉴에 있음 */
   </style>
 </head>
 
 
 <body>
-<script>{ const v = new URLSearchParams(location.search).get('view'); if (v) document.body.className = 'embed view-' + v; }</script>
+<script>{ const v = new URLSearchParams(location.search).get('view'); if (v) { document.body.className = 'embed view-' + v; const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'pc.css'; document.head.appendChild(l); } }</script>
   <div class="header">⚡ 타이탄 통합 관리자</div>
 
     <div class="swiper">
