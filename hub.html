@@ -188,6 +188,14 @@ async function loadDash() {
   const save = () => { store.set(CACHE_KEY, JSON.stringify(D)); paint(); };
   const month = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
   $('k2l').textContent = (now.getMonth() + 1) + '월 공수';
+  // 한 번에 받는 빠른 방법을 먼저 쓰고, 안 되면(아직 배포 전 등) 아래 기존 방식으로 하나씩 받는다
+  try {
+    const q = await sendToGas('getHomeQueue', {});
+    if (q && q.status === 'SUCCESS') {
+      ['gongsu', 'logCnt', 'unconfirmed', 'receivable', 'receivableCnt', 'sites', 'clients', 'dueSoon', 'quoteSum', 'quoteCnt', 'quotes'].forEach(k => { if (q[k] != null) D[k] = q[k]; });
+      save(); return;
+    }
+  } catch (e) { /* 아래 기존 방식으로 */ }
   // 동시에 여러 개를 보내면 구글이 가끔 오류 페이지를 돌려줘서 하나씩 순서대로 요청한다 (읽기 전용 동작만 사용)
   const steps = [
     () => sendToGas('getGongsuMatrix', { month }).then(r => {
