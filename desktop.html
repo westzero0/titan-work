@@ -66,6 +66,9 @@
   .gongsu-input.confirmed { border-color: #10b981; color: #10b981; background: #f0fdf9; }
   .gongsu-input.under-est { border-color: #f59e0b; color: #b45309; background: #fffbeb; }
   .gongsu-input.pending-save { opacity: 0.75; } /* 탭 직후 ~ 서버 저장 완료 전까지 살짝 흐리게 (지연 없이 바로 반응한다는 티만 냄) */
+  .gongsu-input:focus-visible { outline: 3px solid var(--primary-color); outline-offset: 1px; }
+  .gongsu-input.confirmed::after, .gongsu-input.under-est::after { content: '●'; font-size: 7px; margin-left: 3px; vertical-align: super; } /* 보정(확정)한 칸 표시 */
+  .retry-btn { margin-left: 6px; padding: 3px 10px; border: 1px solid #fca5a5; background: #fef2f2; color: #b91c1c; border-radius: 6px; font-size: 12px; cursor: pointer; }
   .gongsu-input.save-failed { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
 
   .del-dup-btn { border: 1px solid #fca5a5; background: #fef2f2; border-radius: 6px; padding: 3px 6px; cursor: pointer; font-size: 13px; }
@@ -92,10 +95,11 @@
 <div class="summary-bar">
   <div class="summary-item"><div class="label">입력 대기</div><div class="value" id="pendingCount">-</div></div>
   <div class="summary-item"><div class="label">이번 달 총 근무일</div><div class="value" id="totalRows">-</div></div>
+  <div class="summary-item"><div class="label">저장 상태</div><div class="value" id="saveState">-</div></div>
 </div>
 
 <div class="guide-box">
-  <b>사용법</b> — 공수 칸을 탭할 때마다 <b>0 → 0.5 → 1 → 2 → 3 → 4</b> 순서로 바뀌면서 자동 저장돼요.<br>
+  <b>사용법</b> — 공수 칸을 탭할 때마다 <b>0 → 0.5 → 1 → 2 → 3 → 4</b> 순서로 바뀌면서 자동 저장돼요. 키보드로는 <b>방향키</b>로 칸 이동, <b>Enter</b>로 아래 칸, <b>숫자 0·1·2·3·4</b>(5는 0.5)로 바로 입력해요.<br>
   <span class="guide-swatch blue"></span><b>파란 테두리</b> — 아직 확정 안 함 (시간 기준 자동 추정치가 보이는 상태) &nbsp;|&nbsp;
   <span class="guide-swatch green"></span><b>초록 테두리</b> — 확정 완료 &nbsp;|&nbsp;
   <span class="guide-swatch orange"></span><b>주황 테두리</b> — 확정한 값이 원래 추정치보다 작음 (실수 아닌지 확인 필요)<br>
@@ -290,40 +294,45 @@
             const isConfirmed0 = shift === 'day' ? wv.dayConfirmed : wv.nightConfirmed;
             btn.className = 'gongsu-input' + confirmClass(isConfirmed0, currentVal, estVal);
             btn.textContent = currentVal;
-            if (isConfirmed0 && currentVal < estVal) {
-              btn.title = '추정치(' + estVal + ')보다 작게 확정됨 - 실수 아닌지 확인해주세요';
-            }
+            btn.title = confirmTitle(isConfirmed0, currentVal, estVal);
 
-            btn.addEventListener('click', () => {
-              // 🔴 화면은 탭하는 즉시 바뀌고(낙관적 업데이트), 실제 서버 저장은 debounce로 뒤에서 처리
-              let idx = GONGSU_PRESETS.findIndex(p => p === currentVal);
-              if (idx === -1) idx = GONGSU_PRESETS.reduce((closest, p, i) =>
-                Math.abs(p - currentVal) < Math.abs(GONGSU_PRESETS[closest] - currentVal) ? i : closest, 0);
-              const nextVal = GONGSU_PRESETS[(idx + 1) % GONGSU_PRESETS.length];
-
+            // 값 바꾸기: 화면은 바로 바뀌고(낙관적 업데이트), 서버 저장은 잠깐 모았다가 한 번에
+            const doSave = async () => {
+              const valueToSave = currentVal;
+              saveState.pending.add(btn); saveState.failed.delete(btn); renderSaveState();
+              try {
+                await sendToGas('saveGongsuCell', {
+                  rowId: entry.rowId, worker: w, shift: (shift === 'day' ? '주' : '야'), value: valueToSave
+                });
+                if (currentVal === valueToSave) {
+                  btn.className = 'gongsu-input' + confirmClass(true, currentVal, estVal);
+                  btn.title = confirmTitle(true, currentVal, estVal);
+                  saveState.pending.delete(btn); saveState.everSaved = true; renderSaveState();
+                }
+              } catch (err) {
+                btn.classList.add('save-failed');
+                saveState.pending.delete(btn); saveState.failed.add(btn); renderSaveState();
+              }
+            };
+            btn._retry = doSave;
+            btn._set = (nextVal) => {
+              if (nextVal === currentVal && !saveState.failed.has(btn)) return;
               currentVal = nextVal;
               btn.textContent = nextVal;
               btn.className = 'gongsu-input pending-save' + confirmClass(true, currentVal, estVal);
-              btn.title = (currentVal < estVal) ? ('추정치(' + estVal + ')보다 작게 확정됨 - 실수 아닌지 확인해주세요') : '';
-              flashStatus(w + ' ' + label + ' → ' + nextVal + (currentVal < estVal ? ' ⚠️ 추정치보다 낮음' : ''));
-
-              // 같은 칸을 연달아 여러 번 탭하면, 마지막 값만 잠깐 뒤에 한 번만 저장 (매번 서버 호출 안 함)
+              btn.title = confirmTitle(true, currentVal, estVal);
+              saveState.pending.add(btn); renderSaveState();
+              // 같은 칸을 연달아 바꾸면 마지막 값만 잠깐 뒤에 한 번만 저장
               clearTimeout(btn._saveTimer);
-              btn._saveTimer = setTimeout(async () => {
-                const valueToSave = currentVal;
-                try {
-                  await sendToGas('saveGongsuCell', {
-                    rowId: entry.rowId, worker: w, shift: (shift === 'day' ? '주' : '야'), value: valueToSave
-                  });
-                  if (currentVal === valueToSave) {
-                    btn.className = 'gongsu-input' + confirmClass(true, currentVal, estVal);
-                    flashStatus(w + ' ' + label + ' 저장 완료');
-                  }
-                } catch (err) {
-                  btn.classList.add('save-failed');
-                  flashStatus('⚠️ 저장 실패: ' + w + ' ' + label + ' - 다시 탭해주세요');
-                }
-              }, 500);
+              btn._saveTimer = setTimeout(doSave, 500);
+            };
+
+            btn.addEventListener('click', () => {
+              // 탭할 때마다 0 → 0.5 → 1 → 2 → 3 → 4 순서로 순환
+              let idx = GONGSU_PRESETS.findIndex(p => p === currentVal);
+              if (idx === -1) idx = GONGSU_PRESETS.reduce((closest, p, i) =>
+                Math.abs(p - currentVal) < Math.abs(GONGSU_PRESETS[closest] - currentVal) ? i : closest, 0);
+              btn._set(GONGSU_PRESETS[(idx + 1) % GONGSU_PRESETS.length]);
             });
 
             td.appendChild(btn);
@@ -381,6 +390,51 @@
       alert('삭제 중 오류: ' + err.message);
     }
   }
+
+
+  // 확정(보정)한 칸에 마우스를 올리면 원래 추정값과 확정값을 보여준다
+  function confirmTitle(isConfirmed, val, estVal) {
+    if (!isConfirmed) return '시간 기준 자동 추정값입니다. 탭하면 확정됩니다.';
+    const base = '시간 기준 추정 ' + estVal + ' → 확정 ' + val;
+    return val < estVal ? base + ' (추정치보다 작게 확정됨 - 실수 아닌지 확인해주세요)' : base;
+  }
+
+  // 저장 상태: 저장 중 / 실패(다시 저장) / 모두 저장됨
+  const saveState = { pending: new Set(), failed: new Set(), everSaved: false };
+  function renderSaveState() {
+    const el = document.getElementById('saveState');
+    if (saveState.failed.size) {
+      el.innerHTML = '<span class="err">⚠️ 저장 실패 ' + saveState.failed.size + '건</span> <button type="button" class="retry-btn" id="retryBtn">다시 저장</button>';
+      document.getElementById('retryBtn').onclick = () => [...saveState.failed].forEach(b => b._retry());
+    } else if (saveState.pending.size) el.textContent = '저장 중 ' + saveState.pending.size + '건…';
+    else el.textContent = saveState.everSaved ? '✓ 모두 저장됨' : '-';
+  }
+  window.addEventListener('beforeunload', e => { if (saveState.pending.size || saveState.failed.size) { e.preventDefault(); e.returnValue = ''; } });
+
+  // 키보드: 방향키 = 칸 이동, Enter = 아래 칸, 숫자 0·1·2·3·4 = 그 값으로 바로 입력(5 = 0.5), 스페이스 = 순환
+  function moveFocus(b, key) {
+    const td = b.parentElement, tr = td.parentElement, ci = td.cellIndex;
+    if (key === 'ArrowLeft' || key === 'ArrowRight') {
+      const dir = key === 'ArrowLeft' ? -1 : 1;
+      for (let c = ci + dir; c >= 0 && c < tr.cells.length; c += dir) {
+        const nb = tr.cells[c].querySelector('button.gongsu-input'); if (nb) { nb.focus(); return; }
+      }
+      return;
+    }
+    const dir = key === 'ArrowUp' ? -1 : 1;
+    let r = tr;
+    while ((r = dir < 0 ? r.previousElementSibling : r.nextElementSibling)) {
+      const c = r.cells[ci], nb = c && c.querySelector && c.querySelector('button.gongsu-input');
+      if (nb) { nb.focus(); return; }
+    }
+  }
+  document.getElementById('matrixTable').addEventListener('keydown', e => {
+    const b = e.target.closest && e.target.closest('button.gongsu-input'); if (!b) return;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) { e.preventDefault(); moveFocus(b, e.key); }
+    else if (e.key === 'Enter') { e.preventDefault(); moveFocus(b, 'ArrowDown'); }
+    else if (/^[0-4]$/.test(e.key)) { e.preventDefault(); b._set(Number(e.key)); }
+    else if (e.key === '5') { e.preventDefault(); b._set(0.5); }
+  });
 
   function confirmClass(isConfirmed, val, estVal) {
     if (!isConfirmed) return '';
