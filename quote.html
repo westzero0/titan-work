@@ -73,6 +73,9 @@
   .kind.k-공정 { background: #fef3c7; color: #b45309; }
   .kind.k-경비 { background: #fce7f3; color: #be185d; }
   .items tr.proc td { background: #f8fafc; }
+  .items tr.refrow td { background: #fffdf5; color: #6b5b1f; font-size: 12px; padding: 4px 8px 6px; }
+  .items .refwarn { color: var(--danger, #c2272d); font-weight: 600; margin-left: 6px; }
+  .items .reftext { white-space: pre-wrap; color: #3f3a1c; font-weight: 600; margin-top: 2px; } /* 작업일보에 엔터로 적은 줄바꿈 그대로 */
   .kind.k-직접 { background: #fff7ed; color: #c2410c; }
   .del-row { border: 1px solid #fca5a5; background: #fef2f2; border-radius: 6px; padding: 3px 8px; cursor: pointer; }
 
@@ -452,14 +455,15 @@
     if (cur.items.length && !confirm('현재 품목을 지우고 이 현장의 작업 내역으로 채울까요?')) { showStatus(''); return; }
     const items = [];
     rows.forEach(w => {
-      items.push({ kind: '공정', name: w.work, spec: w.date, unit: '공수', qty: w.gongsu, price: w.gongsu > 0 ? Math.round(w.amount / w.gongsu * 100) / 100 : 0 });
+      items.push({ kind: '공정', name: w.work, spec: w.date, unit: '공수', qty: w.gongsu, price: w.gongsu > 0 ? Math.round(w.amount / w.gongsu * 100) / 100 : 0, ref: w.rawMaterials || '' });
       if (w.expense > 0) items.push({ kind: '경비', name: w.work + ' 경비', spec: '', unit: '식', qty: 1, price: w.expense });
-      (w.materials || []).forEach(m => items.push({ kind: '자재', name: m.name, spec: m.spec || '', unit: m.unit || '', qty: Number(m.qty) || 0, price: Number(m.price) || 0 }));
+      (w.materials || []).forEach(m => items.push({ kind: '자재', name: m.name, spec: m.spec || '', unit: m.unit || '', qty: Number(m.qty) || 0, price: Number(m.price) || 0, unmatched: !!m.unmatched }));
     });
     cur.items = items;
     dirty = true; renderItems();
     const zero = items.filter(it => it.kind === '자재' && !(it.price > 0)).length;
-    showStatus(`공정 ${rows.length}건을 채웠어요.` + (zero ? ` 단가 0원 자재 ${zero}건은 직접 입력해 주세요.` : ''), true);
+    const unm = items.filter(it => it.unmatched).length;
+    showStatus(`공정 ${rows.length}건을 채웠어요.` + (zero ? ` 단가 0원 자재 ${zero}건은 직접 입력해 주세요.` : '') + (unm ? ` ⚠️ 자재 ${unm}건은 자재관리에 없는 이름이에요. 공정 줄 아래 작업일보 원문과 비교해 주세요.` : ''), true);
   }
 
   $('fDate').addEventListener('change', () => { cur.quoteDate = $('fDate').value; dirty = true; });
@@ -469,18 +473,26 @@
   /* ---- 품목 표 ---- */
   function renderItems() {
     $('itemsEmpty').style.display = cur.items.length ? 'none' : 'block';
+    const refRow = (it, i) => {
+      const raw = String(it.ref || '').trim();
+      if (!raw || raw === '-' || raw === '없음') return '';
+      let n = 0, unm = 0;
+      for (let k = i + 1; k < cur.items.length && cur.items[k].kind !== '공정'; k++) if (cur.items[k].kind === '자재') { n++; if (cur.items[k].unmatched) unm++; }
+      const warn = !n ? '⚠️ 아래에 자동으로 채워진 자재가 없어요. 직접 추가해 주세요.' : unm ? `⚠️ 자재관리에 없는 이름 ${unm}건 (표시된 칸)` : '';
+      return `<tr class="refrow"><td></td><td colspan="8"><div>📝 작업일보 자재 원문${warn ? ` <span class="refwarn">${warn}</span>` : ''}</div><div class="reftext">${esc(raw)}</div></td></tr>`;
+    };
     $('itemsBody').innerHTML = cur.items.map((it, i) => `
       <tr data-i="${i}" class="${it.kind === '공정' || it.kind === '인건비' ? 'proc' : ''}">
         <td class="center">${i + 1}</td>
         <td class="kindcell"><span class="kind k-${esc(it.kind)}">${esc(it.kind)}</span></td>
-        <td><input data-f="name" value="${esc(it.name)}" placeholder="품목명"></td>
+        <td><input data-f="name" value="${esc(it.name)}" placeholder="품목명" class="${it.unmatched ? 'zero-price' : ''}"${it.unmatched ? ' title="자재관리에 없는 이름이에요. 작업일보 원문과 비교해 주세요."' : ''}></td>
         <td><input data-f="spec" value="${esc(it.spec)}"></td>
         <td><input data-f="unit" value="${esc(it.unit)}"></td>
         <td><input data-f="qty" type="number" step="0.25" min="0" value="${esc(it.qty)}"></td>
         <td><input data-f="price" type="number" step="1" min="0" value="${esc(it.price)}" class="${Number(it.price) > 0 ? '' : 'zero-price'}" ${Number(it.price) > 0 ? '' : 'title="단가가 0원이에요. 직접 입력해 주세요"'}></td>
         <td class="num" id="amt-${i}">${won(lineAmount(it))}</td>
         <td class="center"><button class="del-row" data-del="${i}" title="이 품목 삭제">🗑</button></td>
-      </tr>`).join('');
+      </tr>${refRow(it, i)}`).join('');
     updateTotals();
   }
   $('itemsBody').addEventListener('input', e => {
