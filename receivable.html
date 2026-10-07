@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>수금 관리</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="pc.css">
+<style>
+  body { margin: 0; padding: 32px 40px 56px; }
+  .wrap { max-width: 1120px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 20px; }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 18px; }
+  .kpi .lb { font-size: 12.5px; color: var(--text-sub); }
+  .kpi .v { margin-top: 4px; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .kpi .v.red { color: var(--danger); }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 14px; }
+  .bar .sp { flex: 1; }
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+  .seg button { min-height: 36px; padding: 0 14px; border: 0; border-right: 1px solid var(--line); background: none; font-size: 13px; cursor: pointer; color: var(--text-sub); }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  tr.grp td { background: #f8f9fb; font-weight: 700; }
+  tr.det td { background: #fafbfc; font-size: 12.5px; color: var(--text-sub); }
+  tr.det ul { margin: 0; padding-left: 18px; }
+  .badge.미수 { background: var(--danger-soft); color: var(--danger); }
+  .badge.부분 { background: var(--warn-soft); color: var(--warn); }
+  .badge.완료 { background: var(--ok-soft); color: var(--ok); }
+  .age.hot { background: var(--danger-soft); color: var(--danger); }
+  .age.mid { background: var(--warn-soft); color: var(--warn); }
+  td.act { white-space: nowrap; text-align: right; }
+  td.act .btn + .btn { margin-left: 4px; }
+  dialog { border: 1px solid var(--line-strong); border-radius: var(--r); padding: 22px 24px; width: 380px; max-width: 92vw; }
+  dialog::backdrop { background: rgba(21, 24, 30, .35); }
+  dialog h3 { margin: 0 0 4px; font-size: 16px; }
+  dialog .sub { margin: 0 0 14px; color: var(--text-sub); font-size: 12.5px; }
+  dialog .f { margin: 0 0 10px; }
+  dialog .f input { width: 100%; }
+  dialog .row { display: flex; gap: 8px; }
+  dialog .row .f { flex: 1; }
+  dialog .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .link { background: none; border: 0; color: var(--accent); cursor: pointer; font-size: 12px; padding: 0; text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-head">
+    <div><h2>수금 관리</h2><p>경과일은 세금계산서 발행일부터 센 날수입니다. 입금은 건별로 쌓이고, 수금액은 입금 합계로 계산됩니다.</p></div>
+    <button class="btn btn-primary" id="newBtn">+ 청구 등록</button>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="lb">미수금 합계</div><div class="v red" id="k1">…</div></div>
+    <div class="kpi"><div class="lb">미수 청구</div><div class="v" id="k2">…</div></div>
+    <div class="kpi"><div class="lb">30일 넘은 미수</div><div class="v" id="k3">…</div></div>
+    <div class="kpi"><div class="lb">이번 달 입금</div><div class="v" id="k4">…</div></div>
+  </div>
+
+  <div class="bar">
+    <div class="seg" id="stSeg">
+      <button data-st="open" class="on">미수·부분수금</button><button data-st="done">수금완료</button><button data-st="all">전체</button>
+    </div>
+    <select id="mon" aria-label="청구월"><option value="">전체 기간</option></select>
+    <select id="sort" aria-label="정렬">
+      <option value="age">경과일 긴 순</option><option value="amt">미수금 큰 순</option><option value="date">청구일 최근 순</option>
+    </select>
+    <span class="sp"></span>
+    <span class="msg" id="stat" style="padding:0"></span>
+  </div>
+
+  <div id="box" class="msg">불러오는 중…</div>
+</div>
+
+<datalist id="clients"></datalist>
+<datalist id="methods"><option value="국민"><option value="신한"><option value="농협"><option value="현금"><option value="카드"></datalist>
+
+<dialog id="payDlg">
+  <h3>입금 입력</h3><p class="sub" id="payInfo"></p>
+  <div class="row"><div class="f"><label class="lb" for="payDate">입금일</label><input type="date" id="payDate"></div>
+    <div class="f"><label class="lb" for="payAmt">금액(원)</label><input type="number" id="payAmt" min="1" step="1" inputmode="numeric"></div></div>
+  <div style="margin:-4px 0 8px"><button class="link" id="fillAll" type="button">남은 금액 전부</button></div>
+  <div class="row"><div class="f"><label class="lb" for="payMethod">수단</label><input id="payMethod" list="methods" placeholder="예: 국민"></div>
+    <div class="f"><label class="lb" for="payMemo">메모</label><input id="payMemo" placeholder="선택"></div></div>
+  <div class="foot"><button class="btn" data-close>취소</button><button class="btn btn-primary" id="paySave">입금 저장</button></div>
+</dialog>
+
+<dialog id="newDlg">
+  <h3>청구 등록</h3><p class="sub">거래처에 청구한 금액을 등록합니다. 세금계산서일은 나중에 입력해도 됩니다.</p>
+  <div class="f"><label class="lb" for="nClient">거래처</label><input id="nClient" list="clients"></div>
+  <div class="f"><label class="lb" for="nSite">현장</label><input id="nSite"></div>
+  <div class="row"><div class="f"><label class="lb" for="nTotal">청구금액(원)</label><input type="number" id="nTotal" min="1" inputmode="numeric"></div>
+    <div class="f"><label class="lb" for="nBill">청구일</label><input type="date" id="nBill"></div></div>
+  <div class="row"><div class="f"><label class="lb" for="nTax">세금계산서일</label><input type="date" id="nTax"></div>
+    <div class="f"><label class="lb" for="nQuote">견적ID</label><input id="nQuote" placeholder="선택"></div></div>
+  <div class="foot"><button class="btn" data-close>취소</button><button class="btn btn-primary" id="newSave">청구 등록</button></div>
+</dialog>
+
+<dialog id="taxDlg">
+  <h3>세금계산서일</h3><p class="sub" id="taxInfo"></p>
+  <div class="f"><label class="lb" for="taxDate">발행일</label><input type="date" id="taxDate"></div>
+  <div class="foot"><button class="btn" data-close>취소</button><button class="btn btn-primary" id="taxSave">저장</button></div>
+</dialog>
+
+<script src="common.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  const won = n => Number(n || 0).toLocaleString() + '원';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+  let list = [], st = 'open', cur = null;
+  const kindOf = i => Number(i.unpaidAmount) <= 0 ? '완료' : Number(i.paidAmount) > 0 ? '부분' : '미수';
+
+  try { const c = JSON.parse(store.get('rcv_cache') || 'null'); if (Array.isArray(c)) { list = c; render(); } } catch (e) {}
+
+  async function load() {
+    try {
+      const r = await sendToGas('getReceivables', {});
+      if (r.res !== 'SUCCESS') throw new Error(r.msg || '응답 오류');
+      list = r.data || []; store.set('rcv_cache', JSON.stringify(list)); render();
+    } catch (e) { if (!list.length) $('box').innerHTML = '<span class="err">불러오기 실패: ' + esc(e.message) + '</span>'; else $('stat').textContent = '최신 값을 못 불러와 저장된 값을 보여줍니다.'; }
+  }
+
+  function render() {
+    const open = list.filter(i => kindOf(i) !== '완료');
+    $('k1').textContent = won(open.reduce((s, i) => s + Number(i.unpaidAmount), 0));
+    $('k2').textContent = open.length + '건';
+    $('k3').textContent = open.filter(i => i.ageDays != null && i.ageDays > 30).length + '건';
+    const ym = today().slice(0, 7);
+    $('k4').textContent = won(list.reduce((s, i) => s + (i.payments || []).filter(p => (p.date || '').startsWith(ym)).reduce((a, p) => a + p.amount, 0), 0));
+
+    // 청구월 선택지
+    const months = [...new Set(list.map(i => (i.date || '').slice(0, 7)).filter(Boolean))].sort().reverse();
+    const sel = $('mon'), keep = sel.value;
+    sel.innerHTML = '<option value="">전체 기간</option>' + months.map(m => `<option value="${m}">${m}</option>`).join(''); sel.value = months.includes(keep) ? keep : '';
+    $('clients').innerHTML = [...new Set(list.map(i => i.client).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('');
+
+    let rows = list.filter(i => st === 'all' || (st === 'done' ? kindOf(i) === '완료' : kindOf(i) !== '완료'));
+    if (sel.value) rows = rows.filter(i => (i.date || '').startsWith(sel.value));
+    const sort = $('sort').value;
+    rows.sort((a, b) => sort === 'amt' ? b.unpaidAmount - a.unpaidAmount : sort === 'date' ? String(b.date).localeCompare(String(a.date)) : (b.ageDays == null ? -1 : b.ageDays) - (a.ageDays == null ? -1 : a.ageDays));
+
+    $('stat').textContent = rows.length + '건 표시';
+    if (!rows.length) {
+      $('box').className = '';
+      $('box').innerHTML = '<div class="card empty">' + (list.length ? '조건에 맞는 청구가 없습니다.' : '등록된 청구가 없습니다.') + '<br><br><button class="btn btn-primary" id="emptyNew">+ 청구 등록</button></div>';
+      return;
+    }
+    const groups = {};
+    rows.forEach(i => (groups[i.client || '(거래처 없음)'] = groups[i.client || '(거래처 없음)'] || []).push(i));
+    let h = '<table class="tbl"><thead><tr><th>현장</th><th>청구일</th><th>세금계산서</th><th>경과일</th><th class="n">청구액</th><th class="n">수금액</th><th class="n">미수금</th><th>상태</th><th></th></tr></thead><tbody>';
+    Object.keys(groups).forEach(c => {
+      const g = groups[c];
+      h += `<tr class="grp"><td colspan="6">${esc(c)} <span class="warn" style="color:var(--text-sub);font-weight:400">${g.length}건</span></td><td class="n">${won(g.reduce((s, i) => s + Number(i.unpaidAmount), 0))}</td><td colspan="2"></td></tr>`;
+      g.forEach(i => {
+        const k = kindOf(i), open = k !== '완료';
+        const age = i.ageDays == null
+          ? (open ? `<button class="link" data-tax="${i.rowId}">계산서일 입력</button>` : '-')
+          : `<span class="badge age ${i.ageDays > 60 ? 'hot' : i.ageDays > 30 ? 'mid' : ''}">${i.ageDays}일</span>`;
+        h += `<tr><td>${esc(i.site)}</td><td>${esc(i.date)}</td><td>${esc(i.taxDate || '-')}${i.taxDate && open ? ` <button class="link" data-tax="${i.rowId}">수정</button>` : ''}</td><td>${age}</td>
+          <td class="n">${won(i.totalAmount)}</td><td class="n">${won(i.paidAmount)}</td><td class="n"><b>${won(i.unpaidAmount)}</b></td>
+          <td><span class="badge ${k}">${k === '미수' ? '미수금' : k === '부분' ? '부분수금' : '수금완료'}</span></td>
+          <td class="act">${open ? `<button class="btn btn-sm btn-primary" data-pay="${i.rowId}">입금</button>` : ''}<button class="btn btn-sm" data-det="${i.rowId}">내역</button></td></tr>
+          <tr class="det" id="det${i.rowId}" hidden><td colspan="9">${detail(i)}</td></tr>`;
+      });
+    });
+    $('box').className = ''; $('box').innerHTML = h + '</tbody></table>';
+  }
+
+  function detail(i) {
+    const p = i.payments || [];
+    if (p.length) return '<ul>' + p.map(x => `<li>${esc(x.date)} · ${won(x.amount)}${x.method ? ' · ' + esc(x.method) : ''}${x.memo ? ' · ' + esc(x.memo) : ''}</li>`).join('') + '</ul>';
+    return i.history ? esc(i.history).replace(/\n/g, '<br>') : '입금 내역이 없습니다.';
+  }
+
+  const find = id => list.find(i => String(i.rowId) === String(id));
+  async function call(action, data, okMsg) {
+    const r = await sendToGas(action, data);
+    if (r.res !== 'SUCCESS') throw new Error(r.msg || '저장 실패');
+    return r;
+  }
+
+  $('box').addEventListener('click', e => {
+    const t = e.target;
+    if (t.id === 'emptyNew') return openNew();
+    const pay = t.closest('[data-pay]'), det = t.closest('[data-det]'), tax = t.closest('[data-tax]');
+    if (det) { const r = $('det' + det.dataset.det); r.hidden = !r.hidden; }
+    if (pay) { cur = find(pay.dataset.pay); $('payInfo').textContent = cur.client + ' · ' + cur.site + ' · 남은 금액 ' + won(cur.unpaidAmount); $('payDate').value = today(); $('payAmt').value = ''; $('payMethod').value = store.get('rcv_method') || ''; $('payMemo').value = ''; $('payDlg').showModal(); $('payAmt').focus(); }
+    if (tax) { cur = find(tax.dataset.tax); $('taxInfo').textContent = cur.client + ' · ' + cur.site; $('taxDate').value = cur.taxDate || today(); $('taxDlg').showModal(); }
+  });
+  document.querySelectorAll('dialog [data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
+  $('fillAll').onclick = () => { $('payAmt').value = cur.unpaidAmount; };
+
+  $('paySave').onclick = async () => {
+    const amt = parseInt($('payAmt').value, 10), method = $('payMethod').value.trim();
+    if (!(amt > 0)) return alert('금액을 정확히 입력해 주세요.');
+    if (!$('payDate').value) return alert('입금일을 입력해 주세요.');
+    if (amt > cur.unpaidAmount && !confirm('남은 금액(' + won(cur.unpaidAmount) + ')보다 큽니다. 그래도 입금 처리할까요?')) return;
+    if (!confirm(cur.client + ' ' + cur.site + '\n' + won(amt) + '을(를) 입금 처리할까요?')) return;
+    const b = $('paySave'); b.disabled = true; b.textContent = '저장 중…';
+    try {
+      await call('addPayment', { claimId: cur.id || '', rowId: cur.rowId, addAmount: amt, payDate: $('payDate').value, method: method, memo: $('payMemo').value.trim() });
+      store.set('rcv_method', method); $('payDlg').close(); await load();
+    } catch (e) { alert('저장 실패: ' + e.message); } finally { b.disabled = false; b.textContent = '입금 저장'; }
+  };
+
+  $('taxSave').onclick = async () => {
+    if (!$('taxDate').value) return alert('발행일을 입력해 주세요.');
+    if (!cur.id) return alert('청구번호가 없는 오래된 줄입니다. 먼저 입금을 한 번 저장하면 번호가 생깁니다.');
+    const b = $('taxSave'); b.disabled = true;
+    try { await call('updateReceivable', { claimId: cur.id, taxDate: $('taxDate').value }); $('taxDlg').close(); await load(); }
+    catch (e) { alert('저장 실패: ' + e.message); } finally { b.disabled = false; }
+  };
+
+  function openNew() { ['nClient', 'nSite', 'nTotal', 'nTax', 'nQuote'].forEach(k => $(k).value = ''); $('nBill').value = today(); $('newDlg').showModal(); $('nClient').focus(); }
+  $('newBtn').onclick = openNew;
+  $('newSave').onclick = async () => {
+    const client = $('nClient').value.trim(), site = $('nSite').value.trim(), total = parseInt($('nTotal').value, 10);
+    if (!client || !site || !(total > 0)) return alert('거래처, 현장, 청구금액을 입력해 주세요.');
+    if (!confirm(client + ' ' + site + '\n청구금액 ' + won(total) + '을(를) 등록할까요?')) return;
+    const b = $('newSave'); b.disabled = true; b.textContent = '등록 중…';
+    try { await call('addReceivable', { client, site, total, billDate: $('nBill').value, taxDate: $('nTax').value, quoteId: $('nQuote').value.trim() }); $('newDlg').close(); await load(); }
+    catch (e) { alert('등록 실패: ' + e.message); } finally { b.disabled = false; b.textContent = '청구 등록'; }
+  };
+
+  $('stSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st = b.dataset.st; document.querySelectorAll('#stSeg button').forEach(x => x.classList.toggle('on', x === b)); render(); });
+  $('mon').onchange = render; $('sort').onchange = render;
+  load();
+</script>
+</body>
+</html>

@@ -75,7 +75,7 @@
       <p class="sentence" id="sentence">불러오는 중…</p>
       <div class="todo">
         <button class="chip" id="chipG" data-go="gongsu"><span>미확인 공수</span><b>…</b></button>
-        <button class="chip" id="chipR" data-go="trade"><span>미입금 현장</span><b>…</b></button>
+        <button class="chip" id="chipR" data-go="receivable"><span>미입금 현장</span><b>…</b></button>
         <button class="chip" id="chipD" data-go="trade"><span>임박 납기</span><b>…</b></button>
       </div>
       <div class="kpis">
@@ -102,6 +102,7 @@ const MENUS = [
   { id: 'staff',   label: '인원',         type: 'page', src: 'admin.html?view=staff', g: '현장·인력' },
   { id: 'trade',   label: '거래처·현장',  type: 'page', src: 'admin.html?view=trade', g: '영업·정산' },
   { id: 'quote',   label: '견적서',       type: 'page', src: 'quote.html', g: '영업·정산' },
+  { id: 'receivable', label: '수금 관리',  type: 'page', src: 'receivable.html', g: '영업·정산' },
   { id: 'price',   label: '자재 단가',    type: 'page', src: 'price.html', g: '자산·관리' },
   { id: 'report',  label: '보고서',       type: 'soon', g: '자산·관리' },
   { id: 'stats',   label: '통계',         type: 'soon', g: '자산·관리' }
