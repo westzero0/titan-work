@@ -62,6 +62,19 @@
   .sec a { font-size: 12.5px; color: var(--accent); cursor: pointer; text-decoration: none; }
   .sec a:hover { text-decoration: underline; }
   .sentence { margin: 6px 0 20px; color: var(--text-sub); font-size: 13.5px; }
+  /* 활성 현장 카드 */
+  .sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .site { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; cursor: pointer; min-width: 0; }
+  .site:hover { border-color: var(--text-sub); }
+  .site .nm { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .site .cl { font-size: 12px; color: var(--text-sub); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .site .bar { height: 6px; background: var(--bg); border-radius: 3px; margin: 14px 0 8px; overflow: hidden; }
+  .site .bar i { display: block; height: 100%; background: var(--accent); }
+  .site .st { display: flex; gap: 6px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-sub); }
+  .site .st .on { color: var(--ok); font-weight: 600; }
+  .site .dd { float: right; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .site .dd.late { color: var(--danger); }
+  .site .dd.soon { color: #b45309; }
   #dash h2, #soon h2 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
 </style>
 </head>
@@ -84,6 +97,8 @@
         <div class="kpi"><div class="lb">견적 누계</div><div class="v" id="k3">…</div><div class="sub" id="k3s"></div></div>
         <div class="kpi"><div class="lb">미수금</div><div class="v red" id="k4">…</div><div class="sub" id="k4s"></div></div>
       </div>
+      <div class="sec"><h3>활성 현장</h3><a data-go="trade">거래처·현장 열기</a></div>
+      <div class="sites" id="siteCards"><div class="empty">…</div></div>
       <div class="sec"><h3>최근 견적서</h3><a data-go="quote">견적서 열기</a></div>
       <table class="tbl"><thead><tr><th>견적번호</th><th>거래처</th><th>현장</th><th>일자</th><th class="n">합계</th><th>상태</th></tr></thead><tbody id="qBody"><tr><td colspan="6" class="empty">…</td></tr></tbody></table>
     </div></div>
@@ -176,10 +191,46 @@ function paint() {
     : todo === 0 ? '오늘 처리할 일이 없습니다.'
     : '오늘 확인할 일이 ' + todo + '건 있습니다. 버튼을 누르면 해당 화면으로 이동합니다.';
   $('hello').textContent = (now.getMonth() + 1) + '월 ' + now.getDate() + '일 현황';
+  paintSites();
   const q = D.quotes;
   $('qBody').innerHTML = !q ? '<tr><td colspan="6" class="empty">…</td></tr>'
     : q.length ? q.map(x => `<tr><td>${esc(x.quoteNo || '(작성중)')}</td><td>${esc(x.client)}</td><td>${esc(x.site)}</td><td>${esc(x.quoteDate)}</td><td class="n">${won(x.total)}</td><td><span class="badge ${esc(x.status)}">${esc(x.status)}</span></td></tr>`).join('')
     : '<tr><td colspan="6" class="empty">아직 견적서가 없습니다. 견적서 메뉴에서 새로 만들 수 있습니다.</td></tr>';
+}
+
+// 활성 현장 카드: 진행률 = 견적 발송·세금계산서·입금 3단계 중 끝낸 수, D-day = 납기까지 남은 날
+function paintSites() {
+  const el = $('siteCards'), list = D.siteList;
+  if (!list) { el.innerHTML = '<div class="empty">…</div>'; return; }
+  if (!list.length) { el.innerHTML = '<div class="empty">활성 현장이 없습니다.</div>'; return; }
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  el.innerHTML = list.map(s => {
+    const steps = [['발송', s.quoteSent], ['계산서', s.taxInvoiceIssued], ['입금', s.paymentCompleted]];
+    const pct = Math.round(steps.filter(x => x[1]).length / 3 * 100);
+    let dd = '';
+    const d = s.deadline ? new Date(s.deadline) : null;
+    if (d && !isNaN(d)) {
+      const n = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - today) / 86400000);
+      dd = '<span class="dd ' + (n < 0 ? 'late' : n <= 7 ? 'soon' : '') + '">' + (n < 0 ? 'D+' + -n : n === 0 ? 'D-day' : 'D-' + n) + '</span>';
+    }
+    return '<div class="site" data-go="trade">' + dd + '<div class="nm">' + esc(s.siteName || '현장명 없음') + '</div><div class="cl">' + esc(s.client) + '</div>'
+      + '<div class="bar"><i style="width:' + pct + '%"></i></div>'
+      + '<div class="st">' + steps.map(x => '<span class="' + (x[1] ? 'on' : '') + '">' + (x[1] ? '✓' : '·') + ' ' + x[0] + '</span>').join('') + '</div></div>';
+  }).join('');
+  el.querySelectorAll('[data-go]').forEach(c => c.onclick = () => { location.hash = c.dataset.go; });
+}
+
+async function loadSites() {
+  try {
+    const r = await sendToGas('getActiveSitesOverview', {});
+    if (r.res !== 'SUCCESS') return;
+    const out = [];
+    ((r.data && r.data.clients) || []).forEach(c => (c.sites || []).forEach(s => out.push(Object.assign({ client: c.name }, s))));
+    // 입금까지 끝난 현장은 뒤로, 납기 빠른 순
+    const key = s => (s.paymentCompleted ? 1e16 : 0) + (s.deadline ? new Date(s.deadline).getTime() || 9e15 : 9e15);
+    out.sort((a, b) => key(a) - key(b));
+    D.siteList = out; store.set(CACHE_KEY, JSON.stringify(D)); paintSites();
+  } catch (e) { /* 저장된 이전 카드를 그대로 둔다 */ }
 }
 
 async function loadDash() {
@@ -193,7 +244,7 @@ async function loadDash() {
     const q = await sendToGas('getHomeQueue', {});
     if (q && q.status === 'SUCCESS') {
       ['gongsu', 'logCnt', 'unconfirmed', 'receivable', 'receivableCnt', 'sites', 'clients', 'dueSoon', 'quoteSum', 'quoteCnt', 'quotes'].forEach(k => { if (q[k] != null) D[k] = q[k]; });
-      save(); return;
+      save(); loadSites(); return;
     }
   } catch (e) { /* 아래 기존 방식으로 */ }
   // 동시에 여러 개를 보내면 구글이 가끔 오류 페이지를 돌려줘서 하나씩 순서대로 요청한다 (읽기 전용 동작만 사용)
@@ -236,6 +287,7 @@ async function loadDash() {
     })
   ];
   for (const f of steps) { try { await f(); save(); } catch (e) { /* 실패하면 저장된 이전 값을 그대로 둔다 */ } }
+  loadSites();
 }
 
 show();
