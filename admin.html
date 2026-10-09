@@ -371,7 +371,29 @@
     /* PC 전용 화면 손질 (pc.css 의 색·글꼴을 입힌다) */
     .embed { background: var(--bg); font-family: var(--font); }
     .embed .swiper-wrapper { max-width: 1120px; padding: 32px 40px 48px; margin: 0; }
-    .view-staff .swiper-wrapper, .view-trade .swiper-wrapper { max-width: 920px; }
+    /* 데스크탑 배치: 입력 폼은 왼쪽 고정 폭, 목록은 오른쪽에 넓게 */
+    .embed .swiper-wrapper { max-width: 1320px; box-sizing: border-box; width: 100%; }
+    .view-trade .swiper-slide:nth-child(3), .view-staff .swiper-slide:nth-child(2) { display: grid !important; grid-template-columns: 340px minmax(0, 1fr); gap: 0 28px; align-items: start; }
+    .view-trade .swiper-slide:nth-child(3) > .card, .view-trade #unregistered-sites { grid-column: 1; }
+    .view-trade #client-management-list { grid-column: 2; grid-row: 1 / span 3; padding-bottom: 0; }
+    .view-sched .swiper-slide:nth-child(1) { display: grid !important; grid-template-columns: minmax(0, 1fr) 360px; gap: 0 28px; align-items: start; }
+    .view-sched .swiper-slide:nth-child(1) > .card { grid-column: 2; grid-row: 1 / span 3; margin: 0 !important; }
+    .view-sched .fc .fc-daygrid-day-frame { min-height: 96px; }
+    .view-sched #calendar-container { border: 1px solid var(--line) !important; border-radius: var(--r); margin-bottom: 0 !important; overflow: hidden; }
+    /* 거래처 카드 가로 넘김(슬라이드)을 격자로 */
+    .embed .client-management-swiper { overflow: visible; }
+    .embed .client-management-swiper .swiper-wrapper { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; width: 100% !important; padding: 0; max-width: none; }
+    .embed .client-management-swiper .swiper-slide { display: block !important; width: auto !important; padding: 0 !important; background: none; min-height: 0 !important; }
+    .embed .client-swiper-prev, .embed .client-swiper-next, .embed .swiper-pagination { display: none !important; }
+    .embed .client-card { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; min-height: 0; background: var(--surface); }
+    .embed .client-header { background: var(--bg); color: var(--text); border-bottom: 1px solid var(--line); padding: 12px 18px; font-size: 14px; }
+    .embed .site-row { padding: 14px 18px; }
+    .embed .site-row > div:last-child { flex-direction: row !important; align-items: center; min-width: 0 !important; gap: 6px !important; flex-shrink: 0; }
+    .embed #worker-list-admin { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); display: grid; }
+    .embed .worker-card { border: 1px solid var(--line); border-top: 1px solid var(--line); border-radius: var(--r); box-shadow: none; }
+    .embed .modal { background: rgba(21, 24, 30, .45); }
+    .embed .modal-content { max-width: 560px; box-shadow: 0 12px 32px rgba(21, 24, 30, .18); }
+    .embed #schedule-modal .modal-content { max-width: 680px; }
     .embed .card { border: 1px solid var(--line); border-radius: var(--r); box-shadow: none; padding: 20px 24px; margin-bottom: 16px; }
     .embed h3 { color: var(--text); font-size: 16px; font-weight: 700; border-bottom: 1px solid var(--line); letter-spacing: -.01em; }
     .embed label { font-size: 12.5px; color: var(--text-sub); font-weight: 600; margin-top: 12px; }
