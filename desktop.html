@@ -150,14 +150,25 @@
     loadMatrix(sel.value);
   }
 
+  // 구글 서버가 가끔 일시적으로 오류를 돌려주므로, 불러오기는 잠깐 쉬었다가 최대 2번 더 시도한다 (읽기 전용에만 사용)
+  async function withRetry(fn, onRetry) {
+    let lastErr;
+    for (let n = 0; n <= 2; n++) {
+      try { if (n) { onRetry(n); await new Promise(r => setTimeout(r, 1500 * n)); } return await fn(); }
+      catch (e) { lastErr = e; }
+    }
+    throw lastErr;
+  }
+
   async function loadMatrix(month) {
     document.getElementById('loading').style.display = 'block';
+    document.getElementById('loading').textContent = '불러오는 중...';
     document.getElementById('empty').style.display = 'none';
     document.getElementById('tableWrap').style.display = 'none';
     document.getElementById('saveBar').style.display = 'none';
 
     try {
-      const result = await sendToGas('getGongsuMatrix', { month });
+      const result = await withRetry(() => sendToGas('getGongsuMatrix', { month }), n => { document.getElementById('loading').textContent = '불러오는 중... (다시 시도 ' + n + '/2)'; });
       document.getElementById('loading').style.display = 'none';
 
       if (result.status === 'ERROR' || !result.rows || result.rows.length === 0) {
@@ -175,7 +186,8 @@
     } catch (err) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('empty').style.display = 'block';
-      document.getElementById('empty').textContent = '연결 실패: ' + err.message;
+      document.getElementById('empty').innerHTML = '연결 실패: ' + String(err.message).replace(/[<>&]/g, '') + '<br><br><button type="button" class="btn btn-primary" id="reloadBtn">다시 불러오기</button>';
+      document.getElementById('reloadBtn').onclick = () => loadMatrix(month);
       console.error(err);
     }
   }
