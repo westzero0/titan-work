@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>일정</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="pc.css">
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; }
+  .top { display: flex; align-items: center; gap: 10px; padding: 20px 32px 16px; flex-wrap: wrap; }
+  .top h2 { margin: 0 12px 0 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  .top .ttl { min-width: 120px; text-align: center; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .top .sp { flex: 1; }
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: none; min-height: 34px; padding: 0 14px; font-size: 13px; font-weight: 600; color: var(--text-sub); cursor: pointer; }
+  .seg button.on { background: var(--accent-soft); color: var(--accent); }
+  .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; padding: 0 32px 24px; }
+  .pane { min-height: 0; overflow: auto; }
+
+  /* 달력 */
+  .cal { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .dow, .wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .dow div { padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--text-sub); background: #f8f9fb; border-bottom: 1px solid var(--line); }
+  .dow div:first-child, .day.sun .n { color: var(--danger); }
+  .dow div:last-child, .day.sat .n { color: var(--accent); }
+  .day { min-height: 112px; padding: 6px 6px 8px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); cursor: pointer; min-width: 0; }
+  .day:nth-child(7n) { border-right: 0; }
+  .wk:last-child .day { border-bottom: 0; }
+  .day:hover { background: #fafbfc; }
+  .day.out { background: #fafafb; }
+  .day.out .n { opacity: .4; }
+  .day.pick { box-shadow: inset 0 0 0 2px var(--accent); }
+  .day .n { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 11px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+  .day.today .n { background: var(--accent); color: #fff; }
+  .ev { display: block; width: 100%; margin-top: 3px; padding: 3px 7px; border: 0; border-radius: 6px; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; color: #fff; background: var(--accent); }
+  .ev.야 { background: #3b4252; }
+  .ev.조 { background: var(--warn); }
+  .ev.off { background: var(--danger-soft); color: var(--danger); border: 1px solid #f3c5c7; }
+  .more { margin-top: 3px; font-size: 11.5px; color: var(--text-sub); }
+
+  /* 오른쪽 패널 */
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; }
+  .panel h3 { margin: 0 0 14px; font-size: 16px; }
+  .f { margin-bottom: 12px; }
+  .f input[type=text], .f input[type=date], .f select, .f textarea { width: 100%; }
+  .f textarea { min-height: 56px; resize: vertical; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .chk { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .chk input { width: 16px; height: 16px; min-height: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cp { min-height: 30px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+  .cp:hover { border-color: var(--text-sub); }
+  .cp.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .cp.off.on { background: var(--danger-soft); border-color: #e9a3a6; color: var(--danger); }
+  .acts { display: flex; gap: 8px; margin-top: 16px; }
+  .acts .btn-primary { flex: 1; }
+  #msg { min-height: 18px; margin-top: 10px; font-size: 12.5px; color: var(--text-sub); }
+  #msg.err { color: var(--danger); }
+  .up { display: block; width: 100%; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--r); background: var(--surface); text-align: left; cursor: pointer; color: var(--text); }
+  .up:hover { background: #fafbfc; }
+  .up.야 { border-left-color: #3b4252; } .up.조 { border-left-color: var(--warn); } .up.off { border-left-color: var(--danger); }
+  .up b { display: block; font-size: 13.5px; }
+  .up span { display: block; color: var(--text-sub); font-size: 12.5px; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h2>일정</h2>
+  <button class="btn btn-sm" id="prev" aria-label="이전 달">&lt;</button>
+  <div class="ttl" id="ttl"></div>
+  <button class="btn btn-sm" id="next" aria-label="다음 달">&gt;</button>
+  <button class="btn btn-sm" id="today">오늘</button>
+  <div class="seg" id="seg"><button data-m="work" class="on">작업</button><button data-m="off">휴무</button></div>
+  <span class="sp"></span>
+  <button class="btn btn-primary" id="newBtn">새 일정</button>
+</div>
+<div class="cols">
+  <section class="pane"><div class="cal"><div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div><div id="grid"></div></div></section>
+  <aside class="pane"><div class="panel" id="panel"></div></aside>
+</div>
+<script src="common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const dOf = s => String(s.date || '').split('T')[0].trim(); // 관리자 화면과 같은 방식으로 날짜 자르기
+const isAllOff = s => (s.client || '').trim() === '휴무' || (s.site || '').trim() === '휴무';
+const names = t => String(t || '').split(',').map(x => x.trim()).filter(Boolean);
+const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+let sched = lsGet('titan_schedules', []), clients = lsGet('titan_clients', {}), workers = [], vehicles = [];
+let works = lsGet('titan_work_list', ['배관', '입선', '단말', '트레이', '철거', '청소', '자재정리']);
+let month = new Date(); month.setDate(1);
+let mode = 'work', F = null; // F: 지금 편집 중인 일정(없으면 null → 다가오는 일정 목록)
+const todayStr = ymd(new Date());
+
+// ---- 달력 ----
+function drawCal() {
+  $('ttl').textContent = month.getFullYear() + '년 ' + (month.getMonth() + 1) + '월';
+  const start = new Date(month); start.setDate(1 - month.getDay());
+  const by = {}; sched.forEach(s => (by[dOf(s)] = by[dOf(s)] || []).push(s));
+  let html = '';
+  for (let w = 0; w < 6; w++) {
+    html += '<div class="wk">';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + w * 7 + i); const k = ymd(d);
+      const evs = [];
+      (by[k] || []).forEach(s => {
+        if (isAllOff(s)) evs.push({ s, t: '전체 휴무', c: 'off' });
+        else if (mode === 'work') { if ((s.client || '').trim() || (s.site || '').trim()) evs.push({ s, t: (s.site || '현장미상') + ' ' + names(s.workers).length + '명', c: s.shift || '주' }); }
+        else names(s.offWorkers).forEach(n => evs.push({ s, t: n + ' 휴무', c: 'off' }));
+      });
+      html += `<div class="day${d.getMonth() !== month.getMonth() ? ' out' : ''}${k === todayStr ? ' today' : ''}${d.getDay() === 0 ? ' sun' : ''}${d.getDay() === 6 ? ' sat' : ''}${F && F.date === k ? ' pick' : ''}" data-d="${k}"><span class="n">${d.getDate()}</span>`
+        + evs.slice(0, 3).map(e => `<button class="ev ${esc(e.c)}" data-r="${esc(e.s.rowId)}" title="${esc(e.t)}">${esc(e.t)}</button>`).join('')
+        + (evs.length > 3 ? `<div class="more">+${evs.length - 3}건 더</div>` : '') + '</div>';
+    }
+    html += '</div>';
+  }
+  $('grid').innerHTML = html;
+}
+
+// ---- 패널 ----
+const blank = date => ({ rowId: '', date, endDate: '', allOff: false, client: '', site: '', shift: '주', car: '', content: '', note: '', w: new Set(), off: new Set() });
+function open(s, date) {
+  F = s ? { rowId: s.rowId, date: dOf(s), endDate: '', allOff: isAllOff(s), client: isAllOff(s) ? '' : (s.client || ''), site: isAllOff(s) ? '' : (s.site || ''), shift: s.shift || '주', car: s.car || '', content: s.content || '', note: s.note || '', w: new Set(names(s.workers)), off: new Set(names(s.offWorkers)) } : blank(date || todayStr);
+  if (F.site === 'X') { F.client = ''; F.site = ''; }
+  panel(); drawCal();
+}
+function sync() { // 화면에 적힌 값을 F 에 옮겨 두면 칩을 눌러 다시 그려도 입력이 안 사라진다
+  if (!F || !$('fdate')) return;
+  F.date = $('fdate').value; if ($('fend')) F.endDate = $('fend').value;
+  F.allOff = $('fall').checked; F.note = $('fnote').value;
+  if (!F.allOff) { F.client = $('fcl').value; F.site = $('fsi').value; F.car = $('fcar').value; F.content = $('fct').value; }
+}
+const chips = (all, set, cls) => all.map(n => `<button type="button" class="cp ${cls} ${set.has(n) ? 'on' : ''}" data-n="${esc(n)}">${esc(n)}</button>`).join('');
+function panel() {
+  const p = $('panel');
+  if (!F) {
+    const list = sched.filter(s => dOf(s) >= todayStr).sort((a, b) => dOf(a).localeCompare(dOf(b))).slice(0, 14);
+    p.innerHTML = '<h3>다가오는 일정</h3>' + (list.length ? list.map(s => {
+      const off = isAllOff(s), cls = off ? 'off' : (s.shift || '주');
+      return `<button class="up ${esc(cls)}" data-r="${esc(s.rowId)}"><b>${esc(dOf(s).slice(5))} ${off ? '전체 휴무' : esc(s.site || '현장미상')}</b><span>${off ? '' : esc(s.client || '') + ' / ' + esc(s.workers || '인원 미정')}${s.car ? ' / ' + esc(s.car) : ''}${s.content ? ' / ' + esc(s.content) : ''}</span></button>`;
+    }).join('') : '<p class="msg" style="margin:0">예정된 일정이 없습니다. 달력에서 날짜를 눌러 등록하세요.</p>');
+    return;
+  }
+  const cl = Object.keys(clients), site = clients[F.client] || [];
+  const siteOpts = site.filter(s => s.status !== '완료' || s.name === F.site).map(s => s.name);
+  if (F.site && !siteOpts.includes(F.site)) siteOpts.push(F.site);
+  const vs = vehicles.map(v => v.name); if (F.car && !vs.includes(F.car)) vs.push(F.car);
+  const opt = (arr, cur) => '<option value="">선택</option>' + arr.map(x => `<option${x === cur ? ' selected' : ''}>${esc(x)}</option>`).join('');
+  const wn = workers.map(w => w.name);
+  p.innerHTML = `<h3>${F.rowId ? '일정 수정' : '일정 등록'}</h3>
+    <div class="${F.rowId ? '' : 'row2'} f"><div><label class="lb" for="fdate">${F.rowId ? '날짜' : '시작일'}</label><input id="fdate" type="date" value="${esc(F.date)}"></div>
+      ${F.rowId ? '' : `<div><label class="lb" for="fend">종료일 (여러 날)</label><input id="fend" type="date" value="${esc(F.endDate)}"></div>`}</div>
+    <label class="chk"><input type="checkbox" id="fall"${F.allOff ? ' checked' : ''}>전체 휴무로 등록</label>
+    ${F.allOff ? '' : `<div class="f"><label class="lb" for="fcl">거래처</label><select id="fcl">${opt(cl, F.client)}</select></div>
+    <div class="f"><label class="lb" for="fsi">현장</label><select id="fsi">${opt(siteOpts, F.site)}</select></div>
+    <div class="f"><label class="lb">근무</label><div class="seg" id="fshift">${['주', '야', '조'].map(x => `<button type="button" data-s="${x}" class="${F.shift === x ? 'on' : ''}">${x}</button>`).join('')}</div></div>
+    <div class="row2 f"><div><label class="lb" for="fcar">차량</label><select id="fcar">${opt(vs, F.car)}</select></div>
+      <div><label class="lb" for="fct">공정</label><input id="fct" type="text" list="wl" value="${esc(F.content)}"><datalist id="wl">${works.map(x => `<option value="${esc(x)}">`).join('')}</datalist></div></div>
+    <div class="f"><label class="lb">투입 인원 ${F.w.size}명</label><div class="chips" id="cw">${chips(wn.filter(n => !F.off.has(n)), F.w, '')}</div></div>`}
+    <div class="f"><label class="lb">휴무자 ${F.off.size}명${F.allOff ? ' (비우면 전원)' : ''}</label><div class="chips" id="co">${chips(wn.filter(n => !F.w.has(n)), F.off, 'off')}</div></div>
+    <div class="f"><label class="lb" for="fnote">전달사항</label><textarea id="fnote">${esc(F.note)}</textarea></div>
+    <div class="acts"><button class="btn btn-primary" id="save">${F.rowId ? '수정' : '저장'}</button>${F.rowId ? '<button class="btn btn-danger" id="del">삭제</button>' : ''}<button class="btn" id="cancel">닫기</button></div><div id="msg"></div>`;
+}
+const say = (t, k) => { const m = $('msg'); if (m) { m.textContent = t; m.className = k || ''; } };
+const call = (a, d) => sendToGas(a, d).then(r => { if (r && (r.status === 'ERROR' || r.res === 'ERROR')) throw new Error(r.message || '서버 오류'); return r; });
+
+async function save() {
+  sync();
+  const dates = (!F.rowId && F.endDate) ? range(F.date, F.endDate) : [F.date];
+  if (!F.date || !dates.length) return say('날짜를 확인해 주세요.', 'err');
+  let client = F.client, site = F.site, w = [...F.w].join(', '), off = [...F.off].join(', '), shift = F.shift;
+  if (F.allOff) { client = site = '휴무'; w = ''; if (!off) off = workers.map(x => x.name).join(', '); shift = '주'; }
+  else if (!client || !site) {
+    if (off && !w) { client = '-'; site = 'X'; } // 현장 없이 휴무자만 적는 경우: 기존 방식 그대로 '휴무(X)'
+    else return say('거래처와 현장을 선택해 주세요.', 'err');
+  }
+  // 같은 날 이미 있는 일정과 부딪히면 먼저 물어보고 지운다 (전체 휴무 <-> 작업 일정)
+  const hit = sched.filter(s => dates.includes(dOf(s)) && String(s.rowId) !== String(F.rowId) && (F.allOff ? !isAllOff(s) && (s.site || '').trim() !== 'X' : isAllOff(s)));
+  if (hit.length && !confirm(F.allOff ? `그 날짜에 등록된 작업 일정 ${hit.length}건이 있습니다. 모두 지우고 전체 휴무로 등록할까요?` : `그 날짜에 전체 휴무가 있습니다. 휴무를 취소하고 이 일정을 등록할까요?`)) return;
+  $('save').disabled = true; say('저장 중');
+  try {
+    for (const s of hit) await call('deleteSchedule', { rowId: s.rowId });
+    const base = { client, site, shift, workers: w, offWorkers: off, car: F.allOff ? '' : F.car, content: F.allOff ? '' : F.content, note: F.note, rowId: F.rowId };
+    if (F.rowId) await call('updateSchedule', { ...base, date: F.date });
+    else if (dates.length > 1) await call('addScheduleBatch', dates.map(date => ({ ...base, date })));
+    else await call('addSchedule', { ...base, date: F.date });
+    F = null; await reload();
+  } catch (e) { say('저장 실패: ' + e.message, 'err'); $('save').disabled = false; }
+}
+async function del() {
+  if (!confirm('이 일정을 삭제할까요?')) return;
+  try { await call('deleteSchedule', { rowId: F.rowId }); F = null; await reload(); }
+  catch (e) { say('삭제 실패: ' + e.message, 'err'); }
+}
+function range(a, b) { // a 부터 b 까지(포함) 날짜 목록. 하루 단위로 최대 62일
+  const out = []; const d = new Date(a + 'T00:00:00'), e = new Date(b + 'T00:00:00');
+  if (isNaN(d) || isNaN(e) || e < d) return [];
+  for (; d <= e && out.length < 62; d.setDate(d.getDate() + 1)) out.push(ymd(d));
+  return out;
+}
+
+async function reload() {
+  const r = await sendToGas('getScheduleList', {});
+  if (Array.isArray(r)) { sched = r; lsSet('titan_schedules', r); }
+  draw();
+}
+const draw = () => { drawCal(); panel(); };
+
+// ---- 이벤트 ----
+$('grid').onclick = e => {
+  const ev = e.target.closest('.ev');
+  if (ev) { const s = sched.find(x => String(x.rowId) === ev.dataset.r); if (s) open(s); return; }
+  const day = e.target.closest('.day'); if (day) open(null, day.dataset.d);
+};
+$('panel').onclick = e => {
+  const t = e.target;
+  const up = t.closest('.up'); if (up) { const s = sched.find(x => String(x.rowId) === up.dataset.r); if (s) open(s); return; }
+  const cp = t.closest('.cp');
+  if (cp) {
+    sync(); const n = cp.dataset.n, mine = cp.classList.contains('off') ? F.off : F.w;
+    mine.has(n) ? mine.delete(n) : mine.add(n); panel(); return;
+  }
+  const sh = t.closest('#fshift button'); if (sh) { sync(); F.shift = sh.dataset.s; panel(); return; }
+  if (t.id === 'save') save(); else if (t.id === 'del') del(); else if (t.id === 'cancel') { F = null; draw(); }
+};
+$('panel').onchange = e => {
+  if (e.target.id === 'fall') { sync(); panel(); }
+  if (e.target.id === 'fcl') { sync(); F.site = ''; panel(); }
+};
+$('prev').onclick = () => { month.setMonth(month.getMonth() - 1); drawCal(); };
+$('next').onclick = () => { month.setMonth(month.getMonth() + 1); drawCal(); };
+$('today').onclick = () => { month = new Date(); month.setDate(1); drawCal(); };
+$('newBtn').onclick = () => open(null, todayStr);
+$('seg').onclick = e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.m; document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('on', x === b)); drawCal(); };
+
+// ---- 처음 불러오기: 저장된 값으로 먼저 그리고, 서버 값이 오면 갱신 ----
+draw();
+reload().catch(() => {});
+sendToGas('getQuoteMaster', {}).then(r => { workers = r.workers || []; panel(); }).catch(() => {});
+sendToGas('getVehicles', {}).then(r => { if (Array.isArray(r)) { vehicles = r; panel(); } }).catch(() => {});
+sendToGas('getTitanData', {}).then(r => { const d = r.titanData || r.result || r; ['message', 'status', 'result', 'undefined'].forEach(k => delete d[k]); clients = d; lsSet('titan_clients', d); panel(); }).catch(() => {});
+</script>
+</body>
+</html>
