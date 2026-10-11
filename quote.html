@@ -485,7 +485,7 @@
       <tr data-i="${i}" class="${it.kind === '공정' || it.kind === '인건비' ? 'proc' : ''}">
         <td class="center">${i + 1}</td>
         <td class="kindcell"><span class="kind k-${esc(it.kind)}">${esc(it.kind)}</span></td>
-        <td><input data-f="name" value="${esc(it.name)}" placeholder="품목명" class="${it.unmatched ? 'zero-price' : ''}"${it.unmatched ? ' title="자재관리에 없는 이름이에요. 작업일보 원문과 비교해 주세요."' : ''}></td>
+        <td><div style="display:flex;gap:6px;align-items:center"><input data-f="name" value="${esc(it.name)}" placeholder="품목명" class="${it.unmatched ? 'zero-price' : ''}"${it.unmatched ? ' title="자재관리에 없는 이름이에요. 작업일보 원문과 비교해 주세요."' : ''}>${mergeBtn(it, i)}</div></td>
         <td><input data-f="spec" value="${esc(it.spec)}"></td>
         <td><input data-f="unit" value="${esc(it.unit)}"></td>
         <td><input data-f="qty" type="number" step="0.25" min="0" value="${esc(it.qty)}"></td>
@@ -503,7 +503,44 @@
     $('amt-' + i).textContent = won(lineAmount(cur.items[i]));
     dirty = true; updateTotals();
   });
+  /* ---- 같은 이름 공정 합치기: 자동으로 합치지 않고, 같은 이름이 여러 줄이면 첫 줄에 버튼만 보여준다 ---- */
+  const pKey = it => String(it.name || '').trim();
+  const sameProc = it => cur.items.filter(x => x.kind === '공정' && pKey(x) === pKey(it));
+  function mergeBtn(it, i) {
+    if (it.kind !== '공정' || !pKey(it)) return '';
+    const g = sameProc(it);
+    if (g.length < 2 || cur.items.indexOf(g[0]) !== i) return '';
+    return `<button type="button" class="btn btn-sm" data-merge="${i}" style="white-space:nowrap" title="같은 이름 공정 ${g.length}건을 한 줄로">합치기 (${g.length}건)</button>`;
+  }
+  function mergeProcs(i) {
+    const head = cur.items[i], key = pKey(head);
+    // 공정 줄과 그 뒤에 이어지는 경비·자재 줄을 한 덩어리(block)로 본다
+    const blocks = []; let b = null;
+    cur.items.forEach((it, k) => { if (it.kind === '공정') { b = { start: k, rows: [it], rest: [] }; blocks.push(b); } else if (b) b.rest.push(it); });
+    const g = blocks.filter(x => pKey(x.rows[0]) === key);
+    if (g.length < 2) return;
+    const qty = g.reduce((s, x) => s + (Number(x.rows[0].qty) || 0), 0);
+    const amt = g.reduce((s, x) => s + lineAmount(x.rows[0]), 0);
+    const dates = g.map(x => x.rows[0].spec).filter(Boolean);
+    const msg = `'${key}' ${g.length}건을 한 줄로 합칠까요?\n\n날짜: ${dates.join(', ')}\n공수 합계: ${qty}\n공정 금액 합계: ${won(amt)}원\n경비·자재는 한 공정 아래로 모아요(같은 자재는 수량을 더해요).\n\n되돌리려면 현장을 다시 선택해 채우면 돼요.`;
+    if (!confirm(msg)) return;
+    const merged = [{ ...head, spec: dates.join(', '), unit: '공수', qty, price: qty > 0 ? Math.round(amt / qty * 100) / 100 : 0, ref: g.map(x => x.rows[0].ref).filter(Boolean).join(' / ') }];
+    const exp = g.reduce((s, x) => s + x.rest.filter(r => r.kind === '경비').reduce((a, r) => a + lineAmount(r), 0), 0);
+    if (exp > 0) merged.push({ kind: '경비', name: key + ' 경비', spec: '', unit: '식', qty: 1, price: exp });
+    const mats = [];
+    g.forEach(x => x.rest.filter(r => r.kind !== '경비').forEach(r => {
+      const same = r.kind === '자재' && mats.find(m => m.kind === '자재' && m.name === r.name && m.spec === r.spec && m.unit === r.unit && Number(m.price) === Number(r.price));
+      if (same) same.qty = (Number(same.qty) || 0) + (Number(r.qty) || 0); else mats.push({ ...r });
+    }));
+    const drop = new Set();
+    g.forEach(x => { for (let k = x.start; k < x.start + 1 + x.rest.length; k++) drop.add(k); });
+    const out = [];
+    cur.items.forEach((it, k) => { if (k === g[0].start) out.push(...merged, ...mats); if (!drop.has(k)) out.push(it); });
+    cur.items = out; dirty = true; renderItems();
+    showStatus(`'${key}' ${g.length}건을 합쳤어요.`, true);
+  }
   $('itemsBody').addEventListener('click', e => {
+    const m = e.target.closest('button[data-merge]'); if (m) { mergeProcs(Number(m.dataset.merge)); return; }
     const b = e.target.closest('button[data-del]'); if (!b) return;
     cur.items.splice(Number(b.dataset.del), 1);
     dirty = true; renderItems();
