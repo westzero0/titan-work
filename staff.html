@@ -9,13 +9,13 @@
   html, body { height: 100%; margin: 0; }
   body { display: flex; flex-direction: column; }
   .top { display: flex; align-items: center; gap: 12px; padding: 20px 32px 16px; flex-wrap: wrap; }
-  .top h2 { margin: 0 12px 0 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  .top h2 { margin: 0 12px 0 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
   .top .sp { flex: 1; }
   #q { width: 220px; }
   .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; background: var(--surface); }
-  .seg button { border: 0; background: none; min-height: 34px; padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--text-sub); cursor: pointer; }
+  .seg button { border: 0; background: none; min-height: 34px; padding: 0 14px; font-size: 15px; font-weight: 600; color: var(--text-sub); cursor: pointer; }
   .seg button.on { background: var(--accent-soft); color: var(--accent); }
-  .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1000px) 360px; gap: 20px; padding: 0 32px 24px; }
+  .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 900px) 360px; gap: 20px; padding: 0 32px 24px; }
   .pane { min-height: 0; overflow: auto; }
   #tbl tbody tr { cursor: pointer; }
   #tbl tbody tr.sel td { background: var(--accent-soft); }
@@ -26,20 +26,20 @@
   .badge.on { background: var(--ok-soft); color: var(--ok); }
   .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; }
   .panel h3 { margin: 0 0 4px; font-size: 16px; }
-  .panel .who { margin: 0 0 16px; color: var(--text-sub); font-size: 14px; }
+  .panel .who { margin: 0 0 16px; color: var(--text-sub); font-size: 15px; }
   .f { margin-bottom: 12px; }
   .f input, .f select { width: 100%; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .acts { display: flex; gap: 8px; margin-top: 16px; }
   .acts .btn-primary { flex: 1; }
-  .kv { display: grid; grid-template-columns: 56px 1fr; gap: 6px 10px; margin: 0 0 16px; font-size: 14px; }
+  .kv { display: grid; grid-template-columns: 56px 1fr; gap: 6px 10px; margin: 0 0 16px; font-size: 15px; }
   .kv dt { color: var(--text-sub); }
   .kv dd { margin: 0; overflow-wrap: anywhere; }
   .sect { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 16px; }
-  .sect h4 { margin: 0 0 10px; font-size: 14px; color: var(--text-sub); }
+  .sect h4 { margin: 0 0 10px; font-size: 15px; color: var(--text-sub); }
   .inline { display: flex; gap: 8px; }
   .inline input { flex: 1; min-width: 0; }
-  #msg { min-height: 18px; margin-top: 10px; font-size: 13.5px; color: var(--text-sub); }
+  #msg { min-height: 18px; margin-top: 10px; font-size: 14.5px; color: var(--text-sub); }
   #msg.err { color: var(--danger); }
   #msg.ok { color: var(--ok); }
 </style>

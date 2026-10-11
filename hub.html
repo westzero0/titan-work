@@ -31,7 +31,7 @@
 
   /* 오른쪽: 상단 막대 + 본문 */
   #right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  #bar { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; background: var(--surface); border-bottom: 1px solid var(--line); flex-shrink: 0; font-size: 14px; }
+  #bar { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; background: var(--surface); border-bottom: 1px solid var(--line); flex-shrink: 0; font-size: 15px; }
   #crumb, #today { color: var(--text-sub); }
   #crumb b { color: var(--text); }
   #main { flex: 1; min-height: 0; position: relative; }
@@ -41,7 +41,7 @@
 
   /* 오늘 처리할 일 */
   .todo { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 28px; }
-  .chip { min-width: 128px; display: flex; align-items: baseline; gap: 10px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); font-size: 14px; cursor: pointer; color: var(--text); white-space: nowrap; transition: border-color .12s, background .12s; }
+  .chip { min-width: 128px; display: flex; align-items: baseline; gap: 10px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); font-size: 15px; cursor: pointer; color: var(--text); white-space: nowrap; transition: border-color .12s, background .12s; }
   .chip:hover { border-color: var(--text-sub); }
   .chip b { font-size: 16px; font-variant-numeric: tabular-nums; }
   .chip.warn { border-color: #f0b9bb; background: var(--danger-soft); }
@@ -52,28 +52,28 @@
   .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
   .kpi { padding: 20px 24px; border-left: 1px solid var(--line); min-width: 0; }
   .kpi:first-child { border-left: 0; }
-  .kpi .lb { font-size: 13.5px; color: var(--text-sub); font-weight: 600; }
+  .kpi .lb { font-size: 14.5px; color: var(--text-sub); font-weight: 600; }
   .kpi .v { font-size: 26px; font-weight: 700; margin-top: 8px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .kpi .v small { font-size: 14px; font-weight: 500; color: var(--text-sub); margin-left: 3px; }
+  .kpi .v small { font-size: 15px; font-weight: 500; color: var(--text-sub); margin-left: 3px; }
   .kpi .v.red { color: var(--danger); }
-  .kpi .sub { font-size: 13px; color: var(--text-sub); margin-top: 4px; min-height: 18px; }
+  .kpi .sub { font-size: 14px; color: var(--text-sub); margin-top: 4px; min-height: 18px; }
 
   .sec { display: flex; align-items: baseline; justify-content: space-between; margin: 36px 0 12px; }
   .sec h3 { margin: 0; font-size: 16px; font-weight: 700; }
-  .sec a { font-size: 13.5px; color: var(--accent); cursor: pointer; text-decoration: none; }
+  .sec a { font-size: 14.5px; color: var(--accent); cursor: pointer; text-decoration: none; }
   .sec a:hover { text-decoration: underline; }
-  .sentence { margin: 6px 0 20px; color: var(--text-sub); font-size: 14.5px; }
+  .sentence { margin: 6px 0 20px; color: var(--text-sub); font-size: 15.5px; }
   /* 활성 현장 카드 */
   .sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
   .site { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; cursor: pointer; min-width: 0; }
   .site:hover { border-color: var(--text-sub); }
-  .site .nm { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .site .cl { font-size: 13px; color: var(--text-sub); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .site .nm { font-weight: 700; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .site .cl { font-size: 14px; color: var(--text-sub); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .site .bar { height: 6px; background: var(--bg); border-radius: 3px; margin: 14px 0 8px; overflow: hidden; }
   .site .bar i { display: block; height: 100%; background: var(--accent); }
-  .site .st { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-sub); }
+  .site .st { display: flex; gap: 6px; flex-wrap: wrap; font-size: 13.5px; color: var(--text-sub); }
   .site .st .on { color: var(--ok); font-weight: 600; }
-  .site .dd { float: right; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .site .dd { float: right; font-size: 14px; font-weight: 700; white-space: nowrap; }
   .site .dd.late { color: var(--danger); }
   .site .dd.soon { color: #b45309; }
   /* 전역 검색 (Ctrl+K) */
@@ -82,13 +82,13 @@
   #gs .box { width: min(560px, 92vw); background: var(--surface); border-radius: var(--r); box-shadow: 0 12px 40px rgba(0,0,0,.25); overflow: hidden; }
   #gs input { width: 100%; box-sizing: border-box; border: 0; border-bottom: 1px solid var(--line); padding: 16px 20px; font-size: 16px; outline: 0; background: transparent; color: var(--text); }
   #gs .res { max-height: 50vh; overflow-y: auto; }
-  #gs .it { display: flex; gap: 10px; align-items: baseline; padding: 10px 20px; cursor: pointer; font-size: 14.5px; }
+  #gs .it { display: flex; gap: 10px; align-items: baseline; padding: 10px 20px; cursor: pointer; font-size: 15.5px; }
   #gs .it.sel, #gs .it:hover { background: var(--accent-soft); }
-  #gs .it .ty { flex-shrink: 0; width: 44px; font-size: 12.5px; color: var(--text-sub); }
+  #gs .it .ty { flex-shrink: 0; width: 44px; font-size: 13.5px; color: var(--text-sub); }
   #gs .it .tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #gs .it .sb { margin-left: auto; flex-shrink: 0; font-size: 13px; color: var(--text-sub); }
-  #gs .msg { padding: 16px 20px; color: var(--text-sub); font-size: 14px; }
-  #dash h2, #soon h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  #gs .it .sb { margin-left: auto; flex-shrink: 0; font-size: 14px; color: var(--text-sub); }
+  #gs .msg { padding: 16px 20px; color: var(--text-sub); font-size: 15px; }
+  #dash h2, #soon h2 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
 </style>
 </head>
 <body>
@@ -352,7 +352,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Enter' && !e.isComposing) gsGo(GS.sel);
 });
 // 상단 막대에 검색 버튼 (Ctrl+K를 모르는 사람용)
-$('today').insertAdjacentHTML('beforebegin', '<button id="gsb" style="border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--r);padding:4px 12px;font-size:13.5px;color:var(--text-sub);cursor:pointer;margin-left:auto;margin-right:16px">🔍 검색 Ctrl+K</button>');
+$('today').insertAdjacentHTML('beforebegin', '<button id="gsb" style="border:1px solid var(--line-strong);background:var(--surface);border-radius:var(--r);padding:4px 12px;font-size:14.5px;color:var(--text-sub);cursor:pointer;margin-left:auto;margin-right:16px">🔍 검색 Ctrl+K</button>');
 $('gsb').onclick = gsOpen;
 
 show();

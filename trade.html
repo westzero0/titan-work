@@ -9,21 +9,21 @@
   html, body { height: 100%; margin: 0; }
   body { display: flex; flex-direction: column; }
   .top { display: flex; align-items: center; gap: 12px; padding: 20px 32px 16px; flex-wrap: wrap; }
-  .top h2 { margin: 0 12px 0 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  .top h2 { margin: 0 12px 0 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
   .top .sp { flex: 1; }
   #q { width: 260px; }
   .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; background: var(--surface); }
-  .seg button { border: 0; background: none; min-height: 34px; padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--text-sub); cursor: pointer; }
+  .seg button { border: 0; background: none; min-height: 34px; padding: 0 14px; font-size: 15px; font-weight: 600; color: var(--text-sub); cursor: pointer; }
   .seg button.on { background: var(--accent-soft); color: var(--accent); }
   .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 1000px) 360px; gap: 20px; padding: 0 32px 24px; }
   .pane { min-height: 0; overflow: auto; }
   .side { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; }
-  .side button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 0 10px; border: 0; border-radius: var(--r); background: none; color: var(--text); font-size: 14.5px; text-align: left; cursor: pointer; }
+  .side button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 0 10px; border: 0; border-radius: var(--r); background: none; color: var(--text); font-size: 15.5px; text-align: left; cursor: pointer; }
   .side button:hover { background: var(--bg); }
   .side button.on { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
   .side button span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .side .c { color: var(--text-sub); font-size: 13px; font-variant-numeric: tabular-nums; }
-  .notice { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 14px; border: 1px solid #f0d9b5; border-radius: var(--r); background: var(--warn-soft); font-size: 14px; }
+  .side .c { color: var(--text-sub); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .notice { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 14px; border: 1px solid #f0d9b5; border-radius: var(--r); background: var(--warn-soft); font-size: 15px; }
   .notice .it { display: inline-flex; align-items: center; gap: 8px; }
   #tbl tbody tr { cursor: pointer; }
   #tbl tbody tr.sel td { background: var(--accent-soft); }
@@ -34,7 +34,7 @@
   .badge.run { background: var(--ok-soft); color: var(--ok); }
   .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; }
   .panel h3 { margin: 0 0 4px; font-size: 16px; }
-  .panel .who { margin: 0 0 16px; color: var(--text-sub); font-size: 14px; }
+  .panel .who { margin: 0 0 16px; color: var(--text-sub); font-size: 15px; }
   .f { margin-bottom: 12px; }
   .f input, .f select, .f textarea { width: 100%; }
   .f textarea { min-height: 64px; resize: vertical; }
@@ -42,12 +42,12 @@
   .acts { display: flex; gap: 8px; margin-top: 16px; }
   .acts .btn-primary { flex: 1; }
   .log { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; }
-  .log h4 { margin: 0 0 8px; font-size: 14px; color: var(--text-sub); }
-  .log .r { display: grid; grid-template-columns: 76px 1fr auto; gap: 8px; padding: 6px 0; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .log h4 { margin: 0 0 8px; font-size: 15px; color: var(--text-sub); }
+  .log .r { display: grid; grid-template-columns: 76px 1fr auto; gap: 8px; padding: 6px 0; font-size: 15px; border-bottom: 1px solid var(--line); }
   .log .r:last-child { border-bottom: 0; }
   .log .d, .log .w { color: var(--text-sub); }
   .log { max-height: 280px; overflow: auto; }
-  #msg { min-height: 18px; margin-top: 10px; font-size: 13.5px; color: var(--text-sub); }
+  #msg { min-height: 18px; margin-top: 10px; font-size: 14.5px; color: var(--text-sub); }
   #msg.err { color: var(--danger); }
   #msg.ok { color: var(--ok); }
 </style>
