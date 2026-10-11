@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>인원</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="pc.css">
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; }
+  .top { display: flex; align-items: center; gap: 12px; padding: 20px 32px 16px; flex-wrap: wrap; }
+  .top h2 { margin: 0 12px 0 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  .top .sp { flex: 1; }
+  #q { width: 220px; }
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: none; min-height: 34px; padding: 0 14px; font-size: 13px; font-weight: 600; color: var(--text-sub); cursor: pointer; }
+  .seg button.on { background: var(--accent-soft); color: var(--accent); }
+  .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; padding: 0 32px 24px; }
+  .pane { min-height: 0; overflow: auto; }
+  #tbl tbody tr { cursor: pointer; }
+  #tbl tbody tr.sel td { background: var(--accent-soft); }
+  #tbl td.sub { color: var(--text-sub); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tbl td.chk { width: 90px; text-align: center; }
+  #tbl input[type=checkbox] { min-height: 0; width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .badge.off { background: #eceef2; color: var(--text-sub); }
+  .badge.on { background: var(--ok-soft); color: var(--ok); }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; }
+  .panel h3 { margin: 0 0 4px; font-size: 16px; }
+  .panel .who { margin: 0 0 16px; color: var(--text-sub); font-size: 13px; }
+  .f { margin-bottom: 12px; }
+  .f input, .f select { width: 100%; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .acts { display: flex; gap: 8px; margin-top: 16px; }
+  .acts .btn-primary { flex: 1; }
+  .kv { display: grid; grid-template-columns: 56px 1fr; gap: 6px 10px; margin: 0 0 16px; font-size: 13px; }
+  .kv dt { color: var(--text-sub); }
+  .kv dd { margin: 0; overflow-wrap: anywhere; }
+  .sect { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .sect h4 { margin: 0 0 10px; font-size: 13px; color: var(--text-sub); }
+  .inline { display: flex; gap: 8px; }
+  .inline input { flex: 1; min-width: 0; }
+  #msg { min-height: 18px; margin-top: 10px; font-size: 12.5px; color: var(--text-sub); }
+  #msg.err { color: var(--danger); }
+  #msg.ok { color: var(--ok); }
+</style>
+</head>
+<body>
+<div class="top">
+  <h2>인원</h2>
+  <div class="seg" id="kind"><button data-k="worker" class="on">직원</button><button data-k="vehicle">차량</button></div>
+  <div class="seg" id="seg"><button data-s="재직" class="on">재직</button><button data-s="퇴사">퇴사</button><button data-s="all">전체</button></div>
+  <input id="q" type="search" placeholder="이름 검색" aria-label="이름 검색">
+  <span class="sp"></span>
+  <button class="btn btn-primary" id="newBtn">신규 등록</button>
+</div>
+<div class="cols">
+  <section class="pane"><table class="tbl" id="tbl"><thead id="head"></thead><tbody id="rows"><tr><td class="empty">불러오는 중</td></tr></tbody></table></section>
+  <aside class="pane"><div class="panel" id="panel"></div></aside>
+</div>
+<script src="common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const won = n => (Number(n) || 0).toLocaleString() + '원';
+let kind = 'worker', filt = '재직', workers = [], vehicles = [], sel = null, creating = false;
+
+// 서버 응답이 문자열이면 'SUCCESS' 또는 안내 문구, 객체면 status/res
+const okRes = r => !(r && (r.status === 'ERROR' || r.res === 'ERROR')) && !/ERROR|실패/.test(typeof r === 'string' ? r : '');
+const say = (t, k) => { const m = $('msg'); if (m) { m.textContent = t; m.className = k || ''; } };
+const errText = r => typeof r === 'string' ? r : ((r && r.message) || '실패');
+
+// 비밀번호는 화면에 쓰지 않는다: 서버가 같이 보내주지만 여기서는 버린다
+async function load() {
+  const [w, v] = await Promise.all([
+    sendToGas('getAllWorkerInfo', {}).catch(() => null),
+    sendToGas('getVehicles', {}).catch(() => null),
+  ]);
+  if (Array.isArray(w)) workers = w.map(x => ({ name: x.name, role: x.role, status: x.status, phone: x.phone, address: x.address, rate: x.rate, showInApp: x.showInApp }));
+  else if (!workers.length) $('rows').innerHTML = '<tr><td class="empty err">직원 목록을 불러오지 못했습니다.</td></tr>';
+  if (Array.isArray(v)) vehicles = v;
+  if (sel && !(kind === 'worker' ? workers : vehicles).some(x => x.name === sel)) sel = null;
+  draw();
+}
+
+function draw() {
+  const t = $('q').value.trim().toLowerCase();
+  $('seg').style.display = kind === 'worker' ? '' : 'none';
+  document.querySelectorAll('#kind button').forEach(b => b.classList.toggle('on', b.dataset.k === kind));
+  if (kind === 'worker') {
+    $('head').innerHTML = '<tr><th>이름</th><th>직책</th><th class="n">일당</th><th>연락처</th><th>주소</th><th>상태</th><th style="text-align:center">직원앱 표시</th></tr>';
+    const list = workers.filter(w => (filt === 'all' || w.status === filt) && (!t || w.name.toLowerCase().includes(t)));
+    $('rows').innerHTML = list.length ? list.map(w => `<tr data-n="${esc(w.name)}" class="${sel === w.name ? 'sel' : ''}">
+      <td><b>${esc(w.name)}</b></td><td>${esc(w.role)}</td><td class="n">${w.rate ? won(w.rate) : ''}</td><td>${esc(w.phone || '')}</td>
+      <td class="sub" title="${esc(w.address)}">${esc(w.address || '')}</td>
+      <td><span class="badge ${w.status === '재직' ? 'on' : 'off'}">${esc(w.status)}</span></td>
+      <td class="chk"><input type="checkbox" data-show="${esc(w.name)}" ${w.showInApp !== false ? 'checked' : ''} aria-label="${esc(w.name)} 직원앱 표시"></td></tr>`).join('')
+      : '<tr><td colspan="7" class="empty">조건에 맞는 직원이 없습니다.</td></tr>';
+  } else {
+    $('head').innerHTML = '<tr><th>차량</th><th style="text-align:center">직원앱 표시</th></tr>';
+    const list = vehicles.filter(v => !t || v.name.toLowerCase().includes(t));
+    $('rows').innerHTML = list.length ? list.map(v => `<tr data-n="${esc(v.name)}" class="${sel === v.name ? 'sel' : ''}">
+      <td><b>${esc(v.name)}</b></td><td class="chk"><input type="checkbox" data-show="${esc(v.name)}" ${v.showInApp !== false ? 'checked' : ''} aria-label="${esc(v.name)} 직원앱 표시"></td></tr>`).join('')
+      : '<tr><td colspan="2" class="empty">등록된 차량이 없습니다.</td></tr>';
+  }
+  panel();
+}
+
+function panel() {
+  const p = $('panel');
+  if (creating) {
+    p.innerHTML = kind === 'worker'
+      ? `<h3>신규 직원 등록</h3><p class="who">비밀번호는 직원이 일보 앱에 들어갈 때 쓰는 4자리입니다.</p>
+        <div class="f"><label class="lb" for="nn">이름</label><input id="nn"></div>
+        <div class="row2"><div class="f"><label class="lb" for="nr">직책</label><select id="nr"><option>기공</option><option>조공</option></select></div>
+        <div class="f"><label class="lb" for="nt">일당(원)</label><input id="nt" type="number" min="0"></div></div>
+        <div class="f"><label class="lb" for="np">휴대폰</label><input id="np" placeholder="010-1234-5678"></div>
+        <div class="f"><label class="lb" for="na">집주소</label><input id="na"></div>
+        <div class="f"><label class="lb" for="nw">초기 비밀번호</label><input id="nw" type="password" maxlength="4" inputmode="numeric" autocomplete="new-password"></div>
+        <div class="acts"><button class="btn btn-primary" id="addGo">등록</button><button class="btn" id="addX">취소</button></div><div id="msg"></div>`
+      : `<h3>차량 추가</h3><p class="who">일정 등록의 차량 선택에 쓰입니다.</p>
+        <div class="f"><label class="lb" for="nn">차량 이름</label><input id="nn" placeholder="예: 봉고"></div>
+        <div class="acts"><button class="btn btn-primary" id="addGo">추가</button><button class="btn" id="addX">취소</button></div><div id="msg"></div>`;
+    $('addGo').onclick = add; $('addX').onclick = () => { creating = false; draw(); };
+    return;
+  }
+  if (!sel) { p.innerHTML = `<p class="msg" style="margin:0">표에서 ${kind === 'worker' ? '직원' : '차량'}을 고르면 여기서 관리할 수 있습니다.</p>`; return; }
+  if (kind === 'worker') {
+    const w = workers.find(x => x.name === sel); if (!w) { sel = null; return panel(); }
+    const on = w.status === '재직';
+    p.innerHTML = `<h3>${esc(w.name)}</h3><p class="who">${esc(w.role)} · ${on ? '재직' : '퇴사'}</p>
+      <dl class="kv"><dt>일당</dt><dd>${w.rate ? won(w.rate) : '-'}</dd><dt>연락처</dt><dd>${w.phone ? `<a href="tel:${esc(w.phone)}">${esc(w.phone)}</a>` : '-'}</dd><dt>주소</dt><dd>${esc(w.address || '-')}</dd></dl>
+      <div class="sect" style="margin-top:0;padding-top:0;border:0"><h4>비밀번호 변경</h4>
+        <div class="inline"><input id="pw" type="password" maxlength="4" inputmode="numeric" placeholder="새 비밀번호 4자리" autocomplete="new-password"><button class="btn" id="pwGo">변경</button></div></div>
+      <div class="sect"><h4>${on ? '퇴직 처리' : '복구'}</h4>
+        <button class="btn ${on ? 'btn-danger' : ''}" id="stGo">${on ? '퇴직 처리' : '재직으로 복구'}</button>
+        <p class="warn" style="margin:8px 0 0">과거 일보·급여 기록은 그대로 남습니다.</p></div><div id="msg"></div>`;
+    $('pwGo').onclick = async () => {
+      const v = $('pw').value.trim(); if (!v) { say('새 비밀번호를 입력해 주세요.', 'err'); return; }
+      await run($('pwGo'), () => sendToGas('adminUpdatePassword', { userName: w.name, newPw: v }), '비밀번호를 바꿨습니다.', () => { $('pw').value = ''; });
+    };
+    $('stGo').onclick = async () => {
+      if (!confirm(`'${w.name}' ${on ? '퇴직 처리' : '재직 복구'}할까요?`)) return;
+      await run($('stGo'), () => sendToGas('adminUpdateStatus', { userName: w.name, status: on ? '퇴사' : '재직' }), '', async () => { w.status = on ? '퇴사' : '재직'; await load(); });
+    };
+  } else {
+    const v = vehicles.find(x => x.name === sel); if (!v) { sel = null; return panel(); }
+    p.innerHTML = `<h3>${esc(v.name)}</h3><p class="who">차량</p>
+      <div class="f"><label class="lb" for="vn">이름 수정</label><div class="inline"><input id="vn" value="${esc(v.name)}"><button class="btn" id="rnGo">저장</button></div></div>
+      <div class="sect"><h4>삭제</h4><button class="btn btn-danger" id="dlGo">차량 삭제</button>
+        <p class="warn" style="margin:8px 0 0">잠시 안 쓰면 삭제 대신 표의 '직원앱 표시'만 끄세요. 과거 일보 기록은 그대로 남습니다.</p></div><div id="msg"></div>`;
+    $('rnGo').onclick = async () => {
+      const n = $('vn').value.trim(); if (!n || n === v.name) return;
+      await run($('rnGo'), () => sendToGas('renameVehicle', { oldName: v.name, newName: n }), '', async () => { sel = n; await load(); });
+    };
+    $('dlGo').onclick = async () => {
+      if (!confirm(`'${v.name}' 차량을 삭제할까요?`)) return;
+      await run($('dlGo'), () => sendToGas('deleteVehicle', { name: v.name }), '', async () => { sel = null; await load(); });
+    };
+  }
+}
+
+// 버튼 하나를 잠그고 서버 호출 → 성공/실패 표시
+async function run(btn, call, okMsg, after) {
+  btn.disabled = true; say('처리 중');
+  try {
+    const r = await call();
+    if (!okRes(r)) throw new Error(errText(r));
+    if (after) await after();
+    say(okMsg, 'ok');
+  } catch (e) { say('실패: ' + e.message, 'err'); }
+  btn.disabled = false;
+}
+
+async function add() {
+  const n = $('nn').value.trim();
+  if (!n) { say('이름을 입력해 주세요.', 'err'); return; }
+  let call;
+  if (kind === 'worker') {
+    const pw = $('nw').value.trim();
+    if (!pw) { say('초기 비밀번호를 입력해 주세요.', 'err'); return; }
+    call = () => sendToGas('adminAddWorker', { name: n, role: $('nr').value, rate: $('nt').value, pw, phone: $('np').value.trim(), address: $('na').value.trim() });
+  } else call = () => sendToGas('addVehicle', { name: n });
+  await run($('addGo'), call, '', async () => { creating = false; sel = n; filt = 'all'; document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('on', x.dataset.s === 'all')); await load(); });
+}
+
+// 직원앱 표시 체크: 저장 실패하면 원래대로 되돌린다
+$('rows').onchange = async e => {
+  const c = e.target.closest('input[data-show]'); if (!c) return;
+  const name = c.dataset.show, v = c.checked;
+  try {
+    const r = await sendToGas('setShowInApp', { kind, name, value: v });
+    if (r !== 'SUCCESS') throw new Error(errText(r));
+    const o = (kind === 'worker' ? workers : vehicles).find(x => x.name === name); if (o) o.showInApp = v;
+  } catch (err) { c.checked = !v; alert('저장 실패: ' + err.message); }
+};
+$('rows').onclick = e => {
+  if (e.target.closest('input')) return;
+  const tr = e.target.closest('tr[data-n]'); if (tr) { creating = false; sel = tr.dataset.n; draw(); }
+};
+$('kind').onclick = e => { const b = e.target.closest('button'); if (b) { kind = b.dataset.k; sel = null; creating = false; draw(); } };
+$('seg').onclick = e => { const b = e.target.closest('button'); if (!b) return; filt = b.dataset.s; document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('on', x === b)); draw(); };
+$('q').oninput = draw;
+$('newBtn').onclick = () => { creating = true; sel = null; draw(); };
+load();
+</script>
+</body>
+</html>
