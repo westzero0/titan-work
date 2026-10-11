@@ -13,7 +13,7 @@
   .top .ttl { min-width: 120px; text-align: center; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .top .sp { flex: 1; }
   .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; background: var(--surface); }
-  .seg button { border: 0; background: none; min-height: 34px; padding: 0 14px; font-size: 13px; font-weight: 600; color: var(--text-sub); cursor: pointer; }
+  .seg button { border: 0; background: none; min-height: 34px; padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--text-sub); cursor: pointer; }
   .seg button.on { background: var(--accent-soft); color: var(--accent); }
   .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; padding: 0 32px 24px; }
   .pane { min-height: 0; overflow: auto; }
@@ -21,7 +21,7 @@
   /* 달력 */
   .cal { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
   .dow, .wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
-  .dow div { padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--text-sub); background: #f8f9fb; border-bottom: 1px solid var(--line); }
+  .dow div { padding: 8px 10px; font-size: 13px; font-weight: 600; color: var(--text-sub); background: #f8f9fb; border-bottom: 1px solid var(--line); }
   .dow div:first-child, .day.sun .n { color: var(--danger); }
   .dow div:last-child, .day.sat .n { color: var(--accent); }
   .day { min-height: 112px; padding: 6px 6px 8px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); cursor: pointer; min-width: 0; }
@@ -31,13 +31,13 @@
   .day.out { background: #fafafb; }
   .day.out .n { opacity: .4; }
   .day.pick { box-shadow: inset 0 0 0 2px var(--accent); }
-  .day .n { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 11px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+  .day .n { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 11px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
   .day.today .n { background: var(--accent); color: #fff; }
-  .ev { display: block; width: 100%; margin-top: 3px; padding: 3px 7px; border: 0; border-radius: 6px; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; color: #fff; background: var(--accent); }
+  .ev { display: block; width: 100%; margin-top: 3px; padding: 3px 7px; border: 0; border-radius: 6px; font-size: 13px; font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; color: #fff; background: var(--accent); }
   .ev.야 { background: #3b4252; }
   .ev.조 { background: var(--warn); }
   .ev.off { background: var(--danger-soft); color: var(--danger); border: 1px solid #f3c5c7; }
-  .more { margin-top: 3px; font-size: 11.5px; color: var(--text-sub); }
+  .more { margin-top: 3px; font-size: 12.5px; color: var(--text-sub); }
 
   /* 오른쪽 패널 */
   .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; }
@@ -46,22 +46,22 @@
   .f input[type=text], .f input[type=date], .f select, .f textarea { width: 100%; }
   .f textarea { min-height: 56px; resize: vertical; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .chk { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .chk { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 14px; font-weight: 600; cursor: pointer; }
   .chk input { width: 16px; height: 16px; min-height: 0; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .cp { min-height: 30px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+  .cp { min-height: 30px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 14px; cursor: pointer; }
   .cp:hover { border-color: var(--text-sub); }
   .cp.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
   .cp.off.on { background: var(--danger-soft); border-color: #e9a3a6; color: var(--danger); }
   .acts { display: flex; gap: 8px; margin-top: 16px; }
   .acts .btn-primary { flex: 1; }
-  #msg { min-height: 18px; margin-top: 10px; font-size: 12.5px; color: var(--text-sub); }
+  #msg { min-height: 18px; margin-top: 10px; font-size: 13.5px; color: var(--text-sub); }
   #msg.err { color: var(--danger); }
   .up { display: block; width: 100%; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--r); background: var(--surface); text-align: left; cursor: pointer; color: var(--text); }
   .up:hover { background: #fafbfc; }
   .up.야 { border-left-color: #3b4252; } .up.조 { border-left-color: var(--warn); } .up.off { border-left-color: var(--danger); }
-  .up b { display: block; font-size: 13.5px; }
-  .up span { display: block; color: var(--text-sub); font-size: 12.5px; margin-top: 2px; }
+  .up b { display: block; font-size: 14.5px; }
+  .up span { display: block; color: var(--text-sub); font-size: 13.5px; margin-top: 2px; }
 </style>
 </head>
 <body>
