@@ -241,6 +241,9 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .rform2 input,.rform2 select{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 10px;width:100%;min-width:0}
 @media (max-width:420px){.rform{grid-template-columns:minmax(0,1fr)}}
 
+/* 담당자별 동선 */
+.orow{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid var(--line)}
+.orow:first-of-type{border-top:0}
 /* 오늘 */
 .tstop{padding:12px;display:flex;flex-direction:column;gap:10px}
 .tstop.next{border-color:var(--accent);box-shadow:inset 4px 0 0 var(--accent)}
@@ -664,7 +667,7 @@ function pillHTML(s){return '<span class="pill '+SCLS[s.status]+'">'+esc(s.statu
 function addBtn(s){var i=ui.draft.stops.indexOf(s.id);return '<button type="button" class="addb'+(i>=0?' on':'')+'" data-act="radd" data-id="'+esc(s.id)+'" aria-pressed="'+(i>=0)+'" aria-label="'+esc(s.name)+(i>=0?' 동선에서 빼기':' 동선에 담기')+'">'+(i>=0?(i+1):'＋')+'</button>';}
 function cardHTML(s,compact,hd){
   var r=region(s.address);var open=ui.open===s.id;
-  var flag=plannedFlag(s),pl=s.planned,metaHTML,sub='';
+  var flag=plannedFlag(s)+assignFlag(s),pl=s.planned,metaHTML,sub='';
   if(compact){
     if(pl&&hd){var f=mdList(pl)[0];if(f&&+mdDate(f)===+hd)pl=timeText(pl);}
     metaHTML='<span>'+esc(r.gu||r.sido)+'</span>'+(pl?'<span class="when">'+(hd?'':'예정 ')+esc(pl)+'</span>':'')+flag;
@@ -989,13 +992,35 @@ function proj(p){return [(p[1]-MX)*MC*MK,(MY-p[0])*MK];}
 function km(a,b){var t=Math.PI/180,dl=(b[0]-a[0])*t,dn=(b[1]-a[1])*t;var h=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a[0]*t)*Math.cos(b[0]*t)*Math.sin(dn/2)*Math.sin(dn/2);return 12742*Math.asin(Math.sqrt(h));}
 function inRoute(id){return ui.draft.stops.indexOf(id)>=0;}
 function saveDraft(){
-  var d=ui.draft,id=d.id||('r'+d.date);d.stops=d.stops.filter(Boolean);
+  var d=ui.draft,id=d.id||('r'+d.date+'_'+me());d.stops=d.stops.filter(Boolean);
   if(!d.stops.length&&!d.id)return;
   var old=null;routes.forEach(function(x){if(x.id===id)old=x;});
-  var r={id:id,name:d.name||'',date:d.date,start:d.start||'09:00',work:d.work||60,stops:d.stops.slice(),created:(old&&old.created)||Date.now()};
+  var r={id:id,name:d.name||'',owner:me(),date:d.date,start:d.start||'09:00',work:d.work||60,stops:d.stops.slice(),created:(old&&old.created)||Date.now()};
   routes=routes.filter(function(x){return x.id!==id;});routes.push(r);d.id=id;persistRoute(r);
 }
 function loadDraft(){selectDate(+today0());}
+/* ---------- 담당자: 누가 어느 날 어디 가는지 ---------- */
+function me(){return window.TITAN_USER||'';}
+function routeOf(ds,who){var r=null;routes.forEach(function(x){if(!r&&x.date===ds&&(x.owner||'')===who)r=x;});return r;}
+function othersOn(ds){return routes.filter(function(x){return x.date===ds&&(x.owner||'')!==me()&&(x.stops||[]).length;});}
+function takenBy(id,ds){var o='';routes.forEach(function(x){if(!o&&x.date===ds&&(x.owner||'')!==me()&&(x.stops||[]).indexOf(id)>=0)o=x.owner||'미정';});return o;}
+function assignOn(s,k){var o=takenBy(s.id,dateStr(k));return o?'<span class="flag warn">'+esc(o)+' 동선에 있음</span>':'';}
+function assignFlag(s){
+  var t=+today0(),best=null;
+  routes.forEach(function(x){var d=pdate(x.date);if(d>=t&&(x.stops||[]).indexOf(s.id)>=0&&(!best||d<best.d))best={d:d,o:x.owner||''};});
+  if(!best)return '';
+  var dd=new Date(best.d);
+  return '<span class="flag ok">'+esc(best.o===me()?'내 동선':(best.o||'담당 미정'))+' '+(dd.getMonth()+1)+'/'+dd.getDate()+'</span>';
+}
+function othersHTML(ds,title){
+  var list=othersOn(ds);if(!list.length)return '';
+  var h='<section class="rbox"><h3 class="rh">'+(title||'같은 날 다른 사람 동선')+'</h3>';
+  list.forEach(function(r){
+    var names=(r.stops||[]).map(find).filter(Boolean).map(function(x){return x.name;});
+    h+='<div class="orow"><b>'+esc(r.owner||'담당 미정')+' <span class="note">'+names.length+'곳 · '+esc(r.start||'09:00')+' 시작</span></b><span class="note">'+esc(names.join(' → '))+'</span></div>';
+  });
+  return h+'</section>';
+}
 function rsLoad(){try{routes=JSON.parse(localStorage.getItem(LSR)||'[]')||[];}catch(e){routes=[];}}
 function rsSave(){try{localStorage.setItem(LSR,JSON.stringify(routes));}catch(e){}}
 function persistRoute(r){if(db){dbOp('routes/'+r.id,function(){return db.doc('routes/'+r.id).set(clean(r));}).catch(function(){toast('동선을 저장하지 못했어요.');});}else rsSave();}
@@ -1060,7 +1085,7 @@ function infoMap(){
 }
 function toggleStop(id){
   var st=ui.draft.stops,i=st.indexOf(id);
-  if(i>=0){st.splice(i,1);toast(curLabel()+' 동선에서 뺐어요');}else{st.push(id);toast(curLabel()+' 동선 '+st.length+'번째로 담았어요'+(st.length===1&&ui.view!=='cal'?' · 근처 추천은 캘린더 탭에서 봐요':''));}
+  if(i>=0){st.splice(i,1);toast(curLabel()+' 동선에서 뺐어요');}else{st.push(id);var tk=takenBy(id,ui.draft.date);toast(curLabel()+' 동선 '+st.length+'번째로 담았어요'+(tk?' (주의: '+tk+' 님 동선에도 있어요)':'')+(st.length===1&&ui.view!=='cal'?' · 근처 추천은 캘린더 탭에서 봐요':''));}
   saveDraft();
   render(true);
 }
@@ -1077,7 +1102,7 @@ function remaining(s){return s.status!=='점검완료'&&s.status!=='점검취소
 function addRegion(v){
   if(!v){toast('먼저 지역을 골라 주세요');return;}
   var key=v.slice(2),isS=v.indexOf('S:')===0;
-  var add=stores.filter(function(s){if(!remaining(s)||inRoute(s.id))return false;var r=region(s.address);return isS?r.sido===key:(r.sido+' '+r.gu)===key;});
+  var add=stores.filter(function(s){if(!remaining(s)||inRoute(s.id)||takenBy(s.id,ui.draft.date))return false;var r=region(s.address);return isS?r.sido===key:(r.sido+' '+r.gu)===key;});
   if(!add.length){toast('담을 남은 점포가 없어요');return;}
   var pos=geoAll(),last=ui.draft.stops.length?find(ui.draft.stops[ui.draft.stops.length-1]):null;
   add=orderNear(add,last&&pos[last.id]?pos[last.id]:null);
@@ -1174,11 +1199,10 @@ function calIndex(y,mo){
 }
 function crow(s,k,past,est){
   var g=region(s.address),id=esc(s.id);
-  return '<div class="crow"><div class="si"><b>'+esc(s.name)+'</b><span class="meta"><span>'+esc(g.sido+' '+g.gu)+'</span>'+pillHTML(s)+(s.planned?'<span>예정 '+esc(s.planned)+'</span>':'')+'</span></div>'+addBtn(s)+(past?'':'<button type="button" class="btn sm" data-act="setday" data-id="'+id+'" data-k="'+k+'">이 날로 정하기</button>')+'</div>';
+  return '<div class="crow"><div class="si"><b>'+esc(s.name)+'</b><span class="meta"><span>'+esc(g.sido+' '+g.gu)+'</span>'+pillHTML(s)+(s.planned?'<span>예정 '+esc(s.planned)+'</span>':'')+assignOn(s,k)+'</span></div>'+addBtn(s)+(past?'':'<button type="button" class="btn sm" data-act="setday" data-id="'+id+'" data-k="'+k+'">이 날로 정하기</button>')+'</div>';
 }
 function selectDate(k){
-  ui.cal.sel=k;var ds=dateStr(k),r=null;
-  routes.forEach(function(x){if(x.date===ds&&!r)r=x;});
+  ui.cal.sel=k;var ds=dateStr(k),r=routeOf(ds,me());
   ui.draft=r?{id:r.id,name:r.name||'',date:ds,start:r.start||'09:00',work:r.work||60,stops:(r.stops||[]).slice()}:{id:null,name:'',date:ds,start:'09:00',work:60,stops:[]};
 }
 function curLabel(){return fmtD(new Date(pdate(ui.draft.date)||+today0()));}
@@ -1211,9 +1235,9 @@ function regionAdd(){
   return '<div class="radd"><select id="rSel" aria-label="지역별로 담기">'+opts+'</select><button type="button" class="btn" data-act="radd-region">남은 점포 담기</button></div>';
 }
 function nearList(n){
-  var st=ui.draft.stops,last=st.length?find(st[st.length-1]):null,pos=geoAll();
+  var st=ui.draft.stops,last=st.length?find(st[st.length-1]):null,pos=geoAll(),dsel=ui.draft.date;
   if(!last||!pos[last.id])return {from:last,list:[]};
-  var l=stores.filter(function(s){return remaining(s)&&!inRoute(s.id)&&pos[s.id];}).map(function(s){return {s:s,km:km(pos[last.id],pos[s.id])};});
+  var l=stores.filter(function(s){return remaining(s)&&!inRoute(s.id)&&!takenBy(s.id,dsel)&&pos[s.id];}).map(function(s){return {s:s,km:km(pos[last.id],pos[s.id])};});
   l.sort(function(a,b){return a.km-b.km;});
   return {from:last,list:l.slice(0,n)};
 }
@@ -1236,7 +1260,7 @@ function calDay(k){
   var pp=(idx.proj[k]||[]).filter(function(s){return !seen[s.id];});
   var pr=periodAt(dt);
   var h='<section class="cday" id="cday"><div class="subh"><h2 class="rh" style="margin:0">'+fmtD(dt)+(k===t?' · 오늘':'')+'</h2><button type="button" class="btn sm" data-act="cal-top">달력으로</button></div><p class="note" style="margin:2px 0 0">'+(pr?esc(pr.name)+' 기간':'공사 기간이 아닌 날이에요')+'</p>';
-  h+=dayRoute()+nearHTML();
+  h+=dayRoute()+othersHTML(dateStr(k))+nearHTML();
   h+='<h3 class="rh" style="margin-top:8px">점포 고르기</h3>'+regionAdd();
   h+='<div class="subh"><span>이 날 작업 예정이거나 쉬는 점포</span><span class="note">'+cand.length+'곳</span></div>';
   h+=cand.length?cand.map(function(s){return crow(s,k,past);}).join(''):'<p class="note" style="margin:0">이 날짜에 인쇄된 휴업일이나 예정일이 있는 점포가 없어요.</p>';
@@ -1259,13 +1283,14 @@ function calHTML(){
 }
 
 /* ---------- 오늘 (현장 첫 화면): 오늘 동선을 순서대로, 전화/지도/결선도/완료를 한 번에 ---------- */
-function todayRoute(){var ds=dateStr(+today0()),r=null;routes.forEach(function(x){if(x.date===ds&&!r)r=x;});return r;}
+function todayRoute(){return routeOf(dateStr(+today0()),me());}
 function phoneFor(s){var best='',first='';(s.contacts||[]).forEach(function(l){var ph=phoneOf(l);if(!ph)return;if(!first)first=ph;if(!best&&/점장/.test(l))best=ph;});return best||first;}
 function todayHTML(){
   var t=today0(),r=todayRoute(),ids=r?(r.stops||[]).filter(find):[];
-  var h='<h2 class="rh" style="margin-top:14px">오늘 '+fmtD(t)+(r&&r.name?'<small>'+esc(r.name)+'</small>':'')+'</h2>';
+  var oth=othersHTML(dateStr(+t),'오늘 다른 사람 동선');
+  var h='<h2 class="rh" style="margin-top:14px">오늘 '+fmtD(t)+'<small>'+esc(me())+' 님 동선'+(r&&r.name?' · '+esc(r.name):'')+'</small></h2>';
   if(!ids.length){
-    return h+'<div class="empty"><h2>오늘 잡힌 동선이 없어요</h2><p>캘린더에서 오늘 날짜를 눌러 점포를 담으면 여기에 순서대로 나와요.</p><div class="btns"><button type="button" class="btn primary" data-act="today-make">오늘 동선 만들기</button></div></div>';
+    return h+'<div class="empty"><h2>오늘 내 동선이 없어요</h2><p>캘린더에서 오늘 날짜를 눌러 점포를 담으면 여기에 순서대로 나와요.</p><div class="btns"><button type="button" class="btn primary" data-act="today-make">오늘 동선 만들기</button></div></div>'+oth;
   }
   var sch=routeSched(ids,r.start||'09:00',r.work||60),done=0,next=-1;
   sch.forEach(function(x,i){if(x.s.status==='점검완료')done++;else if(next<0&&remaining(x.s))next=i;});
@@ -1281,7 +1306,7 @@ function todayHTML(){
      '<button type="button" class="btn'+(fin?'':' primary')+'" data-act="check" data-id="'+id+'">'+(fin?'완료 취소':'점검완료')+'</button></div>'+
      '<button type="button" class="more" data-act="toggle" data-id="'+id+'" aria-expanded="'+open+'">'+(open?'접기':'자세히 보기')+'</button>'+(open?detailHTML(s):'')+'</article>';
   });
-  return h+'</div>';
+  return h+'</div>'+oth;
 }
 
 /* ---------- 분전반 결선도 (점포당 1장, sheets/<점포id>) ---------- */
