@@ -323,7 +323,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .statbox{display:flex;flex-direction:column;align-items:flex-end;line-height:1.25}
 .whoami{font-size:0.8125rem;color:var(--band-ink);white-space:nowrap}
 .whoami:empty{display:none}
-.syncst{font-size:0.75rem;color:var(--band-soft);white-space:nowrap}
+.syncst{font-size:0.75rem;color:var(--band-soft);white-space:nowrap;background:none;border:0;min-height:44px;padding:0 6px;font-family:inherit;cursor:pointer}
 .syncst[hidden]{display:none}
 .lbox .lerr{color:var(--danger);min-height:1.5em}
 </style>
@@ -336,7 +336,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
     <div class="wrap">
       <h1 id="title">안전점검 수첩</h1>
       <div class="statbox"><div class="count" id="count" aria-live="polite"></div><div class="whoami" id="whoami"></div></div>
-      <span class="syncst" id="syncst" hidden></span>
+      <button type="button" class="syncst" id="syncst" hidden></button>
       <button type="button" class="iconbtn" data-act="open-sheet" aria-label="설정 열기">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
       </button>
@@ -430,10 +430,10 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
   }
 
   /* ---------- 저장소 (Firestore 흉내) ---------- */
-  var cache={stores:{},routes:{},sheets:{},config:{}},pending=lsGet(LSQ,[]),listeners=[],sig={},polled=false,started=false,flushing=false,failed=0,epoch=0,flushT=null;
+  var cache={stores:{},routes:{},sheets:{},config:{}},pending=lsGet(LSQ,[]),listeners=[],sig={},polled=false,started=false,flushing=false,failed=0,epoch=0,flushT=null,stale=false,lastOk=0;
   var saved=lsGet(LSC,{});COLS.forEach(function(c){if(saved[c])cache[c]=saved[c];});
   COLS.forEach(function(c){if(Object.keys(cache[c]).length)sig[c]=JSON.stringify(cache[c]);});
-  function sync(){try{window.dispatchEvent(new CustomEvent('safety-sync',{detail:{pending:pending.length}}));}catch(e){}}
+  function sync(){try{window.dispatchEvent(new CustomEvent('safety-sync',{detail:{pending:pending.length,failed:failed,stale:stale,last:lastOk}}));}catch(e){}}
   function split(path){var i=path.indexOf('/');return [path.slice(0,i),path.slice(i+1)];}
   function emit(l){
     if(l.id){var d=cache[l.c][l.id];l.cb({exists:d!==undefined,id:l.id,data:function(){return clone(d);}});}
@@ -441,13 +441,12 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
   }
   function emitCol(c){listeners.forEach(function(l){if(l.c===c)emit(l);});}
   function call(a,d){
-    return sendToGas(a,d).then(function(r){
+    return Promise.race([sendToGas(a,d),new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},30000);})]).then(function(r){
       if(r&&(r.status==='ERROR'||r.res==='ERROR'))throw new Error(r.message||r.msg||'서버 오류');
       return r;
     });
   }
   function enqueue(op){
-    epoch++;
     for(var i=0;i<pending.length;i++){if(pending[i].c===op.c&&pending[i].id===op.id){pending.splice(i,1);break;}}
     pending.push(op);lsSet(LSQ,pending);sync();
     clearTimeout(flushT);flushT=setTimeout(flush,250);
@@ -477,8 +476,9 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
         var s=JSON.stringify(m);
         if(sig[c]!==s){sig[c]=s;cache[c]=m;emitCol(c);}
       });
-      lsSet(LSC,cache);polled=true;
+      lsSet(LSC,cache);polled=true;stale=false;lastOk=Date.now();sync();
     }).catch(function(){
+      stale=true;sync();
       if(!polled){
         polled=true;var has=COLS.some(function(c){return Object.keys(cache[c]).length;});
         if(has)COLS.forEach(function(c){sig[c]=JSON.stringify(cache[c]);emitCol(c);});
@@ -491,6 +491,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
     setInterval(function(){if(!document.hidden)poll();},POLL);
     document.addEventListener('visibilitychange',function(){if(!document.hidden){poll();flush();}});
     window.addEventListener('online',function(){poll();flush();});
+    window.addEventListener('safety-retry',function(){failed=0;flushing=false;poll();flush();});
     if(pending.length)flush();
   }
   function listen(c,id,cb,err){
@@ -1468,7 +1469,15 @@ document.addEventListener('focusout',function(){setTimeout(function(){if(pending
 })();
 
 /* ---------- 저장 대기 표시 (오프라인이면 쌓였다가 연결되면 자동 저장) ---------- */
-window.addEventListener('safety-sync',function(e){var n=e.detail.pending,el=$('syncst');if(!el)return;el.hidden=!n;el.textContent=n?'저장 대기 '+n+'건':'';});
+window.addEventListener('safety-sync',function(e){
+  var d=e.detail,el=$('syncst');if(!el)return;
+  var t='';
+  if(d.pending&&d.failed)t='저장 안 됨 '+d.pending+'건 · 눌러서 다시';
+  else if(d.pending)t='저장 대기 '+d.pending+'건';
+  else if(d.stale){var h=d.last?new Date(d.last):null;t='연결 안 됨'+(h?' · '+h.getHours()+':'+('0'+h.getMinutes()).slice(-2)+' 기준':'')+' · 눌러서 다시';}
+  el.hidden=!t;el.textContent=t;
+});
+document.addEventListener('click',function(e){if(e.target&&e.target.id==='syncst')window.dispatchEvent(new CustomEvent('safety-retry'));});
 
 /* ---------- 시작 ---------- */
 async function init(){
