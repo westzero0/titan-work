@@ -320,6 +320,9 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .lbox p{margin:0;color:var(--muted)}
 .lbox select,.lbox input{min-height:48px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 14px}
 .lbox .btn{min-height:48px}
+.statbox{display:flex;flex-direction:column;align-items:flex-end;line-height:1.25}
+.whoami{font-size:0.8125rem;color:var(--band-ink);white-space:nowrap}
+.whoami:empty{display:none}
 .syncst{font-size:0.75rem;color:var(--band-soft);white-space:nowrap}
 .syncst[hidden]{display:none}
 .lbox .lerr{color:var(--danger);min-height:1.5em}
@@ -332,7 +335,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
   <div class="band">
     <div class="wrap">
       <h1 id="title">안전점검 수첩</h1>
-      <div class="count" id="count" aria-live="polite"></div>
+      <div class="statbox"><div class="count" id="count" aria-live="polite"></div><div class="whoami" id="whoami"></div></div>
       <span class="syncst" id="syncst" hidden></span>
       <button type="button" class="iconbtn" data-act="open-sheet" aria-label="설정 열기">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
@@ -381,7 +384,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
  * - 오프라인: 마지막으로 받은 데이터를 폰에 보관하고, 못 보낸 저장은 대기열에 쌓았다가 연결되면 자동으로 보낸다.
  */
 (function(){
-  var LSC='safety-cache-v1',LSQ='safety-pending-v1',POLL=12000,COLS=['stores','routes','sheets','config'];
+  var LSC='safety-cache-v1',LSQ='safety-pending-v1',POLL=30000,COLS=['stores','routes','sheets','config'];
   function lsGet(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v;}catch(e){return d;}}
   function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
   function clone(o){return o==null?o:JSON.parse(JSON.stringify(o));}
@@ -414,10 +417,14 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
     });
   }
   var ready=null;
+  window.TITAN_USER=localStorage.getItem('titan_user_name')||'';
   function login(){
     if(!ready){
       var n=localStorage.getItem('titan_user_name');
-      ready=(n?checkActive(n).then(function(ok){return ok?n:loginUI();}):loginUI()).then(function(name){window.TITAN_USER=name;return name;});
+      if(n){ // 이름이 있으면 바로 들여보내고, 퇴사 처리 여부는 뒤에서 확인한다
+        window.TITAN_USER=n;ready=Promise.resolve(n);
+        checkActive(n).then(function(ok){if(!ok)location.reload();});
+      }else ready=loginUI().then(function(name){window.TITAN_USER=name;return name;});
     }
     return ready;
   }
@@ -425,6 +432,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
   /* ---------- 저장소 (Firestore 흉내) ---------- */
   var cache={stores:{},routes:{},sheets:{},config:{}},pending=lsGet(LSQ,[]),listeners=[],sig={},polled=false,started=false,flushing=false,failed=0,epoch=0,flushT=null;
   var saved=lsGet(LSC,{});COLS.forEach(function(c){if(saved[c])cache[c]=saved[c];});
+  COLS.forEach(function(c){if(Object.keys(cache[c]).length)sig[c]=JSON.stringify(cache[c]);});
   function sync(){try{window.dispatchEvent(new CustomEvent('safety-sync',{detail:{pending:pending.length}}));}catch(e){}}
   function split(path){var i=path.indexOf('/');return [path.slice(0,i),path.slice(i+1)];}
   function emit(l){
@@ -487,7 +495,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
   }
   function listen(c,id,cb,err){
     var l={c:c,id:id,cb:cb,err:err};listeners.push(l);start();
-    if(polled)setTimeout(function(){emit(l);},0);
+    if(polled||Object.keys(cache[c]).length)setTimeout(function(){emit(l);},0);
     return function(){listeners=listeners.filter(function(x){return x!==l;});};
   }
   var db={
@@ -516,7 +524,6 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
   }};
 })();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (function(){
 'use strict';
@@ -700,7 +707,7 @@ function detailHTML(s){
 }
 function renderList(){
   var list=$('list');
-  if(!loaded){list.innerHTML='<p class="note" style="margin-top:24px">불러오는 중이에요.</p>';return;}
+  if(!loaded){list.innerHTML='<p class="note" style="margin-top:24px">서버에서 불러오는 중이에요. 처음 한 번은 몇 초 걸릴 수 있어요.</p>';return;}
   if(!stores.length){
     list.innerHTML='<div class="empty"><h2>점검할 점포가 아직 없어요</h2><p>엑셀 일정표를 올려서 시작하세요. 설정(오른쪽 위 버튼)에서 엑셀 올리기를 누르면 돼요.</p><div class="btns"><button type="button" class="btn primary" data-act="open-sheet">엑셀 올리기</button></div></div>';
     return;
@@ -839,8 +846,14 @@ function buildFromRows(rows,map){
   });
   return out;
 }
+var xlsxP=null;
+function loadXlsx(){
+  if(window.XLSX)return Promise.resolve();
+  if(!xlsxP)xlsxP=new Promise(function(res,rej){var el=document.createElement('script');el.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';el.onload=res;el.onerror=function(){xlsxP=null;rej(new Error('xlsx'));};document.head.appendChild(el);});
+  return xlsxP;
+}
 async function readFile(file){
-  if(!window.XLSX){toast('엑셀 읽기 도구를 불러오지 못했어요. 새로고침해 주세요.');return;}
+  try{await loadXlsx();}catch(e){toast('엑셀 읽기 도구를 불러오지 못했어요. 인터넷을 확인해 주세요.');return;}
   try{
     var buf=await file.arrayBuffer(),wb;
     if(/\.csv$/i.test(file.name)){var t=new TextDecoder('utf-8').decode(buf);if(t.indexOf('\uFFFD')>=0){try{t=new TextDecoder('euc-kr').decode(buf);}catch(e){}}wb=XLSX.read(t,{type:'string'});}
@@ -895,7 +908,7 @@ function exportRows(){
   return rows;
 }
 async function exportXlsx(){
-  if(!window.XLSX){toast('엑셀 만들기 도구를 불러오지 못했어요.');return;}
+  try{await loadXlsx();}catch(e){toast('엑셀 만들기 도구를 불러오지 못했어요. 인터넷을 확인해 주세요.');return;}
   var dl=null;try{dl=await window.claude.use('downloads');}catch(e){}
   if(!dl){toast('이 화면에서는 파일 저장이 안 돼요. 표 복사를 써 보세요.');return;}
   var ws=XLSX.utils.aoa_to_sheet(exportRows());
@@ -1460,8 +1473,10 @@ window.addEventListener('safety-sync',function(e){var n=e.detail.pending,el=$('s
 /* ---------- 시작 ---------- */
 async function init(){
   ui.view='today';
+  (function(){var n=window.TITAN_USER||localStorage.getItem('titan_user_name')||'';if(n)$('whoami').textContent=n+' 님';})();
   loadDraft();applySettings();render(true);
   try{if(window.claude&&window.claude.use)db=await window.claude.use('db');}catch(e){db=null;}
+  if(window.TITAN_USER)$('whoami').textContent=window.TITAN_USER+' 님';
   if(db){
     db.collection('stores').onSnapshot(function(snap){
       stores=snap.docs.map(function(d){return Object.assign({},d.data(),{id:d.id});});
