@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>안전점검 보고서</title>
+<link rel="stylesheet" href="pc.css">
+<style>
+  body { margin: 0; padding: 28px 40px 56px; }
+  .wrap { max-width: 1280px; }
+  .tabs { display: flex; gap: 8px; margin: 0 0 18px; flex-wrap: wrap; }
+  .tabs button { min-height: 38px; padding: 0 18px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); color: var(--text-sub); font-size: 15px; font-weight: 600; cursor: pointer; }
+  .tabs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 14px; }
+  .bar .sp { flex: 1; }
+  .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 0 0 20px; }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; }
+  .kpi .lb { color: var(--text-sub); font-size: 14px; }
+  .kpi .v { font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .kpi .v small { font-size: 14px; font-weight: 500; color: var(--text-sub); margin-left: 4px; }
+  h3.sec { margin: 22px 0 10px; font-size: 17px; }
+  .prog { width: 140px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; }
+  .prog b { display: block; height: 100%; background: var(--ok); }
+  .st { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 13.5px; font-weight: 600; background: var(--line); color: var(--text-sub); white-space: nowrap; }
+  .st.s3 { background: var(--ok-soft); color: var(--ok); }
+  .st.s2 { background: var(--accent-soft); color: var(--accent); }
+  .st.s1 { background: var(--warn-soft); color: var(--warn); }
+  .st.s4 { background: var(--danger-soft); color: var(--danger); }
+  .two { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .slist { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); max-height: 70vh; overflow: auto; }
+  .slist label { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .slist label:last-child { border-bottom: 0; }
+  .slist input { min-height: 0; width: 18px; height: 18px; }
+  .slist .nm { flex: 1; font-weight: 600; }
+  .slist .cn { color: var(--text-sub); font-size: 14px; }
+  .prev { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; overflow: auto; }
+  #printArea { display: none; }
+
+  /* ---- 종이(결선도, 보고서) 모양: 화면 미리보기와 인쇄가 같은 모양 ---- */
+  .paper { color: #000; background: #fff; font-size: 9pt; line-height: 1.25; }
+  .paper h1 { margin: 0 0 3mm; text-align: center; font-size: 15pt; }
+  .paper .sub { text-align: right; margin: 0 0 3mm; font-size: 9pt; color: #333; }
+  .paper table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .paper th, .paper td { border: 1px solid #000; padding: 0 1mm; height: 5.4mm; text-align: center; overflow: hidden; white-space: nowrap; background: #fff; }
+  .paper td.l { text-align: left; }
+  .paper th { background: #eee; }
+  .paper thead { display: table-header-group; }
+  .paper tr { page-break-inside: avoid; }
+  .paper .top2 { margin-bottom: 2mm; }
+  .paper .top2 th { width: 30mm; }
+  .paper .top2 td { text-align: left; height: 7mm; }
+  .paper .cir { border: 1px solid #000; border-radius: 50%; padding: 0 1.2mm; font-weight: 700; }
+  .paper .wrapcell { white-space: normal; text-align: left; }
+  .paper .pgbreak { page-break-after: always; }
+  .paper .pgbreak:last-child { page-break-after: auto; }
+  .paper .kp { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3mm; margin: 0 0 4mm; }
+  .paper .kp div { border: 1px solid #000; padding: 2mm; text-align: center; }
+  .paper .kp b { display: block; font-size: 14pt; }
+  .paper h2 { margin: 4mm 0 2mm; font-size: 11pt; }
+
+  @page land { size: A4 landscape; margin: 10mm; }
+  @page port { size: A4 portrait; margin: 10mm; }
+  .land { page: land; }
+  .port { page: port; }
+  @media print {
+    html, body { background: #fff !important; padding: 0 !important; margin: 0 !important; }
+    #app { display: none !important; }
+    #printArea { display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+  @media (max-width: 900px) { body { padding: 18px 14px 40px; } .kpis { grid-template-columns: repeat(2, 1fr); } .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="app" class="wrap">
+  <div class="page-head">
+    <div><h2>안전점검 보고서</h2><p id="meta">불러오는 중…</p></div>
+    <div class="bar" style="margin:0">
+      <button class="btn" id="reload" type="button">새로 불러오기</button>
+      <button class="btn" id="csv" type="button">표 내려받기 (CSV)</button>
+      <button class="btn btn-primary" id="print" type="button">인쇄</button>
+    </div>
+  </div>
+  <div class="tabs" id="tabs" role="group" aria-label="보고서 종류">
+    <button type="button" data-t="status" aria-pressed="true">점검 현황</button>
+    <button type="button" data-t="sheet" aria-pressed="false">분전반 결선도</button>
+    <button type="button" data-t="route" aria-pressed="false">동선 일정</button>
+  </div>
+  <div id="view"><div class="msg">불러오는 중…</div></div>
+</div>
+<div id="printArea" class="paper" aria-hidden="true"></div>
+
+<script src="common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const STATUS = ['미정', '점포협의', '일정확정', '점검완료', '점검취소'];
+const WD = ['일', '월', '화', '수', '목', '금', '토'];
+const LS_SHARED = 'safety-cache-v1';       // 안전점검 앱이 폰/PC에 보관한 데이터 (읽기만 한다)
+const LS_OWN = 'safety-report-cache-v1';   // 이 화면이 마지막으로 받은 데이터
+
+let D = { stores: {}, routes: {}, sheets: {}, config: {} };
+let loadedAt = 0, tab = 'status';
+const F = { group: '', status: '', q: '' };   // 현황 필터
+const picked = new Set();                      // 결선도 선택
+let showEmpty = false, routeFrom = 'today';
+
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+function who() { try { return localStorage.getItem('titan_user_name') || ''; } catch (e) { return ''; } }
+function pad(n) { return String(n).padStart(2, '0'); }
+function todayStr() { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function todayLabel() { const d = new Date(); return d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) + '(' + WD[d.getDay()] + ')'; }
+function dlabel(ds) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ds || ''); if (!m) return ds || ''; const d = new Date(+m[1], +m[2] - 1, +m[3]); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + WD[d.getDay()] + ')'; }
+function region(a) { const p = String(a || '').trim().split(/\s+/); return (p[0] || '') + (p[1] ? ' ' + p[1] : ''); }
+function stores() { return Object.values(D.stores).sort((a, b) => (a.no || 0) - (b.no || 0)); }
+function sheetOf(id) { return D.sheets[id] || { rows: [] }; }
+function circuits(id) { return (sheetOf(id).rows || []).filter(r => r.name || r.type || r.p || r.at || r.af || r.l1 || r.l2 || r.l3 || r.sq); }
+function stCls(s) { return 's' + Math.max(0, STATUS.indexOf(s)); }
+function nextAssign(id) {
+  const t = todayStr(); let best = null;
+  Object.values(D.routes).forEach(r => { if (r.date >= t && (r.stops || []).indexOf(id) >= 0 && (!best || r.date < best.date)) best = r; });
+  return best ? (best.owner || '담당 미정') + ' ' + dlabel(best.date) : '';
+}
+function groupsOf(list) { const seen = [], set = {}; list.forEach(s => { const g = s.group || '구간 없음'; if (!set[g]) { set[g] = 1; seen.push(g); } }); return seen; }
+
+/* ---------- 불러오기: 보관 데이터를 먼저 보여주고, 서버(느림)는 뒤에서 ---------- */
+function useCache() {
+  const c = lsGet(LS_OWN) || lsGet(LS_SHARED);
+  if (c && c.stores && Object.keys(c.stores).length) { D = { stores: c.stores || {}, routes: c.routes || {}, sheets: c.sheets || {}, config: c.config || {} }; return true; }
+  return false;
+}
+async function refresh() {
+  $('reload').disabled = true;
+  try {
+    const r = await sendToGas('safetyList', {});
+    if (!r || r.res !== 'SUCCESS' || !r.data) throw new Error((r && (r.message || r.msg)) || '응답 형식 오류');
+    D = { stores: r.data.stores || {}, routes: r.data.routes || {}, sheets: r.data.sheets || {}, config: r.data.config || {} };
+    try { localStorage.setItem(LS_OWN, JSON.stringify(D)); } catch (e) {}
+    loadedAt = Date.now(); render();
+  } catch (e) {
+    $('meta').innerHTML = '<span class="err">서버에서 불러오지 못했어요: ' + esc(e.message) + '</span>' + (Object.keys(D.stores).length ? ' (보관해 둔 데이터를 보여줘요)' : '');
+  } finally { $('reload').disabled = false; }
+}
+
+/* ---------- 점검 현황 ---------- */
+function statusRows() {
+  return stores().filter(s => (!F.group || (s.group || '구간 없음') === F.group) && (!F.status || s.status === F.status) &&
+    (!F.q || (s.name + ' ' + s.code + ' ' + s.address + ' ' + (s.memo || '')).toLowerCase().includes(F.q.toLowerCase())));
+}
+function summary(list) {
+  const live = list.filter(s => s.status !== '점검취소'), done = live.filter(s => s.status === '점검완료').length;
+  return { total: live.length, done, left: live.length - done, cancel: list.length - live.length, sheet: list.filter(s => circuits(s.id).length).length, pct: live.length ? Math.round(done / live.length * 100) : 0 };
+}
+function groupTable(list, plain) {
+  const gs = groupsOf(list);
+  let h = '<table class="' + (plain ? '' : 'tbl') + '"><thead><tr><th>구간</th><th class="n">점포</th><th class="n">완료</th><th class="n">남음</th><th class="n">취소</th><th>진행률</th></tr></thead><tbody>';
+  gs.forEach(g => {
+    const m = summary(list.filter(s => (s.group || '구간 없음') === g));
+    h += '<tr><td' + (plain ? ' class="l"' : '') + '>' + esc(g) + '</td><td class="n">' + m.total + '</td><td class="n">' + m.done + '</td><td class="n">' + m.left + '</td><td class="n">' + m.cancel + '</td><td>' + (plain ? m.pct + '%' : '<span class="prog"><b style="width:' + m.pct + '%"></b></span> ' + m.pct + '%') + '</td></tr>';
+  });
+  return h + '</tbody></table>';
+}
+function storeTable(rows, plain) {
+  let h = '<table class="' + (plain ? '' : 'tbl') + '"><thead><tr><th>No</th><th>점포명</th><th>구분</th><th>지역</th><th>구간</th><th>상태</th><th>예상 작업일</th><th>다음 담당</th><th class="n">결선도</th><th>메모</th></tr></thead><tbody>';
+  if (!rows.length) h += '<tr><td colspan="10" class="empty">조건에 맞는 점포가 없습니다.</td></tr>';
+  rows.forEach(s => {
+    const c = circuits(s.id).length;
+    h += '<tr><td>' + esc(s.no) + '</td><td' + (plain ? ' class="l"' : '') + '><b>' + esc(s.name) + '</b></td><td>' + esc(s.type) + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(region(s.address)) + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(s.group || '') + '</td><td>' + (plain ? esc(s.status) : '<span class="st ' + stCls(s.status) + '">' + esc(s.status) + '</span>') + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(s.planned || '') + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(nextAssign(s.id)) + '</td><td class="n">' + (c ? c + '회로' : '-') + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(s.memo || '') + '</td></tr>';
+  });
+  return h + '</tbody></table>';
+}
+function viewStatus() {
+  const all = stores(), m = summary(all), rows = statusRows(), gs = groupsOf(all);
+  let h = '<div class="kpis">' +
+    [['점검 대상', m.total, '곳'], ['점검완료', m.done, '곳 (' + m.pct + '%)'], ['남은 점포', m.left, '곳'], ['점검취소', m.cancel, '곳'], ['결선도 작성', m.sheet, '곳']].map(k => '<div class="kpi"><div class="lb">' + k[0] + '</div><div class="v">' + k[1] + '<small>' + k[2] + '</small></div></div>').join('') + '</div>';
+  h += '<h3 class="sec">구간별 진행</h3>' + groupTable(all, false);
+  h += '<h3 class="sec">점포별 현황 <span class="st">' + rows.length + '곳</span></h3><div class="bar">' +
+    '<select id="fg" aria-label="구간"><option value="">전체 구간</option>' + gs.map(g => '<option' + (F.group === g ? ' selected' : '') + ' value="' + esc(g) + '">' + esc(g) + '</option>').join('') + '</select>' +
+    '<select id="fs" aria-label="상태"><option value="">전체 상태</option>' + STATUS.map(s => '<option' + (F.status === s ? ' selected' : '') + '>' + s + '</option>').join('') + '</select>' +
+    '<input id="fq" type="search" placeholder="점포명·주소·메모 검색" value="' + esc(F.q) + '" style="width:260px"></div>' + storeTable(rows, false);
+  return h;
+}
+
+/* ---------- 결선도 ---------- */
+function sheetStores() { return stores().filter(s => showEmpty || circuits(s.id).length); }
+function sheetPaper(s) {
+  const sh = sheetOf(s.id), cs = (sh.rows || []), n = Math.max(40, cs.length);
+  let b = '';
+  for (let i = 0; i < n; i++) {
+    const r = cs[i] || {};
+    b += '<tr><td>' + (i + 1) + '</td><td class="l">' + esc(r.name) + '</td><td>' + ['MDDB', 'ELB'].map(t => r.type === t ? '<span class="cir">' + t + '</span>' : t).join(' / ') + '</td><td>' + esc(r.p) + '</td><td>' + esc(r.at) + '</td><td>' + esc(r.af) + '</td><td>' + esc(r.l1) + '</td><td>' + esc(r.l2) + '</td><td>' + esc(r.l3) + '</td><td>' + esc(r.sq) + '</td></tr>';
+  }
+  return '<section class="pgbreak"><h1>분전반 결선도</h1>' +
+    '<table class="top2"><tr><th>점포명</th><td colspan="3">' + esc(s.name) + ' (' + esc(s.code) + ')</td></tr><tr><th>PANE NAME</th><td>' + esc(sh.panel) + '</td><th>인입방식</th><td>' + esc(sh.incoming) + '</td></tr></table>' +
+    '<table><colgroup><col style="width:8mm"><col style="width:73mm"><col style="width:26mm"><col style="width:9mm"><col style="width:11mm"><col style="width:11mm"><col style="width:12mm"><col style="width:12mm"><col style="width:12mm"><col style="width:16mm"></colgroup>' +
+    '<thead><tr><th rowspan="2">번호</th><th rowspan="2">회로명</th><th colspan="4">차단기 특성</th><th colspan="3">측정치(A)</th><th rowspan="2">전선규격<br>(sq)</th></tr><tr><th>종류</th><th>P</th><th>AT</th><th>AF</th><th>L1</th><th>L2</th><th>L3</th></tr></thead><tbody>' + b + '</tbody></table></section>';
+}
+function viewSheet() {
+  const list = sheetStores(), first = [...picked].find(id => D.stores[id]);
+  let h = '<div class="bar"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="se" style="min-height:0;width:18px;height:18px"' + (showEmpty ? ' checked' : '') + '> 작성하지 않은 점포도 보기</label><span class="sp"></span>' +
+    '<button class="btn" id="pall" type="button">전체 선택</button><button class="btn" id="pnone" type="button">선택 해제</button></div>';
+  h += '<div class="two"><div class="slist">' + (list.length ? list.map(s => '<label><input type="checkbox" data-id="' + esc(s.id) + '"' + (picked.has(s.id) ? ' checked' : '') + '><span class="nm">' + esc(s.name) + '</span><span class="cn">' + (circuits(s.id).length ? circuits(s.id).length + '회로' : '미작성') + '</span></label>').join('') : '<div class="empty">작성된 결선도가 없습니다.</div>') + '</div>' +
+    '<div class="prev">' + (first ? '<div class="paper port">' + sheetPaper(D.stores[first]) + '</div>' : '<div class="msg">왼쪽에서 점포를 고르면 결선도가 보이고, 위의 인쇄 버튼으로 선택한 점포를 한 장씩 인쇄해요.</div>') + '</div></div>';
+  return h;
+}
+
+/* ---------- 동선 일정 ---------- */
+function routeRows() {
+  const t = todayStr();
+  return Object.values(D.routes).filter(r => (r.stops || []).length && (routeFrom === 'all' || r.date >= t)).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.owner || '').localeCompare(b.owner || '', 'ko'));
+}
+function routeTable(rows, plain) {
+  let h = '<table class="' + (plain ? '' : 'tbl') + '"><thead><tr><th>날짜</th><th>담당</th><th class="n">점포</th><th>시작</th><th>점포 순서</th></tr></thead><tbody>';
+  if (!rows.length) h += '<tr><td colspan="5" class="empty">저장된 동선이 없습니다.</td></tr>';
+  rows.forEach(r => {
+    const names = (r.stops || []).map(id => D.stores[id]).filter(Boolean).map(s => s.name);
+    h += '<tr><td>' + esc(dlabel(r.date)) + '</td><td><b>' + esc(r.owner || '담당 미정') + '</b></td><td class="n">' + names.length + '</td><td>' + esc(r.start || '09:00') + '</td><td' + (plain ? ' class="wrapcell"' : '') + '>' + esc(names.join(' → ')) + '</td></tr>';
+  });
+  return h + '</tbody></table>';
+}
+function viewRoute() {
+  const rows = routeRows();
+  return '<div class="bar"><select id="rf" aria-label="기간"><option value="today"' + (routeFrom === 'today' ? ' selected' : '') + '>오늘 이후</option><option value="all"' + (routeFrom === 'all' ? ' selected' : '') + '>전체</option></select><span class="st">' + rows.length + '건</span></div>' + routeTable(rows, false);
+}
+
+/* ---------- 화면, 인쇄, CSV ---------- */
+function render() {
+  const n = Object.keys(D.stores).length;
+  $('meta').textContent = n ? '점포 ' + n + '곳 · 입력된 데이터를 보고서로 출력합니다.' + (loadedAt ? ' (방금 불러옴)' : ' (보관해 둔 데이터, 새로 불러오는 중)') : '데이터가 아직 없습니다.';
+  if (!n) { $('view').innerHTML = '<div class="msg">' + (loadedAt ? '안전점검 앱에 점포 데이터가 아직 없습니다.' : '불러오는 중…') + '</div>'; return; }
+  const keepQ = document.activeElement && document.activeElement.id === 'fq';
+  $('view').innerHTML = tab === 'status' ? viewStatus() : tab === 'sheet' ? viewSheet() : viewRoute();
+  if (keepQ) { const q = $('fq'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+}
+function setTab(t) { tab = t; document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t))); render(); }
+function head(title, sub) { return '<h1>' + title + '</h1><div class="sub">' + esc(sub) + ' · 출력일 ' + todayLabel() + (who() ? ' · 출력자 ' + esc(who()) : '') + '</div>'; }
+function printNow() {
+  const pa = $('printArea');
+  if (tab === 'status') {
+    const rows = statusRows(), m = summary(stores());
+    pa.innerHTML = '<div class="land">' + head('안전점검 현황 보고서', 'GS더프레시 안전점검') +
+      '<div class="kp">' + [['점검 대상', m.total], ['점검완료', m.done + ' (' + m.pct + '%)'], ['남은 점포', m.left], ['점검취소', m.cancel], ['결선도 작성', m.sheet]].map(k => '<div>' + k[0] + '<b>' + k[1] + '</b></div>').join('') + '</div>' +
+      '<h2>구간별 진행</h2>' + groupTable(stores(), true) + '<h2>점포별 현황 (' + rows.length + '곳)</h2>' + storeTable(rows, true) + '</div>';
+  } else if (tab === 'sheet') {
+    const ids = [...picked].filter(id => D.stores[id]);
+    if (!ids.length) { $('meta').innerHTML = '<span class="err">인쇄할 점포를 먼저 골라 주세요.</span>'; return; }
+    pa.innerHTML = '<div class="port">' + ids.map(id => sheetPaper(D.stores[id])).join('') + '</div>';
+  } else {
+    pa.innerHTML = '<div class="land">' + head('동선 일정 보고서', routeFrom === 'all' ? '전체 기간' : '오늘 이후') + routeTable(routeRows(), true) + '</div>';
+  }
+  window.print();
+}
+function csvDownload() {
+  let rows;
+  if (tab === 'route') rows = [['날짜', '담당', '점포 수', '시작', '점포 순서']].concat(routeRows().map(r => { const ns = (r.stops || []).map(id => D.stores[id]).filter(Boolean).map(s => s.name); return [r.date, r.owner || '', ns.length, r.start || '', ns.join(' → ')]; }));
+  else rows = [['No', '점포명', '구분', '지역', '구간', '상태', '예상 작업일', '다음 담당', '결선도 회로 수', '메모']].concat(statusRows().map(s => [s.no, s.name, s.type, region(s.address), s.group || '', s.status, s.planned || '', nextAssign(s.id), circuits(s.id).length, s.memo || '']));
+  const csv = '﻿' + rows.map(r => r.map(c => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = (tab === 'route' ? '동선일정_' : '안전점검현황_') + todayStr().replace(/-/g, '') + '.csv'; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTab(b.dataset.t); });
+$('print').addEventListener('click', printNow);
+$('csv').addEventListener('click', csvDownload);
+$('reload').addEventListener('click', refresh);
+$('view').addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'fg') { F.group = t.value; render(); } else if (t.id === 'fs') { F.status = t.value; render(); }
+  else if (t.id === 'rf') { routeFrom = t.value; render(); }
+  else if (t.id === 'se') { showEmpty = t.checked; render(); }
+  else if (t.dataset && t.dataset.id) { t.checked ? picked.add(t.dataset.id) : picked.delete(t.dataset.id); render(); }
+});
+$('view').addEventListener('input', e => { if (e.target.id === 'fq') { F.q = e.target.value; render(); } });
+$('view').addEventListener('click', e => {
+  if (e.target.id === 'pall') { sheetStores().forEach(s => picked.add(s.id)); render(); }
+  if (e.target.id === 'pnone') { picked.clear(); render(); }
+});
+
+if (useCache()) render();
+refresh();
+</script>
+</body>
+</html>
