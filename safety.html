@@ -430,7 +430,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
   }
 
   /* ---------- 저장소 (Firestore 흉내) ---------- */
-  var cache={stores:{},routes:{},sheets:{},config:{}},pending=lsGet(LSQ,[]),listeners=[],sig={},polled=false,started=false,flushing=false,failed=0,epoch=0,flushT=null,stale=false,lastOk=0;
+  var cache={stores:{},routes:{},sheets:{},config:{}},pending=lsGet(LSQ,[]),listeners=[],sig={},polled=false,started=false,flushing=false,failed=0,epoch=0,flushT=null,stale=false,lastOk=0,canPatch=false;
   var saved=lsGet(LSC,{});COLS.forEach(function(c){if(saved[c])cache[c]=saved[c];});
   COLS.forEach(function(c){if(Object.keys(cache[c]).length)sig[c]=JSON.stringify(cache[c]);});
   function sync(){try{window.dispatchEvent(new CustomEvent('safety-sync',{detail:{pending:pending.length,failed:failed,stale:stale,last:lastOk}}));}catch(e){}}
@@ -463,16 +463,30 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
       clearTimeout(flushT);flushT=setTimeout(flush,Math.min(60000,3000*failed));
     });
   }
-  function put(c,id,obj){cache[c][id]=clone(obj);lsSet(LSC,cache);emitCol(c);enqueue({op:'set',c:c,id:id,data:clone(obj)});return Promise.resolve();}
+  /* 점포는 바꾼 필드만 보내서(서버가 'patch'를 알 때) 두 사람이 같은 점포를 동시에 바꿔도 서로 안 덮어쓴다 */
+  function put(c,id,obj){
+    var old=cache[c][id],op={op:'set',c:c,id:id,data:clone(obj)};
+    if(c==='stores'&&canPatch&&old){
+      var diff={},n=0;Object.keys(obj).forEach(function(k){if(JSON.stringify(obj[k])!==JSON.stringify(old[k])){diff[k]=clone(obj[k]);n++;}});
+      Object.keys(old).forEach(function(k){if(!(k in obj)){diff[k]=null;n++;}});
+      if(!n)return Promise.resolve();
+      var prev=null;pending.forEach(function(o){if(o.c===c&&o.id===id)prev=o;});
+      if(!(prev&&prev.op==='set')){ // 아직 안 올라간 새 점포(set)면 전체를 그대로 보낸다
+        if(prev&&prev.op==='patch')Object.keys(prev.data).forEach(function(k){if(!(k in diff))diff[k]=prev.data[k];});
+        op={op:'patch',c:c,id:id,data:diff};
+      }
+    }
+    cache[c][id]=clone(obj);lsSet(LSC,cache);emitCol(c);enqueue(op);return Promise.resolve();
+  }
   function del(c,id){delete cache[c][id];lsSet(LSC,cache);emitCol(c);enqueue({op:'del',c:c,id:id});return Promise.resolve();}
   function poll(){
     var at=epoch;
     call('safetyList',{}).then(function(r){
       if(at!==epoch)return;                       // 읽는 사이에 저장이 있었으면 이번 결과는 버리고 다음에 다시 읽는다
-      var data=(r&&r.data)||{};
+      var data=(r&&r.data)||{};canPatch=!!(r&&r.merge);
       COLS.forEach(function(c){
         var m=clone(data[c]||{});
-        pending.forEach(function(o){if(o.c!==c)return;if(o.op==='set')m[o.id]=clone(o.data);else delete m[o.id];});
+        pending.forEach(function(o){if(o.c!==c)return;if(o.op==='set')m[o.id]=clone(o.data);else if(o.op==='patch'){if(m[o.id])Object.keys(o.data).forEach(function(k){m[o.id][k]=o.data[k];});}else delete m[o.id];});
         var s=JSON.stringify(m);
         if(sig[c]!==s){sig[c]=s;cache[c]=m;emitCol(c);}
       });
