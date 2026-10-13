@@ -37,19 +37,8 @@
   #printArea { display: none; }
 
   /* ---- 종이(결선도, 보고서) 모양: 화면 미리보기와 인쇄가 같은 모양 ---- */
-  .paper { color: #000; background: #fff; font-size: 9pt; line-height: 1.25; }
-  .paper h1 { margin: 0 0 3mm; text-align: center; font-size: 15pt; }
+  /* 표·결선도 기본 모양은 safety-core.js(paperCss)에서 넣는다. 여기는 보고서에만 있는 것 */
   .paper .sub { text-align: right; margin: 0 0 3mm; font-size: 9pt; color: #333; }
-  .paper table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .paper th, .paper td { border: 1px solid #000; padding: 0 1mm; height: 5.4mm; text-align: center; overflow: hidden; white-space: nowrap; background: #fff; }
-  .paper td.l { text-align: left; }
-  .paper th { background: #eee; }
-  .paper thead { display: table-header-group; }
-  .paper tr { page-break-inside: avoid; }
-  .paper .top2 { margin-bottom: 2mm; }
-  .paper .top2 th { width: 30mm; }
-  .paper .top2 td { text-align: left; height: 7mm; }
-  .paper .cir { border: 1px solid #000; border-radius: 50%; padding: 0 1.2mm; font-weight: 700; }
   .paper .wrapcell { white-space: normal; text-align: left; }
   .paper .pgbreak { page-break-after: always; }
   .paper .pgbreak:last-child { page-break-after: auto; }
@@ -90,9 +79,11 @@
 <div id="printArea" class="paper" aria-hidden="true"></div>
 
 <script src="common.js"></script>
+<script src="safety-core.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const esc = SafetyCore.esc;
+{ const st = document.createElement('style'); st.textContent = SafetyCore.paperCss('.paper'); document.head.appendChild(st); } // 폰 인쇄와 같은 종이 모양
 const STATUS = ['미정', '점포협의', '일정확정', '점검완료', '점검취소'];
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
 const LS_SHARED = 'safety-cache-v1';       // 안전점검 앱이 폰/PC에 보관한 데이터 (읽기만 한다)
@@ -106,18 +97,17 @@ let showEmpty = false, routeFrom = 'today';
 
 function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
 function who() { try { return localStorage.getItem('titan_user_name') || ''; } catch (e) { return ''; } }
-function pad(n) { return String(n).padStart(2, '0'); }
-function todayStr() { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function pad(n) { return SafetyCore.pad(n); }
+function todayStr() { return SafetyCore.ymd(new Date()); }
 function todayLabel() { const d = new Date(); return d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) + '(' + WD[d.getDay()] + ')'; }
 function dlabel(ds) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ds || ''); if (!m) return ds || ''; const d = new Date(+m[1], +m[2] - 1, +m[3]); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + WD[d.getDay()] + ')'; }
-function region(a) { const p = String(a || '').trim().split(/\s+/); return (p[0] || '') + (p[1] ? ' ' + p[1] : ''); }
+const region = SafetyCore.regionText;
 function stores() { return Object.values(D.stores).sort((a, b) => (a.no || 0) - (b.no || 0)); }
 function sheetOf(id) { return D.sheets[id] || { rows: [] }; }
-function circuits(id) { return (sheetOf(id).rows || []).filter(r => r.name || r.type || r.p || r.at || r.af || r.l1 || r.l2 || r.l3 || r.sq); }
+function circuits(id) { return SafetyCore.circuits(sheetOf(id)); }
 function stCls(s) { return 's' + Math.max(0, STATUS.indexOf(s)); }
 function nextAssign(id) {
-  const t = todayStr(); let best = null;
-  Object.values(D.routes).forEach(r => { if (r.date >= t && (r.stops || []).indexOf(id) >= 0 && (!best || r.date < best.date)) best = r; });
+  const best = SafetyCore.nextRoute(Object.values(D.routes), id, todayStr());
   return best ? (best.owner || '담당 미정') + ' ' + dlabel(best.date) : '';
 }
 function groupsOf(list) { const seen = [], set = {}; list.forEach(s => { const g = s.group || '구간 없음'; if (!set[g]) { set[g] = 1; seen.push(g); } }); return seen; }
@@ -147,8 +137,8 @@ function statusRows() {
     (!F.q || (s.name + ' ' + s.code + ' ' + s.address + ' ' + (s.memo || '')).toLowerCase().includes(F.q.toLowerCase())));
 }
 function summary(list) {
-  const live = list.filter(s => s.status !== '점검취소'), done = live.filter(s => s.status === '점검완료').length;
-  return { total: live.length, done, left: live.length - done, cancel: list.length - live.length, sheet: list.filter(s => circuits(s.id).length).length, pct: live.length ? Math.round(done / live.length * 100) : 0 };
+  const p = SafetyCore.progress(list);
+  return { total: p.t, done: p.d, left: p.t - p.d, cancel: list.length - p.t, sheet: list.filter(s => circuits(s.id).length).length, pct: p.p };
 }
 function groupTable(list, plain) {
   const gs = groupsOf(list);
@@ -182,18 +172,7 @@ function viewStatus() {
 
 /* ---------- 결선도 ---------- */
 function sheetStores() { return stores().filter(s => showEmpty || circuits(s.id).length); }
-function sheetPaper(s) {
-  const sh = sheetOf(s.id), cs = (sh.rows || []), n = Math.max(40, cs.length);
-  let b = '';
-  for (let i = 0; i < n; i++) {
-    const r = cs[i] || {};
-    b += '<tr><td>' + (i + 1) + '</td><td class="l">' + esc(r.name) + '</td><td>' + ['MDDB', 'ELB'].map(t => r.type === t ? '<span class="cir">' + t + '</span>' : t).join(' / ') + '</td><td>' + esc(r.p) + '</td><td>' + esc(r.at) + '</td><td>' + esc(r.af) + '</td><td>' + esc(r.l1) + '</td><td>' + esc(r.l2) + '</td><td>' + esc(r.l3) + '</td><td>' + esc(r.sq) + '</td></tr>';
-  }
-  return '<section class="pgbreak"><h1>분전반 결선도</h1>' +
-    '<table class="top2"><tr><th>점포명</th><td colspan="3">' + esc(s.name) + ' (' + esc(s.code) + ')</td></tr><tr><th>PANE NAME</th><td>' + esc(sh.panel) + '</td><th>인입방식</th><td>' + esc(sh.incoming) + '</td></tr></table>' +
-    '<table><colgroup><col style="width:8mm"><col style="width:73mm"><col style="width:26mm"><col style="width:9mm"><col style="width:11mm"><col style="width:11mm"><col style="width:12mm"><col style="width:12mm"><col style="width:12mm"><col style="width:16mm"></colgroup>' +
-    '<thead><tr><th rowspan="2">번호</th><th rowspan="2">회로명</th><th colspan="4">차단기 특성</th><th colspan="3">측정치(A)</th><th rowspan="2">전선규격<br>(sq)</th></tr><tr><th>종류</th><th>P</th><th>AT</th><th>AF</th><th>L1</th><th>L2</th><th>L3</th></tr></thead><tbody>' + b + '</tbody></table></section>';
-}
+function sheetPaper(s) { return '<section class="pgbreak">' + SafetyCore.paperHTML(s, D.sheets[s.id]) + '</section>'; }
 function viewSheet() {
   const list = sheetStores(), first = [...picked].find(id => D.stores[id]);
   let h = '<div class="bar"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="se" style="min-height:0;width:18px;height:18px"' + (showEmpty ? ' checked' : '') + '> 작성하지 않은 점포도 보기</label><span class="sp"></span>' +

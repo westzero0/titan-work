@@ -276,18 +276,9 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
   @page{size:A4;margin:10mm}
   html,body{background:#fff!important;padding:0!important}
   body>*:not(#printsheet){display:none!important}
-  #printsheet{display:block;color:#000;background:#fff;font:9pt/1.2 var(--font);-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  #printsheet h1{margin:0 0 3mm;text-align:center;font-size:15pt}
-  #printsheet table{width:100%;border-collapse:collapse;table-layout:fixed}
-  #printsheet th,#printsheet td{border:1px solid #000;padding:0 1mm;height:5.4mm;text-align:center;overflow:hidden;white-space:nowrap}
-  #printsheet td.l{text-align:left}
-  #printsheet thead{display:table-header-group}
-  #printsheet tr{page-break-inside:avoid}
-  #printsheet .top2{margin-bottom:2mm}
-  #printsheet .top2 th{background:#eee;width:30mm}
-  #printsheet .top2 td{text-align:left;height:7mm}
-  #printsheet .cir{border:1px solid #000;border-radius:50%;padding:0 1.2mm;font-weight:700}
+  #printsheet{display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+/* 종이 모양(표, 회로 동그라미)은 safety-core.js가 PC 보고서와 같이 쓰는 한 벌이다 */
 /* 설정 시트 */
 .sheet{position:fixed;inset:0;z-index:50;background:var(--bg);overflow-y:auto;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 .sheet header{position:sticky;top:0;background:var(--band);color:var(--band-ink);z-index:2}
@@ -377,6 +368,8 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 <div id="toast" role="status" hidden></div>
 
 <script src="common.js"></script>
+<script src="safety-core.js"></script>
+<script>(function(){var st=document.createElement('style');st.textContent='@media print{'+SafetyCore.paperCss('#printsheet')+'}';document.head.appendChild(st);})();</script>
 <script>
 /* ===== 타이탄 연결: 로그인(이름+4자리)과 저장소(구글 시트, Apps Script)를 타이탄과 같이 쓴다 =====
  * - 로그인: 타이탄과 같은 서버 동작(getWorkerList, loginCheck)을 쓰고, 이름은 같은 주소의 localStorage('titan_user_name')에 저장돼 타이탄과 공유된다.
@@ -574,7 +567,7 @@ var VIEWS=['today','list','hol','region','group','cal'];
 var SIDO_ORDER=['서울','경기','인천','강원','충북','충남','대전','경북','대구','경남','부산','울산'];
 var armed={};
 function $(id){return document.getElementById(id);}
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function esc(s){return SafetyCore.esc(s);}
 function norm(s){return String(s==null?'':s).replace(/\(.*?\)/g,'').replace(/\s+/g,'').toLowerCase();}
 
 var tt;
@@ -617,7 +610,7 @@ function plannedFlag(s){
 }
 
 /* ---------- 지역, 연락처 ---------- */
-function region(addr){var p=String(addr||'').trim().split(/\s+/);return {sido:p[0]||'',gu:p[1]||''};}
+function region(addr){return SafetyCore.region(addr);}
 function phoneOf(line){var m=String(line).match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}/);return m?m[0].replace(/\s/g,''):'';}
 function labelOf(line,ph){return String(line).replace(ph,'').replace(/[:\s]+$/,'').replace(/^[:\s]+/,'');}
 
@@ -738,7 +731,7 @@ function renderList(){
 }
 
 /* ---------- 묶어 보기 ---------- */
-function pg(list){var live=list.filter(function(s){return s.status!=='점검취소';});var d=live.filter(function(s){return s.status==='점검완료';}).length;return {d:d,t:live.length,p:live.length?Math.round(d/live.length*100):0};}
+function pg(list){return SafetyCore.progress(list);}
 function secHTML(key,title,meta,right,pct,cards,def){
   var o=ui.sec[key]==null?def:ui.sec[key];
   return '<section class="sec2"><button type="button" class="sh" data-act="sec" data-k="'+esc(key)+'" aria-expanded="'+o+'"><span class="st">'+esc(title)+'</span>'+(meta?'<span class="sm">'+esc(meta)+'</span>':'')+'<span class="sp">'+esc(right)+'</span>'+(pct==null?'':'<i class="mb"><b style="width:'+pct+'%"></b></i>')+'</button>'+(o?'<div class="sb">'+cards+'</div>':'')+'</section>';
@@ -1034,11 +1027,10 @@ function othersOn(ds){return routes.filter(function(x){return x.date===ds&&(x.ow
 function takenBy(id,ds){var o='';routes.forEach(function(x){if(!o&&x.date===ds&&(x.owner||'')!==me()&&(x.stops||[]).indexOf(id)>=0)o=x.owner||'미정';});return o;}
 function assignOn(s,k){var o=takenBy(s.id,dateStr(k));return o?'<span class="flag warn">'+esc(o)+' 동선에 있음</span>':'';}
 function assignFlag(s){
-  var t=+today0(),best=null;
-  routes.forEach(function(x){var d=pdate(x.date);if(d>=t&&(x.stops||[]).indexOf(s.id)>=0&&(!best||d<best.d))best={d:d,o:x.owner||''};});
+  var best=SafetyCore.nextRoute(routes,s.id,dateStr(+today0()));
   if(!best)return '';
-  var dd=new Date(best.d);
-  return '<span class="flag ok">'+esc(best.o===me()?'내 동선':(best.o||'담당 미정'))+' '+(dd.getMonth()+1)+'/'+dd.getDate()+'</span>';
+  var dd=new Date(pdate(best.date)),o=best.owner||'';
+  return '<span class="flag ok">'+esc(o===me()?'내 동선':(o||'담당 미정'))+' '+(dd.getMonth()+1)+'/'+dd.getDate()+'</span>';
 }
 function othersHTML(ds,title){
   var list=othersOn(ds);if(!list.length)return '';
@@ -1126,7 +1118,7 @@ function orderNear(list,start){
   }
   return out;
 }
-function remaining(s){return s.status!=='점검완료'&&s.status!=='점검취소';}
+function remaining(s){return SafetyCore.remaining(s);}
 function addRegion(v){
   if(!v){toast('먼저 지역을 골라 주세요');return;}
   var key=v.slice(2),isS=v.indexOf('S:')===0;
@@ -1182,7 +1174,7 @@ document.addEventListener('wheel',function(e){
 /* ---------- 캘린더, 시간표 ---------- */
 ui.cal={y:new Date().getFullYear(),m:new Date().getMonth(),sel:+today0()};
 function pad2(n){return (n<10?'0':'')+n;}
-function dateStr(k){var d=new Date(k);return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+function dateStr(k){return SafetyCore.ymd(new Date(k));}
 function pdate(str){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(str||'');return m?+new Date(+m[1],+m[2]-1,+m[3]):0;}
 function toMin(s){var m=/^(\d{1,2}):(\d{2})/.exec(s||'');return m?(+m[1])*60+(+m[2]):540;}
 function fmtT(x){x=Math.round(x);var h=Math.floor(x/60)%24,m=x%60;return pad2(h)+':'+pad2(m);}
@@ -1354,17 +1346,7 @@ function wFlush(){if(wtm)wSave(true);}
 function wSeg(i,k,vals,cur,suf){
   return '<div class="wseg">'+vals.map(function(v){return '<button type="button" data-act="wset" data-i="'+i+'" data-k="'+k+'" data-v="'+v+'" aria-pressed="'+(String(cur)===v)+'">'+v+suf+'</button>';}).join('')+'</div>';
 }
-function printHTML(s,sh){
-  var n=Math.max(40,sh.rows.length),b='',i,r;
-  for(i=0;i<n;i++){
-    r=sh.rows[i]||{};
-    b+='<tr><td>'+(i+1)+'</td><td class="l">'+esc(r.name)+'</td><td>'+['MDDB','ELB'].map(function(t){return r.type===t?'<span class="cir">'+t+'</span>':t;}).join(' / ')+'</td><td>'+esc(r.p)+'</td><td>'+esc(r.at)+'</td><td>'+esc(r.af)+'</td><td>'+esc(r.l1)+'</td><td>'+esc(r.l2)+'</td><td>'+esc(r.l3)+'</td><td>'+esc(r.sq)+'</td></tr>';
-  }
-  return '<h1>분전반 결선도</h1>'+
-   '<table class="top2"><tr><th>점포명</th><td colspan="3">'+esc(s.name)+' ('+esc(s.code)+')</td></tr><tr><th>PANE NAME</th><td>'+esc(sh.panel)+'</td><th>인입방식</th><td>'+esc(sh.incoming)+'</td></tr></table>'+
-   '<table><colgroup><col style="width:8mm"><col style="width:73mm"><col style="width:26mm"><col style="width:9mm"><col style="width:11mm"><col style="width:11mm"><col style="width:12mm"><col style="width:12mm"><col style="width:12mm"><col style="width:16mm"></colgroup>'+
-   '<thead><tr><th rowspan="2">번호</th><th rowspan="2">회로명</th><th colspan="4">차단기 특성</th><th colspan="3">측정치(A)</th><th rowspan="2">전선규격<br>(sq)</th></tr><tr><th>종류</th><th>P</th><th>AT</th><th>AF</th><th>L1</th><th>L2</th><th>L3</th></tr></thead><tbody>'+b+'</tbody></table>';
-}
+function printHTML(s,sh){return SafetyCore.paperHTML(s,sh);}
 function wNum(r,i,k,label){
   return '<label>'+label+'<input type="text" inputmode="decimal" enterkeyhint="next" data-wr="'+k+'" data-i="'+i+'" value="'+esc(r[k])+'" autocomplete="off"></label>';
 }
