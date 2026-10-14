@@ -363,6 +363,17 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .wseg button{flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
 .wseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
 .wadd{width:100%;margin-top:14px}
+/* 결선도 입력 = 점검표: 상자 대신 줄, 번호는 네모 칸, 모서리는 각지게 */
+.wsec{display:flex;justify-content:space-between;align-items:baseline;margin-top:18px;padding-top:8px;border-top:2px solid var(--ink);font-size:0.875rem;font-weight:700}
+.wsec span{font:500 0.8125rem var(--mono);color:var(--muted)}
+.wrow{background:none;border:0;border-top:1px solid var(--line);border-radius:0;padding:12px 0;margin-top:0}
+.wsec+.wrow{border-top:0}
+.wh .sn{width:30px;height:30px;border-radius:3px;background:none;border:1.5px solid var(--ink);color:var(--ink)}
+.wbody input[type=text],.wbody select{border-radius:4px;background:var(--surface)}
+.wbody .btn{border-radius:4px}
+.wseg button{border-radius:4px}
+.pth{border-radius:4px}
+.wphotos{padding-top:8px;border-top:2px solid var(--ink);margin-top:18px}
 /* 현장 사진 */
 .wphotos{margin-top:14px;display:flex;flex-direction:column;gap:8px}
 .pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -1571,6 +1582,7 @@ function renderW(){
   var h='<header><div class="wrap"><button type="button" class="btn" data-act="wclose">닫기</button><h2>'+esc(s.name)+' 결선도</h2><button type="button" class="btn" data-act="wprint">인쇄</button></div></header><div class="wrap wbody">'+
    '<p class="note" style="margin:12px 0 0">자동으로 저장돼요. Enter(다음)를 누르면 다음 칸으로 가고, 마지막 칸에서는 새 회로가 추가돼요.</p>'+
    '<div class="wgrid2"><label>PANE NAME (분전반 이름)<input type="text" enterkeyhint="next" data-wf="panel" value="'+esc(sh.panel)+'" autocomplete="off"></label><label>인입방식<input type="text" enterkeyhint="next" data-wf="incoming" value="'+esc(sh.incoming)+'" autocomplete="off"></label></div>'+photoHTML(s);
+  h+='<div class="wsec">회로<span>'+sh.rows.length+'개</span></div>';
   sh.rows.forEach(function(r,i){
     h+='<article class="wrow"><div class="wh"><span class="sn">'+(i+1)+'</span><input type="text" enterkeyhint="next" data-wr="name" data-i="'+i+'" value="'+esc(r.name)+'" placeholder="회로명 (예: 사무실/전등 판넬)" aria-label="회로명 '+(i+1)+'" autocomplete="off"><button type="button" class="btn danger sm wdelb" data-act="wdel" data-id="'+i+'" data-armed="한 번 더" aria-label="회로 '+(i+1)+' 삭제">삭제</button></div>'+
      '<div><div class="wl">종류</div>'+wSeg(i,'type',['MDDB','ELB'],r.type,'')+'</div>'+
