@@ -249,6 +249,18 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .tstop{padding:12px;display:flex;flex-direction:column;gap:10px}
 .tstop.next{border-color:var(--accent);box-shadow:inset 4px 0 0 var(--accent)}
 .tstop.fin{opacity:.72}
+.tstop.next{gap:12px;padding:14px}
+.tstop.next .tnl{align-self:flex-start}
+.tstop.next .nm{font-size:1.25rem}
+.tstop.line{padding:0;gap:0}
+.trow{width:100%;min-height:56px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 12px;background:none;border:0;text-align:left;color:inherit}
+.tstop.line.fin .nm{color:var(--muted);font-weight:500}
+.sn.ok{background:var(--done-bg);color:var(--done);border:1.5px solid var(--done)}
+.topen{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px}
+.tact.big{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tact.big .btn{min-height:52px;font-size:1rem}
+.tact.big .tdone{grid-column:1/-1;min-height:60px;font-size:1.125rem;font-weight:700}
+.tstop.line .tact{grid-template-columns:repeat(4,minmax(0,1fr))}
 .tt1{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
 .tt1 .tm{font:500 0.9375rem var(--mono);color:var(--ink)}
 .tnext{margin-top:-4px}
@@ -1358,16 +1370,27 @@ function todayHTML(){
   var sch=routeSched(ids,r.start||'09:00',r.work||60),done=0,next=-1;
   sch.forEach(function(x,i){if(x.s.status==='점검완료')done++;else if(next<0&&remaining(x.s))next=i;});
   h+='<p class="note" style="margin:4px 0 0">'+sch.length+'곳 · 완료 <b>'+done+'</b> · 예상 종료 <b>'+fmtT(sch[sch.length-1].e)+'</b></p><div class="list">';
-  sch.forEach(function(x,i){
-    var s=x.s,id=esc(s.id),g=region(s.address),fin=s.status==='점검완료',ph=phoneFor(s),q=encodeURIComponent(s.address||''),open=ui.open===s.id;
-    h+='<article class="card tstop'+(i===next?' next':'')+(fin?' fin':'')+'" data-id="'+id+'">'+
-     '<div class="tt1"><span class="sn">'+(i+1)+'</span><div class="si"><b class="nm">'+esc(s.name)+'</b><span class="meta"><span class="tm">'+fmtT(x.a)+'-'+fmtT(x.e)+'</span>'+(x.trav?'<span>이동 약 '+x.trav+'분</span>':'')+'<span>'+esc(g.gu||g.sido)+'</span></span></div>'+pillHTML(s)+'</div>'+
-     (i===next?'<div class="tnext"><span class="flag ok">다음 점포</span></div>':'')+
-     '<div class="tact">'+(ph?'<a class="btn" href="tel:'+esc(ph.replace(/-/g,''))+'">전화</a>':'<span class="btn dis">번호 없음</span>')+
+  /* 다음 점포 하나만 크게(전화·지도·결선도 + 큰 점검완료), 나머지는 한 줄. 줄을 누르면 그 점포의 버튼이 펼쳐진다. */
+  function acts(s,id,fin,big){
+    var ph=phoneFor(s),q=encodeURIComponent(s.address||'');
+    return '<div class="tact'+(big?' big':'')+'">'+(ph?'<a class="btn" href="tel:'+esc(ph.replace(/-/g,''))+'">전화</a>':'<span class="btn dis">번호 없음</span>')+
      '<a class="btn" target="_blank" rel="noopener" href="https://map.naver.com/p/search/'+q+'">지도</a>'+
      '<button type="button" class="btn" data-act="wopen" data-id="'+id+'">결선도</button>'+
-     '<button type="button" class="btn'+(fin?'':' primary')+'" data-act="check" data-id="'+id+'">'+(fin?'완료 취소':'점검완료')+'</button></div>'+
-     '<button type="button" class="more" data-act="toggle" data-id="'+id+'" aria-expanded="'+open+'">'+(open?'접기':'자세히 보기')+'</button>'+(open?detailHTML(s):'')+'</article>';
+     '<button type="button" class="btn tdone'+(fin?'':' primary')+'" data-act="check" data-id="'+id+'">'+(fin?'완료 취소':'점검완료')+'</button></div>';
+  }
+  sch.forEach(function(x,i){
+    var s=x.s,id=esc(s.id),g=region(s.address),fin=s.status==='점검완료',open=ui.open===s.id,isNext=(i===next);
+    var when='<span class="tm">'+fmtT(x.a)+'-'+fmtT(x.e)+'</span>';
+    if(isNext){
+      h+='<article class="card tstop next" data-id="'+id+'"><span class="flag ok tnl">다음 점포</span>'+
+       '<div class="tt1"><span class="sn">'+(i+1)+'</span><div class="si"><b class="nm">'+esc(s.name)+'</b><span class="meta">'+when+(x.trav?'<span>이동 약 '+x.trav+'분</span>':'')+'<span>'+esc(g.gu||g.sido)+'</span></span></div>'+pillHTML(s)+'</div>'+
+       acts(s,id,fin,true)+
+       '<button type="button" class="more" data-act="toggle" data-id="'+id+'" aria-expanded="'+open+'">'+(open?'접기':'자세히 보기')+'</button>'+(open?detailHTML(s):'')+'</article>';
+    }else{
+      h+='<article class="card tstop line'+(fin?' fin':'')+'" data-id="'+id+'">'+
+       '<button type="button" class="trow" data-act="toggle" data-id="'+id+'" aria-expanded="'+open+'"><span class="sn'+(fin?' ok':'')+'">'+(fin?'✓':(i+1))+'</span><span class="si"><b class="nm">'+esc(s.name)+'</b><span class="meta">'+when+'<span>'+esc(g.gu||g.sido)+'</span></span></span>'+(fin?'':pillHTML(s))+'</button>'+
+       (open?'<div class="topen">'+acts(s,id,fin,false)+detailHTML(s)+'</div>':'')+'</article>';
+    }
   });
   return h+'</div>'+oth;
 }
