@@ -271,6 +271,23 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .wseg button{flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
 .wseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
 .wadd{width:100%;margin-top:14px}
+/* 현장 사진 */
+.wphotos{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pth{position:relative;aspect-ratio:1;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:44px}
+.pth img{width:100%;height:100%;object-fit:cover;display:block}
+.pth i{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);color:#fff;font-style:normal;font-size:0.6875rem;padding:2px 4px}
+.wphotos label.btn{cursor:pointer;justify-content:center}
+.wphotos label.btn.disabled{opacity:.5;pointer-events:none}
+.pview{position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+.pview[hidden]{display:none}
+.pview header{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;color:#fff}
+.pview header .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
+.pview .pmeta{color:#cbd5e1;font-size:0.8125rem;padding:0 12px 8px}
+.pview .pbody{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex}
+.pview .pbody img{display:block;max-width:100%;margin:auto}
+.pview.full .pbody img{max-width:none;margin:0}
+.pview .pwait{color:#fff;margin:auto;padding:24px;text-align:center}
 /* 결선도 인쇄 (A4 세로) */
 #printsheet{display:none}
 @media print{
@@ -363,11 +380,13 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 </nav>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="설정" hidden></div>
 <div class="sheet" id="wsheet" role="dialog" aria-modal="true" aria-label="분전반 결선도" hidden></div>
+<div class="pview" id="pview" role="dialog" aria-modal="true" aria-label="현장 사진" hidden></div>
 <div id="printsheet" aria-hidden="true"></div>
 <div id="toast" role="status" hidden></div>
 
 <script src="common.js"></script>
 <script src="safety-core.js"></script>
+<script src="safety-photo.js"></script>
 <script>(function(){var st=document.createElement('style');st.textContent='@media print{'+SafetyCore.paperCss('#printsheet')+'}';document.head.appendChild(st);})();</script>
 <script>
 /* ===== 타이탄 연결: 로그인(이름+4자리)과 저장소(구글 시트, Apps Script)를 타이탄과 같이 쓴다 =====
@@ -376,7 +395,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
  * - 오프라인: 마지막으로 받은 데이터를 폰에 보관하고, 못 보낸 저장은 대기열에 쌓았다가 연결되면 자동으로 보낸다.
  */
 (function(){
-  var LSC='safety-cache-v1',LSQ='safety-pending-v1',POLL=30000,COLS=['stores','routes','sheets','config'];
+  var LSC='safety-cache-v1',LSQ='safety-pending-v1',POLL=30000,COLS=['stores','routes','sheets','config','photos'];
   function lsGet(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v;}catch(e){return d;}}
   function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
   function clone(o){return o==null?o:JSON.parse(JSON.stringify(o));}
@@ -422,7 +441,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
   }
 
   /* ---------- 저장소 (Firestore 흉내) ---------- */
-  var cache={stores:{},routes:{},sheets:{},config:{}},pending=lsGet(LSQ,[]),listeners=[],sig={},polled=false,started=false,flushing=false,failed=0,epoch=0,flushT=null,stale=false,lastOk=0,canPatch=false;
+  var cache={stores:{},routes:{},sheets:{},config:{},photos:{}},pending=lsGet(LSQ,[]),listeners=[],sig={},polled=false,started=false,flushing=false,failed=0,epoch=0,flushT=null,stale=false,lastOk=0,canPatch=false;
   var saved=lsGet(LSC,{});COLS.forEach(function(c){if(saved[c])cache[c]=saved[c];});
   COLS.forEach(function(c){if(Object.keys(cache[c]).length)sig[c]=JSON.stringify(cache[c]);});
   function sync(){try{window.dispatchEvent(new CustomEvent('safety-sync',{detail:{pending:pending.length,failed:failed,stale:stale,last:lastOk}}));}catch(e){}}
@@ -476,6 +495,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
     call('safetyList',{}).then(function(r){
       if(at!==epoch)return;                       // 읽는 사이에 저장이 있었으면 이번 결과는 버리고 다음에 다시 읽는다
       var data=(r&&r.data)||{};canPatch=!!(r&&r.merge);
+      window.SAFETY_PHOTO=!!(r&&r.photo);try{localStorage.setItem('safety-photo-ok',window.SAFETY_PHOTO?'1':'0');}catch(e){}
       COLS.forEach(function(c){
         var m=clone(data[c]||{});
         pending.forEach(function(o){if(o.c!==c)return;if(o.op==='set')m[o.id]=clone(o.data);else if(o.op==='patch'){if(m[o.id])Object.keys(o.data).forEach(function(k){m[o.id][k]=o.data[k];});}else delete m[o.id];});
@@ -1373,12 +1393,55 @@ function printHTML(s,sh){return SafetyCore.paperHTML(s,sh);}
 function wNum(r,i,k,label){
   return '<label>'+label+'<input type="text" inputmode="decimal" enterkeyhint="next" data-wr="'+k+'" data-i="'+i+'" value="'+esc(r[k])+'" autocomplete="off"></label>';
 }
+/* ---------- 현장 사진 (모듈은 safety-photo.js) ---------- */
+var photos={},pv=null;
+function photoHTML(s){
+  if(!SafetyPhoto.enabled())return '';
+  var l=SafetyPhoto.list(s.id,photos),full=l.length>=SafetyPhoto.LIMIT;
+  var h='<section class="wphotos"><div class="wl">현장 사진 <b>'+l.length+' / '+SafetyPhoto.LIMIT+'</b></div><div class="pgrid">';
+  l.forEach(function(p){
+    var u=SafetyPhoto.thumbURL(p);
+    h+='<button type="button" class="pth" data-act="pview-open" data-id="'+esc(p.id)+'" aria-label="사진 크게 보기">'+(u?'<img src="'+u+'" alt="현장 사진">':'<span class="note">불러오는 중</span>')+(p.state==='wait'?'<i>올리는 중</i>':p.state==='fail'?'<i>올리기 실패 · 다시 시도 중</i>':'')+'</button>';
+  });
+  return h+'</div><label class="btn'+(full?' disabled':'')+'">＋ 사진 추가<input type="file" id="wphoto" accept="image/*" multiple hidden'+(full?' disabled':'')+'></label>'+
+    '<p class="note">'+(full?'사진은 점포당 '+SafetyPhoto.LIMIT+'장까지예요. 안 쓰는 사진을 지운 뒤 추가하세요.':'분전반이 크면 한 장에 다 담지 말고 나눠서 가까이 찍어 주세요. 차단기 글씨가 보여야 나중에 확인할 수 있어요. 올리는 건 뒤에서 해서 기다릴 필요 없어요.')+'</p></section>';
+}
+function openPhoto(id){
+  var s=find(wid);if(!s)return;
+  var ph=SafetyPhoto.list(s.id,photos).filter(function(p){return p.id===id;})[0];if(!ph)return;
+  pv={ph:ph,url:''};
+  var el=$('pview');el.classList.remove('full');el.hidden=false;
+  var who=ph.by?ph.by+' · ':'',d=new Date(ph.at);
+  el.innerHTML='<header><button type="button" class="btn" data-act="pview-close">닫기</button><button type="button" class="btn" data-act="pview-zoom">크게 보기</button><button type="button" class="btn danger" data-act="pview-del" data-id="'+esc(ph.id)+'">삭제</button></header>'+
+    '<div class="pmeta">'+esc(s.name)+' · '+esc(who)+(d.getMonth()+1)+'/'+d.getDate()+' '+d.getHours()+':'+('0'+d.getMinutes()).slice(-2)+(ph.state!=='done'?' · 아직 서버에 올리는 중':'')+'</div><div class="pbody"><div class="pwait">불러오는 중이에요. 몇 초 걸릴 수 있어요.</div></div>';
+  SafetyPhoto.fullURL(ph).then(function(u){
+    if(!pv||pv.ph.id!==id){URL.revokeObjectURL(u);return;}
+    pv.url=u;el.querySelector('.pbody').innerHTML='<img src="'+u+'" alt="현장 사진 크게 보기">';
+  },function(){if(pv&&pv.ph.id===id)el.querySelector('.pbody').innerHTML='<div class="pwait">사진을 가져오지 못했어요. 연결을 확인하고 다시 열어 주세요.</div>';});
+}
+function closePhoto(){
+  if(pv&&pv.url)URL.revokeObjectURL(pv.url);
+  pv=null;var el=$('pview');el.hidden=true;el.innerHTML='';
+}
+function delPhoto(){
+  if(!pv)return;var ph=pv.ph;closePhoto();
+  SafetyPhoto.remove(ph).then(function(){toast('사진을 지웠어요');renderW();});
+}
+document.addEventListener('change',function(e){
+  var t=e.target;if(!t||t.id!=='wphoto'||!wid)return;
+  var s=find(wid),files=[].slice.call(t.files||[]);t.value='';if(!s||!files.length)return;
+  var room=SafetyPhoto.LIMIT-SafetyPhoto.list(s.id,photos).length;
+  if(room<=0){toast('사진은 점포당 '+SafetyPhoto.LIMIT+'장까지예요');return;}
+  if(files.length>room){toast(files.length+'장 중 '+room+'장만 담아요');files=files.slice(0,room);}
+  toast('사진을 줄이는 중이에요…');
+  files.reduce(function(p,f){return p.then(function(){return SafetyPhoto.add(f,s);});},Promise.resolve()).then(function(){toast('사진을 담았어요. 올리는 건 뒤에서 해요');renderW();},function(){toast('사진을 읽지 못했어요. 다시 찍어 주세요.');});
+});
 function renderW(){
   var el=$('wsheet'),s=find(wid);if(!s)return;
   var sh=sheetOf(wid),keep=el.scrollTop;
   var h='<header><div class="wrap"><button type="button" class="btn" data-act="wclose">닫기</button><h2>'+esc(s.name)+' 결선도</h2><button type="button" class="btn" data-act="wprint">인쇄</button></div></header><div class="wrap wbody">'+
    '<p class="note" style="margin:12px 0 0">입력하면 자동으로 저장돼요. 칸마다 입력하고 Enter(다음)를 누르면 다음 칸으로 가요. 마지막 칸에서 Enter를 누르면 새 회로가 추가돼요.</p>'+
-   '<div class="wgrid2"><label>PANE NAME (분전반 이름)<input type="text" enterkeyhint="next" data-wf="panel" value="'+esc(sh.panel)+'" autocomplete="off"></label><label>인입방식<input type="text" enterkeyhint="next" data-wf="incoming" value="'+esc(sh.incoming)+'" autocomplete="off"></label></div>';
+   '<div class="wgrid2"><label>PANE NAME (분전반 이름)<input type="text" enterkeyhint="next" data-wf="panel" value="'+esc(sh.panel)+'" autocomplete="off"></label><label>인입방식<input type="text" enterkeyhint="next" data-wf="incoming" value="'+esc(sh.incoming)+'" autocomplete="off"></label></div>'+photoHTML(s);
   sh.rows.forEach(function(r,i){
     h+='<article class="wrow"><div class="wh"><span class="sn">'+(i+1)+'</span><input type="text" enterkeyhint="next" data-wr="name" data-i="'+i+'" value="'+esc(r.name)+'" placeholder="회로명 (예: 사무실/전등 판넬)" aria-label="회로명 '+(i+1)+'" autocomplete="off"></div>'+
      '<div><div class="wl">종류</div>'+wSeg(i,'type',['MDDB','ELB'],r.type,'')+'</div>'+
@@ -1401,6 +1464,10 @@ document.addEventListener('click',function(e){
     case 'sec':(function(){var k=b.getAttribute('data-k'),open=(b.getAttribute('aria-expanded')!=='true');ui.sec[k]=open;render(true);
       if(open&&ui.view==='region'){var sd=k.slice(7),pos=geoAll(),pts=[];stores.forEach(function(s){if(pos[s.id]&&region(s.address).sido===sd)pts.push(proj(pos[s.id]));});if(pts.length){fitPts(pts);drawMap();}}})();break;
     case 'radd':toggleStop(id);break;
+    case 'pview-open':openPhoto(id);break;
+    case 'pview-close':closePhoto();break;
+    case 'pview-zoom':(function(){var el=$('pview'),on=el.classList.toggle('full');b.textContent=on?'작게 보기':'크게 보기';})();break;
+    case 'pview-del':confirmAct(b,delPhoto);break;
     case 'wopen':wid=id;renderW();$('wsheet').hidden=false;document.body.style.overflow='hidden';break;
     case 'wclose':wFlush();$('wsheet').hidden=true;document.body.style.overflow='';wid=null;render(true);break;
     case 'wprint':(function(){wFlush();var s=find(wid);if(!s)return;$('printsheet').innerHTML=printHTML(s,sheetOf(wid));window.print();})();break;
@@ -1445,7 +1512,7 @@ document.addEventListener('keydown',function(e){
   var t=e.target;
   if(e.key!=='Enter'||!wid||t.tagName!=='INPUT'||!$('wsheet').contains(t))return;
   e.preventDefault();
-  var all=[].slice.call($('wsheet').querySelectorAll('input')),n=all[all.indexOf(t)+1];
+  var all=[].slice.call($('wsheet').querySelectorAll('input[type=text]')),n=all[all.indexOf(t)+1];
   if(n)n.focus();else{var a=$('wsheet').querySelector('[data-act=wadd]');if(a)a.click();}
 });
 document.addEventListener('input',function(e){
@@ -1489,8 +1556,10 @@ document.addEventListener('focusout',function(){setTimeout(function(){if(pending
 })();
 
 /* ---------- 저장 대기 표시 (오프라인이면 쌓였다가 연결되면 자동 저장) ---------- */
+var photoFlag=null;
 window.addEventListener('safety-sync',function(e){
   var d=e.detail,el=$('syncst');if(!el)return;
+  if(photoFlag!==SafetyPhoto.enabled()){photoFlag=SafetyPhoto.enabled();if(wid&&!$('wsheet').hidden&&!$('wsheet').contains(document.activeElement))renderW();}
   var t='';
   if(d.pending&&d.failed)t='저장 안 됨 '+d.pending+'건 · 눌러서 다시';
   else if(d.pending)t='저장 대기 '+d.pending+'건';
@@ -1512,6 +1581,11 @@ async function init(){
       loaded=true;render();
     },function(){loaded=true;toast('저장소에 연결하지 못했어요.');render(true);});
     db.collection('routes').onSnapshot(function(snap){routes=snap.docs.map(function(d){return Object.assign({},d.data(),{id:d.id});});selectDate(ui.cal.sel);render();},function(){});
+    db.collection('photos').onSnapshot(function(snap){
+      photos={};snap.docs.forEach(function(d){photos[d.id]=d.data();});
+      if(wid&&!$('wsheet').hidden&&!$('wsheet').contains(document.activeElement))renderW();
+    },function(){});
+    SafetyPhoto.init({db:db,who:me,photos:function(){return photos;},onChange:function(){if(wid&&!$('wsheet').hidden&&!$('wsheet').contains(document.activeElement))renderW();}});
     db.collection('sheets').onSnapshot(function(snap){
       sheets={};snap.docs.forEach(function(d){sheets[d.id]=Object.assign({},d.data(),{id:d.id});});
       if(wid&&!$('wsheet').hidden&&!$('wsheet').contains(document.activeElement))renderW();
