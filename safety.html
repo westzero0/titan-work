@@ -282,34 +282,46 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .datebar{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding-left:0}
 .chip{border-radius:4px}
 #plansw{border-radius:4px}
-/* 오늘 = 점검표: 카드 대신 줄이 그어진 목록. 번호 칸, 점검완료 도장 */
-.today .tform{margin:14px 0 0;padding-bottom:6px;border-bottom:2px solid var(--ink);font-size:1.25rem}
-.today .tform small{font-size:0.8125rem;color:var(--muted);font-weight:400;margin-left:8px}
-.today .tsum{margin:8px 0 2px;font-size:0.875rem;color:var(--muted)}
+/* 오늘 = 동선을 한 줄 노선으로: 왼쪽에 시간, 가운데 선과 점, 오른쪽에 점포. 지나온 구간은 연두 실선, 남은 구간은 점선 */
+.today .thead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:14px 0 14px}
+.today .tform{margin:0;font-size:1.5rem;letter-spacing:-.02em;line-height:1.1}
+.today .tsum{margin:6px 0 0;font-size:0.8125rem;color:var(--muted)}
 .today .tsum b{color:var(--ink)}
+.today .tcount{text-align:right;font-size:0.75rem;color:var(--muted);flex:none}
+.today .tcount b{display:block;font:700 1.75rem/1 var(--mono);color:var(--accent)}
 .tlist{list-style:none;margin:0;padding:0}
-.trw{border-bottom:1px solid var(--line)}
-.trow{width:100%;min-height:64px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;background:none;border:0;text-align:left;color:inherit}
-.tno{width:30px;height:30px;border:1.5px solid var(--ink);border-radius:3px;display:grid;place-items:center;font:700 0.875rem var(--mono)}
-.tbody{display:flex;flex-direction:column;gap:2px;min-width:0}
-.today .tm{font:500 0.9375rem var(--mono);color:var(--ink)}
-.tst{font-size:0.8125rem;color:var(--muted);white-space:nowrap}
-.trw.fin .nm{color:var(--muted);font-weight:500}
-.trw.fin .tno{border-color:var(--muted);color:var(--muted)}
-.trw.next{margin:10px 0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);padding:8px 0 2px}
-.trw.next .nm{font-size:1.375rem}
-.trw.next .trow{min-height:0}
-.tnext{align-self:flex-start;background:var(--ink);color:var(--bg);font-size:0.75rem;font-weight:700;padding:1px 6px;border-radius:2px;margin-bottom:3px}
-.stamp{display:inline-block;border:2px solid var(--accent);color:var(--accent);border-radius:4px;padding:2px 8px;font-weight:700;font-size:0.8125rem;letter-spacing:0.08em;transform:rotate(-5deg);opacity:.9}
-.stamp.fresh{animation:stampIn .3s cubic-bezier(.2,.9,.3,1.25)}
-@keyframes stampIn{from{transform:rotate(-14deg) scale(2);opacity:0}to{transform:rotate(-5deg) scale(1);opacity:.9}}
-@media (prefers-reduced-motion:reduce){.stamp.fresh{animation:none}}
-.topen{padding:0 0 12px;display:flex;flex-direction:column;gap:10px}
+.tr{display:grid;grid-template-columns:64px 28px minmax(0,1fr)}
+.tr-tm{padding:2px 8px 0 0;text-align:right;font:600 1rem/1.3 var(--mono);color:var(--ink)}
+.tr-tm small{display:block;margin-top:1px;font:400 0.75rem var(--font);color:var(--muted)}
+.tr-rail{position:relative}
+.tr-rail::before{content:"";position:absolute;left:11px;top:0;bottom:0;width:6px;background:var(--lime,#B5DB6A)}
+.tr:first-child .tr-rail::before{top:12px}
+.tr:last-child .tr-rail::before{bottom:calc(100% - 12px)}
+.tr-dot{position:absolute;left:5px;top:3px;width:18px;height:18px;border-radius:50%;box-sizing:border-box;background:var(--surface);border:3px solid var(--muted);z-index:1}
+.tr-body{padding:0 0 22px 6px;min-width:0}
+.tr-head{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:44px;padding:0;background:none;border:0;text-align:left;color:inherit;gap:1px}
+.tr-head small,.tr-meta{font-size:0.8125rem;color:var(--muted)}
+.tr-meta{display:block;margin-top:2px}
+/* 끝난 점포: 연두 점에 체크, 이름은 흐리게 */
+.tr.done .tr-dot{background:var(--lime,#B5DB6A);border-color:var(--accent)}
+.tr.done .tr-dot::after{content:"";position:absolute;left:3px;top:-1px;width:5px;height:9px;border:solid var(--accent);border-width:0 2.5px 2.5px 0;transform:rotate(40deg)}
+.tr.done .nm{color:var(--muted);font-weight:500}
+.tr-dot.fresh{animation:dotPop .35s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes dotPop{0%{transform:scale(.4)}60%{transform:scale(1.35)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.tr-dot.fresh{animation:none}}
+/* 남은 점포: 빈 점, 점선 */
+.tr.todo .tr-rail::before{width:3px;left:13px;background:repeating-linear-gradient(to bottom,var(--muted) 0 5px,transparent 5px 10px)}
+/* 다음 점포: 큰 점, 점선(남색), 펼쳐진 버튼 */
+.tr.next .tr-rail::before{width:4px;left:12px;top:0;background:repeating-linear-gradient(to bottom,var(--accent) 0 6px,transparent 6px 11px)}
+.tr.next .tr-dot{left:1px;top:2px;width:26px;height:26px;background:var(--surface);border:5px solid var(--accent);box-shadow:0 0 0 4px var(--lime,#B5DB6A)}
+.tr.next .tr-tm{color:var(--accent);font-weight:700}
+.tr.next .nm{font-size:1.5rem;line-height:1.15;letter-spacing:-.02em;display:block}
+.topen{padding:6px 0 0;display:flex;flex-direction:column;gap:10px}
 .today .btn{border-radius:4px}
 .tact{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .tact .btn{padding:0 2px;font-size:0.875rem;white-space:nowrap}
 .tact .btn.dis{color:var(--muted);opacity:.6}
-.tact.big{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tact.big{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:14px}
 .tact.big .btn{min-height:52px;font-size:1rem}
 .tact.big .tdone{grid-column:1/-1;min-height:60px;font-size:1.125rem;font-weight:700}
 .more{min-height:44px;background:none;border:0;color:var(--muted);font-size:0.875rem;width:100%}
@@ -317,8 +329,8 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .tempty{margin-top:18px;padding:16px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px;align-items:flex-start}
 .tempty b{font-size:1.0625rem}
 .tempty p{margin:0;color:var(--muted)}
-.today .rbox{margin-top:22px;background:none;border:0;border-radius:0;border-top:2px solid var(--ink);padding:8px 0 0}
-.today .rbox .rh{font-size:1rem}
+.today .rbox{margin-top:10px;background:none;border:0;border-radius:0;border-top:1px solid var(--line);padding:12px 0 0}
+.today .rbox .rh{font-size:0.9375rem}
 /* 분전반 결선도 */
 .wbody{padding-block:4px 6rem}
 .wgrid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
@@ -1439,13 +1451,13 @@ function phoneFor(s){var best='',first='';(s.contacts||[]).forEach(function(l){v
 function todayHTML(){
   var t=today0(),r=todayRoute(),ids=r?(r.stops||[]).filter(find):[];
   var oth=othersHTML(dateStr(+t),'오늘 다른 사람 동선');
-  var h='<div class="today"><h2 class="tform">오늘 '+fmtD(t)+'<small>'+esc(me())+' 님 동선'+(r&&r.name?' · '+esc(r.name):'')+'</small></h2>';
+  var title='<h2 class="tform">오늘 '+fmtD(t)+'</h2>',who=esc(me())+' 님 동선'+(r&&r.name?' · '+esc(r.name):'');
   if(!ids.length){
-    return h+'<div class="tempty"><b>오늘 내 동선이 없어요</b><p>캘린더에서 오늘 날짜를 눌러 점포를 담으면 여기에 순서대로 나와요.</p><button type="button" class="btn primary" data-act="today-make">오늘 동선 만들기</button></div>'+oth+'</div>';
+    return '<div class="today"><div class="thead"><div>'+title+'<p class="tsum">'+who+'</p></div></div><div class="tempty"><b>오늘 내 동선이 없어요</b><p>캘린더에서 오늘 날짜를 눌러 점포를 담으면 여기에 순서대로 나와요.</p><button type="button" class="btn primary" data-act="today-make">오늘 동선 만들기</button></div>'+oth+'</div>';
   }
   var sch=routeSched(ids,r.start||'09:00',r.work||60),done=0,next=-1;
   sch.forEach(function(x,i){if(x.s.status==='점검완료')done++;else if(next<0&&remaining(x.s))next=i;});
-  h+='<p class="tsum">'+sch.length+'곳 · 완료 <b>'+done+'</b> · 예상 종료 <b>'+fmtT(sch[sch.length-1].e)+'</b></p><ol class="tlist">';
+  var h='<div class="today"><div class="thead"><div>'+title+'<p class="tsum">'+who+' · 예상 종료 <b>'+fmtT(sch[sch.length-1].e)+'</b></p></div><div class="tcount"><b>'+done+'/'+sch.length+'</b>완료</div></div><ol class="tlist">';
   /* 다음 점포 하나는 크게(전화·지도·결선도 + 큰 점검완료), 나머지는 한 줄. 줄을 누르면 그 점포의 버튼이 펼쳐진다. */
   function acts(s,id,fin,big){
     var ph=phoneFor(s),q=encodeURIComponent(s.address||'');
@@ -1456,15 +1468,15 @@ function todayHTML(){
   }
   sch.forEach(function(x,i){
     var s=x.s,id=esc(s.id),g=region(s.address),fin=s.status==='점검완료',open=ui.open===s.id,isNext=(i===next);
-    var when='<span class="tm">'+fmtT(x.a)+'-'+fmtT(x.e)+'</span>',gu='<span>'+esc(g.gu||g.sido)+'</span>';
-    var stamp='<span class="stamp'+(s.id===lastDone?' fresh':'')+'">점검완료</span>';
+    var tm='<div class="tr-tm">'+fmtT(x.a)+'<small>'+esc(g.gu||g.sido)+'</small></div>';
+    var dot='<div class="tr-rail"><i class="tr-dot'+(s.id===lastDone?' fresh':'')+'"></i></div>';
     if(isNext){
-      h+='<li class="trw next" data-id="'+id+'"><div class="trow"><span class="tno">'+(i+1)+'</span><span class="tbody"><span class="tnext">다음 점포</span><b class="nm">'+esc(s.name)+'</b><span class="meta">'+when+(x.trav?'<span>이동 약 '+x.trav+'분</span>':'')+gu+'</span></span><span class="tst">'+esc(s.status)+'</span></div>'+
+      h+='<li class="tr next" data-id="'+id+'">'+tm+dot+'<div class="tr-body"><b class="nm">'+esc(s.name)+'</b><span class="tr-meta">다음 · '+esc(s.status)+(x.trav?' · 이동 약 '+x.trav+'분':'')+' · '+fmtT(x.e)+'까지</span>'+
        acts(s,id,fin,true)+
-       '<button type="button" class="more" data-act="toggle" data-id="'+id+'" aria-expanded="'+open+'">'+(open?'접기':'자세히 보기')+'</button>'+(open?detailHTML(s):'')+'</li>';
+       '<button type="button" class="more" data-act="toggle" data-id="'+id+'" aria-expanded="'+open+'">'+(open?'접기':'자세히 보기')+'</button>'+(open?detailHTML(s):'')+'</div></li>';
     }else{
-      h+='<li class="trw'+(fin?' fin':'')+'" data-id="'+id+'"><button type="button" class="trow" data-act="toggle" data-id="'+id+'" aria-expanded="'+open+'"><span class="tno">'+(i+1)+'</span><span class="tbody"><b class="nm">'+esc(s.name)+'</b><span class="meta">'+when+gu+'</span></span><span class="tst">'+(fin?stamp:esc(s.status))+'</span></button>'+
-       (open?'<div class="topen">'+acts(s,id,fin,false)+detailHTML(s)+'</div>':'')+'</li>';
+      h+='<li class="tr '+(fin?'done':'todo')+'" data-id="'+id+'">'+tm+dot+'<div class="tr-body"><button type="button" class="tr-head" data-act="toggle" data-id="'+id+'" aria-expanded="'+open+'"><b class="nm">'+esc(s.name)+'</b><small>'+(fin?'점검완료':esc(s.status))+(x.trav?' · 이동 '+x.trav+'분':'')+'</small></button>'+
+       (open?'<div class="topen">'+acts(s,id,fin,false)+detailHTML(s)+'</div>':'')+'</div></li>';
     }
   });
   return h+'</ol>'+oth+'</div>';
