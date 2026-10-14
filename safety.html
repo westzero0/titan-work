@@ -78,8 +78,8 @@ html.sub-hide .subwrap{transform:translateY(-100%);visibility:hidden;transition:
 #plansw .chip{flex:1;justify-content:center;padding:0 6px}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 
-.filters{display:flex;gap:8px;padding-block:12px 4px;flex-wrap:wrap}
-.filters select{flex:1 1 8rem;min-width:0;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding-inline:10px}
+.filters{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;padding-block:4px}
+.filters select{min-width:0;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding-inline:8px;font-size:0.875rem;text-overflow:ellipsis}
 
 /* 목록 */
 main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
@@ -278,7 +278,9 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .wl{font-size:0.75rem;color:var(--muted);margin-bottom:4px}
 .wbody input[type=text],.wbody select{min-height:44px;width:100%;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 12px;color:var(--ink)}
 .wrow{scroll-margin-top:64px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;margin-top:10px}
-.wh{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center}
+.wh{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.wgrid4{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.wdelb{min-width:60px;padding:0 8px;font-size:0.8125rem;white-space:nowrap}
 .wseg{display:flex;gap:6px}
 .wseg button{flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
 .wseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
@@ -289,6 +291,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .pth{position:relative;aspect-ratio:1;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:44px}
 .pth img{width:100%;height:100%;object-fit:cover;display:block}
 .pth i{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);color:#fff;font-style:normal;font-size:0.6875rem;padding:2px 4px}
+.wphotos .whd{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .wphotos label.btn{cursor:pointer;justify-content:center}
 .wphotos label.btn.disabled{opacity:.5;pointer-events:none}
 .pview{position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
@@ -1000,7 +1003,7 @@ function importHTML(){
 function confirmAct(btn,fn){
   var k=btn.getAttribute('data-act')+(btn.getAttribute('data-id')||'');
   if(armed[k]){clearTimeout(armed[k]);delete armed[k];btn.classList.remove('armed');btn.textContent=btn.getAttribute('data-label');fn();return;}
-  btn.setAttribute('data-label',btn.textContent);btn.textContent='한 번 더 누르면 실행돼요';btn.classList.add('armed');
+  btn.setAttribute('data-label',btn.textContent);btn.textContent=btn.getAttribute('data-armed')||'한 번 더 누르면 실행돼요';btn.classList.add('armed');
   armed[k]=setTimeout(function(){delete armed[k];btn.classList.remove('armed');btn.textContent=btn.getAttribute('data-label');},4000);
 }
 
@@ -1421,13 +1424,12 @@ var photos={},pv=null;
 function photoHTML(s){
   if(!SafetyPhoto.enabled())return '';
   var l=SafetyPhoto.list(s.id,photos),full=l.length>=SafetyPhoto.LIMIT;
-  var h='<section class="wphotos"><div class="wl">현장 사진 <b>'+l.length+' / '+SafetyPhoto.LIMIT+'</b></div><div class="pgrid">';
+  var h='<section class="wphotos"><div class="whd"><div class="wl" style="margin:0">현장 사진 <b>'+l.length+' / '+SafetyPhoto.LIMIT+'</b></div><label class="btn sm'+(full?' disabled':'')+'">＋ 사진 추가<input type="file" id="wphoto" accept="image/*" multiple hidden'+(full?' disabled':'')+'></label></div>'+(l.length?'<div class="pgrid">':'<div class="pgrid" hidden>');
   l.forEach(function(p){
     var u=SafetyPhoto.thumbURL(p);
     h+='<button type="button" class="pth" data-act="pview-open" data-id="'+esc(p.id)+'" aria-label="사진 크게 보기">'+(u?'<img src="'+u+'" alt="현장 사진">':'<span class="note">불러오는 중</span>')+(p.state==='wait'?'<i>올리는 중</i>':p.state==='fail'?'<i>올리기 실패 · 다시 시도 중</i>':'')+'</button>';
   });
-  return h+'</div><label class="btn'+(full?' disabled':'')+'">＋ 사진 추가<input type="file" id="wphoto" accept="image/*" multiple hidden'+(full?' disabled':'')+'></label>'+
-    '<p class="note">'+(full?'사진은 점포당 '+SafetyPhoto.LIMIT+'장까지예요. 안 쓰는 사진을 지운 뒤 추가하세요.':'분전반이 크면 한 장에 다 담지 말고 나눠서 가까이 찍어 주세요. 차단기 글씨가 보여야 나중에 확인할 수 있어요. 올리는 건 뒤에서 해서 기다릴 필요 없어요.')+'</p></section>';
+  return h+'</div><p class="note" style="margin:0">'+(full?'점포당 '+SafetyPhoto.LIMIT+'장까지예요. 안 쓰는 사진을 지운 뒤 추가하세요.':'크면 나눠서 가까이 찍어 주세요. 차단기 글씨가 보여야 나중에 확인할 수 있어요.')+'</p></section>';
 }
 function openPhoto(id){
   var s=find(wid);if(!s)return;
@@ -1463,14 +1465,13 @@ function renderW(){
   var el=$('wsheet'),s=find(wid);if(!s)return;
   var sh=sheetOf(wid),keep=el.scrollTop;
   var h='<header><div class="wrap"><button type="button" class="btn" data-act="wclose">닫기</button><h2>'+esc(s.name)+' 결선도</h2><button type="button" class="btn" data-act="wprint">인쇄</button></div></header><div class="wrap wbody">'+
-   '<p class="note" style="margin:12px 0 0">입력하면 자동으로 저장돼요. 칸마다 입력하고 Enter(다음)를 누르면 다음 칸으로 가요. 마지막 칸에서 Enter를 누르면 새 회로가 추가돼요.</p>'+
+   '<p class="note" style="margin:12px 0 0">자동으로 저장돼요. Enter(다음)를 누르면 다음 칸으로 가고, 마지막 칸에서는 새 회로가 추가돼요.</p>'+
    '<div class="wgrid2"><label>PANE NAME (분전반 이름)<input type="text" enterkeyhint="next" data-wf="panel" value="'+esc(sh.panel)+'" autocomplete="off"></label><label>인입방식<input type="text" enterkeyhint="next" data-wf="incoming" value="'+esc(sh.incoming)+'" autocomplete="off"></label></div>'+photoHTML(s);
   sh.rows.forEach(function(r,i){
-    h+='<article class="wrow"><div class="wh"><span class="sn">'+(i+1)+'</span><input type="text" enterkeyhint="next" data-wr="name" data-i="'+i+'" value="'+esc(r.name)+'" placeholder="회로명 (예: 사무실/전등 판넬)" aria-label="회로명 '+(i+1)+'" autocomplete="off"></div>'+
+    h+='<article class="wrow"><div class="wh"><span class="sn">'+(i+1)+'</span><input type="text" enterkeyhint="next" data-wr="name" data-i="'+i+'" value="'+esc(r.name)+'" placeholder="회로명 (예: 사무실/전등 판넬)" aria-label="회로명 '+(i+1)+'" autocomplete="off"><button type="button" class="btn danger sm wdelb" data-act="wdel" data-id="'+i+'" data-armed="한 번 더" aria-label="회로 '+(i+1)+' 삭제">삭제</button></div>'+
      '<div><div class="wl">종류</div>'+wSeg(i,'type',['MDDB','ELB'],r.type,'')+'</div>'+
      '<div class="wgrid">'+wNum(r,i,'p','P (극수)')+wNum(r,i,'at','AT (A)')+wNum(r,i,'af','AF (A)')+'</div>'+
-     '<div class="wgrid">'+wNum(r,i,'l1','L1 (A)')+wNum(r,i,'l2','L2 (A)')+wNum(r,i,'l3','L3 (A)')+'</div>'+
-     '<div class="wgrid">'+wNum(r,i,'sq','전선규격 (sq)')+'<div class="btns" style="grid-column:span 2;justify-content:flex-end;align-self:end"><button type="button" class="btn danger sm" data-act="wdel" data-id="'+i+'">이 회로 삭제</button></div></div></article>';
+     '<div class="wgrid wgrid4">'+wNum(r,i,'l1','L1 (A)')+wNum(r,i,'l2','L2 (A)')+wNum(r,i,'l3','L3 (A)')+wNum(r,i,'sq','sq')+'</div></article>';
   });
   h+=(sh.rows.length?'':'<p class="note" style="margin:16px 0 0">아직 입력한 회로가 없어요. 아래 버튼으로 첫 회로를 추가하세요.</p>')+'<button type="button" class="btn primary wadd" data-act="wadd">＋ 회로 추가</button></div>';
   el.innerHTML=h;el.scrollTop=keep;
