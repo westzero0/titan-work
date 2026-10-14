@@ -298,6 +298,26 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .datebar{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding-left:0}
 .chip{border-radius:4px}
 #plansw{border-radius:4px}
+/* 캘린더 = 종이 달력: 칸마다 상자 대신 한 장의 격자 */
+#list .calh{padding-bottom:8px;border-bottom:2px solid var(--ink)}
+#list .calh b{font-size:1.25rem;letter-spacing:-.02em}
+#list .mini,#list .calh .btn{border-radius:4px}
+#list .calg{gap:0;margin-top:0;border-left:1px solid var(--line)}
+#list .dow{border-bottom:1px solid var(--ink);padding:6px 0}
+#list .day{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;background:none;padding:4px 3px}
+#list .calg>div:empty{border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+#list .day.today .dn{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+#list .day.sel{background:var(--surface);box-shadow:inset 0 0 0 2px var(--accent)}
+#list .day.inp{border-bottom:3px solid var(--accent)}
+#list .cw{border-radius:2px}
+#list .ch{background:none;border:1px solid var(--done);color:var(--done);border-radius:2px}
+#list .cp{border-radius:2px}
+#list .legend b.lg.ch{background:none}
+#list .crow{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:8px 0}
+#list .cday{gap:0}
+#list .cday .subh{margin-top:16px;padding-top:8px;border-top:2px solid var(--ink)}
+#list .btn.sm{border-radius:4px}
+
 /* 오늘 = 동선을 한 줄 노선으로: 왼쪽에 시간, 가운데 선과 점, 오른쪽에 점포. 지나온 구간은 연두 실선, 남은 구간은 점선 */
 .today .thead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:14px 0 14px}
 .today .tform{margin:0;font-size:1.5rem;letter-spacing:-.02em;line-height:1.1}
@@ -830,6 +850,7 @@ function renderFilters(){
 }
 function pillHTML(s){return '<span class="pill '+SCLS[s.status]+'">'+esc(s.status)+'</span>';}
 /* 목록·계획의 점포 줄: 상태는 글자(점검완료만 작은 도장) */
+function statTxt(s){return '<span class="lst '+SCLS[s.status]+'">'+esc(s.status)+'</span>';}
 function lstHTML(s){return '<span class="stc">'+(s.status==='점검완료'?'<span class="stamp sm" role="img" aria-label="점검완료">점검<br>완료</span>':'<span class="lst '+SCLS[s.status]+'">'+esc(s.status)+'</span>')+'</span>';}
 function addBtn(s){var i=ui.draft.stops.indexOf(s.id);return '<button type="button" class="addb'+(i>=0?' on':'')+'" data-act="radd" data-id="'+esc(s.id)+'" aria-pressed="'+(i>=0)+'" aria-label="'+esc(s.name)+(i>=0?' 동선에서 빼기':' 동선에 담기')+'">'+(i>=0?(i+1):'＋')+'</button>';}
 function cardHTML(s,compact,hd){
@@ -1392,7 +1413,7 @@ function calIndex(y,mo){
 }
 function crow(s,k,past,est){
   var g=region(s.address),id=esc(s.id);
-  return '<div class="crow"><div class="si"><b>'+esc(s.name)+'</b><span class="meta"><span>'+esc(g.sido+' '+g.gu)+'</span>'+pillHTML(s)+(s.planned?'<span>예정 '+esc(s.planned)+'</span>':'')+assignOn(s,k)+'</span></div>'+addBtn(s)+(past?'':'<button type="button" class="btn sm" data-act="setday" data-id="'+id+'" data-k="'+k+'">이 날로 정하기</button>')+'</div>';
+  return '<div class="crow"><div class="si"><b>'+esc(s.name)+'</b><span class="meta"><span>'+esc(g.sido+' '+g.gu)+'</span>'+statTxt(s)+(s.planned?'<span>예정 '+esc(s.planned)+'</span>':'')+assignOn(s,k)+'</span></div>'+addBtn(s)+(past?'':'<button type="button" class="btn sm" data-act="setday" data-id="'+id+'" data-k="'+k+'">이 날로 정하기</button>')+'</div>';
 }
 function selectDate(k){
   ui.cal.sel=k;var ds=dateStr(k);
@@ -1442,7 +1463,7 @@ function nearHTML(){
   h+='<p class="note" style="margin:0">마지막으로 담은 점포에서 가까운 순이에요. 거리는 시·군·구 중심 기준 직선 추정이라 대략값이에요.</p>';
   o.list.forEach(function(x){
     var s=x.s,g=region(s.address),rest=mdList(s.holidays).some(function(m){return m.m===dd.getMonth()+1&&m.d===dd.getDate();});
-    h+='<div class="crow"><div class="si"><b>'+esc(s.name)+'</b><span class="meta"><span>'+esc(g.gu||g.sido)+'</span><span class="when">직선 약 '+Math.round(x.km)+'km · 이동 약 '+Math.max(1,Math.round(x.km*1.4/45*60))+'분</span></span><span class="meta">'+pillHTML(s)+(rest?'<span class="flag ok">이 날 쉬는 점포</span>':'')+(s.planned?'<span>예정 '+esc(s.planned)+'</span>':'')+'</span></div>'+addBtn(s)+'</div>';
+    h+='<div class="crow"><div class="si"><b>'+esc(s.name)+'</b><span class="meta"><span>'+esc(g.gu||g.sido)+'</span><span class="when">직선 약 '+Math.round(x.km)+'km · 이동 약 '+Math.max(1,Math.round(x.km*1.4/45*60))+'분</span></span><span class="meta">'+statTxt(s)+(rest?'<span class="flag ok">이 날 쉬는 점포</span>':'')+(s.planned?'<span>예정 '+esc(s.planned)+'</span>':'')+'</span></div>'+addBtn(s)+'</div>';
   });
   return h+'<div class="btns"><button type="button" class="btn primary" data-act="near-add">가까운 3곳 모두 담기</button></div></section>';
 }
