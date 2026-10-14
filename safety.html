@@ -75,6 +75,7 @@ html.sub-hide .subwrap{transform:translateY(-100%);visibility:hidden;transition:
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;gap:6px;white-space:nowrap}
 .chip b{font:500 0.875rem var(--mono);font-variant-numeric:tabular-nums}
+#plansw .chip{flex:1;justify-content:center;padding:0 6px}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 
 .filters{display:flex;gap:8px;padding-block:12px 4px;flex-wrap:wrap}
@@ -154,8 +155,8 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .subh.dh{font-size:1rem;color:var(--ink);letter-spacing:0;margin-top:12px}
 .sb{display:flex;flex-direction:column;gap:8px}
 .subh{margin:8px 0 0;font-size:0.8125rem;font-weight:700;color:var(--muted);letter-spacing:.04em}
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(6,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
-.tabs button{min-height:58px;background:none;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:0.75rem;letter-spacing:-0.02em;color:var(--muted);padding:0 1px;word-break:keep-all}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs button{min-height:58px;background:none;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:0.8125rem;letter-spacing:-0.02em;color:var(--muted);padding:0 1px;word-break:keep-all}
 .tabs button[aria-pressed="true"]{color:var(--accent);font-weight:700}
 .tabs button[aria-pressed="true"] svg{stroke-width:2.4}
 
@@ -341,6 +342,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 </header>
 
 <main class="wrap">
+  <div class="chips" id="plansw" role="group" aria-label="계획 보기" hidden></div>
   <div class="filters">
     <select id="fRegion" aria-label="지역"></select>
     <select id="fType" aria-label="직영 가맹 구분"></select>
@@ -357,10 +359,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 <nav class="tabs" id="tabs" aria-label="보기 전환">
   <button type="button" data-act="view" data-v="today" aria-pressed="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>오늘</button>
   <button type="button" data-act="view" data-v="list" aria-pressed="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>목록</button>
-  <button type="button" data-act="view" data-v="hol" aria-pressed="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>휴업일별</button>
-  <button type="button" data-act="view" data-v="region" aria-pressed="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>지역별</button>
-  <button type="button" data-act="view" data-v="group" aria-pressed="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>구간별</button>
-  <button type="button" data-act="view" data-v="cal" aria-pressed="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01"/></svg>캘린더</button>
+  <button type="button" id="planbtn" data-act="view" data-v="cal" aria-pressed="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01"/></svg>계획</button>
 </nav>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="설정" hidden></div>
 <div class="sheet" id="wsheet" role="dialog" aria-modal="true" aria-label="분전반 결선도" hidden></div>
@@ -644,9 +643,15 @@ function render(force){
   pendingRender=false;renderHead();renderChips();renderFilters();renderNav();renderList();
 }
 var measureTop=null;
+var PLAN=[['cal','캘린더'],['region','지역별'],['group','구간별'],['hol','휴업일별']],lastPlan='cal';
+function inPlan(v){return PLAN.some(function(x){return x[0]===v;});}
 function renderNav(){
-  var bs=document.querySelectorAll('#tabs button');
+  var bs=document.querySelectorAll('#tabs button'),plan=inPlan(ui.view);
+  if(plan)lastPlan=ui.view;
   for(var i=0;i<bs.length;i++)bs[i].setAttribute('aria-pressed',String(bs[i].getAttribute('data-v')===ui.view));
+  var pb=$('planbtn');pb.setAttribute('data-v',lastPlan);pb.setAttribute('aria-pressed',String(plan));
+  var ps=$('plansw');ps.hidden=!plan;
+  ps.innerHTML=plan?PLAN.map(function(x){return '<button type="button" class="chip" data-act="view" data-v="'+x[0]+'" aria-pressed="'+(ui.view===x[0])+'">'+x[1]+'</button>';}).join(''):'';
   var hide=(ui.view==='cal'||ui.view==='today');document.querySelector('.filters').style.display=hide?'none':'';document.querySelector('.search').style.display=hide?'none':'';$('chips').parentNode.style.display=hide?'none':'';
   if(measureTop)measureTop();
 }
@@ -717,7 +722,7 @@ function renderList(){
   var list=$('list');
   if(!loaded){list.innerHTML='<p class="note" style="margin-top:24px">서버에서 불러오는 중이에요. 처음 한 번은 몇 초 걸릴 수 있어요.</p>';return;}
   if(!stores.length){
-    list.innerHTML='<div class="empty"><h2>점검할 점포가 아직 없어요</h2><p>엑셀 일정표를 올려서 시작하세요. 설정(오른쪽 위 버튼)에서 엑셀 올리기를 누르면 돼요.</p><div class="btns"><button type="button" class="btn primary" data-act="open-sheet">엑셀 올리기</button></div></div>';
+    list.innerHTML='<div class="empty"><h2>점검할 점포가 아직 없어요</h2><p>다른 사람이 이미 올렸다면 아래 다시 불러오기를 눌러 보세요. 처음 한 번만 엑셀 일정표를 올리면 돼요.</p><div class="btns"><button type="button" class="btn primary" data-act="retry">다시 불러오기</button><button type="button" class="btn" data-act="open-sheet">엑셀 올리기</button></div></div>';
     return;
   }
   var vis=sortList(stores.filter(matches));
@@ -1407,6 +1412,7 @@ document.addEventListener('click',function(e){
     case 'copy':copyText(b.getAttribute('data-t'));break;
     case 'chip':ui.status=(ui.status===b.getAttribute('data-v'))?'all':b.getAttribute('data-v');render(true);break;
     case 'clear-filters':ui.q='';ui.status='all';ui.region='all';ui.type='all';$('q').value='';render(true);break;
+    case 'retry':window.dispatchEvent(new CustomEvent('safety-retry'));toast('다시 불러오고 있어요');break;
     case 'open-sheet':renderSheet();$('sheet').hidden=false;document.body.style.overflow='hidden';break;
     case 'close-sheet':$('sheet').hidden=true;document.body.style.overflow='';ui.imp=null;break;
     case 'export-xlsx':exportXlsx();break;
