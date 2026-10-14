@@ -595,7 +595,7 @@ function toggleDone(id){var s=find(id);if(!s)return;if(s.status==='점검완료'
 /* ---------- 날짜 ---------- */
 function today0(){var d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
 function mdList(s){var out=[],re=/(\d{1,2})\s*\/\s*(\d{1,2})/g,m;s=String(s||'');while((m=re.exec(s)))out.push({m:+m[1],d:+m[2]});return out;}
-function mdDate(x){return new Date(new Date().getFullYear(),x.m-1,x.d);}
+function mdDate(x){return SafetyCore.mdDate(x,new Date());}
 function holChips(str){var t=today0();return mdList(str).map(function(x){var d=mdDate(x);var cls='hol'+(d<t?' past':'')+(+d===+t?' today':'');return '<span class="'+cls+'">'+x.m+'/'+x.d+'('+WD[d.getDay()]+')</span>';}).join('');}
 function plannedFlag(s){
   if(s.status==='점검완료'||!s.planned)return '';
@@ -762,8 +762,7 @@ function holHTML(vis){
 }
 function parseRange(g){
   var m=/(\d{1,2})\/(\d{1,2})\s*~\s*(?:(\d{1,2})\/)?(\d{1,2})/.exec(String(g||''));if(!m)return null;
-  var y=new Date().getFullYear(),m1=+m[1],m2=m[3]?+m[3]:m1;
-  return {s:new Date(y,m1-1,+m[2]),e:new Date(y,m2-1,+m[4])};
+  return SafetyCore.mdRange(+m[1],+m[2],m[3]?+m[3]:+m[1],+m[4],new Date());
 }
 function inRange(d,rg){return d>=rg.s&&d<=rg.e;}
 function fmtD(d){return (d.getMonth()+1)+'/'+d.getDate()+'('+WD[d.getDay()]+')';}

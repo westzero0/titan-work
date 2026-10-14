@@ -26,6 +26,24 @@ var SafetyCore=(function(){
     routes.forEach(function(r){if(r.date>=todayYmd&&(r.stops||[]).indexOf(id)>=0&&(!best||r.date<best.date))best=r;});
     return best;
   }
+  /* ---- 월/일 날짜: 연도가 적혀 있지 않으므로 now에서 가장 가까운 해로 읽는다 (12월에 보는 "1/5"는 내년 1월) ----
+   * 한계: 지금부터 6개월보다 더 지난/먼 날짜는 반대편 해로 읽힌다. 점검 일정은 몇 달 안이라 문제없다고 본다. */
+  function nearestYear(m,d,now){
+    var y=now.getFullYear(),best=y,bd=1e18;
+    [y-1,y,y+1].forEach(function(c){var diff=Math.abs(+new Date(c,m-1,d)-+now);if(diff<bd){bd=diff;best=c;}});
+    return best;
+  }
+  /* {m,d} -> Date */
+  function mdDate(x,now){return new Date(nearestYear(x.m,x.d,now),x.m-1,x.d);}
+  /* 'm1/d1 ~ m2/d2' -> {s,e}. 12/25~1/5처럼 해를 넘기는 구간도 맞게 */
+  function mdRange(m1,d1,m2,d2,now){
+    var best=null,bd=1e18;
+    [now.getFullYear()-1,now.getFullYear(),now.getFullYear()+1].forEach(function(y){
+      var s=new Date(y,m1-1,d1),e=new Date(m2<m1?y+1:y,m2-1,d2),diff=Math.abs((+s+ +e)/2-+now);
+      if(diff<bd){bd=diff;best={s:s,e:e};}
+    });
+    return best;
+  }
   /* ---- 동선: 누가 어느 날 어디 가는지 (routes는 배열, who는 로그인한 사람 이름) ---- */
   function routeId(date,who){return 'r'+date+'_'+who;}
   function routeOf(routes,date,who){
@@ -96,7 +114,7 @@ var SafetyCore=(function(){
      sel+' .top2 td{text-align:left;height:7mm}'+
      sel+' .cir{border:1px solid #000;border-radius:50%;padding:0 1.2mm;font-weight:700}';
   }
-  return {esc:esc,pad:pad,ymd:ymd,region:region,regionText:regionText,progress:progress,remaining:remaining,circuits:circuits,nextRoute:nextRoute,routeId:routeId,routeOf:routeOf,othersOn:othersOn,takenBy:takenBy,buildRoute:buildRoute,draftOf:draftOf,km:km,orderNear:orderNear,schedule:schedule,paperHTML:paperHTML,paperCss:paperCss};
+  return {esc:esc,pad:pad,ymd:ymd,region:region,regionText:regionText,progress:progress,remaining:remaining,circuits:circuits,nextRoute:nextRoute,mdDate:mdDate,mdRange:mdRange,routeId:routeId,routeOf:routeOf,othersOn:othersOn,takenBy:takenBy,buildRoute:buildRoute,draftOf:draftOf,km:km,orderNear:orderNear,schedule:schedule,paperHTML:paperHTML,paperCss:paperCss};
 })();
 /* 자체 점검: 브라우저 콘솔에서 SafetyCore.selfTest() -> true */
 SafetyCore.selfTest=function(){
@@ -110,6 +128,13 @@ SafetyCore.selfTest=function(){
   var r=C.nextRoute([{date:'2026-10-01',stops:['s1']},{date:'2026-10-20',stops:['s1']},{date:'2026-10-15',stops:['s1']}],'s1','2026-10-10');
   a(r&&r.date==='2026-10-15','nextRoute');
   a(C.paperHTML({name:'A',code:'1'},null).indexOf('<tr>')>0,'paperHTML');
+  var dec=new Date(2026,11,28),jan=new Date(2027,0,3),oct=new Date(2026,9,14);
+  a(+C.mdDate({m:1,d:5},dec)===+new Date(2027,0,5),'mdDate 12월에 보는 1/5 = 내년');
+  a(+C.mdDate({m:12,d:28},jan)===+new Date(2026,11,28),'mdDate 1월에 보는 12/28 = 작년');
+  a(+C.mdDate({m:10,d:21},oct)===+new Date(2026,9,21),'mdDate 같은 해');
+  var rg=C.mdRange(12,25,1,5,dec);
+  a(+rg.s===+new Date(2026,11,25)&&+rg.e===+new Date(2027,0,5),'mdRange 해 넘김');
+  a(+C.mdRange(10,1,10,10,oct).s===+new Date(2026,9,1),'mdRange 같은 해');
   var rs=[{id:'r1',date:'2026-10-14',owner:'서영',stops:['s1']},{id:'r2',date:'2026-10-14',owner:'기원',stops:['s2','s3']},{id:'r3',date:'2026-10-14',owner:'창재',stops:[]}];
   a(C.routeOf(rs,'2026-10-14','기원').id==='r2'&&!C.routeOf(rs,'2026-10-15','기원'),'routeOf');
   a(C.othersOn(rs,'2026-10-14','서영').length===1,'othersOn(빈 동선 제외)');
