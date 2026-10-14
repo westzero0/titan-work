@@ -298,6 +298,14 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .datebar{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding-left:0}
 .chip{border-radius:4px}
 #plansw{border-radius:4px}
+/* 지도 점포 정보 = 줄이 그어진 정보판 */
+.minfo{margin-top:6px;border-top:2px solid var(--ink);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.mi-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mi-s{font-size:0.8125rem;color:var(--muted)}
+.mi-b{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+.mi-b .btn{border-radius:4px}
+.mapbox{border-radius:4px}
+.mapctl button{border-radius:4px}
 /* 캘린더 = 종이 달력: 칸마다 상자 대신 한 장의 격자 */
 #list .calh{padding-bottom:8px;border-bottom:2px solid var(--ink)}
 #list .calh b{font-size:1.25rem;letter-spacing:-.02em}
@@ -1274,9 +1282,10 @@ function infoMap(){
   var s=ui.pin?find(ui.pin):null;
   if(!s){el.innerHTML='<p class="note">점을 누르면 점포 정보가 여기에 나와요.</p>';return;}
   var q=encodeURIComponent(s.address||''),r=region(s.address),id=esc(s.id),inR=inRoute(s.id),flag=plannedFlag(s);
-  el.innerHTML='<article class="card"><div class="row1"><div class="head" style="cursor:default"><span class="nm">'+esc(s.name)+'</span><span class="meta"><span class="code">'+esc(s.code)+'</span><span>'+esc(s.type)+'</span><span>'+esc(r.gu||r.sido)+'</span></span></div>'+pillHTML(s)+'</div>'+
-   '<div class="sub" style="padding-left:14px">'+esc(s.address)+(s.planned?' · 예정 <span class="when">'+esc(s.planned)+'</span>':'')+flag+'</div>'+
-   '<div class="btns" style="padding:0 14px 14px"><button type="button" class="btn'+(inR?'':' primary')+'" data-act="radd" data-id="'+id+'">'+(inR?'동선에서 빼기':'동선에 담기')+'</button><a class="btn" target="_blank" rel="noopener" href="https://map.naver.com/p/search/'+q+'">네이버지도</a><a class="btn" target="_blank" rel="noopener" href="https://map.kakao.com/?q='+q+'">카카오맵</a><button type="button" class="btn" data-act="openstore" data-id="'+id+'">목록에서 열기</button></div></article>';
+  el.innerHTML='<section class="minfo"><div class="mi-h"><b class="nm">'+esc(s.name)+'</b>'+lstHTML(s)+'</div>'+
+   '<div class="meta"><span class="code">'+esc(s.code)+'</span><span>'+esc(s.type)+'</span><span>'+esc(r.gu||r.sido)+'</span></div>'+
+   '<div class="mi-s">'+esc(s.address)+(s.planned?'<br>예정 <span class="when">'+esc(s.planned)+'</span>':'')+flag+'</div>'+
+   '<div class="mi-b"><button type="button" class="btn'+(inR?'':' primary')+'" data-act="radd" data-id="'+id+'">'+(inR?'동선에서 빼기':'동선에 담기')+'</button><a class="btn" target="_blank" rel="noopener" href="https://map.naver.com/p/search/'+q+'">네이버지도</a><a class="btn" target="_blank" rel="noopener" href="https://map.kakao.com/?q='+q+'">카카오맵</a><button type="button" class="btn" data-act="openstore" data-id="'+id+'">목록에서 열기</button></div></section>';
 }
 function toggleStop(id){
   var st=ui.draft.stops,i=st.indexOf(id);
