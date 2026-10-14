@@ -251,6 +251,37 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .orow{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid var(--line)}
 .orow:first-of-type{border-top:0}
 /* 오늘 */
+/* 목록·계획 = 점검표: 카드 대신 줄이 그어진 목록. 번호 칸 대신 체크 칸, 상태는 글자, 점검완료는 작은 도장 */
+.list{gap:0}
+#list .card.lrow{background:none;border:0;border-radius:0;border-bottom:1px solid var(--line)}
+#list .lrow .row1{padding:4px 0 4px 0}
+#list .lrow .check span{border-radius:3px;border:1.5px solid var(--ink)}
+#list .lrow .check[aria-pressed="true"] span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+#list .lrow.fin .nm{color:var(--muted);font-weight:500}
+#list .lrow .sub{padding-right:0}
+.lst{flex:none;font-size:0.8125rem;color:var(--muted);white-space:nowrap}
+.lst.sched{color:var(--ink);font-weight:700}
+.lst.cancel{text-decoration:line-through}
+.stamp.sm{padding:1px 6px;font-size:0.75rem;letter-spacing:0.04em;transform:rotate(-4deg)}
+#list .flag{background:none;border-radius:0;padding:0;font-weight:600}
+#list .flag.ok{color:var(--done)}
+#list .flag.warn{color:var(--talk)}
+#list .flag.bad{color:var(--danger)}
+#list .flag.bad::before{content:"! "}
+#list .addb{border-radius:4px}
+#list .btn,#list .seg button,#list .detail input[type=text],#list .detail textarea{border-radius:4px}
+#list .lrow .detail{padding:12px 0 14px;border-top:1px solid var(--line)}
+.divider{margin:20px 0 0;padding:8px 0 4px;border-top:2px solid var(--ink);font-size:0.875rem;letter-spacing:0;color:var(--ink)}
+.sec2{gap:0;margin-top:14px}
+#list .sh{background:none;border:0;border-radius:0;border-top:2px solid var(--ink);padding:10px 0}
+#list .sh[aria-expanded="true"]{border-top-color:var(--ink)}
+#list .sh .mb{border-radius:0}
+#list .sh .mb b{border-radius:0}
+#list .empty{border:0;border-top:2px solid var(--ink);border-radius:0;padding:16px 0}
+.search input,.filters select{border-radius:4px}
+.datebar{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding-left:0}
+.chip{border-radius:4px}
+#plansw{border-radius:4px}
 /* 오늘 = 점검표: 카드 대신 줄이 그어진 목록. 번호 칸, 점검완료 도장 */
 .today .tform{margin:14px 0 0;padding-bottom:6px;border-bottom:2px solid var(--ink);font-size:1.25rem}
 .today .tform small{font-size:0.8125rem;color:var(--muted);font-weight:400;margin-left:8px}
@@ -759,6 +790,8 @@ function renderFilters(){
   $('fSort').hidden=(ui.view!=='list');
 }
 function pillHTML(s){return '<span class="pill '+SCLS[s.status]+'">'+esc(s.status)+'</span>';}
+/* 목록·계획의 점포 줄: 상태는 글자(점검완료만 작은 도장) */
+function lstHTML(s){return s.status==='점검완료'?'<span class="stamp sm">점검완료</span>':'<span class="lst '+SCLS[s.status]+'">'+esc(s.status)+'</span>';}
 function addBtn(s){var i=ui.draft.stops.indexOf(s.id);return '<button type="button" class="addb'+(i>=0?' on':'')+'" data-act="radd" data-id="'+esc(s.id)+'" aria-pressed="'+(i>=0)+'" aria-label="'+esc(s.name)+(i>=0?' 동선에서 빼기':' 동선에 담기')+'">'+(i>=0?(i+1):'＋')+'</button>';}
 function cardHTML(s,compact,hd){
   var r=region(s.address);var open=ui.open===s.id;
@@ -770,11 +803,11 @@ function cardHTML(s,compact,hd){
     metaHTML='<span class="code">'+esc(s.code)+'</span><span>'+esc(s.type)+'</span><span>'+esc(r.gu||r.sido)+'</span>';
     sub=(pl||flag)?'<div class="sub">'+(pl?'예정 <span class="when">'+esc(pl)+'</span>':'')+flag+'</div>':'';
   }
-  return '<article class="card'+(compact?' compact':'')+'" data-id="'+esc(s.id)+'">'+
+  return '<article class="card lrow'+(compact?' compact':'')+(s.status==='점검완료'?' fin':'')+'" data-id="'+esc(s.id)+'">'+
    '<div class="row1">'+
     '<button type="button" class="check" data-act="check" data-id="'+esc(s.id)+'" aria-pressed="'+(s.status==='점검완료')+'" aria-label="'+esc(s.name)+' 점검완료 표시"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>'+
     '<button type="button" class="head" data-act="toggle" data-id="'+esc(s.id)+'" aria-expanded="'+open+'"><span class="nm">'+esc(s.name)+'</span><span class="meta">'+metaHTML+'</span></button>'+
-    pillHTML(s)+(ui.view!=='list'?addBtn(s):'')+
+    lstHTML(s)+(ui.view!=='list'?addBtn(s):'')+
    '</div>'+sub+(open?detailHTML(s):'')+'</article>';
 }
 function detailHTML(s){
