@@ -634,6 +634,13 @@ function applySettings(){document.documentElement.setAttribute('data-fs',setting
 
 function find(id){for(var i=0;i<stores.length;i++)if(stores[i].id===id)return stores[i];return null;}
 function updateStore(id,patch){var s=find(id);if(!s)return;Object.assign(s,patch);persistStore(s);render(true);}
+function sendSms(id,ph){
+  var s=find(id);if(!s)return;var d=new Date(),md=(d.getMonth()+1)+'/'+d.getDate();
+  var body='안녕하세요, GS더프레시 '+s.name+' 점장님. 전기 안전점검 일정 협의드립니다.'+(s.planned?' 예정일은 '+s.planned+'인데 괜찮으실까요?':' 가능하신 날짜와 시간을 알려 주세요.')+' 담당 '+(me()||'')+' 드림';
+  var ios=/iPhone|iPad/.test(navigator.userAgent);
+  location.href='sms:'+ph.replace(/-/g,'')+(ios?'&':'?')+'body='+encodeURIComponent(body);
+  updateStore(id,{memo:(s.memo?s.memo+'\n':'')+md+' 일정 문자 보냄'});
+}
 function setStatus(id,v){var s=find(id);if(!s||s.status===v)return;updateStore(id,{status:v,prev:s.status});}
 function toggleDone(id){
   var s=find(id);if(!s)return;
@@ -756,7 +763,7 @@ function cardHTML(s,compact,hd){
 function detailHTML(s){
   var id=esc(s.id),q=encodeURIComponent(s.address||'');
   var seg=STATUSES.map(function(v){return '<button type="button" data-act="status" data-id="'+id+'" data-v="'+v+'" class="'+SCLS[v]+(s.status===v?' on':'')+'" aria-pressed="'+(s.status===v)+'">'+v+'</button>';}).join('');
-  var cts=(s.contacts||[]).map(function(line){var ph=phoneOf(line);if(!ph)return '<div class="ct"><span class="num">'+esc(line)+'</span></div>';var lab=labelOf(line,ph);return '<div class="ct"><span class="lab">'+esc(lab||'매장')+'</span><span class="num">'+esc(ph)+'</span><button type="button" class="btn" data-act="copy" data-t="'+esc(ph)+'">복사</button><a class="btn" href="tel:'+esc(ph.replace(/-/g,''))+'">전화</a></div>';}).join('');
+  var cts=(s.contacts||[]).map(function(line){var ph=phoneOf(line);if(!ph)return '<div class="ct"><span class="num">'+esc(line)+'</span></div>';var lab=labelOf(line,ph);return '<div class="ct"><span class="lab">'+esc(lab||'매장')+'</span><span class="num">'+esc(ph)+'</span><button type="button" class="btn" data-act="copy" data-t="'+esc(ph)+'">복사</button><button type="button" class="btn" data-act="sms" data-id="'+id+'" data-t="'+esc(ph)+'">문자</button><a class="btn" href="tel:'+esc(ph.replace(/-/g,''))+'">전화</a></div>';}).join('');
   var hol=holChips(s.holidays),wn=(sheets[s.id]&&sheets[s.id].rows||[]).length;
   return '<div class="detail">'+
    '<div class="seg" role="group" aria-label="점검 상태">'+seg+'</div>'+
@@ -1536,6 +1543,7 @@ document.addEventListener('click',function(e){
     case 'status':setStatus(id,b.getAttribute('data-v'));break;
     case 'toast-undo':runUndo();break;
     case 'copy':copyText(b.getAttribute('data-t'));break;
+    case 'sms':sendSms(id,b.getAttribute('data-t'));break;
     case 'chip':ui.status=(ui.status===b.getAttribute('data-v'))?'all':b.getAttribute('data-v');render(true);break;
     case 'clear-filters':ui.q='';ui.status='all';ui.region='all';ui.type='all';$('q').value='';render(true);break;
     case 'retry':window.dispatchEvent(new CustomEvent('safety-retry'));toast('다시 불러오고 있어요');break;
