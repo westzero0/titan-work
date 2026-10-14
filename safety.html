@@ -75,7 +75,10 @@ html.sub-hide .subwrap{transform:translateY(-100%);visibility:hidden;transition:
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;gap:6px;white-space:nowrap}
 .chip b{font:500 0.875rem var(--mono);font-variant-numeric:tabular-nums}
-#plansw .chip{flex:1;justify-content:center;padding:0 6px}
+#plansw{gap:0;padding:0;margin-block:8px 6px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+#plansw .chip{flex:1;justify-content:center;padding:0 6px;border:0;border-radius:0;border-right:1px solid var(--line);background:none}
+#plansw .chip:last-child{border-right:0}
+#plansw .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:700}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 
 .filters{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;padding-block:4px}
@@ -335,6 +338,8 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .note{font-size:0.8125rem;color:var(--muted)}
 .where{font-size:0.8125rem;color:var(--muted)}
 
+#toast.act{width:max-content;top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 72px);pointer-events:auto;display:flex;align-items:center;gap:12px;padding:4px 4px 4px 16px}
+#toast.act button{min-height:44px;padding:0 14px;border-radius:8px;border:1px solid color-mix(in srgb,var(--bg) 45%,transparent);background:transparent;color:var(--bg);font-weight:700}
 #toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 64px);pointer-events:none;z-index:80;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;max-width:calc(100% - 32px);font-size:0.9375rem}
 @media (max-width:420px){.map{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -606,7 +611,11 @@ function esc(s){return SafetyCore.esc(s);}
 function norm(s){return String(s==null?'':s).replace(/\(.*?\)/g,'').replace(/\s+/g,'').toLowerCase();}
 
 var tt;
-function toast(msg){var t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true;},2800);}
+function toast(msg){var t=$('toast');undoFn=null;t.className='';t.textContent=msg;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true;},2800);}
+/* 되돌릴 수 있는 알림(아래쪽, 5초). 점검완료를 잘못 눌렀을 때 한 번에 되돌린다 */
+var undoFn=null;
+function undoToast(msg,fn){var t=$('toast');undoFn=fn;t.className='act';t.innerHTML='<span></span><button type="button" data-act="toast-undo">되돌리기</button>';t.firstChild.textContent=msg;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true;undoFn=null;},5000);}
+function runUndo(){var f=undoFn;undoFn=null;$('toast').hidden=true;clearTimeout(tt);if(f)f();}
 
 /* ---------- 저장 ---------- */
 var LS='anjeon-sucheop-v1';
@@ -626,7 +635,13 @@ function applySettings(){document.documentElement.setAttribute('data-fs',setting
 function find(id){for(var i=0;i<stores.length;i++)if(stores[i].id===id)return stores[i];return null;}
 function updateStore(id,patch){var s=find(id);if(!s)return;Object.assign(s,patch);persistStore(s);render(true);}
 function setStatus(id,v){var s=find(id);if(!s||s.status===v)return;updateStore(id,{status:v,prev:s.status});}
-function toggleDone(id){var s=find(id);if(!s)return;if(s.status==='점검완료'){updateStore(id,{status:(s.prev&&s.prev!=='점검완료')?s.prev:'점포협의',prev:'점검완료'});}else{updateStore(id,{status:'점검완료',prev:s.status});}}
+function toggleDone(id){
+  var s=find(id);if(!s)return;
+  if(s.status==='점검완료'){updateStore(id,{status:(s.prev&&s.prev!=='점검완료')?s.prev:'점포협의',prev:'점검완료'});return;}
+  var before=s.status,beforePrev=s.prev;
+  updateStore(id,{status:'점검완료',prev:before});
+  undoToast(s.name+' 점검완료',function(){updateStore(id,{status:before,prev:beforePrev||''});});
+}
 
 /* ---------- 날짜 ---------- */
 function today0(){var d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
@@ -1519,6 +1534,7 @@ document.addEventListener('click',function(e){
     case 'cal-top':window.scrollTo({top:0,behavior:'smooth'});break;
     case 'setday':setDay(id,+b.getAttribute('data-k'));break;
     case 'status':setStatus(id,b.getAttribute('data-v'));break;
+    case 'toast-undo':runUndo();break;
     case 'copy':copyText(b.getAttribute('data-t'));break;
     case 'chip':ui.status=(ui.status===b.getAttribute('data-v'))?'all':b.getAttribute('data-v');render(true);break;
     case 'clear-filters':ui.q='';ui.status='all';ui.region='all';ui.type='all';$('q').value='';render(true);break;
