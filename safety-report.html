@@ -70,36 +70,6 @@
     #printArea { display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
   @media (max-width: 900px) { body { padding: 18px 14px 40px; } .kpis { grid-template-columns: repeat(2, 1fr); } .two { grid-template-columns: 1fr; } }
-  /* ---- 폰 앱(점검표 + 노선)과 같은 모양: 남색 한 가지, 각진 모서리, 상자 대신 줄. 이 화면 안에서만 바꾼다(pc.css는 다른 허브 화면과 같이 쓴다) ---- */
-  :root { --accent: #1E4272; --accent-soft: #E6ECF4; --r: 4px; }
-  body { background: #F3F4F0; }
-  .page-head h2 { letter-spacing: -.02em; }
-  .tabs { gap: 0; border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden; display: inline-flex; margin: 0 0 18px; }
-  .tabs button { border: 0; border-right: 1px solid var(--line-strong); border-radius: 0; min-height: 40px; }
-  .tabs button:last-child { border-right: 0; }
-  .kpis { gap: 0; border-top: 2px solid var(--text); margin: 0 0 24px; }
-  .kpi { background: none; border: 0; border-right: 1px solid var(--line-strong); border-radius: 0; padding: 12px 16px; }
-  .kpi:last-child { border-right: 0; }
-  .kpi .v { font-family: ui-monospace, 'IBM Plex Mono', Consolas, monospace; }
-  h3.sec { padding-top: 0; }
-  table.tbl { border: 0; border-top: 2px solid var(--text); border-radius: 0; background: none; }
-  .tbl th { background: none; color: var(--text); border-bottom: 1px solid var(--text); }
-  .tbl td { border-bottom: 1px solid var(--line-strong); }
-  .tbl tbody tr:hover td { background: rgba(30, 66, 114, .05); }
-  .prog { border-radius: 0; }
-  .prog b { background: var(--accent); }
-  .st { background: none; padding: 0; border-radius: 0; font-size: 14px; font-weight: 600; color: var(--text-sub); }
-  .st.s2 { background: none; color: var(--text); font-weight: 700; }
-  .st.s1 { background: none; color: var(--text-sub); }
-  .st.s4 { background: none; color: var(--text-sub); text-decoration: line-through; }
-  .stamp { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); box-shadow: inset 0 0 0 2px #F3F4F0, inset 0 0 0 3.5px var(--accent); color: var(--accent); font-size: 11px; font-weight: 700; line-height: 1.15; text-align: center; transform: rotate(-12deg); opacity: .9; vertical-align: middle; }
-  .slist { border: 0; border-top: 2px solid var(--text); border-radius: 0; background: none; }
-  .slist label { border-bottom: 1px solid var(--line-strong); }
-  .prev { border: 0; border-top: 2px solid var(--text); border-radius: 0; background: none; padding: 14px 0; }
-  .prev .paper { background: #fff; border: 1px solid var(--line-strong); padding: 10mm; }
-  .pthumbs button { border-radius: 4px; }
-  #pv .pvh .btn { border-radius: 4px; }
-  input[type=checkbox] { accent-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -130,7 +100,6 @@ const esc = SafetyCore.esc;
 { const st = document.createElement('style'); st.textContent = SafetyCore.paperCss('.paper'); document.head.appendChild(st); } // 폰 인쇄와 같은 종이 모양
 const STATUS = ['미정', '점포협의', '일정확정', '점검완료', '점검취소'];
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
-const STAMP = '<span class="stamp" role="img" aria-label="점검완료">점검<br>완료</span>';
 const LS_SHARED = 'safety-cache-v1';       // 안전점검 앱이 폰/PC에 보관한 데이터 (읽기만 한다)
 const LS_OWN = 'safety-report-cache-v1';   // 이 화면이 마지막으로 받은 데이터
 
@@ -199,7 +168,7 @@ function storeTable(rows, plain) {
   if (!rows.length) h += '<tr><td colspan="10" class="empty">조건에 맞는 점포가 없습니다.</td></tr>';
   rows.forEach(s => {
     const c = circuits(s.id).length;
-    h += '<tr><td>' + esc(s.no) + '</td><td' + (plain ? ' class="l"' : '') + '><b>' + esc(s.name) + '</b></td><td>' + esc(s.type) + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(region(s.address)) + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(s.group || '') + '</td><td>' + (plain ? esc(s.status) : (s.status === '점검완료' ? STAMP : '<span class="st ' + stCls(s.status) + '">' + esc(s.status) + '</span>')) + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(s.planned || '') + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(nextAssign(s.id)) + '</td><td class="n">' + (c ? c + '회로' : '-') + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(s.memo || '') + '</td></tr>';
+    h += '<tr><td>' + esc(s.no) + '</td><td' + (plain ? ' class="l"' : '') + '><b>' + esc(s.name) + '</b></td><td>' + esc(s.type) + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(region(s.address)) + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(s.group || '') + '</td><td>' + (plain ? esc(s.status) : '<span class="st ' + stCls(s.status) + '">' + esc(s.status) + '</span>') + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(s.planned || '') + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(nextAssign(s.id)) + '</td><td class="n">' + (c ? c + '회로' : '-') + '</td><td' + (plain ? ' class="l"' : '') + '>' + esc(s.memo || '') + '</td></tr>';
   });
   return h + '</tbody></table>';
 }
