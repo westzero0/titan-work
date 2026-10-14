@@ -259,11 +259,22 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 #list .lrow .check[aria-pressed="true"] span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 #list .lrow.fin .nm{color:var(--muted);font-weight:500}
 #list .lrow .sub{padding-right:0}
+/* 한 줄 표 */
+#list .lrow.one .row1{padding:0;gap:0;min-height:48px}
+#list .lrow.one .check{width:40px;height:48px}
+#list .lrow.one .check span{width:22px;height:22px}
+#list .lrow.one .check svg{width:14px;height:14px}
+#list .lrow.one .head{min-height:48px;padding:0 6px 0 0}
+#list .lrow.one .nm{font-size:0.96875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gu{flex:none;font-size:0.78rem;color:var(--muted);padding-right:8px;white-space:nowrap}
+.bang{flex:none;color:var(--danger);font-weight:700;margin-left:2px}
+#list .lrow.one .sub{padding:0 0 8px 40px}
 .lst{flex:none;font-size:0.8125rem;color:var(--muted);white-space:nowrap}
 .lst.sched{color:var(--ink);font-weight:700}
 .lst.cancel{text-decoration:line-through}
-.stamp{display:inline-block;border:2px solid var(--accent);color:var(--accent);border-radius:4px;padding:2px 8px;font-weight:700;font-size:0.8125rem;letter-spacing:0.08em;transform:rotate(-5deg);opacity:.9}
-.stamp.sm{padding:1px 6px;font-size:0.75rem;letter-spacing:0.04em;transform:rotate(-4deg)}
+.stc{flex:none;min-width:58px;display:flex;justify-content:flex-end;align-items:center;gap:3px}
+.stamp{display:inline-grid;place-items:center;width:46px;height:46px;border-radius:50%;border:2px solid var(--accent);box-shadow:inset 0 0 0 2px var(--bg),inset 0 0 0 3.5px var(--accent);color:var(--accent);font-weight:700;font-size:0.6875rem;line-height:1.15;text-align:center;letter-spacing:0;transform:rotate(-12deg);opacity:.9}
+.stamp.sm{width:42px;height:42px}
 #list .flag{background:none;border-radius:0;padding:0;font-weight:600}
 #list .flag.ok{color:var(--done)}
 #list .flag.warn{color:var(--talk)}
@@ -279,6 +290,10 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 #list .sh .mb{border-radius:0}
 #list .sh .mb b{border-radius:0}
 #list .empty{border:0;border-top:2px solid var(--ink);border-radius:0;padding:16px 0}
+#list .rbox{background:none;border:0;border-radius:0;border-top:2px solid var(--ink);padding:10px 0 0}
+#list .tr-body .sa{margin-top:6px}
+#list .mini{border-radius:4px}
+#list .rform2 input,#list .rform2 select{border-radius:4px}
 .search input,.filters select{border-radius:4px}
 .datebar{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding-left:0}
 .chip{border-radius:4px}
@@ -330,7 +345,7 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .tempty{margin-top:18px;padding:16px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px;align-items:flex-start}
 .tempty b{font-size:1.0625rem}
 .tempty p{margin:0;color:var(--muted)}
-.today .rbox{margin-top:10px;background:none;border:0;border-radius:0;border-top:1px solid var(--line);padding:12px 0 0}
+#list .today .rbox{margin-top:10px;background:none;border:0;border-radius:0;border-top:1px solid var(--line);padding:12px 0 0}
 .today .rbox .rh{font-size:0.9375rem}
 /* 분전반 결선도 */
 .wbody{padding-block:4px 6rem}
@@ -804,24 +819,27 @@ function renderFilters(){
 }
 function pillHTML(s){return '<span class="pill '+SCLS[s.status]+'">'+esc(s.status)+'</span>';}
 /* 목록·계획의 점포 줄: 상태는 글자(점검완료만 작은 도장) */
-function lstHTML(s){return s.status==='점검완료'?'<span class="stamp sm">점검완료</span>':'<span class="lst '+SCLS[s.status]+'">'+esc(s.status)+'</span>';}
+function lstHTML(s){return '<span class="stc">'+(s.status==='점검완료'?'<span class="stamp sm" role="img" aria-label="점검완료">점검<br>완료</span>':'<span class="lst '+SCLS[s.status]+'">'+esc(s.status)+'</span>')+'</span>';}
 function addBtn(s){var i=ui.draft.stops.indexOf(s.id);return '<button type="button" class="addb'+(i>=0?' on':'')+'" data-act="radd" data-id="'+esc(s.id)+'" aria-pressed="'+(i>=0)+'" aria-label="'+esc(s.name)+(i>=0?' 동선에서 빼기':' 동선에 담기')+'">'+(i>=0?(i+1):'＋')+'</button>';}
 function cardHTML(s,compact,hd){
-  var r=region(s.address);var open=ui.open===s.id;
-  var flag=plannedFlag(s)+assignFlag(s),pl=s.planned,metaHTML,sub='';
-  if(compact){
-    if(pl&&hd){var f=mdList(pl)[0];if(f&&+mdDate(f)===+hd)pl=timeText(pl);}
-    metaHTML='<span>'+esc(r.gu||r.sido)+'</span>'+(pl?'<span class="when">'+(hd?'':'예정 ')+esc(pl)+'</span>':'')+flag;
-  }else{
-    metaHTML='<span class="code">'+esc(s.code)+'</span><span>'+esc(s.type)+'</span><span>'+esc(r.gu||r.sido)+'</span>';
-    sub=(pl||flag)?'<div class="sub">'+(pl?'예정 <span class="when">'+esc(pl)+'</span>':'')+flag+'</div>':'';
+  var r=region(s.address);var open=ui.open===s.id,fin=s.status==='점검완료';
+  var pf=plannedFlag(s),flag=pf+assignFlag(s),pl=s.planned,metaHTML,sub='';
+  var chk='<button type="button" class="check" data-act="check" data-id="'+esc(s.id)+'" aria-pressed="'+fin+'" aria-label="'+esc(s.name)+' 점검완료 표시"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>';
+  if(!compact){
+    /* 목록 = 한 줄 표: 이름, 구, 상태만 한 줄에. 예정일·담당·코드는 눌러서 펼치면 보인다. 예정일이 지났으면 상태 옆에 !만 남긴다 */
+    sub='<div class="sub"><span class="code">'+esc(s.code)+'</span><span>'+esc(s.type)+'</span>'+(pl?'<span>예정 <span class="when">'+esc(pl)+'</span></span>':'')+flag+'</div>';
+    return '<article class="card lrow one'+(fin?' fin':'')+'" data-id="'+esc(s.id)+'"><div class="row1">'+chk+
+     '<button type="button" class="head" data-act="toggle" data-id="'+esc(s.id)+'" aria-expanded="'+open+'"><span class="nm">'+esc(s.name)+'</span></button>'+
+     '<span class="gu">'+esc(r.gu||r.sido)+'</span>'+lstHTML(s)+(!fin&&pf.indexOf('flag bad')>=0?'<b class="bang" role="img" aria-label="예정일 지남">!</b>':'')+
+     '</div>'+(open?sub+detailHTML(s):'')+'</article>';
   }
-  return '<article class="card lrow'+(compact?' compact':'')+(s.status==='점검완료'?' fin':'')+'" data-id="'+esc(s.id)+'">'+
-   '<div class="row1">'+
-    '<button type="button" class="check" data-act="check" data-id="'+esc(s.id)+'" aria-pressed="'+(s.status==='점검완료')+'" aria-label="'+esc(s.name)+' 점검완료 표시"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>'+
+  if(pl&&hd){var f=mdList(pl)[0];if(f&&+mdDate(f)===+hd)pl=timeText(pl);}
+  metaHTML='<span>'+esc(r.gu||r.sido)+'</span>'+(pl?'<span class="when">'+(hd?'':'예정 ')+esc(pl)+'</span>':'')+flag;
+  return '<article class="card lrow compact'+(fin?' fin':'')+'" data-id="'+esc(s.id)+'">'+
+   '<div class="row1">'+chk+
     '<button type="button" class="head" data-act="toggle" data-id="'+esc(s.id)+'" aria-expanded="'+open+'"><span class="nm">'+esc(s.name)+'</span><span class="meta">'+metaHTML+'</span></button>'+
     lstHTML(s)+(ui.view!=='list'?addBtn(s):'')+
-   '</div>'+sub+(open?detailHTML(s):'')+'</article>';
+   '</div>'+(open?detailHTML(s):'')+'</article>';
 }
 function detailHTML(s){
   var id=esc(s.id),q=encodeURIComponent(s.address||'');
@@ -1377,13 +1395,14 @@ function dayRoute(){
   sch.forEach(function(x,i){
     var s=x.s,nx=sch[i+1];if(nx&&pos[s.id]&&pos[nx.s.id])total+=km(pos[s.id],pos[nx.s.id]);
     var g=region(s.address),id=esc(s.id),q=encodeURIComponent(s.address||'');
-    rows+='<li class="stop"><span class="sn">'+(i+1)+'</span><div class="si"><b>'+esc(s.name)+'</b><span class="note tm">'+fmtT(x.a)+'-'+fmtT(x.e)+(x.trav?' · 이동 약 '+x.trav+'분':'')+'</span><span class="meta"><span>'+esc(g.sido+' '+g.gu)+'</span>'+pillHTML(s)+'</span></div>'+
-     '<div class="sa"><button type="button" class="mini" data-act="rup" data-id="'+id+'" aria-label="위로"'+(i?'':' disabled')+'>↑</button><button type="button" class="mini" data-act="rdown" data-id="'+id+'" aria-label="아래로"'+(i<sch.length-1?'':' disabled')+'>↓</button><button type="button" class="mini" data-act="radd" data-id="'+id+'" aria-label="빼기">✕</button><a class="mini" target="_blank" rel="noopener" href="https://map.naver.com/p/search/'+q+'" aria-label="지도">지도</a></div></li>';
+    var fin=s.status==='점검완료';
+    rows+='<li class="tr '+(fin?'done':'todo')+'"><div class="tr-tm">'+fmtT(x.a)+'<small>'+esc(g.gu||g.sido)+'</small></div><div class="tr-rail"><i class="tr-dot"></i></div><div class="tr-body"><b class="nm">'+esc(s.name)+'</b><span class="tr-meta">'+esc(s.status)+(x.trav?' · 이동 약 '+x.trav+'분':'')+' · '+fmtT(x.e)+'까지</span>'+
+     '<div class="sa"><button type="button" class="mini" data-act="rup" data-id="'+id+'" aria-label="위로"'+(i?'':' disabled')+'>↑</button><button type="button" class="mini" data-act="rdown" data-id="'+id+'" aria-label="아래로"'+(i<sch.length-1?'':' disabled')+'>↓</button><button type="button" class="mini" data-act="radd" data-id="'+id+'" aria-label="빼기">✕</button><a class="mini" target="_blank" rel="noopener" href="https://map.naver.com/p/search/'+q+'" aria-label="지도">지도</a></div></div></li>';
   });
   var h='<section class="rbox"><h3 class="rh">이 날의 동선</h3>'+
    '<div class="rform2"><label>첫 점포 도착<input type="time" id="rStart" data-rf="start" value="'+esc(d.start||'09:00')+'"></label><label>점포당 작업시간<select id="rWork" data-rf="work">'+[30,45,60,90,120,180].map(function(m){return '<option value="'+m+'"'+((parseInt(d.work,10)||60)===m?' selected':'')+'>'+(m>=60?(Math.floor(m/60))+'시간'+(m%60?' 30분':''):m+'분')+'</option>';}).join('')+'</select></label></div>';
   if(sch.length){
-    h+='<p class="note" style="margin:0">'+sch.length+'곳 · 예상 종료 <b>'+fmtT(sch[sch.length-1].e)+'</b>'+(total?' · 직선거리 약 '+Math.round(total)+'km':'')+' (이동시간은 직선거리로 잡은 추정)</p><ol class="stops">'+rows+'</ol>'+
+    h+='<p class="note" style="margin:0">'+sch.length+'곳 · 예상 종료 <b>'+fmtT(sch[sch.length-1].e)+'</b>'+(total?' · 직선거리 약 '+Math.round(total)+'km':'')+' (이동시간은 직선거리로 잡은 추정)</p><ol class="tlist">'+rows+'</ol>'+
      '<div class="btns"><button type="button" class="btn" data-act="rnear">가까운 순 정렬</button><button type="button" class="btn" data-act="rcopy">순서 복사</button><button type="button" class="btn danger" data-act="rclear">비우기</button></div>';
   }else h+='<p class="note" style="margin:0">아직 담은 점포가 없어요. 아래에서 점포를 골라 담으세요. 순서와 시간은 자동으로 저장돼요.</p>';
   return h+'</section>';
