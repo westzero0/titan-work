@@ -210,7 +210,8 @@ main{padding-block:4px calc(6rem + env(safe-area-inset-bottom,0px))}
 .addb.on{background:var(--accent);color:var(--accent-ink)}
 .subh{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .btn.sm{min-height:44px;font-size:0.8125rem;padding:0 12px;letter-spacing:0;color:var(--accent);border-color:var(--accent)}
-.datebar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:0.875rem}
+.datebar .btn{flex:none;white-space:nowrap}
+.datebar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;padding:4px 4px 4px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:0.875rem}
 
 /* 캘린더 */
 .calh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
@@ -1284,7 +1285,7 @@ function selectDate(k){
   ui.draft=SafetyCore.draftOf(routeOf(ds,me()),ds);
 }
 function curLabel(){return fmtD(new Date(pdate(ui.draft.date)||+today0()));}
-function dateBar(){return '<div class="datebar"><span>＋ 버튼은 <b>'+curLabel()+'</b> 동선에 담겨요</span><button type="button" class="btn sm" data-act="view" data-v="cal">날짜 바꾸기</button></div>';}
+function dateBar(){return '<div class="datebar"><span>＋는 <b>'+curLabel()+'</b> 동선에 담겨요</span><button type="button" class="btn sm" data-act="view" data-v="cal">날짜 바꾸기</button></div>';}
 function dayRoute(){
   var d=ui.draft,pos=geoAll();d.stops=d.stops.filter(find);
   var sch=routeSched(d.stops,d.start,d.work),total=0,rows='';
