@@ -1015,21 +1015,21 @@ function geoAll(){
   geoSig=sig;geoCache=out;return out;
 }
 function proj(p){return [(p[1]-MX)*MC*MK,(MY-p[0])*MK];}
-function km(a,b){var t=Math.PI/180,dl=(b[0]-a[0])*t,dn=(b[1]-a[1])*t;var h=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a[0]*t)*Math.cos(b[0]*t)*Math.sin(dn/2)*Math.sin(dn/2);return 12742*Math.asin(Math.sqrt(h));}
+function km(a,b){return SafetyCore.km(a,b);}
 function inRoute(id){return ui.draft.stops.indexOf(id)>=0;}
 function saveDraft(){
-  var d=ui.draft,id=d.id||('r'+d.date+'_'+me());d.stops=d.stops.filter(Boolean);
+  var d=ui.draft;d.stops=d.stops.filter(Boolean);
   if(!d.stops.length&&!d.id)return;
-  var old=null;routes.forEach(function(x){if(x.id===id)old=x;});
-  var r={id:id,name:d.name||'',owner:me(),date:d.date,start:d.start||'09:00',work:d.work||60,stops:d.stops.slice(),created:(old&&old.created)||Date.now()};
+  var id=d.id||SafetyCore.routeId(d.date,me()),old=null;routes.forEach(function(x){if(x.id===id)old=x;});
+  var r=SafetyCore.buildRoute(d,me(),old,Date.now());
   routes=routes.filter(function(x){return x.id!==id;});routes.push(r);d.id=id;persistRoute(r);
 }
 function loadDraft(){selectDate(+today0());}
 /* ---------- 담당자: 누가 어느 날 어디 가는지 ---------- */
 function me(){return window.TITAN_USER||'';}
-function routeOf(ds,who){var r=null;routes.forEach(function(x){if(!r&&x.date===ds&&(x.owner||'')===who)r=x;});return r;}
-function othersOn(ds){return routes.filter(function(x){return x.date===ds&&(x.owner||'')!==me()&&(x.stops||[]).length;});}
-function takenBy(id,ds){var o='';routes.forEach(function(x){if(!o&&x.date===ds&&(x.owner||'')!==me()&&(x.stops||[]).indexOf(id)>=0)o=x.owner||'미정';});return o;}
+function routeOf(ds,who){return SafetyCore.routeOf(routes,ds,who);}
+function othersOn(ds){return SafetyCore.othersOn(routes,ds,me());}
+function takenBy(id,ds){return SafetyCore.takenBy(routes,id,ds,me());}
 function assignOn(s,k){var o=takenBy(s.id,dateStr(k));return o?'<span class="flag warn">'+esc(o)+' 동선에 있음</span>':'';}
 function assignFlag(s){
   var best=SafetyCore.nextRoute(routes,s.id,dateStr(+today0()));
@@ -1114,16 +1114,40 @@ function toggleStop(id){
   saveDraft();
   render(true);
 }
-function orderNear(list,start){
-  var pos=geoAll(),left=list.slice(),out=[],cur=start;
-  while(left.length){
-    var bi=0,bd=1e9;
-    left.forEach(function(s,i){var p=pos[s.id];var d=(cur&&p)?km(cur,p):i;if(d<bd){bd=d;bi=i;}});
-    var n=left.splice(bi,1)[0];out.push(n);cur=pos[n.id]||cur;
-  }
-  return out;
-}
+function orderNear(list,start){return SafetyCore.orderNear(list,geoAll(),start);}
 function remaining(s){return SafetyCore.remaining(s);}
+/* ---- 클릭 한 번에 해당하는 동작들 (click 처리는 이 이름들만 부른다) ---- */
+function nearAdd(){
+  var o=nearList(3);if(!o.list.length)return;
+  orderNear(o.list.map(function(x){return x.s;}),geoAll()[o.from.id]).forEach(function(x){ui.draft.stops.push(x.id);});
+  saveDraft();toast('가까운 '+o.list.length+'곳을 담았어요');render(true);
+}
+function moveStop(id,dir){
+  var st=ui.draft.stops,i=st.indexOf(id),j=i+dir;
+  if(i<0||j<0||j>=st.length)return;
+  var x=st[i];st[i]=st[j];st[j]=x;saveDraft();render(true);
+}
+function sortStopsNear(){
+  var pos=geoAll(),l=ui.draft.stops.map(find).filter(Boolean);
+  if(l.length<3){toast('3곳 이상일 때 정렬해요');return;}
+  var first=l.shift(),o=[first].concat(orderNear(l,pos[first.id]||null));
+  ui.draft.stops=o.map(function(s){return s.id;});saveDraft();render(true);toast('첫 점포 기준으로 가까운 순으로 정렬했어요');
+}
+function goToday(toCal){
+  var n=new Date();ui.cal.y=n.getFullYear();ui.cal.m=n.getMonth();selectDate(+today0());
+  if(toCal)ui.view='cal';
+  render(true);if(toCal)window.scrollTo(0,0);
+}
+function setDay(id,k){
+  var s=find(id);if(!s)return;
+  var d=new Date(k),tx=timeText(s.planned),md=(d.getMonth()+1)+'/'+d.getDate(),patch={planned:md+(tx?' '+tx:'')};
+  if(s.status==='미정'||s.status==='점포협의'){patch.status='일정확정';patch.prev=s.status;}
+  updateStore(id,patch);toast(s.name+' '+md+'로 정했어요');
+}
+function resetProgress(){
+  var l=stores.map(function(s){return Object.assign({},s,{status:(s.status==='점검취소'?'점검취소':'미정'),prev:'',memo:''});});
+  replaceAll(l,false).then(function(){toast('진행 기록을 초기화했어요');});
+}
 function addRegion(v){
   if(!v){toast('먼저 지역을 골라 주세요');return;}
   var key=v.slice(2),isS=v.indexOf('S:')===0;
@@ -1190,12 +1214,7 @@ function timeOf(str){
 }
 function timeText(str){var m=/(오전|오후)?\s*\d{1,2}\s*시(\s*\d{1,2}\s*분)?|\d{1,2}:\d{2}/.exec(String(str||''));return m?m[0]:'';}
 function routeSched(ids,startStr,work){
-  var pos=geoAll(),cur=toMin(startStr||'09:00'),w=parseInt(work,10)||60,out=[],prev=null;
-  (ids||[]).map(find).filter(Boolean).forEach(function(s){
-    var trav=0;if(prev&&pos[prev.id]&&pos[s.id])trav=Math.max(5,Math.round(km(pos[prev.id],pos[s.id])*1.4/45*60));
-    cur+=trav;out.push({s:s,trav:trav,a:cur,e:cur+w});cur+=w;prev=s;
-  });
-  return out;
+  return SafetyCore.schedule((ids||[]).map(find).filter(Boolean),geoAll(),toMin(startStr||'09:00'),work);
 }
 function projDates(s,y,mo){
   var ds=mdList(s.holidays).map(mdDate);if(!ds.length)return [];
@@ -1227,8 +1246,8 @@ function crow(s,k,past,est){
   return '<div class="crow"><div class="si"><b>'+esc(s.name)+'</b><span class="meta"><span>'+esc(g.sido+' '+g.gu)+'</span>'+pillHTML(s)+(s.planned?'<span>예정 '+esc(s.planned)+'</span>':'')+assignOn(s,k)+'</span></div>'+addBtn(s)+(past?'':'<button type="button" class="btn sm" data-act="setday" data-id="'+id+'" data-k="'+k+'">이 날로 정하기</button>')+'</div>';
 }
 function selectDate(k){
-  ui.cal.sel=k;var ds=dateStr(k),r=routeOf(ds,me());
-  ui.draft=r?{id:r.id,name:r.name||'',date:ds,start:r.start||'09:00',work:r.work||60,stops:(r.stops||[]).slice()}:{id:null,name:'',date:ds,start:'09:00',work:60,stops:[]};
+  ui.cal.sel=k;var ds=dateStr(k);
+  ui.draft=SafetyCore.draftOf(routeOf(ds,me()),ds);
 }
 function curLabel(){return fmtD(new Date(pdate(ui.draft.date)||+today0()));}
 function dateBar(){return '<div class="datebar"><span>＋ 버튼은 <b>'+curLabel()+'</b> 동선에 담겨요</span><button type="button" class="btn sm" data-act="view" data-v="cal">날짜 바꾸기</button></div>';}
@@ -1389,25 +1408,25 @@ document.addEventListener('click',function(e){
     case 'wset':(function(){var r=wEnsure().rows[+b.getAttribute('data-i')],k=b.getAttribute('data-k'),v=b.getAttribute('data-v');if(!r)return;r[k]=(String(r[k])===v)?'':v;wSave();renderW();})();break;
     case 'wadd':(function(){wEnsure().rows.push({name:'',type:'',p:'',at:'',af:'',sq:'',l1:'',l2:'',l3:''});wSave();renderW();var rows=$('wsheet').querySelectorAll('.wrow'),last=rows[rows.length-1];if(last){var sh2=$('wsheet');sh2.scrollTop+=last.getBoundingClientRect().top-64;last.querySelector('[data-wr=name]').focus({preventScroll:true});}})();break;
     case 'wdel':confirmAct(b,function(){var sh=wEnsure();sh.rows.splice(+id,1);wSave();renderW();});break;
-    case 'near-add':(function(){var o=nearList(3);if(!o.list.length)return;orderNear(o.list.map(function(x){return x.s;}),geoAll()[o.from.id]).forEach(function(x){ui.draft.stops.push(x.id);});saveDraft();toast('가까운 '+o.list.length+'곳을 담았어요');render(true);})();break;
+    case 'near-add':nearAdd();break;
     case 'openstore':ui.q='';ui.status='all';ui.region='all';ui.type='all';$('q').value='';ui.open=id;ui.view='list';try{localStorage.setItem('anjeon-view','list');}catch(e){}render(true);(function(){var el=document.querySelector('.card[data-id="'+(window.CSS&&CSS.escape?CSS.escape(id):id)+'"]');if(el&&el.scrollIntoView)el.scrollIntoView({block:'center'});})();break;
     case 'mapmove':ui.mapMove=!ui.mapMove;b.setAttribute('aria-pressed',String(!!ui.mapMove));b.textContent='✋ 손가락으로 지도 움직이기 '+(ui.mapMove?'켜짐':'꺼짐');$('mapsvg').classList.toggle('mv',!!ui.mapMove);toast(ui.mapMove?'지도를 손가락으로 움직여요. 화면 스크롤은 지도 밖에서 하세요.':'지도 위에서도 화면이 스크롤돼요.');break;
     case 'zoom':if(mv){var cc={x:mv.x+mv.w/2,y:mv.y+mv.h/2};zoomAt(cc.x,cc.y,b.getAttribute('data-v')==='in'?1/1.6:1.6);drawMap();}break;
     case 'fit':(function(){var v=b.getAttribute('data-v'),pos=geoAll(),pts=[];
       stores.forEach(function(s){if(!pos[s.id])return;var ok=false;if(v==='all')ok=true;else if(v==='vis')ok=!!mapVis[s.id];else if(v==='route')ok=inRoute(s.id);else ok=FITS[v].indexOf(region(s.address).sido)>=0;if(ok)pts.push(proj(pos[s.id]));});
       fitPts(pts);drawMap();})();break;
-    case 'rup':case 'rdown':(function(){var st=ui.draft.stops,i=st.indexOf(id),j=a==='rup'?i-1:i+1;if(i<0||j<0||j>=st.length)return;var x=st[i];st[i]=st[j];st[j]=x;saveDraft();render(true);})();break;
+    case 'rup':case 'rdown':moveStop(id,a==='rup'?-1:1);break;
     case 'radd-region':addRegion(ui.rsel);break;
     case 'radd-gu':addRegion(b.getAttribute('data-k'));break;
-    case 'rnear':(function(){var pos=geoAll(),l=ui.draft.stops.map(find).filter(Boolean);if(l.length<3){toast('3곳 이상일 때 정렬해요');return;}var first=l.shift();var o=[first].concat(orderNear(l,pos[first.id]||null));ui.draft.stops=o.map(function(s){return s.id;});saveDraft();render(true);toast('첫 점포 기준으로 가까운 순으로 정렬했어요');})();break;
+    case 'rnear':sortStopsNear();break;
     case 'rcopy':copyText(routeText());break;
     case 'rclear':confirmAct(b,function(){ui.draft.stops=[];saveDraft();render(true);});break;
     case 'cal-prev':case 'cal-next':(function(){var c=ui.cal,m=c.m+(a==='cal-next'?1:-1);c.y+=Math.floor(m/12);c.m=((m%12)+12)%12;render(true);})();break;
-    case 'cal-today':(function(){var n=new Date();ui.cal.y=n.getFullYear();ui.cal.m=n.getMonth();selectDate(+today0());render(true);})();break;
-    case 'today-make':(function(){var n=new Date();ui.cal.y=n.getFullYear();ui.cal.m=n.getMonth();selectDate(+today0());ui.view='cal';render(true);window.scrollTo(0,0);})();break;
+    case 'cal-today':goToday(false);break;
+    case 'today-make':goToday(true);break;
     case 'cal-sel':selectDate(+b.getAttribute('data-k'));render(true);(function(){var el=$('cday');if(el)el.scrollIntoView({block:'start',behavior:'smooth'});})();break;
     case 'cal-top':window.scrollTo({top:0,behavior:'smooth'});break;
-    case 'setday':(function(){var s=find(id);if(!s)return;var d=new Date(+b.getAttribute('data-k')),tx=timeText(s.planned);var patch={planned:(d.getMonth()+1)+'/'+d.getDate()+(tx?' '+tx:'')};if(s.status==='미정'||s.status==='점포협의'){patch.status='일정확정';patch.prev=s.status;}updateStore(id,patch);toast(s.name+' '+(d.getMonth()+1)+'/'+d.getDate()+'로 정했어요');})();break;
+    case 'setday':setDay(id,+b.getAttribute('data-k'));break;
     case 'status':setStatus(id,b.getAttribute('data-v'));break;
     case 'copy':copyText(b.getAttribute('data-t'));break;
     case 'chip':ui.status=(ui.status===b.getAttribute('data-v'))?'all':b.getAttribute('data-v');render(true);break;
@@ -1419,7 +1438,7 @@ document.addEventListener('click',function(e){
     case 'export-copy':exportCopy();break;
     case 'import-go':applyImport();break;
     case 'import-cancel':ui.imp=null;renderSheet();break;
-    case 'reset-progress':confirmAct(b,function(){var l=stores.map(function(s){return Object.assign({},s,{status:(s.status==='점검취소'?'점검취소':'미정'),prev:'',memo:''});});replaceAll(l,false).then(function(){toast('진행 기록을 초기화했어요');});});break;
+    case 'reset-progress':confirmAct(b,resetProgress);break;
     case 'wipe':confirmAct(b,function(){replaceAll([],true).then(function(){toast('모든 점포를 지웠어요');});});break;
   }
 });
