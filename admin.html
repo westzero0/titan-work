@@ -1966,7 +1966,7 @@ async function sendToGas(action, data) {
                     renderScheduleList();
                 }, 300);
             }
-            else if(action.includes('Worker')) loadAdminData();
+            else if(action.includes('Worker') || action === 'adminUpdateStatus' || action === 'adminUpdatePassword') loadAdminData();
             else loadClientManagement();
 
             if(action === 'adminAddClient') {
