@@ -1994,11 +1994,13 @@ async function sendToGas(action, data) {
                 document.getElementById('c_site').value = "";
                 document.getElementById('c_addr').value = "";
             }
-        } else {
-            toastErr("⚠️ 서버 응답 오류: " + text);
+            return true;
         }
+        toastErr("⚠️ 서버 응답 오류: " + text);
+        return false;
     } catch (e) {
         toastErr("통신 에러: " + e.message);
+        return false;
     }
 }
 
@@ -2666,9 +2668,10 @@ function toggleSelection(type, item) {
         btn.disabled = true;
 
         try {
-            await sendToGas("updateClientInfoFull", { client, site, address, note, status, deadline });
-            alert("✅ 정보가 성공적으로 수정되었습니다.");
-            closeClientEditModal();
+            if (await sendToGas("updateClientInfoFull", { client, site, address, note, status, deadline })) {
+                alert("✅ 정보가 성공적으로 수정되었습니다.");
+                closeClientEditModal();
+            }
         } catch (e) {
             toastErr("수정 실패: 인터넷 연결을 확인하세요.");
         } finally {
@@ -3253,15 +3256,16 @@ async function submitPayment() {
     btn.disabled = true;
 
     try {
-        await sendToGas('addPayment', {
+        const saved = await sendToGas('addPayment', {
             rowId: currentPaymentData.rowId,
             addAmount: amount,
             newHistory: newHistory
         });
-
-        alert('✅ 성공적으로 기록되었습니다.');
-        closePaymentModal();
-        loadReceivables();
+        if (saved) {
+            alert('✅ 성공적으로 기록되었습니다.');
+            closePaymentModal();
+            loadReceivables();
+        }
     } catch(e) {
         toastErr('서버 통신 실패');
     } finally {
