@@ -765,6 +765,26 @@
         const GAS_URL = "https://script.google.com/macros/s/AKfycbysyoS6gXSfkSCFYFykxzlTOQkDwRJOaE5g7OkNvSZy8xVvesKdi95coOu33bgeRdqs/exec"; // 👈 꼭 본인 주소로 수정하세요!
 // 전역 변수 선언 (에러 방지용)
     let calendar = null;
+    // 저장·삭제·불러오기 실패는 말없이 넘기지 말고 화면 아래에 빨간 토스트로 알린다 (누르면 닫힘, 7초 뒤 자동 닫힘)
+    function toastErr(msg) {
+        console.error(msg);
+        try {
+            let box = document.getElementById('err-toast-box');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'err-toast-box';
+                box.style.cssText = 'position:fixed; left:12px; right:12px; bottom:calc(env(safe-area-inset-bottom,0px) + 76px); z-index:99999; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none;';
+                document.body.appendChild(box);
+            }
+            const t = document.createElement('div');
+            t.setAttribute('role', 'alert');
+            t.textContent = msg;
+            t.style.cssText = 'max-width:460px; background:#b91c1c; color:#fff; padding:12px 16px; border-radius:10px; font-size:0.9rem; font-weight:600; line-height:1.4; box-shadow:0 6px 20px rgba(0,0,0,0.3); pointer-events:auto; cursor:pointer; word-break:keep-all; overflow-wrap:break-word; white-space:pre-line;';
+            t.onclick = () => t.remove();
+            box.appendChild(t);
+            setTimeout(() => t.remove(), 7000);
+        } catch (_) { alert(msg); }
+    }
     let swiper = null;
     let globalScheduleData = [];
     let globalClientData = [];
@@ -838,7 +858,7 @@ async function loadQuoteProgress() {
             renderQuoteProgressList();
         }
     } catch (e) {
-        console.error('견적 진행 현황 로딩 실패:', e);
+        console.error('견적 진행 현황 로딩 실패:', e); toastErr("⚠️ 견적 진행 현황을 불러오지 못했어요.");
         if (!cached && container) container.innerHTML = '<div style="color:#dc2626; text-align:center; padding:20px;">데이터 연결 실패</div>';
     }
 }
@@ -855,7 +875,7 @@ async function loadSiteMaterialsUsage() {
             renderQuoteProgressList();
         }
     } catch (e) {
-        console.error('사용자재 조회 실패', e);
+        console.error('사용자재 조회 실패', e); toastErr("⚠️ 사용자재 조회에 실패했어요.");
     }
 }
 
@@ -1083,10 +1103,10 @@ async function updateQuoteProgressField(client, site, field, value, chipEl) {
             localStorage.setItem('titan_quote_progress', JSON.stringify(quoteProgressData));
             renderQuoteProgressList();
         } else {
-            alert('❌ 갱신 실패: ' + (result.message || ''));
+            toastErr('❌ 갱신 실패: ' + (result.message || ''));
         }
     } catch (e) {
-        alert('🚨 통신 에러: ' + e.message);
+        toastErr('🚨 통신 에러: ' + e.message);
     } finally {
         if (chipEl) chipEl.style.opacity = '1';
     }
@@ -1256,7 +1276,7 @@ var calendarMode = 'work';
             openModal("edit", null, decodedData);
         } catch (e) {
             console.error("데이터 복구 에러:", e);
-            alert("일정 데이터를 불러오는 중 오류가 발생했습니다. 특수문자를 확인해주세요.");
+            toastErr("일정 데이터를 불러오는 중 오류가 발생했습니다. 특수문자를 확인해주세요.");
         }
     }
 
@@ -1904,7 +1924,7 @@ async function saveSchedule(mode) {
     try {
         await sendToGas(action, dataToSend);
     } catch (e) {
-        alert("⚠️ 저장에 실패했습니다.");
+        toastErr("⚠️ 저장에 실패했습니다.");
     } finally {
         if (activeBtn) { activeBtn.innerText = mode === 'add' ? "저장" : "수정"; activeBtn.disabled = false; }
     }
@@ -1922,7 +1942,7 @@ async function saveSchedule(mode) {
         await sendToGas('deleteSchedule', { rowId: rowId });
     } catch (e) {
         console.error("삭제 실패:", e);
-        alert("⚠️ 삭제 중 오류가 발생했습니다.");
+        toastErr("⚠️ 삭제 중 오류가 발생했습니다.");
     }
 }
 
@@ -1975,10 +1995,10 @@ async function sendToGas(action, data) {
                 document.getElementById('c_addr').value = "";
             }
         } else {
-            alert("⚠️ 서버 응답 오류: " + text);
+            toastErr("⚠️ 서버 응답 오류: " + text);
         }
     } catch (e) {
-        alert("통신 에러: " + e.message);
+        toastErr("통신 에러: " + e.message);
     }
 }
 
@@ -1999,7 +2019,7 @@ async function loadScheduleData() {
             renderAfterLoad();
         }
     } catch (e) {
-        console.error("일정 동기화 실패", e);
+        console.error("일정 동기화 실패", e); toastErr("⚠️ 일정 동기화에 실패했어요. 인터넷을 확인해 주세요.");
     }
 }
 
@@ -2090,7 +2110,7 @@ async function loadClientManagement() {
             console.log("🔄 현장/거래처 캐시 업데이트 완료");
         }
     } catch (e) {
-        console.error("거래처 로딩 실패:", e);
+        console.error("거래처 로딩 실패:", e); toastErr("⚠️ 거래처 목록을 불러오지 못했어요.");
         if(container && !cached) container.innerHTML = '<div style="color:#dc2626; text-align:center; padding:20px;">데이터 연결 실패</div>';
     }
     loadUnregisteredSites();
@@ -2127,7 +2147,7 @@ async function registerUnregisteredSite(btn) {
         if (typeof r === 'string' && r.includes('SUCCESS')) { await loadClientManagement(); return; }
         throw new Error(typeof r === 'string' ? r : '응답 오류');
     } catch (e) {
-        alert("⚠️ 등록 실패: " + e.message);
+        toastErr("⚠️ 등록 실패: " + e.message);
         btn.disabled = false; btn.innerText = "등록";
     }
 }
@@ -2650,7 +2670,7 @@ function toggleSelection(type, item) {
             alert("✅ 정보가 성공적으로 수정되었습니다.");
             closeClientEditModal();
         } catch (e) {
-            alert("수정 실패: 인터넷 연결을 확인하세요.");
+            toastErr("수정 실패: 인터넷 연결을 확인하세요.");
         } finally {
             btn.innerText = "저장하기";
             btn.disabled = false;
@@ -2671,7 +2691,7 @@ function toggleSelection(type, item) {
             localStorage.setItem('titan_clients', JSON.stringify(globalTitanData));
             renderClientList();
             renderRegistrationClientChips();
-        } catch (e) { alert("⚠️ 삭제 실패: " + e.message); }
+        } catch (e) { toastErr("⚠️ 삭제 실패: " + e.message); }
     }
     async function changePassword(n) { const p = prompt("새 비번:"); if (p) await sendToGas('adminUpdatePassword', { userName: n, newPw: p }); }
     async function updateStatus(n, s) { if (confirm("상태변경?")) await sendToGas('adminUpdateStatus', { userName: n, status: s }); }
@@ -2693,7 +2713,7 @@ function toggleSelection(type, item) {
             if (kind === 'vehicle') { const v = vehicleRows.find(x => x.name === name); if (v) v.showInApp = checked; }
         } catch (e) {
             if (el) el.checked = !checked;
-            alert("⚠️ 저장 실패: " + e.message);
+            toastErr("⚠️ 저장 실패: " + e.message);
         }
     }
 
@@ -2715,7 +2735,7 @@ function toggleSelection(type, item) {
             const sc = document.getElementById('sched-car');
             if (sc) renderVehicleChips(sc.value);
         } catch (e) {
-            console.error("차량 목록 로딩 실패", e);
+            console.error("차량 목록 로딩 실패", e); toastErr("⚠️ 차량 목록을 불러오지 못했어요.");
         }
         renderVehicleAdmin();
     }
@@ -2738,7 +2758,7 @@ function toggleSelection(type, item) {
 
     async function vehicleAction(action, data) {
         const r = await gasCall(action, data);
-        if (r !== 'SUCCESS') alert("⚠️ " + r);
+        if (r !== 'SUCCESS') toastErr("⚠️ " + r);
         await loadVehicles();
         return r === 'SUCCESS';
     }
@@ -3030,7 +3050,7 @@ async function loadReceivables() {
         document.getElementById('dash-receivables-brief').innerHTML = listHtml;
 
     } catch (e) {
-        console.error("수금 데이터 로드 실패", e);
+        console.error("수금 데이터 로드 실패", e); toastErr("⚠️ 수금 데이터를 불러오지 못했어요.");
     }
 }
 
@@ -3048,7 +3068,7 @@ async function loadActiveSitesOverview() {
         }
         renderActiveSitesOverview(result.data);
     } catch (e) {
-        console.error("활성 현장 개요 통신 실패", e);
+        console.error("활성 현장 개요 통신 실패", e); toastErr("⚠️ 활성 현장 개요를 불러오지 못했어요.");
         document.getElementById('overview-clients-container').innerHTML =
             '<div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; padding: 20px 10px; white-space: nowrap;">❌ 로드 실패</div>';
     }
@@ -3243,7 +3263,7 @@ async function submitPayment() {
         closePaymentModal();
         loadReceivables();
     } catch(e) {
-        alert('서버 통신 실패');
+        toastErr('서버 통신 실패');
     } finally {
         btn.innerText = "입금 완료 처리";
         btn.disabled = false;
