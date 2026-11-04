@@ -176,13 +176,13 @@ function unreg() {
     if (!Array.isArray(list) || !list.length) { $('unreg').innerHTML = ''; return; }
     $('unreg').innerHTML = `<div class="notice"><b>미등록 현장 ${list.length}건</b><span>직원이 일보에 직접 입력한 현장입니다. 맞으면 등록하세요.</span>`
       + list.map(u => `<span class="it">${esc(u.client)} / ${esc(u.site)} (${u.count}회)<button class="btn btn-sm" data-uc="${esc(u.client)}" data-us="${esc(u.site)}">등록</button></span>`).join('') + '</div>';
-  }).catch(() => {});
+  }).catch(e => toastErr('⚠️ 미등록 현장을 불러오지 못했어요: ' + e.message));
 }
 $('unreg').onclick = async e => {
   const b = e.target.closest('button[data-uc]'); if (!b) return;
   b.disabled = true; b.textContent = '등록 중';
   try { const r = await sendToGas('adminAddClient', { client: b.dataset.uc, site: b.dataset.us, address: '', note: '', deadline: '' }); if (!okRes(r)) throw 0; await load(); unreg(); }
-  catch (_) { b.disabled = false; b.textContent = '다시 시도'; }
+  catch (e) { b.disabled = false; b.textContent = '다시 시도'; toastErr('⚠️ 현장 등록에 실패했어요' + (e && e.message ? ': ' + e.message : '')); }
 };
 
 $('clients').onclick = e => { const b = e.target.closest('button'); if (b) { client = b.dataset.c; draw(); } };

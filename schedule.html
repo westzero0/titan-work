@@ -239,10 +239,10 @@ $('seg').onclick = e => { const b = e.target.closest('button'); if (!b) return; 
 
 // ---- 처음 불러오기: 저장된 값으로 먼저 그리고, 서버 값이 오면 갱신 ----
 draw();
-reload().catch(() => {});
-sendToGas('getQuoteMaster', {}).then(r => { workers = r.workers || []; panel(); }).catch(() => {});
-sendToGas('getVehicles', {}).then(r => { if (Array.isArray(r)) { vehicles = r; panel(); } }).catch(() => {});
-sendToGas('getTitanData', {}).then(r => { const d = r.titanData || r.result || r; ['message', 'status', 'result', 'undefined'].forEach(k => delete d[k]); clients = d; lsSet('titan_clients', d); panel(); }).catch(() => {});
+reload().catch(e => toastErr('⚠️ 일정을 불러오지 못했어요: ' + e.message));
+sendToGas('getQuoteMaster', {}).then(r => { workers = r.workers || []; panel(); }).catch(e => toastErr('⚠️ 직원 목록을 불러오지 못했어요: ' + e.message));
+sendToGas('getVehicles', {}).then(r => { if (Array.isArray(r)) { vehicles = r; panel(); } }).catch(e => toastErr('⚠️ 차량 목록을 불러오지 못했어요: ' + e.message));
+sendToGas('getTitanData', {}).then(r => { const d = r.titanData || r.result || r; ['message', 'status', 'result', 'undefined'].forEach(k => delete d[k]); clients = d; lsSet('titan_clients', d); panel(); }).catch(e => toastErr('⚠️ 거래처 목록을 불러오지 못했어요: ' + e.message));
 </script>
 </body>
 </html>

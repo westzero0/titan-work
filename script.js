@@ -2,7 +2,28 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
 }
 
-const APP_VERSION = "3.6"; // 👈 기능 수정할 때마다 이 숫자를 올리세요!
+// 저장·불러오기 실패는 말없이 넘기지 말고 화면 아래에 빨간 토스트로 알린다 (누르면 닫힘, 7초 뒤 자동 닫힘)
+function toastErr(msg) {
+    console.error(msg);
+    try {
+        let box = document.getElementById('err-toast-box');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'err-toast-box';
+            box.style.cssText = 'position:fixed; left:12px; right:12px; bottom:calc(env(safe-area-inset-bottom,0px) + 76px); z-index:99999; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none;';
+            document.body.appendChild(box);
+        }
+        const t = document.createElement('div');
+        t.setAttribute('role', 'alert');
+        t.textContent = msg;
+        t.style.cssText = 'max-width:460px; background:#b91c1c; color:#fff; padding:12px 16px; border-radius:10px; font-size:0.9rem; font-weight:600; line-height:1.4; box-shadow:0 6px 20px rgba(0,0,0,0.3); pointer-events:auto; cursor:pointer; word-break:keep-all; overflow-wrap:break-word; white-space:pre-line;';
+        t.onclick = () => t.remove();
+        box.appendChild(t);
+        setTimeout(() => t.remove(), 7000);
+    } catch (_) { alert(msg); }
+}
+
+const APP_VERSION = "3.7"; // 👈 기능 수정할 때마다 이 숫자를 올리세요!
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedVer = localStorage.getItem('titan_app_version');
@@ -382,7 +403,7 @@ async function loadAppChipListsWithBackgroundSync() {
             applyAppChipLists();
         }
     } catch (e) {
-        console.error('직원앱 표시 목록 로딩 실패:', e);
+        console.error('직원앱 표시 목록 로딩 실패:', e); toastErr("⚠️ 직원앱 표시 목록을 불러오지 못했어요. 직접 입력은 가능해요.");
         if (!appChipLists) { chipListsLoadFailed = true; applyAppChipLists(); } // 캐시도 없으면 오류 안내 (직접 입력은 가능)
     }
 }
@@ -441,7 +462,7 @@ function saveDraftNow() {
     try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraftData()));
     } catch (e) {
-        console.error('임시저장 실패', e);
+        console.error('임시저장 실패', e); toastErr("⚠️ 임시저장에 실패했어요.");
     }
 }
 
@@ -705,7 +726,7 @@ async function loadTitanDataWithBackgroundSync() {
             }
         }
     } catch (e) {
-        console.error("거래처 로딩 실패:", e);
+        console.error("거래처 로딩 실패:", e); toastErr("⚠️ 거래처 목록을 불러오지 못했어요.");
         hideSyncToast();
     }
 }
@@ -1072,7 +1093,7 @@ async function submitSiteStatusLog() {
         });
         loadSiteStatusLog(client, site, true); // 백그라운드 재동기화 (방금 쓴 내용이므로 캐시 무시)
     } catch (e) {
-        console.error('현장 현황 기록 등록 실패', e);
+        console.error('현장 현황 기록 등록 실패', e); toastErr("⚠️ 현황 기록 등록에 실패했어요. 다시 눌러 주세요.");
     } finally {
         btn.disabled = false;
     }
@@ -2640,7 +2661,7 @@ async function loadExpandedSiteLog(client, site, force = false) {
         expandedSiteLogs = Array.isArray(result) ? result : (result.data || []);
         setSiteStatusLogCache(key, expandedSiteLogs);
     } catch (e) {
-        console.error('현장 현황 기록 로드 실패', e);
+        console.error('현장 현황 기록 로드 실패', e); toastErr("⚠️ 현장 현황 기록을 불러오지 못했어요.");
         if (expandedSiteKey !== key) return;
         expandedSiteLogs = [];
     }
@@ -2691,7 +2712,7 @@ async function submitExpandedSiteLog(client, site) {
         });
         loadExpandedSiteLog(client, site, true); // 백그라운드 재동기화 (방금 쓴 내용이므로 캐시 무시)
     } catch (e) {
-        console.error('현장 현황 기록 등록 실패', e);
+        console.error('현장 현황 기록 등록 실패', e); toastErr("⚠️ 현황 기록 등록에 실패했어요. 다시 눌러 주세요.");
     } finally {
         if (btn) btn.disabled = false;
     }
@@ -2746,7 +2767,7 @@ async function loadMaterialData() {
             refreshQuickMatSearch();
         }
     } catch (e) {
-        console.error('자재 목록 로딩 실패:', e);
+        console.error('자재 목록 로딩 실패:', e); toastErr("⚠️ 자재 목록을 불러오지 못했어요.");
     }
 }
 
@@ -2984,7 +3005,7 @@ async function loadFrequentMaterials() {
             if (!input || !input.value.trim()) renderFrequentMatChips();
         }
     } catch (e) {
-        console.error('자주 쓰는 자재 로딩 실패:', e);
+        console.error('자주 쓰는 자재 로딩 실패:', e); toastErr("⚠️ 자주 쓰는 자재를 불러오지 못했어요.");
     }
 }
 
