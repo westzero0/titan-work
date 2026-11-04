@@ -766,6 +766,10 @@
 // 전역 변수 선언 (에러 방지용)
     let calendar = null;
     // 저장·삭제·불러오기 실패는 말없이 넘기지 말고 화면 아래에 빨간 토스트로 알린다 (누르면 닫힘, 7초 뒤 자동 닫힘)
+    // HTML·속성값에 넣을 문자열 이스케이프 ('까지 처리해서 onclick='...' 안에서도 안전)
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
     function toastErr(msg) {
         console.error(msg);
         try {
@@ -1673,7 +1677,7 @@ function renderChips(sClient, sSite) {
     });
 
     cBox.innerHTML = activeClients.sort().map(c =>
-        `<div class="chip ${c === sClient ? 'active' : ''}" onclick="clkClient(this, '${c}')">${c}</div>`
+        `<div class="chip ${c === sClient ? 'active' : ''}" data-v="${esc(c)}" onclick="clkClient(this, this.dataset.v)">${esc(c)}</div>`
     ).join('');
 
     document.getElementById('sched-client').value = sClient || "";
@@ -1700,8 +1704,8 @@ function renderChips(sClient, sSite) {
             sBox.innerHTML = filteredSites.map(s => {
                 const isFinished = s.status === '완료';
                 return `
-                <div class="chip ${s.name === sSite ? 'active' : ''}" onclick="clkSite(this, '${s.name}')">
-                    ${isFinished ? '[완료] ' : ''}${s.name}
+                <div class="chip ${s.name === sSite ? 'active' : ''}" data-v="${esc(s.name)}" onclick="clkSite(this, this.dataset.v)">
+                    ${isFinished ? '[완료] ' : ''}${esc(s.name)}
                 </div>`;
             }).join('');
         }
@@ -2125,7 +2129,6 @@ async function loadUnregisteredSites() {
     let list = [];
     try { list = await gasCall('getUnregisteredSites'); } catch (e) { console.error("미등록 현장 조회 실패", e); return; }
     if (!Array.isArray(list) || list.length === 0) { box.innerHTML = ''; return; }
-    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     box.innerHTML = `
     <div class="card section-client" style="border-left:4px solid #f59e0b;">
         <h3>🆕 미등록 현장 확인 (${list.length})</h3>
@@ -2599,7 +2602,6 @@ function toggleSelection(type, item) {
 
     // 거래처 전체의 '직원앱 표시'를 한 화면에서 보고 바꾸는 모달 (슬라이드를 넘기지 않아도 됨)
     function openClientVisibilityModal() {
-        const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         const rows = getClientNames().map(c => {
             const sites = Array.isArray(globalTitanData[c]) ? globalTitanData[c] : [];
             const active = sites.filter(s => s.status !== '완료').length;
@@ -2621,7 +2623,6 @@ function toggleSelection(type, item) {
     // 직원·차량의 '직원앱 표시'를 한 화면에서 보고 바꾸는 모달 (인원 탭)
     async function openStaffVisibilityModal() {
         if (!vehicleRows.length) await loadVehicles();
-        const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         const workerRows = globalWorkerData.filter(w => w.status === '재직').map(w => `
             <label class="show-in-app" style="padding:12px 4px; border-bottom:1px solid #f1f5f9;">
                 <input type="checkbox" ${w.showInApp !== false ? 'checked' : ''} data-name="${esc(w.name)}" onchange="setShowInApp('worker', this.dataset.name, this.checked, this)">
@@ -3307,10 +3308,10 @@ async function downloadPayroll() {
         if (result.status === "SUCCESS") {
             resultBox.innerHTML = `<a href="${result.downloadUrl}" target="_blank" style="display:block; text-align:center; background:var(--hr-color); color:white; padding:14px; border-radius:10px; font-weight:bold; text-decoration:none;">✅ 정산 완료! 여기를 눌러 다운로드</a>`;
         } else {
-            resultBox.innerHTML = `<span style="color:#dc2626;">❌ ${result.message}</span>`;
+            resultBox.innerHTML = `<span style="color:#dc2626;">❌ ${esc(result.message)}</span>`;
         }
     } catch (e) {
-        resultBox.innerHTML = `<span style="color:#dc2626;">🚨 오류: ${e.message}</span>`;
+        resultBox.innerHTML = `<span style="color:#dc2626;">🚨 오류: ${esc(e.message)}</span>`;
     }
 }
 
