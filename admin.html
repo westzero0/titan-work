@@ -2230,7 +2230,7 @@ function renderClientList() {
             <div class="client-card">
                 <div class="client-header">
                     <span>🏢 ${client}</span>
-                    <span style="font-size:0.8rem; opacity:0.8;">총 ${sites.length}개</span>
+                    <span style="font-size:0.8rem; opacity:0.8;">총 ${sites.length}개 <span class="swiper-no-swiping" onclick="hideClient(this.dataset.client)" data-client="${client.replace(/"/g, '&quot;')}" style="margin-left:8px; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,0.25); cursor:pointer; font-weight:bold;">🗑 삭제</span></span>
                 </div>
                 <div>`;
 
@@ -2661,6 +2661,18 @@ function toggleSelection(type, item) {
       function saveMaterial() { const d = { name: document.getElementById('m_name').value, spec: document.getElementById('m_spec').value, unit: document.getElementById('m_unit').value, price: document.getElementById('m_price').value }; sendToGas('adminAddMaterial', d); }
 
     async function toggleSiteStatus(c, s, st) { if (confirm("상태변경?")) await sendToGas('updateSiteStatus', { client: c, site: s, status: st==='완료'?'진행중':'완료' }); }
+    // 거래처 삭제 = 관리자·직원앱 목록에서만 숨김. 과거 일보·견적·수금 기록은 그대로
+    async function hideClient(c) {
+        if (!c || !confirm(`'${c}' 거래처를 목록에서 삭제할까요?\n(과거 일보·견적 기록은 그대로 남습니다)`)) return;
+        try {
+            const r = await gasCall('hideClient', { client: c });
+            if (r !== 'SUCCESS') throw new Error(r);
+            delete globalTitanData[c];
+            localStorage.setItem('titan_clients', JSON.stringify(globalTitanData));
+            renderClientList();
+            renderRegistrationClientChips();
+        } catch (e) { alert("⚠️ 삭제 실패: " + e.message); }
+    }
     async function changePassword(n) { const p = prompt("새 비번:"); if (p) await sendToGas('adminUpdatePassword', { userName: n, newPw: p }); }
     async function updateStatus(n, s) { if (confirm("상태변경?")) await sendToGas('adminUpdateStatus', { userName: n, status: s }); }
     function copyText(t) { navigator.clipboard.writeText(t); alert("복사됨"); }
