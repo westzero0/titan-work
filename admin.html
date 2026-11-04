@@ -21,8 +21,6 @@
       --material-bg: #f8fafc;
       --danger-color: #dc2626;       /* 미수금/경고 */
       --danger-bg: #fef2f2;
-      --quote-color: #7c3aed;        /* 견적 진행 */
-      --quote-bg: #f5f3ff;
       --bg-color: #f8f9fa;
 
       --text-primary: #1e293b;
@@ -93,7 +91,6 @@
     .nav-item[data-tab="1"].active { color: var(--hr-color); }
     .nav-item[data-tab="2"].active { color: var(--client-color); }
     .nav-item[data-tab="3"].active { color: var(--material-color); }
-    .nav-item[data-tab="4"].active { color: var(--quote-color); }
     .nav-item i { font-size: 20px; margin-bottom: 4px; }
 
     /* 숫자 강조 스타일 */
@@ -279,14 +276,6 @@
 
     .no-border-box { border: none !important; background: transparent !important; padding: 0 !important; box-shadow: none !important; }
 
-    /* --- 견적 진행 카드 --- */
-    .section-quote h3 { color: var(--quote-color); }
-    .quote-progress-card { border: 1.5px solid #e2e8f0; border-radius: 12px; }
-    .quote-progress-card.all-done { border-color: #86efac; background: #f0fdf4; }
-    .quote-chip { padding: 7px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.15s; }
-    .quote-chip.active { background: var(--quote-bg); color: var(--quote-color); border-color: #ddd6fe; }
-    .btn-toggle-completed { width: auto; margin: 0; padding: 8px 14px; font-size: 0.8rem; border-radius: 20px; background: #f1f5f9; color: #475569; font-weight: bold; cursor: pointer; border: none; }
-    .btn-toggle-completed.active { background: var(--quote-bg); color: var(--quote-color); }
 
     @keyframes shake {
         0% { transform: translateX(0); }
@@ -367,7 +356,7 @@
     .embed .swiper-slide { display: none; width: auto !important; height: auto !important; min-height: 0 !important; padding-bottom: 20px !important; background: none; }
     .view-sched .swiper-slide:nth-child(1), .view-staff .swiper-slide:nth-child(2) { display: block; }
     .view-trade .swiper-slide:nth-child(3) { display: block; }
-    .embed #dashboard-wrapper, .embed #active-sites-overview { display: none !important; }
+    .embed #dashboard-wrapper { display: none !important; }
     /* PC 전용 화면 손질 (pc.css 의 색·글꼴을 입힌다) */
     .embed { background: var(--bg); font-family: var(--font); }
     .embed .swiper-wrapper { max-width: 1120px; padding: 32px 40px 48px; margin: 0; }
@@ -466,43 +455,6 @@
         <button onclick="toggleDashboard()" style="background: #e2e8f0; color: #475569; border: none; padding: 12px 40px; border-radius: 8px; font-weight: bold; width: 100%;">닫기 👆</button>
     </div>
 </div>
-    </div>
-</div>
-
-<!-- 활성 현장 개요 대시보드 -->
-<div id="active-sites-overview" style="margin: 15px 15px 10px 15px; z-index: 100;">
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 16px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h3 style="margin: 0; font-size: 1.1rem;">🏗️ 작업현황</h3>
-            <button onclick="refreshActiveSitesOverview()" style="width: auto; margin-top: 0; background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 14px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; font-weight: bold; white-space: nowrap;">↻ 새로고침</button>
-        </div>
-
-        <!-- 요약 배지 4개 -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;">
-            <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 8px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
-                <div id="overview-total-clients" style="font-size: 1.5rem; font-weight: 800;">0</div>
-                <div style="font-size: 0.7rem; opacity: 0.9;">거래처</div>
-            </div>
-            <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 8px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
-                <div id="overview-total-sites" style="font-size: 1.5rem; font-weight: 800;">0</div>
-                <div style="font-size: 0.7rem; opacity: 0.9;">현장</div>
-            </div>
-            <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 8px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
-                <div id="overview-total-quotes" style="font-size: 1.5rem; font-weight: 800;">0</div>
-                <div style="font-size: 0.7rem; opacity: 0.9;">견적건</div>
-            </div>
-            <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 8px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
-                <div id="overview-total-amount" style="font-size: 1.2rem; font-weight: 800;">0</div>
-                <div style="font-size: 0.7rem; opacity: 0.9;">총 견적금액</div>
-            </div>
-        </div>
-
-        <!-- 거래처별 현장 카드 - 스와이프 (swiper-no-swiping: 전체 페이지 스와이프와 제스처 충돌 방지) -->
-        <div class="swiper-no-swiping" style="overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory;">
-            <div id="overview-clients-container" style="display: flex; gap: 12px; min-width: max-content;">
-                <div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; padding: 20px 10px; white-space: nowrap;">로딩 중...</div>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -630,16 +582,6 @@
       </div>
     </div>
 
-    <div class="swiper-slide">
-      <div class="card section-quote" style="padding-bottom: 5px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #eee; padding-bottom:10px;">
-          <h3 style="margin:0; border:none; padding:0;">📄 견적 진행 현황</h3>
-          <button id="btn-toggle-completed-quotes" class="btn-toggle-completed" onclick="toggleShowCompletedQuotes()">완료된 건 보기</button>
-        </div>
-      </div>
-      <div id="quote-progress-list" style="padding: 10px 5px 100px 5px;"></div>
-    </div>
-
 
 
        </div>
@@ -655,7 +597,6 @@
     <div class="nav-item" data-tab="1" onclick="jumpTo(1)">👥 <span>인원</span></div>
     <div class="nav-item" data-tab="2" onclick="jumpTo(2)">🏢 <span>거래처</span></div>
     <div class="nav-item" data-tab="3" onclick="jumpTo(3)">📦 <span>자재</span></div>
-    <div class="nav-item" data-tab="4" onclick="jumpTo(4)">📄 <span>견적</span></div>
 </div>
 
 <div id="schedule-modal" class="modal">
@@ -762,7 +703,7 @@
   <script src="common.js"></script>
   <script>
     // 관리자 화면 버전: admin.html·common.js를 고칠 때마다 이 숫자를 올리세요. 열려 있던 화면이 새 버전을 감지해 스스로 새로고침합니다.
-    const ADMIN_VERSION = "1";
+    const ADMIN_VERSION = "2";
     (async () => {
       try {
         const r = await fetch(location.pathname, { cache: 'reload' }); // 캐시를 건너뛰고 받아 캐시도 새로 채움
@@ -813,295 +754,6 @@ function getDateRange(startStr, endStr) {
         cur.setDate(cur.getDate() + 1);
     }
     return dates;
-}
-
-// ==========================================
-// 📄 견적 진행 관리
-// ==========================================
-let quoteProgressData = [];
-let showCompletedQuotes = false;
-const QUOTE_FIELD_MAP = { '발송': '견적서발송', '세금계산서': '세금계산서발행', '입금': '입금완료' };
-const QUOTE_DATE_FIELD_MAP = { '발송': '발송일자', '세금계산서': '세금계산서발행일자', '입금': '입금일자' };
-
-async function loadQuoteProgress() {
-    const container = document.getElementById('quote-progress-list');
-    const cached = localStorage.getItem('titan_quote_progress');
-
-    if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
-            quoteProgressData = parsed;
-            renderQuoteProgressList();
-        } else {
-            localStorage.removeItem('titan_quote_progress'); // 예전 에러 응답 등이 캐시됐을 경우 정리
-        }
-    } else if (container) {
-        container.innerHTML = '<div style="text-align:center; padding:40px; color:#64748b;">⏳ 견적 진행 현황을 불러오는 중입니다...</div>';
-    }
-
-    try {
-        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getQuoteProgress' }) });
-        const newData = await res.json();
-        const newDataStr = JSON.stringify(newData);
-
-        if (cached !== newDataStr) {
-            quoteProgressData = newData;
-            localStorage.setItem('titan_quote_progress', newDataStr);
-            renderQuoteProgressList();
-        }
-    } catch (e) {
-        console.error('견적 진행 현황 로딩 실패:', e); toastErr("⚠️ 견적 진행 현황을 불러오지 못했어요.");
-        if (!cached && container) container.innerHTML = '<div style="color:#dc2626; text-align:center; padding:20px;">데이터 연결 실패</div>';
-    }
-}
-
-// 📦 거래처+현장별 사용자재 집계 (서버에서 한 번에 불러와 캐시)
-let globalSiteMaterialsUsage = {};
-
-async function loadSiteMaterialsUsage() {
-    try {
-        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getSiteMaterialsUsage' }) });
-        const data = await res.json();
-        if (data && !data.error) {
-            globalSiteMaterialsUsage = data;
-            renderQuoteProgressList();
-        }
-    } catch (e) {
-        console.error('사용자재 조회 실패', e); toastErr("⚠️ 사용자재 조회에 실패했어요.");
-    }
-}
-
-/**
- * 📦 특정 현장(거래처+현장)의 사용자재기록 조회
- * - 서버에서 미리 불러온 globalSiteMaterialsUsage에서 조회 (사용자재기록 시트 기준)
- */
-function getSiteMaterialsFromLogs(client, site) {
-    const key = client.trim() + '|||' + site.trim();
-    return globalSiteMaterialsUsage[key] || [];
-}
-
-function toggleShowCompletedQuotes() {
-    showCompletedQuotes = !showCompletedQuotes;
-    const btn = document.getElementById('btn-toggle-completed-quotes');
-    if (btn) {
-        btn.innerText = showCompletedQuotes ? '진행중만 보기' : '완료된 건 보기';
-        btn.classList.toggle('active', showCompletedQuotes);
-    }
-    renderQuoteProgressList();
-}
-
-function renderQuoteProgressList() {
-    const container = document.getElementById('quote-progress-list');
-    if (!container) return;
-
-    const isPaid = q => (q['입금완료'] || '').toString().trim() === 'O';
-
-    let list = (quoteProgressData || []).filter(q => q['거래처']);
-    if (!showCompletedQuotes) list = list.filter(q => !isPaid(q));
-
-    // 진행중인 것들끼리는 견적일자가 오래된 순으로 정렬
-    list.sort((a, b) => new Date(a['견적일자'] || 0) - new Date(b['견적일자'] || 0));
-
-    if (list.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8;">${showCompletedQuotes ? '견적 진행 내역이 없습니다.' : '진행중인 견적이 없습니다.'}</div>`;
-        return;
-    }
-
-    container.innerHTML = list.map(q => {
-        const client = (q['거래처'] || '').toString();
-        const site = (q['현장'] || '').toString();
-        const date = q['견적일자'] || '-';
-        const amount = q['견적금액'] ? Number(q['견적금액']).toLocaleString() + '원' : '-';
-
-        const sent = (q['견적서발송'] || '').toString().trim() === 'O';
-        const tax = (q['세금계산서발행'] || '').toString().trim() === 'O';
-        const paid = isPaid(q);
-        const allDone = sent && tax && paid;
-
-        // 날짜 필드 읽기
-        const sentDate = q['발송일자'] || '';
-        const taxDate = q['세금계산서발행일자'] || '';
-        const paidDate = q['입금일자'] || '';
-
-        const safeClient = client.replace(/'/g, "\\'");
-        const safeSite = site.replace(/'/g, "\\'");
-
-        const chip = (label, active, field, dateVal) => `
-            <span class="quote-chip ${active ? 'active' : ''}" onclick="updateQuoteProgressField('${safeClient}', '${safeSite}', '${field}', '${active ? 'X' : 'O'}', this)">
-                ${active ? '✅' : '⬜'} ${label}${active && dateVal ? ` (${dateVal.slice(5)})` : ''}
-            </span>`;
-
-        // 📦 해당 현장의 일보 자재 조회 (ONESHOT_ 포함)
-        const siteMaterials = getSiteMaterialsFromLogs(client, site);
-        const hasMaterials = siteMaterials.length > 0;
-
-        return `
-        <div class="card quote-progress-card ${allDone ? 'all-done' : ''}" data-client="${safeClient}" data-site="${safeSite}">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <div>
-                    <div style="font-weight:900; font-size:1.05rem; color:#1e293b;">${site}</div>
-                    <div style="font-size:0.85rem; color:#64748b; margin-top:2px;">🏢 ${client}</div>
-                </div>
-                <div style="text-align:right;">
-                    <div style="font-size:0.8rem; color:#94a3b8;">${date}</div>
-                    <div style="font-weight:bold; color:var(--quote-color); margin-top:2px;">${amount}</div>
-                </div>
-            </div>
-            <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
-                ${chip('견적서발송', sent, '발송', sentDate)}
-                ${chip('세금계산서', tax, '세금계산서', taxDate)}
-                ${chip('입금완료', paid, '입금', paidDate)}
-            </div>
-
-            <!-- 📦 일보 자재 조회 섹션 -->
-            ${hasMaterials ? `
-            <div style="margin-top:12px; padding-top:12px; border-top:1px solid #f1f5f9;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-size:0.8rem; font-weight:bold; color:#475569;">📦 일보 입력 자재 (${siteMaterials.length}종)</span>
-                    <button onclick="toggleMaterialsDetail(this, '${safeClient}', '${safeSite}')"
-                            style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:4px 10px; border-radius:6px; font-size:0.75rem; cursor:pointer;">
-                        ▼ 상세보기
-                    </button>
-                </div>
-                <div class="materials-detail" style="display:none; max-height:200px; overflow-y:auto; font-size:0.8rem; color:#334155; background:#fafafa; padding:8px; border-radius:6px; border:1px solid #f1f5f9;">
-                    ${siteMaterials.map(m => `
-                        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f1f5f9;">
-                            <span>${m.name}${m.spec && m.spec !== '-' ? ' (' + m.spec + ')' : ''}${m.isOneShot ? ' <span style="color:#f59e0b;">🔖일회성</span>' : ''}</span>
-                            <span style="font-weight:bold; color:#2563eb;">${m.qty}${m.unit || ''}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-            ` : `
-            <div style="margin-top:12px; padding:8px; background:#f8fafc; border-radius:6px; border:1px dashed #e2e8f0; text-align:center; font-size:0.8rem; color:#94a3b8;">
-                📦 해당 현장의 일보 자재 내역이 없습니다.
-            </div>
-            `}
-
-            <!-- 📊 현장 손익 조회 섹션 -->
-            <div style="margin-top:12px; padding-top:12px; border-top:1px solid #f1f5f9;">
-                <button onclick="toggleSiteProfit(this, '${safeClient}', '${safeSite}')"
-                        style="width:100%; margin-top:0; padding:10px; background:var(--quote-bg); color:var(--quote-color); border:1px solid #ddd6fe; border-radius:8px; font-weight:bold; font-size:0.85rem; cursor:pointer;">
-                    📊 손익보기
-                </button>
-                <div class="profit-detail" style="display:none; margin-top:10px;"></div>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-// 📊 현장 손익 조회 토글
-async function toggleSiteProfit(btn, client, site) {
-    const card = btn.closest('.quote-progress-card');
-    const detail = card.querySelector('.profit-detail');
-
-    if (detail.style.display === 'block') {
-        detail.style.display = 'none';
-        btn.textContent = '📊 손익보기';
-        return;
-    }
-
-    detail.style.display = 'block';
-    btn.textContent = '📊 손익 접기';
-
-    if (detail.dataset.loaded === '1') return;
-
-    detail.innerHTML = '<div style="text-align:center; padding:12px; color:#94a3b8; font-size:0.85rem;">⏳ 계산 중...</div>';
-
-    try {
-        const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'getSiteProfit', data: { client, site } })
-        });
-        const p = await res.json();
-
-        const marginColor = p.margin >= 0 ? '#16a34a' : '#dc2626';
-        const row = (label, value) => `
-            <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:0.85rem; color:#475569;">
-                <span>${label}</span>
-                <span style="font-weight:bold;">${Number(value || 0).toLocaleString()}원</span>
-            </div>`;
-
-        detail.innerHTML = `
-            <div style="background:var(--quote-bg); border-radius:8px; padding:12px;">
-                ${row('💰 매출', p.revenue)}
-                ${row('📦 자재비', p.materialCost)}
-                ${row('👷 인건비', p.laborCost)}
-                ${row('🧾 경비', p.expenseCost)}
-                <div style="border-top:1px solid #ddd6fe; margin:6px 0;"></div>
-                ${row('원가합계', p.totalCost)}
-                <div style="margin-top:10px; text-align:center;">
-                    <div class="metric-value" style="color:${marginColor};">
-                        ${p.margin >= 0 ? '+' : ''}${Number(p.margin || 0).toLocaleString()}원
-                    </div>
-                    <div style="font-weight:bold; color:${marginColor}; font-size:0.95rem; margin-top:2px;">
-                        마진율 ${p.marginRate || 0}%
-                    </div>
-                </div>
-            </div>`;
-        detail.dataset.loaded = '1';
-    } catch (e) {
-        detail.innerHTML = '<div style="text-align:center; padding:12px; color:#dc2626; font-size:0.85rem;">🚨 손익 조회 실패</div>';
-    }
-}
-
-// 자재 상세 토글
-function toggleMaterialsDetail(btn, client, site) {
-    const card = btn.closest('.quote-progress-card');
-    const detail = card.querySelector('.materials-detail');
-    if (detail.style.display === 'none') {
-        detail.style.display = 'block';
-        btn.innerText = '▲ 접기';
-    } else {
-        detail.style.display = 'none';
-        btn.innerText = '▼ 상세보기';
-    }
-}
-
-async function updateQuoteProgressField(client, site, field, value, chipEl) {
-    if (chipEl) chipEl.style.opacity = '0.5';
-    try {
-        // 체크 시 현재 날짜 추가
-        const today = new Date();
-        const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-
-        const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({
-                action: 'updateQuoteProgress',
-                data: {
-                    client,
-                    site,
-                    field,
-                    value,
-                    date: value === 'O' ? dateStr : ''  // 체크 시에만 날짜 전송
-                }
-            })
-        });
-        const result = await res.json();
-
-        if (result.status === 'SUCCESS') {
-            const item = quoteProgressData.find(q => q['거래처'] === client && q['현장'] === site);
-            if (item) {
-                item[QUOTE_FIELD_MAP[field]] = value;
-                // 날짜 필드도 업데이트
-                if (value === 'O') {
-                    item[QUOTE_DATE_FIELD_MAP[field]] = dateStr;
-                } else {
-                    // 해제 시 날짜 초기화
-                    item[QUOTE_DATE_FIELD_MAP[field]] = '';
-                }
-            }
-            localStorage.setItem('titan_quote_progress', JSON.stringify(quoteProgressData));
-            renderQuoteProgressList();
-        } else {
-            toastErr('❌ 갱신 실패: ' + (result.message || ''));
-        }
-    } catch (e) {
-        toastErr('🚨 통신 에러: ' + e.message);
-    } finally {
-        if (chipEl) chipEl.style.opacity = '1';
-    }
 }
 
 // 🎨 직원별 고유 색상을 기억하는 메모장 (이 두 줄은 반드시 함수 바로 위에 있어야 합니다!)
@@ -1178,11 +830,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     loadScheduleData();
     loadClientManagement();
-    loadQuoteProgress();
-    loadSiteMaterialsUsage();
-
-    // 활성 현장 개요 로드
-    loadActiveSitesOverview();
 
     loadAdminData(); setTimeout(loadVehicles, 1000);
 });
@@ -3044,168 +2691,6 @@ async function loadReceivables() {
     } catch (e) {
         console.error("수금 데이터 로드 실패", e); toastErr("⚠️ 수금 데이터를 불러오지 못했어요.");
     }
-}
-
-// 🏗️ 활성 현장 개요 대시보드 로드
-async function loadActiveSitesOverview() {
-    try {
-        const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: "getActiveSitesOverview" })
-        });
-        const result = await res.json();
-        if (result.res !== "SUCCESS") {
-            console.error("활성 현장 개요 로드 실패:", result.msg);
-            return;
-        }
-        renderActiveSitesOverview(result.data);
-    } catch (e) {
-        console.error("활성 현장 개요 통신 실패", e); toastErr("⚠️ 활성 현장 개요를 불러오지 못했어요.");
-        document.getElementById('overview-clients-container').innerHTML =
-            '<div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; padding: 20px 10px; white-space: nowrap;">❌ 로드 실패</div>';
-    }
-}
-
-function renderActiveSitesOverview(data) {
-    if (!data || !data.clients || data.clients.length === 0) {
-        document.getElementById('overview-clients-container').innerHTML =
-            '<div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; padding: 20px 10px; white-space: nowrap;">활성 현장 없음</div>';
-        // 요약 배지 초기화
-        document.getElementById('overview-total-clients').innerText = '0';
-        document.getElementById('overview-total-sites').innerText = '0';
-        document.getElementById('overview-total-quotes').innerText = '0';
-        document.getElementById('overview-total-amount').innerText = '0';
-        return;
-    }
-
-    // 요약 배지 업데이트
-    document.getElementById('overview-total-clients').innerText = data.summary.totalClients || '0';
-    document.getElementById('overview-total-sites').innerText = data.summary.totalSites || '0';
-    document.getElementById('overview-total-quotes').innerText = data.summary.totalQuotes || '0';
-    document.getElementById('overview-total-amount').innerText =
-        (data.summary.totalAmount || 0).toLocaleString() + '원';
-
-    // 거래처별 카드 렌더링 (스크롤 영역 폭에 맞춰 카드 1장씩 스와이프되도록 폭 계산, 다음 카드가 살짝 보이게 24px만 남김)
-    const container = document.getElementById('overview-clients-container');
-    const scrollWrapper = container.parentElement;
-    const cardWidth = Math.max(220, (scrollWrapper.clientWidth || 320) - 24);
-    let html = '';
-
-    data.clients.forEach(client => {
-        const siteCount = client.sites ? client.sites.length : 0;
-        const quoteCount = client.totalQuotes || 0;
-        const totalAmount = (client.totalAmount || 0).toLocaleString();
-
-        // 진행률 계산 (현장 수 × 3(발송/계산서/입금) 중 체크된 비율)
-        let completedCount = 0;
-        const totalProgressItems = siteCount * 3;
-        if (client.sites) {
-            client.sites.forEach(site => {
-                if (site.quoteSent) completedCount++;
-                if (site.taxInvoiceIssued) completedCount++;
-                if (site.paymentCompleted) completedCount++;
-            });
-        }
-        const progressPercent = totalProgressItems > 0 ? Math.round((completedCount / totalProgressItems) * 100) : 0;
-
-        html += `
-        <div style="flex: 0 0 ${cardWidth}px; scroll-snap-align: start; background: rgba(255,255,255,0.95); border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 2px solid transparent;"
-             onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.15)';"
-             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';"
-             onclick="navigateToClientTab('${client.name.replace(/'/g, "\\'")}')">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        🏢 ${client.name}
-                    </div>
-                    <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        ${siteCount}개 현장 · ${quoteCount}건 견적
-                    </div>
-                </div>
-                <div style="background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; flex-shrink: 0;">
-                    ${progressPercent}% 진행
-                </div>
-            </div>
-
-            <div style="border-top: 1px solid #e2e8f0; padding-top: 10px; margin-bottom: 8px;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b;">
-                    <span>총 견적금액</span>
-                    <span style="font-weight: 700; color: #1e293b;">${totalAmount}원</span>
-                </div>
-            </div>
-
-            <!-- 현장 리스트 (최대 3개 표시) -->
-            ${client.sites && client.sites.length > 0 ? client.sites.slice(0, 3).map(site => {
-                const deadline = site.deadline ? `<span style="color: ${new Date(site.deadline) < new Date() ? '#ef4444' : '#f59e0b'}; font-size: 0.65rem;">📅 ${site.deadline}</span>` : '';
-                const statusChip = (label, active) => `<span style="font-size:0.62rem; font-weight:700; padding:2px 6px; border-radius:8px; white-space:nowrap; background:${active ? '#dcfce7' : '#f1f5f9'}; color:${active ? '#16a34a' : '#94a3b8'};">${active ? '✅' : '⬜'} ${label}</span>`;
-                const statusIcons = [
-                    statusChip('발송', site.quoteSent),
-                    statusChip('계산서', site.taxInvoiceIssued),
-                    statusChip('입금', site.paymentCompleted)
-                ];
-
-                return `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #f1f5f9; font-size: 0.75rem;">
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-weight: 600; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            🏗️ ${site.siteName || '현장명 없음'}
-                        </div>
-                        <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">${statusIcons.join('')}</div>
-                    </div>
-                    <div style="flex-shrink: 0;">${deadline}</div>
-                </div>`;
-            }).join('') : '<div style="font-size: 0.75rem; color: #94a3b8; text-align: center; padding: 8px;">등록된 현장 없음</div>'}
-
-            ${client.sites && client.sites.length > 3 ?
-                `<div style="text-align: center; padding-top: 6px; font-size: 0.7rem; color: #94a3b8;">외 ${client.sites.length - 3}개 현장 더보기</div>` : ''}
-        </div>`;
-    });
-
-    container.innerHTML = html;
-}
-
-// 거래처 탭으로 이동 및 해당 거래처로 스크롤
-function navigateToClientTab(clientName) {
-    // Swiper 탭 2 (인덱스 2 = 거래처 탭: 0=일정, 1=인원, 2=거래처)로 이동
-    if (typeof swiper !== 'undefined' && swiper.slideTo) {
-        swiper.slideTo(2, 300);
-    }
-
-    // 약간의 지연 후 해당 거래처 칩/카드로 스크롤
-    setTimeout(() => {
-        // 거래처 칩에서 찾기
-        const chips = document.querySelectorAll('#client-chips .client-chip');
-        let found = false;
-        chips.forEach(chip => {
-            if (chip.innerText.includes(clientName) && !found) {
-                chip.click(); // 칩 클릭으로 필터링
-                found = true;
-            }
-        });
-
-        // 거래처 관리 리스트에서 해당 거래처 카드 찾기
-        const clientCards = document.querySelectorAll('#client-management-list .client-card');
-        clientCards.forEach(card => {
-            const nameEl = card.querySelector('.client-card-name');
-            if (nameEl && nameEl.innerText.includes(clientName)) {
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                // 하이라이트 효과
-                card.style.boxShadow = '0 0 0 3px #3b82f6';
-                setTimeout(() => { card.style.boxShadow = ''; }, 2000);
-            }
-        });
-    }, 350);
-}
-
-// 새로고침 함수
-function refreshActiveSitesOverview() {
-    const btn = event.target;
-    btn.innerText = '↻ 로딩...';
-    btn.disabled = true;
-    loadActiveSitesOverview().finally(() => {
-        btn.innerText = '↻ 새로고침';
-        btn.disabled = false;
-    });
 }
 
 let currentPaymentData = null;
