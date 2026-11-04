@@ -787,10 +787,6 @@ function getClientNames() {
 }
 
 // 💡 공용 유틸: Date 객체를 YYYY-MM-DD 문자열로 변환
-function formatDateYMD(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
 // 💡 공용 유틸: 시작일(포함) ~ 종료일(제외) 사이의 날짜 문자열 배열 생성 (기간 일정 등록용)
 function getDateRange(startStr, endStr) {
     const [sY, sM, sD] = startStr.split('-');

@@ -3,7 +3,7 @@ if ('serviceWorker' in navigator) {
 }
 
 
-const APP_VERSION = "3.9"; // 👈 기능 수정할 때마다 이 숫자를 올리세요!
+const APP_VERSION = "4.0"; // 👈 기능 수정할 때마다 이 숫자를 올리세요!
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedVer = localStorage.getItem('titan_app_version');
@@ -244,10 +244,6 @@ function isOffDay(job) {
 }
 
 // 💡 공용 유틸: Date 객체를 YYYY-MM-DD 문자열로 변환
-function formatDateYMD(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
 let currentSites = [];
 let allSchedules = [];
 let showPast = false;

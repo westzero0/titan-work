@@ -76,3 +76,8 @@ function toastErr(msg) {
     setTimeout(() => t.remove(), 7000);
   } catch (_) { alert(msg); }
 }
+
+/** Date → 'YYYY-MM-DD' (기기 시간대 기준) */
+function formatDateYMD(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
