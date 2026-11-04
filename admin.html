@@ -761,6 +761,18 @@
 
   <script src="common.js"></script>
   <script>
+    // 관리자 화면 버전: admin.html·common.js를 고칠 때마다 이 숫자를 올리세요. 열려 있던 화면이 새 버전을 감지해 스스로 새로고침합니다.
+    const ADMIN_VERSION = "1";
+    (async () => {
+      try {
+        const r = await fetch(location.pathname, { cache: 'reload' }); // 캐시를 건너뛰고 받아 캐시도 새로 채움
+        await fetch('common.js', { cache: 'reload' });
+        const m = (await r.text()).match(/const ADMIN_VERSION = "([^"]+)"/);
+        if (m && m[1] !== ADMIN_VERSION) location.reload();
+      } catch (e) { /* 오프라인이면 그냥 지금 버전으로 */ }
+    })();
+  </script>
+  <script>
 
 
 // 전역 변수 선언 (에러 방지용)
