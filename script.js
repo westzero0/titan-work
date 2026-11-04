@@ -2,28 +2,8 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
 }
 
-// 저장·불러오기 실패는 말없이 넘기지 말고 화면 아래에 빨간 토스트로 알린다 (누르면 닫힘, 7초 뒤 자동 닫힘)
-function toastErr(msg) {
-    console.error(msg);
-    try {
-        let box = document.getElementById('err-toast-box');
-        if (!box) {
-            box = document.createElement('div');
-            box.id = 'err-toast-box';
-            box.style.cssText = 'position:fixed; left:12px; right:12px; bottom:calc(env(safe-area-inset-bottom,0px) + 76px); z-index:99999; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none;';
-            document.body.appendChild(box);
-        }
-        const t = document.createElement('div');
-        t.setAttribute('role', 'alert');
-        t.textContent = msg;
-        t.style.cssText = 'max-width:460px; background:#b91c1c; color:#fff; padding:12px 16px; border-radius:10px; font-size:0.9rem; font-weight:600; line-height:1.4; box-shadow:0 6px 20px rgba(0,0,0,0.3); pointer-events:auto; cursor:pointer; word-break:keep-all; overflow-wrap:break-word; white-space:pre-line;';
-        t.onclick = () => t.remove();
-        box.appendChild(t);
-        setTimeout(() => t.remove(), 7000);
-    } catch (_) { alert(msg); }
-}
 
-const APP_VERSION = "3.8"; // 👈 기능 수정할 때마다 이 숫자를 올리세요!
+const APP_VERSION = "3.9"; // 👈 기능 수정할 때마다 이 숫자를 올리세요!
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedVer = localStorage.getItem('titan_app_version');
@@ -50,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbysyoS6gXSfkSCFYFykxzlTOQkDwRJOaE5g7OkNvSZy8xVvesKdi95coOu33bgeRdqs/exec";
 
 var globalTitanData = globalTitanData || {}; // 👈 변수가 없으면 빈 박스라도 만들어라!
 

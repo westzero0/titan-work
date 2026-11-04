@@ -116,23 +116,8 @@
 </div>
 <div id="status"></div>
 
+<script src="common.js"></script>
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbysyoS6gXSfkSCFYFykxzlTOQkDwRJOaE5g7OkNvSZy8xVvesKdi95coOu33bgeRdqs/exec";
-
-  async function sendToGas(action, data) {
-    const res = await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify({ action, data })
-    });
-    const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      // JSON이 아닌 응답(로그인 페이지 HTML 등)이 오면 여기로 옴 - 원인 파악용으로 앞부분을 그대로 보여줌
-      throw new Error("서버 응답이 JSON이 아닙니다. 배포 권한 설정을 확인해주세요. (응답 앞부분: " + text.substring(0, 80) + ")");
-    }
-  }
-
   let currentMatrix = null;
 
   function initMonthSelect() {
